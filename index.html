@@ -115,15 +115,21 @@
   .countChip.busy{ color:#8fbf8f; }
   .creatureMember{ padding-left:16px; font-size:11px; color:var(--text-dim); }
   #inspectPanel.hasTarget{ color:var(--text); }
+  #endOverlay{ position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(10,6,4,.78); z-index:5; }
+  #endOverlay[hidden]{ display:none; }
+  .endBox{ text-align:center; padding:24px 32px; background:var(--panel); border:2px solid var(--gold); border-radius:10px; max-width:380px; }
+  .endBox h2{ font-family:'Cinzel',serif; color:var(--gold); margin:0 0 10px; font-size:28px; }
+  .endBox p{ color:var(--text); font-size:13px; line-height:1.5; margin:0 0 16px; }
   #status{ font-size:12px; color:var(--text-dim); min-height:32px; line-height:1.5;}
 </style>
 </head>
 <body>
   <h1>Der Dungeon Lord erwacht</h1>
-  <div class="subtitle">Thronsaal, Imps, Zauber &amp; Gebäude</div>
+  <div class="subtitle">Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen</div>
   <div class="layout">
     <div class="boardWrap">
       <canvas id="board"></canvas>
+      <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       <div id="combatBar" hidden></div>
       <div class="hint">🎮 WASD zum Erkunden der Karte</div>
     </div>
@@ -133,6 +139,9 @@
       <div class="stat"><span class="label">Eisen</span><span class="value" id="ironVal">0</span></div>
       <div class="stat"><span class="label">Imps</span><span class="value" id="impVal">0</span></div>
       <div class="stat"><span class="label">Nächster Lohn</span><span class="value" id="wageVal">0</span></div>
+      <div class="stat"><span class="label">Welle</span><span class="value" id="waveVal">–</span></div>
+      <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
+      <div class="hint" id="warHint"></div>
       <button id="modeToggle" class="modeToggle active" title="Umschalten: Graben / Untersuchen">⛏️</button>
 
       <div class="section">
@@ -204,7 +213,15 @@ const WORLD_COLS=48, WORLD_ROWS=32, VIEW_COLS=22, VIEW_ROWS=14, TILE=32;
 const canvas=document.getElementById('board');
 canvas.width=VIEW_COLS*TILE; canvas.height=VIEW_ROWS*TILE;
 const ctx=canvas.getContext('2d');
-const STORAGE_KEY='dungeon-lord-phase1';
+const STORAGE_KEY='dungeon-lord-v1';
+// Ausserhalb von Claude gibt es kein window.storage - dann speichert der Browser selbst.
+if(!window.storage){
+  window.storage={
+    async get(k){ try{ const v=localStorage.getItem(k); return v===null ? null : { value:v }; }catch(e){ return null; } },
+    async set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} return { value:v }; },
+    async delete(k){ try{ localStorage.removeItem(k); }catch(e){} return {}; }
+  };
+}
 const SPEED_FACTOR=5;
 const PAN_SPEED=14;
 
@@ -218,7 +235,8 @@ const ROOM_TYPES={
   bridge:    { label:'Brücke',      costPerTile:1, color:'#5c4530', icon:null },
   smelter:   { label:'Schmelze',    costPerTile:1, color:'#5c2f24', icon:null },
   forge:     { label:'Schmiede',    costPerTile:1, color:'#4a3520', icon:null },
-  arena:     { label:'Arena',       costPerTile:1, color:'#5a2a2a', icon:null }
+  arena:     { label:'Arena',       costPerTile:1, color:'#5a2a2a', icon:null },
+  portal:    { label:'Weltportal',  costPerTile:0, color:'#5a1a1a', icon:null }
 };
 
 // Forschungsthemen: jedes hat eine Bedingung (trigger), die ein Warlock im Dungeon entdecken muss,
@@ -323,8 +341,25 @@ const SPECIES={
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              nervousOnEnemyGround:true, style:'assassin', passive:'nervös — auf fremdem Boden langsamer' },
   warlock: { label:'Warlock',     category:'humanoid', hp:20, strength:2,  defense:0,  dex:12, dexGrowth:0.05, speed:1.0, tempo:1.0,
-             needsFood:true,  avoidsWater:false, intellectual:true,  canFight:true,  usesEquipment:true,  inventoryBase:3, loyalty:70, style:'support', passive:'Gelehrter — forscht lieber als zu kämpfen' }
+             needsFood:true,  avoidsWater:false, intellectual:true,  canFight:true,  usesEquipment:true,  inventoryBase:3, loyalty:70, style:'support', passive:'Gelehrter — forscht lieber als zu kämpfen' },
+  // Die Kraefte des Guten (Legion). Spiegel der Horde: Barbar~Ork, Zauberer~Warlock. Staerke x Tempo ergibt den Schaden.
+  barbarian:{ label:'Barbar',     category:'hero',     hp:30, strength:4,  defense:10, dex:10, dexGrowth:0.04, speed:1.0, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', passive:'Berserker — kämpft bis zum Ende' },
+  thief:   { label:'Dieb',        category:'hero',     hp:14, strength:2,  defense:0,  dex:28, dexGrowth:0.06, speed:1.6, tempo:1.6,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             ignoresCrowding:true, style:'assassin', passive:'schlängelt sich durch — kein Malus durch Gedränge' },
+  wizard:  { label:'Zauberer',    category:'hero',     hp:20, strength:3,  defense:0,  dex:12, dexGrowth:0.05, speed:1.0, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:true,  canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', passive:'Gelehrter — springt Verbündeten bei' },
+  knight:  { label:'Ritter',      category:'hero',     hp:44, strength:6,  defense:40, dex:5,  dexGrowth:0.02, speed:0.6, tempo:0.6,
+             needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', passive:'Plattenpanzer — hohe Verteidigung, meidet Wasser' }
 };
+const HERO_KINDS=['barbarian','thief','wizard','knight'];
+const HERO_NAMES=['Sir Aldric','Brenna','Torvald','Mira','Gunnar','Elowen','Dorian','Hilda','Cedric','Astrid'];
+const HERO_AGGRO_RADIUS=8;     // Helden jagen nur, was sich in der Naehe befindet - sonst marschieren sie zum Thron
+const HERO_GOLD_REWARD=30;     // Kopfgeld je Heldenstufe
 
 // ===== Kampf =====
 // Feindschaft ist keine Eigenschaft, sondern eine Frage mit drei Quellen:
@@ -426,6 +461,10 @@ function creatureEmoji(c){
     case 'beetle': return '🪲';
     case 'hound': return '🐕';
     case 'warlock': return '🧙';
+    case 'barbarian': return '🧔';
+    case 'thief': return '🥷';
+    case 'wizard': return '🧙‍♂️';
+    case 'knight': return '🤺';
     default: return '❔';
   }
 }
@@ -441,6 +480,11 @@ function faintCreature(c){
 
 function killCreature(c, killer){
   if(killer){ killer.kills=(killer.kills||0)+1; grantXp(killer, 3); }
+  if(c.category==='hero'){
+    const bounty=HERO_GOLD_REWARD*(c.level||1);
+    state.gold+=bounty;
+    logEvent(`Kopfgeld: ${bounty} Gold für ${actorLabel(c)}.`, c.x, c.y);
+  }
   state.creatures=state.creatures.filter(o=>o!==c);
   state.imps=state.imps.filter(o=>o!==c);
   state.corpses.push({ id: corpseIdCounter++, x:c.x, y:c.y, decayTimer:CORPSE_DECAY_TICKS, reservedBy:null });
@@ -475,6 +519,7 @@ function shouldFlee(c){
   const sp=SPECIES[c.kind]||{};
   if(!sp.canFight) return true;            // Imps fliehen immer
   if(c.category==='undead') return false;  // Untote kennen keine Furcht
+  if(c.category==='hero') return false;    // Helden weichen nicht
   return moraleOf(c) < 40;
 }
 
@@ -534,8 +579,9 @@ function tickCombat(c){
 }
 
 function pickFightTarget(c){
-  const foes=state.creatures.concat(state.imps)
+  let foes=state.creatures.concat(state.imps)
     .filter(o=> !o.held && !o.unconscious && areHostile(c,o));
+  if(c.category==='hero') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=HERO_AGGRO_RADIUS);
   if(!foes.length) return null;
   const dist=o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   const style=(SPECIES[c.kind]||{}).style || 'fighter';
@@ -1449,7 +1495,8 @@ function growBedrock(g,x,y,size){
   });
 }
 
-function placeEntrance(g, minDist, maxDist){
+function placeEntrance(g, minDist, maxDist, room){
+  room=room||'entrance';
   const throneCenter={x:2,y:2};
   for(let attempt=0; attempt<250; attempt++){
     const cx=randInt(2,WORLD_COLS-3), cy=randInt(2,WORLD_ROWS-3);
@@ -1465,7 +1512,7 @@ function placeEntrance(g, minDist, maxDist){
     if(!ok) continue;
     for(let y=cy;y<=cy+1;y++) for(let x=cx;x<=cx+1;x++){
       const t=g[y][x];
-      t.type='floor'; t.owned=false; t.room='entrance'; t.natural=false;
+      t.type='floor'; t.owned=false; t.room=room; t.natural=false;
     }
     return true;
   }
@@ -1527,10 +1574,11 @@ function makeDefaultState(){
     }
   }
   placeEntrance(g, 6, 20);
+  placeEntrance(g, 30, 72, 'portal');
   placeMapBorder(g);
 
   const imps=[ createImp(1,1) ];
-  return { grid:g, imps, gold:0, eventLog:[], creatures:[], flySpawnTimer:randInt(30,60), hatcheries:{}, tickCount:0, paydayTimer:PAYDAY_INTERVAL, corpses:[], libraryBooks:{}, warlockSpawnTimer:randInt(40,70), allowCorpseFeeding:true, looseItems:[], effects:[], researchExhaustedLogged:false, ore:0, iron:0, storageFilters:{}, smelters:{}, forges:{}, arenas:{}, beetleSpawnTimer:randInt(80,140), houndSpawnTimer:randInt(90,160), storageWarnings:{} };
+  return { grid:g, imps, gold:0, eventLog:[], creatures:[], flySpawnTimer:randInt(30,60), hatcheries:{}, tickCount:0, paydayTimer:PAYDAY_INTERVAL, corpses:[], libraryBooks:{}, warlockSpawnTimer:randInt(40,70), allowCorpseFeeding:true, looseItems:[], effects:[], researchExhaustedLogged:false, ore:0, iron:0, storageFilters:{}, smelters:{}, forges:{}, arenas:{}, beetleSpawnTimer:randInt(80,140), houndSpawnTimer:randInt(90,160), storageWarnings:{}, war:newWar() };
 }
 
 function neighbors(x,y){
@@ -2704,6 +2752,7 @@ function tickCreatureOnce(c){
   else if(c.kind==='warlock') tickWarlock(c);
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
+  else if(c.category==='hero') tickHero(c);
 }
 
 function nudgeEat(c){
@@ -2952,7 +3001,7 @@ function refreshRoomButtons(){
 function handleDemolishClick(x,y){
   const t=state.grid[y][x];
   if(!t.room){ setInspect('Hier steht kein Gebäude zum Abreißen.'); return; }
-  if(t.room==='throne' || t.room==='entrance'){ setInspect('Thronsaal und Eingang können nicht abgerissen werden.'); return; }
+  if(t.room==='throne' || t.room==='entrance' || t.room==='portal'){ setInspect('Thronsaal, Eingang und Weltportal können nicht abgerissen werden.'); return; }
   const def=ROOM_TYPES[t.room];
   const refund = def ? def.costPerTile : 0;
   const key=x+','+y;
@@ -4426,14 +4475,14 @@ function draw(){
   });
 
   // Der Eingang bekommt eine grosse Spirale ueber seine ganze 2x2-Flaeche
-  allRooms.filter(r=>r.type==='entrance').forEach(room=>{
+  allRooms.filter(r=>r.type==='entrance' || r.type==='portal').forEach(room=>{
     const minX=Math.min(...room.tiles.map(t=>t.x));
     const minY=Math.min(...room.tiles.map(t=>t.y));
     const w=Math.max(...room.tiles.map(t=>t.x))-minX+1;
     const h=Math.max(...room.tiles.map(t=>t.y))-minY+1;
     // Portal-Effekt: dreht sich stufenweise gegen den Uhrzeigersinn
     const spin=-(Math.floor(Date.now()/400)%4)*Math.PI/2;
-    drawEmojiFx('🌀', minX+(w-1)/2, minY+(h-1)/2, { scale:Math.max(w,h)*1.9, alpha:0.6, rotation:spin });
+    drawEmojiFx(room.type==='portal' ? '🔥' : '🌀', minX+(w-1)/2, minY+(h-1)/2, { scale:Math.max(w,h)*1.9, alpha:0.6, rotation:room.type==='portal' ? 0 : spin });
   });
 
   dormitoryTorchSpots().forEach(spot=> drawEmoji('🕯️', spot.x, spot.y, false));
@@ -4805,7 +4854,7 @@ function creatureGroups(){
       busy:(m)=> m.state!=='idle' });
   }
   const byKind={};
-  state.creatures.forEach(c=>{ (byKind[c.kind]=byKind[c.kind]||[]).push(c); });
+  state.creatures.filter(c=> factionOf(c)==='evil').forEach(c=>{ (byKind[c.kind]=byKind[c.kind]||[]).push(c); });
   Object.entries(byKind).forEach(([kind,members])=>{
     const icon = kind==='fly' ? '🪰' : kind==='warlock' ? '🧙' : kind==='beetle' ? '🪲' : kind==='hound' ? '🐕' : '❔';
     const label = kind==='fly' ? 'Fliegen' : kind==='warlock' ? 'Warlocks' : kind==='beetle' ? 'Käfer' : kind==='hound' ? 'Höllenhunde' : kind;
@@ -4920,6 +4969,7 @@ function updateUI(){
     wageEl.textContent=gd(pending);
     wageEl.style.color='';
   }
+  updateWarUI();
   const cost=summonCost();
   document.getElementById('summonBtn').textContent = cost>0 ? `Imp beschwören (${gd(cost)} Gold)` : 'Imp beschwören (kostenlos)';
   document.getElementById('summonBtn').disabled = state.gold<cost;
@@ -4960,7 +5010,140 @@ function updateUI(){
 
 function markDirty(){ dirty=true; }
 
+// ===== Krieg: Wellen, Belagerung, Sieg und Niederlage =====
+// Das Weltportal ist die Heimat der Helden und immer feindlich. Sobald ein begehbarer Weg
+// vom Portal zum Thronsaal existiert, ziehen in Wellen Helden los. Wer den Thronsaal haelt,
+// verliert nie; wer das Portal erobert, gewinnt.
+const THRONE_MAX_HP=100;
+const SIEGE_DAMAGE_FACTOR=0.25;    // Thronschaden je Tick = Staerke aller Belagerer x Faktor
+const THRONE_REGEN=0.2;            // Erholung je Tick ohne Belagerer
+const WAVE_FIRST_TICKS=150;        // Vorlauf nach dem Durchbruch zum Portal
+const WAVE_INTERVAL_BASE=340;
+const WAVE_INTERVAL_MIN=180;
+const WAVE_MAX_SIZE=10;
+const WAR_CHECK_INTERVAL=5;
+
+function newWar(){
+  return { wave:0, timer:WAVE_FIRST_TICKS, throneHp:THRONE_MAX_HP, connected:false, siege:false, over:null };
+}
+
+function tilesOfRoom(room){
+  const out=[];
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++) if(state.grid[y][x].room===room) out.push({x,y});
+  return out;
+}
+
+// Alte Spielstaende ohne Portal bekommen nachtraeglich eins
+function ensurePortal(){
+  if(!state.war) state.war=newWar();
+  if(!tilesOfRoom('portal').length) placeEntrance(state.grid, 30, 72, 'portal');
+}
+
+function createHero(kind, x, y, id){
+  const h=applySpecies({ id: id!==undefined ? id : creatureIdCounter++, x, y, state:'marching', path:[], held:false, faction:'good',
+    name: HERO_NAMES[randInt(0,HERO_NAMES.length-1)] }, kind);
+  return h;
+}
+
+function tickHero(c){
+  if(c.path && c.path.length){ stepAlong(c); return; }
+  if(state.grid[c.y][c.x].room==='throne'){ c.state='besieging'; return; }
+  const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne');
+  if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); }
+}
+
+function portalConnected(){
+  const portal=tilesOfRoom('portal');
+  if(!portal.length) return false;
+  return !!bfsFind(portal[0].x, portal[0].y, (x,y)=> state.grid[y][x].room==='throne');
+}
+
+function spawnWave(){
+  const w=state.war;
+  w.wave++;
+  const n=w.wave;
+  const count=Math.min(WAVE_MAX_SIZE, 1+Math.floor(n*0.8));
+  const level=Math.min(MAX_LEVEL, 1+Math.floor((n-1)/2));
+  const pool=['barbarian','thief'];
+  if(n>=3) pool.push('wizard');
+  if(n>=5) pool.push('knight');
+  const tiles=tilesOfRoom('portal');
+  if(!tiles.length) return;
+  for(let i=0;i<count;i++){
+    const spot=tiles[i%tiles.length];
+    const h=createHero(pool[randInt(0,pool.length-1)], spot.x, spot.y);
+    h.level=level; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
+    state.creatures.push(h);
+  }
+  logEvent(`Welle ${n}: ${count} Helden strömen aus dem Weltportal!`, tiles[0].x, tiles[0].y);
+}
+
+function tickWar(){
+  const w=state.war;
+  if(!w || w.over) return;
+
+  if(state.tickCount%WAR_CHECK_INTERVAL===0){
+    w.connected=portalConnected();
+    const portal=tilesOfRoom('portal');
+    if(portal.length && portal.every(t=> state.grid[t.y][t.x].owned)){
+      w.over='won';
+      logEvent('Ihr habt das Weltportal erobert!', portal[0].x, portal[0].y);
+      return;
+    }
+  }
+
+  if(w.connected){
+    w.timer--;
+    if(w.timer<=0){
+      spawnWave();
+      w.timer=Math.max(WAVE_INTERVAL_MIN, WAVE_INTERVAL_BASE-12*w.wave);
+    }
+  }
+
+  // Belagerung: Helden im Thronsaal zermuerben ihn
+  const sieging=state.creatures.filter(h=> h.category==='hero' && !h.unconscious && !h.held && state.grid[h.y][h.x].room==='throne');
+  if(sieging.length){
+    if(!w.siege){
+      w.siege=true;
+      const t=tilesOfRoom('throne')[0];
+      logEvent('Der Thronsaal wird belagert!', t.x, t.y);
+    }
+    w.throneHp-=sieging.reduce((sum,h)=> sum+statStrength(h),0)*SIEGE_DAMAGE_FACTOR;
+    if(w.throneHp<=0){
+      w.throneHp=0; w.over='lost';
+      const t=tilesOfRoom('throne')[0];
+      logEvent('Der Thronsaal ist gefallen!', t.x, t.y);
+    }
+  } else {
+    w.siege=false;
+    w.throneHp=Math.min(THRONE_MAX_HP, w.throneHp+THRONE_REGEN);
+  }
+}
+
+function updateWarUI(){
+  const w=state.war;
+  if(!w) return;
+  const waveEl=document.getElementById('waveVal');
+  const throneEl=document.getElementById('throneVal');
+  const hintEl=document.getElementById('warHint');
+  if(!waveEl) return;
+  waveEl.textContent=w.wave>0 ? String(w.wave) : '–';
+  throneEl.textContent=Math.ceil(w.throneHp);
+  throneEl.style.color=w.siege ? '#e06a5a' : '';
+  if(!w.connected) hintEl.textContent='🔥 Das Weltportal ist noch abgeriegelt - die Helden kommen erst, wenn ihr euch hindurchgrabt.';
+  else hintEl.textContent=`🔥 Nächste Welle in ${Math.max(0,Math.ceil(w.timer*0.35))} s`;
+  const overlay=document.getElementById('endOverlay');
+  if(w.over){
+    document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
+    document.getElementById('endText').textContent = w.over==='won'
+      ? `Das Weltportal gehört euch. Eure Horde hat ${w.wave} Welle(n) überstanden.`
+      : `Die Helden haben euren Thronsaal eingenommen. Ihr habt ${w.wave} Welle(n) überlebt.`;
+    overlay.hidden=false;
+  } else overlay.hidden=true;
+}
+
 function gameTick(){
+  if(state.war && state.war.over){ draw(); updateUI(); return; }
   state.tickCount++;
   state.imps.forEach(tickImp);
   state.creatures.forEach(tickCreature);
@@ -4977,6 +5160,7 @@ function gameTick(){
   tickSmelters();
   pruneEventLog();
   tickPayday();
+  tickWar();
   draw(); updateUI(); markDirty();
 }
 
@@ -5089,7 +5273,8 @@ async function save(){
       smelters: state.smelters,
       forges: state.forges,
       beetleSpawnTimer: state.beetleSpawnTimer,
-      houndSpawnTimer: state.houndSpawnTimer
+      houndSpawnTimer: state.houndSpawnTimer,
+      war: state.war
     };
     await window.storage.set(STORAGE_KEY, JSON.stringify(payload), false);
   }catch(e){ console.error('Speichern fehlgeschlagen', e); }
@@ -5143,6 +5328,15 @@ async function load(){
           if(c.name) w.name=c.name;
           return w;
         }
+        if(HERO_KINDS.includes(c.kind)){
+          const h=restoreStats(createHero(c.kind, c.x, c.y, c.id), c);
+          if(c.level!==undefined) h.level=c.level;
+          if(c.xp!==undefined) h.xp=c.xp;
+          if(c.name) h.name=c.name;
+          h.maxHp=statMaxHp(h);
+          if(c.hp!==undefined) h.hp=Math.min(c.hp, h.maxHp);
+          return h;
+        }
         if(c.kind==='beetle' || c.kind==='hound'){
           const n = restoreStats(c.kind==='beetle' ? createBeetleAt(c.id,c.x,c.y) : createHoundAt(c.id,c.x,c.y), c);
           if(c.hp!==undefined) n.hp=c.hp;
@@ -5174,7 +5368,7 @@ async function load(){
       });
       const corpses=(data.corpses||[]).map(c=>({ id:c.id, x:c.x, y:c.y, decayTimer: c.decayTimer!==undefined?c.decayTimer:CORPSE_DECAY_TICKS, reservedBy:null }));
       corpseIdCounter=data.corpseIdCounter || corpses.length;
-      state={ grid, imps, creatures, gold:data.gold||0, eventLog: data.eventLog || [], flySpawnTimer: data.flySpawnTimer || randInt(30,60), hatcheries, tickCount: data.tickCount || 0, paydayTimer: data.paydayTimer || PAYDAY_INTERVAL, corpses, libraryBooks: data.libraryBooks || {}, warlockSpawnTimer: data.warlockSpawnTimer || randInt(40,70), allowCorpseFeeding: data.allowCorpseFeeding!==undefined ? data.allowCorpseFeeding : true, looseItems: (data.looseItems||[]).map(it=>({...it, reservedBy:null})), effects:[], researchExhaustedLogged: !!data.researchExhaustedLogged, ore: data.ore||0, iron: data.iron||0, storageFilters: data.storageFilters||{}, storageWarnings:{}, forges: data.forges||{}, arenas:{}, beetleSpawnTimer: data.beetleSpawnTimer||randInt(80,140), houndSpawnTimer: data.houndSpawnTimer||randInt(90,160),
+      state={ grid, imps, creatures, gold:data.gold||0, eventLog: data.eventLog || [], flySpawnTimer: data.flySpawnTimer || randInt(30,60), hatcheries, tickCount: data.tickCount || 0, paydayTimer: data.paydayTimer || PAYDAY_INTERVAL, corpses, libraryBooks: data.libraryBooks || {}, warlockSpawnTimer: data.warlockSpawnTimer || randInt(40,70), allowCorpseFeeding: data.allowCorpseFeeding!==undefined ? data.allowCorpseFeeding : true, looseItems: (data.looseItems||[]).map(it=>({...it, reservedBy:null})), effects:[], researchExhaustedLogged: !!data.researchExhaustedLogged, ore: data.ore||0, iron: data.iron||0, storageFilters: data.storageFilters||{}, storageWarnings:{}, forges: data.forges||{}, arenas:{}, beetleSpawnTimer: data.beetleSpawnTimer||randInt(80,140), houndSpawnTimer: data.houndSpawnTimer||randInt(90,160), war: Object.assign(newWar(), data.war||{}),
         smelters: Object.fromEntries(Object.entries(data.smelters||{}).map(([k,v])=>[k,{...v, workers:{bellows:[], anvil:[], bench:[]}}])) };
       return true;
     }
@@ -5517,6 +5711,7 @@ function describeTile(t,x,y){
         const sealed=entRoom && roomWallReinforcement(entRoom)>=0.9;
         return `${def.label} — erobert. ${sealed ? 'Verstärkt: hier abgesetzte Kreaturen verlassen das Dungeon.' : 'Verstärkt die Wände, um Kreaturen fortschicken zu können.'}`;
       }
+      if(t.room==='portal') return t.owned ? `${def.label} — erobert!` : `${def.label} — Heimat der Helden. Erobert es, um zu gewinnen.`;
       return `${def.label}${t.queuedRoom ? ' (im Bau)' : ''}`;
     }
     return t.owned ? 'Territorium — von Euch beansprucht.' : 'Höhlenboden — herrenloses Gebiet.';
@@ -6481,6 +6676,7 @@ document.getElementById('cheatReveal').addEventListener('click', ()=>{
   draw(); updateUI(); markDirty();
 });
 
+document.getElementById('endBtn').addEventListener('click', ()=>{ resetArmed=true; document.getElementById('resetBtn').click(); });
 let resetArmed=false;
 let resetArmTimer=null;
 const resetBtn=document.getElementById('resetBtn');
@@ -6496,7 +6692,8 @@ resetBtn.addEventListener('click', async ()=>{
   resetBtn.textContent='Spielstand zurücksetzen';
   try{ await window.storage.delete(STORAGE_KEY, false); }catch(e){}
   const d=makeDefaultState();
-  state={ grid:d.grid, imps:d.imps, creatures:d.creatures, gold:d.gold, eventLog:d.eventLog, flySpawnTimer:d.flySpawnTimer, hatcheries:d.hatcheries, tickCount:d.tickCount, paydayTimer:d.paydayTimer, corpses:d.corpses, libraryBooks:d.libraryBooks, warlockSpawnTimer:d.warlockSpawnTimer, allowCorpseFeeding: document.getElementById('corpseFeedToggle').checked, looseItems:d.looseItems, effects:[], researchExhaustedLogged:d.researchExhaustedLogged, ore:d.ore, iron:d.iron, storageFilters:d.storageFilters, smelters:d.smelters, forges:d.forges, arenas:{}, beetleSpawnTimer:d.beetleSpawnTimer, houndSpawnTimer:d.houndSpawnTimer, storageWarnings:{} };
+  state=d;
+  state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   eventIdCounter=0;
   creatureIdCounter=0;
   chickenIdCounter=0;
@@ -6632,8 +6829,9 @@ async function init(){
   const loaded=await load();
   if(!loaded){
     const d=makeDefaultState();
-    state={ grid:d.grid, imps:d.imps, creatures:d.creatures, gold:d.gold, eventLog:d.eventLog, flySpawnTimer:d.flySpawnTimer, hatcheries:d.hatcheries, tickCount:d.tickCount, paydayTimer:d.paydayTimer, corpses:d.corpses, libraryBooks:d.libraryBooks, warlockSpawnTimer:d.warlockSpawnTimer, allowCorpseFeeding:d.allowCorpseFeeding, looseItems:d.looseItems, effects:[], researchExhaustedLogged:d.researchExhaustedLogged, ore:d.ore, iron:d.iron, storageFilters:d.storageFilters, smelters:d.smelters, forges:d.forges, arenas:{}, beetleSpawnTimer:d.beetleSpawnTimer, houndSpawnTimer:d.houndSpawnTimer, storageWarnings:{} };
+    state=d;
   }
+  ensurePortal();
   document.getElementById('corpseFeedToggle').checked = state.allowCorpseFeeding;
   draw(); updateUI(); renderEventLog(); refreshRoomButtons(); drawMaterialPreview();
   setInterval(gameTick, 350);
