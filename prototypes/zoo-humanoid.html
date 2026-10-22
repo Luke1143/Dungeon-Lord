@@ -22,7 +22,7 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 <h2>Laufen (links nach rechts und zurück)</h2>
 <div class="row" id="stages"></div>
 <h2>Echte Größe: Kachel 32 px, Figur 16 px, 2-fach</h2>
-<canvas id="strip" width="800" height="110"></canvas>
+<canvas id="strip" width="960" height="110"></canvas>
 <script>
 const N=16;
 const mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
@@ -39,6 +39,10 @@ function eyes(p,list){ list.forEach(([x,y,w,h,px,py])=>{ for(let j=0;j<h;j++) fo
 // good creatures: white eyes with a black pupil on the front side (evil ones keep black eyes with white pupils)
 function eyesGood2(p,list){ list.forEach(([x,y])=>{ for(let j=0;j<2;j++) for(let i=0;i<2;i++) put(p,x+i,y+j,'e'); put(p,x,y,'p'); put(p,x,y+1,'p'); }); }
 function eyesGood(p,list){ list.forEach(([x,y,w,h])=>{ for(let j=0;j<h;j++) for(let i=0;i<w;i++) put(p,x+i,y+j,'e'); put(p,x,y+1,'p'); put(p,x,y+2,'p'); }); }
+function skullPart(small){
+  const sk=mk(7,6); ell(sk,3.5,2.7,3.2,2.7,'s'); shade(sk,'s','S','z');
+  eyes(sk,[[1,2,2,2,1,2],[4,2,2,2,4,2]]); put(sk,3,4,'p'); [1,2,3,4,5].forEach((x,i)=>put(sk,x,5,i%2?'p':'w')); return sk;
+}
 // ---------- creatures: each returns its parts, the code poses them ----------
 const CREATURES={
  held:{ name:'Held', note:'Kleine weiße Augen mit schwarzer Pupille, strenge Braue, Nase, eckiger Kiefer, blonder Schopf, breite Schultern, Gürtel. Entschlossen statt niedlich.',
@@ -69,19 +73,35 @@ const CREATURES={
    shade(robe,'v','V','x'); for(let x=0;x<9;x++) if(robe.g[8][x]!=='.') robe.g[8][x]='x';
    return {hood,robe,hx:2,hy:0,rx:3,ry:6};
   } },
- skelett:{ name:'Skelett', note:'Frontaler Totenschädel (Form wie das Gesicht des Warlocks), kleiner als zuvor, aufrechte Haltung, breite Brust, Rippenkorb mit Lücken, einpixelige Füße. Kein Umhang mehr.',
-  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',t:'#e8dcc8',T:'#faf3e4',u:'#8f836f',l:'#d0c3ac',L:'#e6dac4',y:'#9a8e78'},
-  parts(){
-   const head=mk(7,7); ell(head,3.5,3.0,3.3,3.0,'s'); ell(head,3.5,5.2,2.2,1.8,'s'); shade(head,'s','S','z');
-   eyes(head,[[1,2,2,3,1,3],[4,2,2,3,4,3]]);          // two big black sockets, white pupils
-   put(head,3,4,'p'); put(head,3,5,'p');                   // nose cavity
-   [1,2,3,4,5].forEach((x,i)=>put(head,x,6,i%2?'p':'w')); // teeth
-   const torso=mk(8,8); ell(torso,4,3.7,3.7,3.4,'t'); shade(torso,'t','T','u');
-   [1,3,5].forEach(y=>{ for(let x=2;x<=5;x++) if(torso.g[y][x]!=='.') torso.g[y][x]='u'; }); for(let y=0;y<8;y++) if(torso.g[y][6]!=='.') torso.g[y][6]='T';
-   for(let x=2;x<=5;x++) put(torso,x,7,'t');
-   const leg=mk(3,5); cap(leg,1.5,0.4,1.5,4.0,0.75,'l'); put(leg,1,2,'L'); put(leg,0,4,'.'); put(leg,2,4,'.');
-   return {head,torso,leg,hx:4,hy:0,tx:4,ty:5,lxBack:9,lxFront:5,ly:10,lyBack:10};
-  } }
+ skelA:{ name:'Skelett A · Schwebend', note:'Schädel, Rippenkorb und Becken schweben mit Lücken übereinander, wie von einem unsichtbaren Faden gehalten. Stockbeine.',
+  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',u:'#8f836f'},
+  parts(){ return { compose(f,a){
+   const skull=skullPart(); const ribs=mk(8,5); ell(ribs,4,2.5,3.8,2.4,'s'); shade(ribs,'s','S','z'); [1,3].forEach(y=>{ for(let x=2;x<=5;x++) if(ribs.g[y][x]!=='.') ribs.g[y][x]='u'; });
+   const pelvis=mk(6,2); ell(pelvis,3,1,2.9,1.0,'s'); shade(pelvis,'s','S','z');
+   [[6+a.ff,12],[9+a.fb,12]].forEach(([x,y])=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); });
+   blit(f,pelvis,5,11+a.bob); blit(f,ribs,4,6+a.bob+(a.k%2?0:0)); blit(f,skull,4,a.bob+a.nod-0);
+  } }; } },
+ skelB:{ name:'Skelett B · Heldenbrust', note:'Breite Schulterleiste, V-förmiger Brustkorb zur schmalen Taille, langer Eierschädel mit scharfen Wangenknochen. Aufrecht und edel.',
+  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',u:'#8f836f'},
+  parts(){ return { compose(f,a){
+   const skull=mk(7,8); ell(skull,3.5,3.6,3.2,3.5,'s'); put(skull,0,4,'s'); put(skull,6,4,'s'); shade(skull,'s','S','z');
+   eyes(skull,[[1,2,2,2,1,2],[4,2,2,2,4,2]]); put(skull,3,4,'p'); put(skull,3,5,'p'); [2,3,4].forEach((x,i)=>put(skull,x,7,i%2?'p':'w'));
+   const torso=mk(10,6); const W=[10,8,7,6,4,4]; W.forEach((w,y)=>{ const x0=Math.floor((10-w)/2); for(let x=0;x<w;x++) put(torso,x0+x,y,'s'); }); shade(torso,'s','S','z');
+   [2,4].forEach(y=>{ for(let x=3;x<=6;x++) if(torso.g[y][x]!=='.') torso.g[y][x]='u'; });
+   const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); };
+   leg(6+a.ff,12); leg(9+a.fb,12);
+   blit(f,torso,3,7+a.bob); blit(f,skull,4,a.bob+a.nod);
+  } }; } },
+ skelC:{ name:'Skelett C · Seelenlaterne', note:'Der Brustkorb ist ein hohler Ring, in dem noch eine goldene Seele glimmt: der gefallene Held brennt innen weiter. Kleiner Schädel, Stockbeine.',
+  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',u:'#8f836f',y:'#ffd23f',Y:'#ff9a3c'},
+  parts(){ return { compose(f,a){
+   const skull=skullPart(true);
+   const ring=mk(10,8); ell(ring,5,4,4.8,3.9,'s'); ell(ring,5,4,3.2,2.5,'p'); shade(ring,'s','S','z');
+   [3].forEach(y=>{ for(let x=2;x<=7;x++) put(ring,x,y,'u'); }); put(ring,4,4,'y'); put(ring,5,4,'y'); put(ring,5,5,'Y'); put(ring,4,5,'Y'); put(ring,5,3,'Y');
+   const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); };
+   leg(6+a.ff,12); leg(9+a.fb,12);
+   blit(f,ring,3,6+a.bob); blit(f,skull,4,a.bob+a.nod);
+  } }; } }
 };
 // ---------- posing + animation (whole pixel offsets only) ----------
 function thinLeg(leg){ let last=-1; for(let y=0;y<leg.h;y++) if(leg.g[y].some(c=>c!=='.')) last=y; if(last<0) return; const keep=Math.floor(leg.w/2); for(let x=0;x<leg.w;x++) if(x!==keep) leg.g[last][x]='.'; }
@@ -90,7 +110,7 @@ function frame(key,state,t,facingRight,outline){
   if(document.getElementById('optFeet').checked && P.leg) thinLeg(P.leg);
   const bob=walk?[0,-1,0,-1][k]:0, ff=walk?[-1,0,1,0][k]:0, fb=-ff, nod=walk?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
   for(let x=4;x<=12;x++) put(f,x,15,'k');
-  if(key==='warlock'){
+  if(P.compose){ P.compose(f,{bob,ff,fb,nod,k}); } else if(key==='warlock'){
     blit(f,P.robe,P.rx,P.ry+bob); put(f,P.rx+2+ff,15-1,'R'); put(f,P.rx+5+fb,15-1,'R');
     blit(f,P.hood,P.hx,P.hy+bob+nod);
   } else {
@@ -118,8 +138,8 @@ function tick(){
     const s=stageC[k], sc=5, maxp=Math.floor((240-16*sc)/sc); const pos=Math.floor(t/2)%(2*maxp), px=pos<=maxp?pos:2*maxp-pos;
     s.fillStyle='#4a3b2d'; s.fillRect(0,0,240,100); paint(s,frame(k,'laufen',t,pos<=maxp,o),k,px*sc,10,sc);
   });
-  const c=document.getElementById('strip'), x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,800,110);
-  keys.forEach((k,i)=>{ x.strokeStyle='#33271c'; x.strokeRect(20+i*150,10,32,32); paint(x,frame(k,'stehen',t,false,o),k,20+i*150,10,2); paint(x,frame(k,'laufen',t,true,o),k,80+i*150,10,2); paint(x,frame(k,'laufen',t,false,o),k,80+i*150,60,2); });
+  const c=document.getElementById('strip'), x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,960,110);
+  keys.forEach((k,i)=>{ x.strokeStyle='#33271c'; x.strokeRect(14+i*155,10,32,32); paint(x,frame(k,'stehen',t,false,o),k,14+i*155,10,2); paint(x,frame(k,'laufen',t,true,o),k,74+i*155,10,2); paint(x,frame(k,'laufen',t,false,o),k,74+i*155,60,2); });
 }
 let timer=setInterval(tick,140); slowBox.addEventListener('change',()=>{ clearInterval(timer); timer=setInterval(tick,slowBox.checked?320:140); }); tick();
 </script></main></body></html>
