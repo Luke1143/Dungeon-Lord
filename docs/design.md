@@ -82,6 +82,18 @@ Eine Kampagnenkarte im Stil von Dwarf Fortress, erzeugt beim Start eines neuen S
 - **Niederlage erklärt sich.** Der Endbildschirm zeigt, wie die Heldenmacht entstanden ist (Werte, liefernde Regionen) und gibt Hinweise, was beim nächsten Mal anders laufen könnte.
 - Neue Regionstypen, Ereignisse und Modifikatoren sind **Tabelleneinträge**, kein neuer Code.
 
+### Pforten, Bosse und der Kompromiss *(Entwurf, mit dem Spieler abgestimmt)*
+
+- **Pforten** sind **natürliche Engstellen** der Karte: 2 bis 3 pro Welt, jeder Weg zur Hauptstadt führt durch sie. Sie sind feste, mythische Orte mit eigener Kartenform, einem **Boss** und zwei Wegen hindurch.
+- **Der Kompromiss ist das Herz davon.** Immer gilt: *einfaches Ziel oder die Extrameile für eine besondere Belohnung.*
+  - **Der direkte Weg (Rush):** Man stürmt die Festung und besiegt den Boss im epischen Kampf.
+  - **Der listige Weg (Planung):** Man erledigt zuerst ein Spezialziel und gewinnt den Boss so für sich. Beispiel Zwergenkönig: ihm das geliebte Gold stehlen und ihn **korrumpieren**, dann dient er als mächtige Einheit. Beispiel Oberon: besiegt der Spieler Oberon, um den heiligen Hain zu entweihen, oder entweiht er den Hain (die Wurzeln des Weltenbaums untergraben), um Oberon zu korrumpieren? Rusht man stumpf durch oder plant man?
+- **Orte (nur freie Mythen und Sagen, nichts aus geschützten Werken):** Alberichs Hallen (Zwergenkönig und Nibelungenhort), der Hain des Weltenbaums (Yggdrasil, Oberon), der Sumpf der Hydra, das Labyrinth des Minotaurus, später Kerberos und weitere.
+- **Optionale Level** neben den Pforten sind Vorbereitungen: sie erleichtern die Pforte (schwächerer Boss, verwundbarerer Hain) und kosten dafür Zeit, Risiko und Alarm.
+- **Länge der Level:** hängt vom Ort und der Entwicklungsstufe ab, **zwischen 10 Minuten und einer Stunde**. Die ganze Kampagne darf 15 Stunden dauern, wenn man jeden Stein umdreht. Der Rush ist deutlich kürzer.
+- Die Karte hat **11 Spalten** (kürzester Weg etwa 9 bis 10 Züge, mit Umwegen und optionalen Orten 12 bis 15 und mehr).
+- Das Spezialziel ist ein **zweiter Weg**, kein Ersatz für das Portal als Standard: Das Primärziel eines normalen Levels bleibt das Portal.
+
 ### Beispiele
 
 | Ort | Charakter | Beispiel-Nebenziel |

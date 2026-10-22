@@ -105,3 +105,9 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - Quick check on one seed: a rush through 7 regions left the capital with ~+1 hero, +1 level, +1 wizard and crude gear; taking all producers first (13 rounds) left only the capital's own production. Balance (time factor, alarm, thresholds) is still a first guess; it needs a sim of whole runs.
 - `tools/balance-sim.js` now sets a stand-in `state.war.mods` from its difficulty argument.
 
+## 1.4 Gates (step 1)
+- Map is 11 columns (`OW_TURNS`). `buildWorld` picks 2 (cols 3 and 7) or 3 (cols 2, 5, 8) gate columns with a single node each, so every road to the capital passes through them; skip roads never jump over a gate column. The gate types are `REGION_TYPES` entries (`gate:true`, `fixedName`, `terrain`, `boss`, `paths: { frontal, cunning }`): `gate_dwarf` (Alberichs Hallen), `gate_elf` (Hain des Weltenbaums, Oberon), `gate_hydra`, `gate_labyrinth`. They are always known on the map, get their own glyph and a gold ring, reshape the terrain around them, deliver big production (iron/magic/fort) and add +2 local waves. Check over 12 seeds: removing any gate disconnects the capital, shortest path 9-10 moves.
+- Names stay free myth (Alberich, Yggdrasil, Oberon, Hydra, Minotaur), no Tolkien names.
+- Not yet built (steps 2-4): objectives as a table (conquer portal, steal gold, undermine roots, defeat boss), the corruption path (boss joins as a unit), the special gate maps and boss fights, optional levels with effect on a gate, level size and length by stage (10-60 min), rush test over whole runs.
+- Known blemishes: on very watery maps nodes shift to the nearest land, so the left-to-right order gets looser and labels may overlap; the info panel of a gate is long.
+

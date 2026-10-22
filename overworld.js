@@ -46,6 +46,28 @@ const OW=(()=>{
       desc:'Feste Mauern. Sie verstärkt die Gebiete ringsum und liefert Wachen.', side:'Den Burgherrn stürzen.', suffixes:['burg','stein','wacht','trutz'] },
     bog:          { label:'Moorsiedlung',     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
       desc:'Nebel, Schlamm und argwöhnische Bewohner. Kaum Nutzen für die Heere, aber viel Wasser.', side:'Das Dorf versenken.', suffixes:['moor','sumpf','brück','nebel'] },
+    // Gates: natural chokepoints, every road to the capital passes through them. Mythic places (free myths and sagas only), a boss each.
+    // Two ways through: the frontal assault (beat the boss in an epic fight) or the cunning way (a special goal with a bigger reward).
+    gate_dwarf:   { label:'Pforte: Alberichs Hallen', playable:true, gate:true, fixedName:'Alberichs Hallen', terrain:'mountain', prod:{ iron:3 }, local:{ waves:2, gearTier:1 },
+      gen:{ caveDensity:0.46, oreVeins:5, goldVeins:4, bedrock:2 },
+      boss:{ name:'Alberich, der Zwergenkönig' },
+      paths:{ frontal:'Alberich im Kampf besiegen und die Halle erobern.', cunning:'Ihm das geliebte Gold stehlen und ihn korrumpieren: er dient dir dann als mächtige Einheit.' },
+      desc:'Tief im Berg liegt der Hort des Zwergenkönigs. Der einzige Weg nach Osten führt durch seine Hallen.', side:'Das Gold des Königs rauben.', suffixes:[] },
+    gate_elf:     { label:'Pforte: Hain des Weltenbaums', playable:true, gate:true, fixedName:'Hain des Weltenbaums', terrain:'forest', prod:{ magic:3 }, local:{ waves:2, wizards:2 },
+      gen:{ caveDensity:0.43, rivers:[1,2], lakes:[1,2] },
+      boss:{ name:'Oberon, Schützer des heiligen Hains' },
+      paths:{ frontal:'Oberon im Kampf besiegen und den Hain entweihen.', cunning:'Den Hain zuerst untergraben (die Wurzeln des Weltenbaums): Oberon wird korrumpiert und dient dir.' },
+      desc:'Ein heiliger Hain um einen uralten Weltenbaum. Oberon wacht über ihn.', side:'Die Wurzeln des Weltenbaums untergraben.', suffixes:[] },
+    gate_hydra:   { label:'Pforte: Sumpf der Hydra', playable:true, gate:true, fixedName:'Sumpf der Hydra', terrain:'swamp', prod:{ fort:2, food:1 }, local:{ waves:2 },
+      gen:{ lakes:[3,4], rivers:[2,3] },
+      boss:{ name:'Die Hydra' },
+      paths:{ frontal:'Die Hydra erschlagen, bevor sie nachwächst.', cunning:'Die Quelle des Sumpfs vergiften: die Hydra schwächelt und lässt sich unterwerfen.' },
+      desc:'Ein Sumpf, dessen Herrin viele Köpfe hat.', side:'Die Quelle vergiften.', suffixes:[] },
+    gate_labyrinth:{ label:'Pforte: Das Labyrinth', playable:true, gate:true, fixedName:'Das Labyrinth', terrain:'hills', prod:{ fort:3 }, local:{ waves:2, levelBonus:1 },
+      gen:{ caveDensity:0.36, bedrock:3 },
+      boss:{ name:'Der Minotaurus' },
+      paths:{ frontal:'Den Minotaurus im Labyrinth stellen und erschlagen.', cunning:'Den Faden der Wächter durchtrennen: das Labyrinth öffnet sich, der Minotaurus folgt dir.' },
+      desc:'Ein Irrgarten aus Stein. Wer hinein will, muss dem Wesen im Zentrum begegnen.', side:'Den Faden durchtrennen.', suffixes:[] },
     event:        { label:'Verlassener Ort',  playable:false, prod:{},                 local:{},                   gen:{},
       desc:'Hier gibt es nichts zu erobern, nur ein Ereignis.', side:'', suffixes:['rast','pfad','kreuz','stein'] },
     capital:      { label:'Hauptstadt des Guten', playable:true, prod:{ food:1, iron:1, magic:1, training:1, fort:1 }, local:{ waves:2 }, gen:{ bedrock:2 },
@@ -157,7 +179,7 @@ const OW=(()=>{
   function knownTo(world,c,id){
     if(c.known.includes(id)||c.conquered.includes(id)) return true;
     const n=world.nodes[id];
-    if(n.type==='capital') return true;
+    if(n.type==='capital'||REGION_TYPES[n.type].gate) return true;   // the capital and the gates are always known: you plan around them
     if(c.pos<0) return n.col===0;
     return id===c.pos || neighbours(world,c.pos).includes(id);
   }
