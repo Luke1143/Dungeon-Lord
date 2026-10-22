@@ -36,26 +36,27 @@ function blit(dst,part,ox,oy){ for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x+
 // eyes: black with a white pupil (size set per creature)
 function eyes(p,list){ list.forEach(([x,y,w,h,px,py])=>{ for(let j=0;j<h;j++) for(let i=0;i<w;i++) put(p,x+i,y+j,'p'); put(p,px,py,'e'); }); }
 
+// good creatures: white eyes with a black pupil on the front side (evil ones keep black eyes with white pupils)
+function eyesGood(p,list){ list.forEach(([x,y,w,h])=>{ for(let j=0;j<h;j++) for(let i=0;i<w;i++) put(p,x+i,y+j,'e'); put(p,x,y+1,'p'); put(p,x,y+2,'p'); }); }
 // ---------- creatures: each returns its parts, the code poses them ----------
 const CREATURES={
- held:{ name:'Held', note:'Riesiges Kinn, blonder Schopf, breite Schultern, Gürtel. Das Heldengesicht ist übertrieben und ahnungslos.',
+ held:{ name:'Held', note:'Riesiges Kinn, blonder Schopf, breite Schultern, Gürtel, jetzt aufrecht. Weiße Augen mit schwarzen Pupillen: die Guten sehen anders aus als die Bösen.',
   pal:{s:'#e0b48c',S:'#f2cfa8',z:'#b88a62',F:'#e8c04a',G:'#f6dc7a',g:'#b8902a',t:'#3b6fb6',T:'#5a8ad0',u:'#274a80',y:'#d4af37',l:'#7a5a3c',L:'#9a7650',m:'#4e3a26',b:'#4e3a26'},
   parts(){
    const head=mk(9,8); ell(head,4.4,3.7,4.2,3.6,'s'); ell(head,2.6,6.0,2.4,1.7,'s'); shade(head,'s','S','z');
    for(let y=0;y<8;y++) for(let x=0;x<9;x++) if(head.g[y][x]!=='.'&&(y<=2||(x>=6&&y<=4))) head.g[y][x]=(y<=0||x<=3)?'G':'F';
-   eyes(head,[[1,3,2,3,1,4]]);
+   eyesGood(head,[[1,3,2,3]]);
    const torso=mk(8,7); ell(torso,4,3.5,3.9,3.3,'t'); shade(torso,'t','T','u'); for(let x=0;x<8;x++) if(torso.g[4][x]!=='.') torso.g[4][x]='u'; put(torso,2,4,'y');
    const leg=mk(3,4); cap(leg,1.5,0.6,1.5,3.0,1.1,'l'); shade(leg,'l','L','m'); put(leg,0,3,'b'); put(leg,1,3,'b'); put(leg,2,3,'b'); put(leg,0,2,'b'); put(leg,1,2,'b');
-   return {head,torso,leg,hx:1,hy:0,tx:4,ty:5,lyBack:11,lxBack:9,lxFront:5,ly:11};
+   return {head,torso,leg,hx:3,hy:0,tx:4,ty:5,lyBack:11,lxBack:9,lxFront:5,ly:11};
   } },
- ork:{ name:'Ork', note:'Winziger Kopf zwischen den Schultern, gewaltiger Kiefer mit Hauer, mächtiger Bauch, breiter Stand.',
+ ork:{ name:'Ork', note:'Kleiner Kopf über breiten Schultern, gewaltiger Kiefer mit L-förmigem Hauer, mächtiger Bauch, jetzt aufrechter.',
   pal:{s:'#5f8f3a',S:'#86b05a',z:'#3d6224',t:'#5f8f3a',T:'#86b05a',u:'#3d6224',c:'#6b4a35',C:'#8a6446',l:'#4e6b30',L:'#6a8c42',y:'#324a20'},
   parts(){
-   const head=mk(8,8); ell(head,4,3.4,3.3,3.1,'s'); for(let y=4;y<=6;y++) for(let x=1;x<=5;x++) put(head,x,y,'s'); shade(head,'s','S','z');
-   [[2,1],[3,1],[4,1],[2,2]].forEach(([x,y])=>put(head,x,y,'z')); eyes(head,[[2,2,2,2,2,2]]); [[1,4],[1,5],[2,6]].forEach(([x,y])=>put(head,x,y,'w'));
+   const head=mk(8,7); ell(head,4,3.0,3.1,2.7,'s'); ell(head,2.4,4.6,2.3,1.5,'s'); shade(head,'s','S','z'); [[1,3],[1,4],[2,4]].forEach(([x,y])=>put(head,x,y,'w')); eyes(head,[[2,1,2,2,2,1]]);
    const torso=mk(10,8); ell(torso,5,4.0,4.3,3.7,'t'); ell(torso,4.2,4.8,2.0,2.0,'T'); shade(torso,'t','T','u'); for(let x=1;x<9;x++) if(torso.g[6][x]!=='.') torso.g[6][x]='c';
    const leg=mk(4,4); cap(leg,2,0.6,2,3.0,1.5,'l'); shade(leg,'l','L','y');
-   return {head,torso,leg,hx:0,hy:1,tx:3,ty:5,lxBack:9,lxFront:4,ly:11,lyBack:11};
+   return {head,torso,leg,hx:2,hy:0,tx:3,ty:4,lxBack:9,lxFront:4,ly:11,lyBack:11};
   } },
  warlock:{ name:'Warlock', note:'Spitze Kapuze, das Gesicht ein schwarzes Nichts mit zwei weißen Punkten. Die Robe ersetzt die Beine.',
   pal:{v:'#7b4bb0',V:'#9a6ad0',x:'#4a2a70',s:'#14100c',R:'#2f1a48'},
