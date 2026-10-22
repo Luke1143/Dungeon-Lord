@@ -1,4 +1,4 @@
-// Shared creature sprite generators (16x16, flat, code-based). Used by the 3D test.
+// Shared creature sprite generators (16x16, flat, code-based). Used by the game (index.html) and the 3D test.
 // ZOO[key] = { name, pal, frame(t, facingRight, moving) } -> { g: 16x16 char grid } ('.' = empty, 'k' = ground shadow).
 // Extracted from zoo-humanoid.html, skelett-familie.html and zoo-bestien.html (those stay the design playground).
 const ZOO=(()=>{
@@ -213,6 +213,53 @@ const BEASTS=[
 ];
 
   BEASTS.forEach(v=>{ ZOO[{'Höllenhund':'hound','Käfer':'beetle','Fliege':'fly'}[v.name]]={ name:v.name, pal:{...BASEPAL,...v.pal}, frame:(t,fr,mv)=>{ const f=v.make(mv||v.name==='Fliege'?t:0); if(!fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } }; });
+})();
+
+// ---- imp: bent-over sack carrier (native facing: left). extra = 'gold' | 'ore' | null (carried load) ----
+(()=>{
+const IMP_PAL={ o:'#d9622b', h:'#f08a4b', O:'#8f3a1a', R:'#5a1810', p:'#14100c', e:'#ffffff', b:'#c9a96a', B:'#8a7048', y:'#f4d03f', Y:'#b8860b', g:'#aab3bd', G:'#6b7580', s:'rgba(0,0,0,0.30)' };
+const IMP_N=16;
+const impMk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+const impPut=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+function impEll(p,cx,cy,rx,ry,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) impPut(p,x,y,c); } }
+function impCap(p,x0,y0,x1,y1,r,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const px=x+.5,py=y+.5,vx=x1-x0,vy=y1-y0,L=vx*vx+vy*vy||1; let t=((px-x0)*vx+(py-y0)*vy)/L; t=Math.max(0,Math.min(1,t)); const dx=px-(x0+vx*t),dy=py-(y0+vy*t); if(dx*dx+dy*dy<=r*r) impPut(p,x,y,c); } }
+function impShade(p,base,light,dark){ const at=(x,y)=>(x<0||y<0||x>=p.w||y>=p.h)?'.':p.g[y][x], o=p.g.map(r=>r.slice());
+  for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]===base){ if(at(x,y+1)==='.'||at(x+1,y)==='.') o[y][x]=dark; else if(at(x,y-1)==='.'||(at(x-1,y)==='.'&&y<p.h/2)) o[y][x]=light; }
+  p.g=o; return p; }
+const IMP_PARTS=(()=>{
+  const head=impMk(9,8); impEll(head,4.5,4.1,4.5,3.9,'o'); impShade(head,'o','h','O');
+  [[1,2],[5,2]].forEach(([x,y])=>{ for(let j=0;j<3;j++){ impPut(head,x,y+j,'p'); impPut(head,x+1,y+j,'p'); } impPut(head,x,y+1,'e'); });
+  const body=impMk(8,7); impEll(body,4,3.6,4,3.5,'o'); impEll(body,3.2,4.3,2,1.8,'h'); impShade(body,'o','h','O');
+  const leg=impMk(3,4); impCap(leg,1.5,0.6,1.5,3.0,1.1,'o'); impShade(leg,'o','h','O'); [0,1,2].forEach(x=>impPut(leg,x,3,'R'));
+  const sack=c=>{ const p=impMk(8,8); impEll(p,4,4.9,3.9,3.1,'b'); [[3,1],[4,1],[2,0],[5,0]].forEach(([x,y])=>impPut(p,x,y,'b')); impPut(p,3,0,'B'); impPut(p,4,0,'B'); impShade(p,'b','b','B');
+    const gl=c==='gold'?['y','Y']:c==='ore'?['g','G']:null; if(gl){ impPut(p,2,4,gl[0]); impPut(p,3,3,gl[0]); impPut(p,5,5,gl[0]); impPut(p,5,3,gl[1]); impPut(p,3,6,gl[1]); } return p; };
+  return { head, body, leg, sack:{gold:sack('gold'),ore:sack('ore')} };
+})();
+function impBlit(dst,part,ox,oy){ for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.') impPut(dst,ox+x,oy+y,c); } }
+// state: 'stehen' | 'laufen' | 'gold' | 'erz'
+function impFrame(state,t,facingRight){
+  const f=impMk(IMP_N,IMP_N), carry=state==='gold'||state==='erz', walk=state!=='stehen', hunch=carry?1:0, k=t%4;
+  const bob=walk?[0,-1,0,-1][k]:0, footF=walk?[-1,0,1,0][k]:0, footB=-footF, headLag=walk?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
+  for(let x=4;x<=12;x++) impPut(f,x,15,'s');
+  impBlit(f,IMP_PARTS.leg,10+footB,11);
+  if(carry) impBlit(f,IMP_PARTS.sack[state==='gold'?'gold':'ore'],8,1+hunch+bob+(walk&&k===2?1:0));
+  impBlit(f,IMP_PARTS.body,6,5+hunch+bob);
+  impBlit(f,IMP_PARTS.leg,5+footF,11);
+  impBlit(f,IMP_PARTS.head,1,1+hunch+bob+headLag);
+  if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
+  return f;
+}
+
+  ZOO.imp={ name:'Imp', pal:{...IMP_PAL}, frame:(t,fr,mv,carry)=>{ const st=carry==='gold'?'gold':carry?'erz':(mv?'laufen':'stehen'); return impFrame(st,(carry&&!mv)?0:(st==='stehen'?(Math.floor(t/2)%2?2:0):t),fr); } };
+})();
+
+// ---- hero classes: the humanoid hero with palette variants (equipment rules will change silhouettes later) ----
+(()=>{
+  const held=ZOO.held, v=pal=>({ ...held, pal:{...held.pal,...pal} });
+  ZOO.barbarian=v({ t:'#8a4a28',T:'#b06a3c',u:'#5a2c14',F:'#b0561e',G:'#d8782e' });
+  ZOO.thief=v({ t:'#3a3a46',T:'#555566',u:'#22222a',F:'#2a2218',G:'#3c3224',l:'#2a2a32',L:'#3c3c46',m:'#1c1c22',b:'#1c1c22' });
+  ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
+  ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 return ZOO;
 })();

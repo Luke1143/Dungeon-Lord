@@ -41,3 +41,8 @@ All in `prototypes/`, open the files directly in a browser. Three.js 0.160 (MIT)
 
 ## 0.1 - Prototype import
 Prototype from the lost original project plus `docs/godhand.md`.
+
+## 0.6 Sprites in the game
+- `sprites.js` (repo root, MIT/CC0 like the rest) generates all creature sprites in code: imp (with gold/ore sack), hellhound, beetle, fly, warlock, four hero classes (the hero body with palette variants), plus ork and skeleton for later. `index.html` loads it and `drawActor` draws `ZOO[kind]` via `drawCreatureSprite`; facing and walk animation come from the render position, unconscious creatures are drawn rotated. Kinds without a sprite still fall back to the emoji.
+- Still emoji: items, rooms, effects, thoughts and the overworld. Cargo icons over carriers remain as the amount indicator.
+- Next: armour/weapon rules from `prototypes/equipment.html` into `sprites.js`, then hero silhouettes by tier.

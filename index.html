@@ -294,6 +294,7 @@
   </div>
   </div>
 
+<script src="sprites.js"></script>
 <script>
 const WORLD_COLS=48, WORLD_ROWS=32, TILE=32;
 let VIEW_COLS=22, VIEW_ROWS=14;     // visible tiles; recomputed from the viewport size and zoom
@@ -4372,6 +4373,36 @@ function thoughtOf(c){
   }
 }
 
+// Code-generated creature sprites (sprites.js). Falls back to the emoji for kinds without a sprite.
+const SPRITE_CACHE={};
+function spriteCanvas(key,t,facingRight,moving,carry){
+  const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0)+'|'+(carry||'');
+  if(SPRITE_CACHE[id]) return SPRITE_CACHE[id];
+  const z=ZOO[key], f=z.frame(t,facingRight,moving,carry), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
+  const g=cv.getContext('2d');
+  f.g.forEach((row,y)=>row.forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=z.pal[ch]||'#f0f'; g.fillRect(x,y,1,1); }));
+  return SPRITE_CACHE[id]=cv;
+}
+// Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
+function drawCreatureSprite(c,px,py,opts){
+  const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
+  if(!z) return false;
+  const now=Date.now();
+  if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; if(Math.abs(dx)>0.004) c._faceRight=dx>0; } }
+  c._sx=px; c._sy=py;
+  const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
+  const carry=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : undefined;
+  const cv=spriteCanvas(key,t,!!c._faceRight,moving,carry);
+  const sx=(px-camX)*TILE, sy=(py-camY)*TILE, o=opts||{};
+  ctx.save();
+  ctx.imageSmoothingEnabled=false;
+  if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
+  if(o.rotation){ ctx.translate(sx+TILE/2, sy+TILE/2); ctx.rotate(o.rotation); ctx.drawImage(cv,-TILE/2,-TILE/2,TILE,TILE); }
+  else ctx.drawImage(cv,sx,sy,TILE,TILE);
+  ctx.restore();
+  return true;
+}
+
 const HIT_FLASH_MS=260;
 
 // Zeichnet Kreatur samt Schwung und Gedanke
@@ -4390,9 +4421,9 @@ function drawActor(c, baseIcon){
   const dsince=Date.now()-(c.dodgeAt||0);
   if(dsince<180) px += Math.sin(dsince/28)*0.12;
   if(c.unconscious){
-    drawEmojiFx(baseIcon, px, py, { rotation:Math.PI/2, alpha:0.75 });
+    if(!drawCreatureSprite(c, px, py, { rotation:Math.PI/2, alpha:0.75 })) drawEmojiFx(baseIcon, px, py, { rotation:Math.PI/2, alpha:0.75 });
   } else {
-    drawEmoji(baseIcon, px, py, false);
+    if(!drawCreatureSprite(c, px, py)) drawEmoji(baseIcon, px, py, false);
     const tool=swingIconOf(c);
     if(tool){
       // Ausholen und zuschlagen: die Phase steuert Winkel und Versatz
