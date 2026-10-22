@@ -1,0 +1,90 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Zoo: Bestien</title>
+<style>
+body{margin:0;background:#0e0a07;color:#e8dcc8;font:14px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:0 auto;padding:20px}
+h1{color:#d9b43a;margin:0 0 6px}h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#d9b43a;border-bottom:1px solid #3b2e20;padding-bottom:4px;margin-top:22px}
+p{color:#b6a58c}.row{display:flex;gap:12px;flex-wrap:wrap}.card{background:#1a130d;border:1px solid #3b2e20;padding:8px;width:176px;font-size:12px}
+.card b{display:block;margin-top:4px;color:#f1e6d2}.card span{color:#9d8d76}canvas{image-rendering:pixelated;display:block}
+</style></head><body><main>
+<h1>Zoo: Bestien</h1>
+<p>Höllenhund, Käfer, Fliege. Regeln: 16x16, flach, schwarze Augen mit weißer Pupille, keine Hände, keine Rüstung, je ein auffälliges Merkmal. Alle blicken nach rechts, im Spiel wird gespiegelt.</p>
+<div class="row" id="big"></div>
+<h2>Echte Größe: Kachel 32 px, Figur 16 px, 2-fach und 3-fach</h2>
+<canvas id="strip" width="640" height="110"></canvas>
+<script>
+const N=16;
+const mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+function ell(p,cx,cy,rx,ry,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) put(p,x,y,c); } }
+function shade(p,base,light,dark){ const at=(x,y)=>(x<0||y<0||x>=p.w||y>=p.h)?'.':p.g[y][x], o=p.g.map(r=>r.slice());
+  for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]===base){ if(at(x,y+1)==='.'||at(x+1,y)==='.') o[y][x]=dark; else if(at(x,y-1)==='.'||(at(x-1,y)==='.'&&y<p.h/2)) o[y][x]=light; }
+  p.g=o; return p; }
+const eye=(p,x,y,px,py)=>{ for(let j=0;j<2;j++) for(let i=0;i<2;i++) put(p,x+i,y+j,'p'); put(p,px,py,'e'); };
+const shadow=(f,x0,x1)=>{ for(let x=x0;x<=x1;x++) put(f,x,15,'k'); };
+
+// Hellhound: charcoal-red body, ember glow along the back (the one feature)
+function hound(t){
+  const f=mk(N,N), k=t%4, bob=(k%2)?0:-1, flick=(Math.floor(t/2)%2)===0;
+  shadow(f,2,14);
+  const lift=(pair)=> (k===pair||k===pair+1)?1:0;               // diagonal pairs lift alternately
+  const leg=(x,up)=>{ for(let y=11;y<=13-up;y++) put(f,x,y+bob*0,'z'); put(f,x,13-up,'s'); if(up) put(f,x,14-up,'.'); };
+  const b=mk(N,N);
+  ell(b,6.5,8,4.6,2.8,'s');                                      // body
+  ell(b,11.8,7,2.8,2.6,'s'); [[14,7],[14,8],[15,8],[14,9],[13,9]].forEach(([x,y])=>put(b,x,y,'s')); // head and snout
+  put(b,10,3,'z'); put(b,10,4,'z'); put(b,11,4,'z');             // ear
+  [[2,6],[1,5],[1,4]].forEach(([x,y])=>put(b,x,y,'s'));           // tail
+  shade(b,'s','S','z');
+  eye(b,12,6,13,6); put(b,15,8,'p');                              // eye and nose
+  for(let x=4;x<=9;x++) if((x+(flick?0:1))%2===0) put(b,x,5,'y'); // ember glow, flickers
+  put(b,1,3,flick?'y':'Y');                                       // tail tip spark
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(b.g[y][x]!=='.') put(f,x,y+bob,b.g[y][x]);
+  const L=(x,w,up,c)=>{ for(let y=11+bob;y<=13-up;y++) for(let i=0;i<w;i++) put(f,x+i,y,c); for(let i=0;i<w;i++) put(f,x+i,13-up,'s'); };
+  L(6,1,lift(2),'z'); L(11,1,lift(2),'z');                  // far legs
+  L(3,2,lift(0),'s'); L(9,2,lift(0),'s');                   // near legs, thick
+  return f;
+}
+// Beetle: domed shell with a seam and a gloss highlight; tripod gait
+function beetle(t){
+  const f=mk(N,N), k=t%4;
+  shadow(f,2,14);
+  const b=mk(N,N);
+  ell(b,7,8.2,5.6,3.6,'s');
+  ell(b,13,9.6,2,1.8,'h');                                         // head
+  shade(b,'s','S','z'); shade(b,'h','H','Z');
+  for(let x=3;x<=11;x++) put(b,x,8,'u');                          // seam between wing cases
+  [[4,6],[5,6],[4,7]].forEach(([x,y])=>put(b,x,y,'w'));          // gloss
+  eye(b,13,8,14,8); put(b,15,11,'z'); put(b,15,12,'z');           // eye, mandible
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(b.g[y][x]!=='.') put(f,x,y,b.g[y][x]);
+  const lx=[[4,k===0||k===2],[7,k===1||k===3],[10,k===0||k===2]];
+  lx.forEach(([x,up])=>{ put(f,x,12,'z'); put(f,x,13,'s'); if(!up) put(f,x,14,'s'); });
+  return f;
+}
+// Fly: tiny body, huge eye, two wing beats; hovers
+function fly(t){
+  const f=mk(N,N), k=t%4, up=(k%2)===0, hov=[0,-1,0,1][k];
+  for(let x=5;x<=10;x++) put(f,x,15,'k');                         // shadow stays on the ground
+  const b=mk(N,N);
+  ell(b,7,9.4,2.6,2,'s'); ell(b,10.2,8.4,2.2,2,'s');
+  const wy=up?4:6;
+  ell(b,5.5,wy,3,1.8,'W'); ell(b,8.8,wy-1,2.2,1.4,'W');
+  shade(b,'s','S','z');
+  eye(b,10,7,10,7); put(b,12,9,'z');
+  [[6,11],[8,11]].forEach(([x,y])=>{ put(b,x,y,'z'); put(b,x,y+1,'z'); });
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(b.g[y][x]!=='.') put(f,x,y+hov,b.g[y][x]);
+  return f;
+}
+const BEASTS=[
+ { name:'Höllenhund', note:'Kohlerot, Glut auf dem Rücken. Läuft in diagonalen Beinpaaren.', make:hound, pal:{s:'#7a3a2e',S:'#a85a44',z:'#4a1f1a',y:'#ffb02e',Y:'#ff7a1a'} },
+ { name:'Käfer', note:'Gewölbter Panzer mit Naht und Glanzpunkt. Läuft im Dreibeingang.', make:beetle, pal:{s:'#3f7a5a',S:'#6cc08e',z:'#244a38',u:'#173025',w:'#d6ffe6',h:'#2f5a44',H:'#4f8a68',Z:'#1b3a2c'} },
+ { name:'Fliege', note:'Winzig, riesiges Auge, flirrende Flügel. Schwebt über dem Boden.', make:fly, pal:{s:'#4d4a56',S:'#7a7788',z:'#2a2831',W:'rgba(200,230,240,0.75)'} }
+];
+const BASE={p:'#0a0807',e:'#ffffff',k:'rgba(0,0,0,0.30)'};
+function paint(ctx,f,pal,ox,oy,s){ const P={...BASE,...pal}; f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=P[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s); })); }
+let t=0; const big=document.getElementById('big'), ctxs=[];
+BEASTS.forEach(v=>{ const c=document.createElement('canvas'); c.width=160; c.height=160; const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+v.name+'</b><span>'+v.note+'</span>'); big.appendChild(d); ctxs.push(c.getContext('2d')); });
+function tick(){ t++;
+  BEASTS.forEach((v,i)=>{ const x=ctxs[i]; x.fillStyle='#4a3b2d'; x.fillRect(0,0,160,160); paint(x,v.make(t),v.pal,0,0,10); });
+  const c=document.getElementById('strip'), x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,640,110);
+  BEASTS.forEach((v,i)=>{ const ox=14+i*205; x.strokeStyle='#33271c'; x.strokeRect(ox,10,32,32); paint(x,v.make(t),v.pal,ox,10,2); paint(x,v.make(t),v.pal,ox+50,10,3); });
+}
+setInterval(tick,140); tick();
+</script></main></body></html>
