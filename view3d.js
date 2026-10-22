@@ -155,7 +155,9 @@ const View3D=(()=>{
     f.position.set(cx+sx, cy+Math.cos(lean)*top+0.02, cz+sz);
     it.wy=cy+Math.cos(lean)*top+0.1;
   }
+  const pendingFlash=[];
   function place(it){
+    if(it.kind==='stain'){ placeStain(it); return; }
     if(it.kind==='wallTorch'){ placeTorch(it); return; }
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
@@ -176,9 +178,30 @@ const View3D=(()=>{
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
     else if(it.kind==='emoji'){ anchorY=0.5; py=0.28+size/2; }
     s.center.set(0.5,it.kind==='emoji'?0.5:0);
+    if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; pendingFlash.push({ f, s }); }
     s.scale.set(size,size,1);
     if(it.kind==='emoji') s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5-ox*Math.sin(yaw));
     else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py, it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer
+  }
+
+  // blood stains: flat decals on the floor, small vertical decals on wall faces
+  let wallGeo=null, wallPool=[], wallUsed=0;
+  function takeWallDecal(){
+    if(!wallGeo) wallGeo=new T.PlaneGeometry(1,1);
+    let d=wallPool[wallUsed];
+    if(!d){ d=new T.Mesh(wallGeo, new T.MeshBasicMaterial({ transparent:true, depthWrite:false })); spriteGroup.add(d); wallPool.push(d); }
+    wallUsed++; d.visible=true; return d;
+  }
+  function placeStain(it){
+    const tex=particleTex('puff');
+    if(it.where==='wall'){
+      const d=takeWallDecal(); d.material.map=tex; d.material.color.set(it.color); d.material.opacity=Math.max(0,Math.min(1,it.alpha));
+      const sz=Math.max(0.05,it.size*1.4); d.scale.set(sz,sz*0.85,1);
+      d.position.set(it.x+it.nx*0.012, it.h, it.y+it.ny*0.012); d.rotation.set(0, Math.atan2(it.nx,it.ny), 0);
+      return;
+    }
+    const d=takeDecal(); d.material.map=tex; d.material.color.set(it.color); d.material.opacity=Math.max(0,Math.min(1,it.alpha)); d.material.needsUpdate=true;
+    const sz=Math.max(0.05,it.size*1.25); d.scale.set(sz,1,sz*0.8); d.position.set(it.x,0.028,it.y); d.rotation.y=(it.x*7.3+it.y*3.1)%6.28;
   }
 
   // ---- camera, render, pick, project ----
@@ -207,9 +230,11 @@ const View3D=(()=>{
     if(!ready||!active) return;
     syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now());
-    poolUsed=0; decalUsed=0; torchUsed=0;
+    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0;
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
+    for(let i=wallUsed;i<wallPool.length;i++) wallPool[i].visible=false;
+    { const cr=camRight(); pendingFlash.forEach(({f,s})=>{ f.position.set(s.position.x+Math.sin(yaw)*0.02, s.position.y, s.position.z+Math.cos(yaw)*0.02); f.scale.copy(s.scale); f.renderOrder=3; }); }
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);

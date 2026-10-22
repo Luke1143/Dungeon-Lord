@@ -528,6 +528,7 @@ function resolveAttack(attacker, defender, context){
     defender.hp=0;
     outcome = knockOutOrKill(defender, overkill, attacker, context);
   }
+  hitFx(attacker, defender, dmg, crit, outcome==='killed');
   return { dodged:false, damage:dmg, crit, soaked, outcome };
 }
 
@@ -4490,6 +4491,13 @@ function equipLook(c){
 
 // Imps are drawn smaller than the other creatures (design decision); everything else keeps the full tile scale.
 const IMP_SCALE=0.62;
+// white silhouette of a sprite canvas (for the hit flash)
+const SILHOUETTES=new WeakMap();
+function silhouetteOf(cv){
+  let s=SILHOUETTES.get(cv);
+  if(!s){ s=document.createElement('canvas'); s.width=cv.width; s.height=cv.height; const g=s.getContext('2d'); g.drawImage(cv,0,0); g.globalCompositeOperation='source-in'; g.fillStyle='#fff'; g.fillRect(0,0,s.width,s.height); SILHOUETTES.set(cv,s); }
+  return s;
+}
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
   const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
@@ -4501,13 +4509,15 @@ function drawCreatureSprite(c,px,py,opts){
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
   const sc=key==='imp'?IMP_SCALE:1;
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha }); return true; }
+  const fl=(opts&&opts.flash)||0;
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
   const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size), o=opts||{};
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
   if(o.rotation){ ctx.translate(sx+size/2, sy+size/2); ctx.rotate(o.rotation); ctx.drawImage(cv,-size/2,-size/2,size,size); }
   else ctx.drawImage(cv,sx,sy,size,size);
+  if(fl>0){ ctx.globalAlpha=Math.min(1,fl)*0.9; ctx.drawImage(silhouetteOf(cv),sx,sy,size,size); }
   ctx.restore();
   return true;
 }
@@ -4523,8 +4533,9 @@ function drawActor(c, baseIcon){
   const hitPhase = since<HIT_FLASH_MS ? 1-since/HIT_FLASH_MS : 0;
   if(hitPhase>0){
     const amp=(c.hitHard?0.16:0.09)*hitPhase;
-    px += Math.sin(since/22)*amp;
-    py += Math.cos(since/17)*amp*0.5;
+    const k=hitPhase*hitPhase, push=(c.hitHard?0.36:0.2)*k;   // knockback: a quick shove away from the attacker that eases back
+    px += (c.kbx||0)*push + Math.sin(since/22)*amp*0.3;
+    py += (c.kby||0)*push + Math.cos(since/17)*amp*0.15;
   }
   // Ausweichen: kurzes seitliches Wegducken
   const dsince=Date.now()-(c.dodgeAt||0);
@@ -4532,7 +4543,7 @@ function drawActor(c, baseIcon){
   if(c.unconscious){
     if(!drawCreatureSprite(c, px, py, { rotation:Math.PI/2, alpha:0.75 })) drawEmojiFx(baseIcon, px, py, { rotation:Math.PI/2, alpha:0.75 });
   } else {
-    if(!drawCreatureSprite(c, px, py)) drawEmoji(baseIcon, px, py, false);
+    if(!drawCreatureSprite(c, px, py, { flash: since<130 ? 1-since/130 : 0 })) drawEmoji(baseIcon, px, py, false);
     const tool=swingIconOf(c);
     if(tool){
       // Ausholen und zuschlagen: die Phase steuert Winkel und Versatz
@@ -4563,6 +4574,18 @@ function drawActor(c, baseIcon){
   if(th) drawEmojiFx(th, px, py, { scale:0.5, offsetY:-TILE*0.36 });
 }
 
+// Blood stains that stay on floors and walls for a while (fx.js)
+function drawStains(){
+  if(typeof FX==='undefined') return;
+  if(capture){ FX.stains.forEach(st=> capture.push(Object.assign({ kind:'stain' }, FX.stainView(st)))); return; }
+  ctx.save();
+  FX.stains.forEach(st=>{
+    const v=FX.stainView(st), sx=(v.x-camX)*TILE, sy=(v.y-camY)*TILE, r=Math.max(1.5, v.size*TILE*0.6);
+    ctx.globalAlpha=Math.max(0,Math.min(1,v.alpha)); ctx.fillStyle=v.color;
+    ctx.beginPath(); ctx.ellipse(sx, sy, r, r*(v.where==='wall'?0.8:0.7), 0, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
 // Particles (fx.js): drawn in 2D here, collected for the 3D view while capturing
 function drawParticles(){
   if(typeof FX==='undefined') return;
@@ -4577,6 +4600,19 @@ function drawParticles(){
   ctx.restore();
 }
 function emitFx(type,x,y,opts){ if(typeof FX!=='undefined') FX.emit(type,x,y,opts); }
+if(typeof FX!=='undefined') FX.solidAt=(tx,ty)=>{ if(!state||tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return true; const ty_=state.grid[ty][tx].type; return ty_!=='floor' && ty_!=='water'; };
+// what comes out of a creature when it is hit: blood colour per kind (null = bone chips)
+const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, barbarian:'#b01818', thief:'#b01818', wizard:'#b01818', knight:'#b01818' };
+function bloodOf(c){ const k=c.kind||'imp'; return k in BLOOD ? BLOOD[k] : '#b01818'; }
+function hitFx(attacker, defender, dmg, crit, killed){
+  const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
+  defender.kbx=dx/L; defender.kby=dy/L;                    // visual knockback, away from the attacker
+  const col=bloodOf(defender), px=rx(defender), py=ry(defender);
+  if(typeof FX==='undefined') return;
+  if(col){ FX.blood(px, py, dx, dy, Math.min(24, 6+Math.round(dmg*1.3)+(crit?6:0)), col, { big:crit, power:crit?5:3.8 }); }
+  else { for(let i=0;i<4;i++) FX.emit('chip', px, py, { color:'#e8dcc8' }); }
+  if(killed) FX.gibs(px, py, col||'#c8c0b0', true, 9);
+}
 
 function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 
@@ -4781,6 +4817,7 @@ function draw2d(){
     drawEmoji('👑', 2, 2, false);
   }
 
+  drawStains();
   const allRooms=computeRooms();
   allRooms.forEach(room=>{
     const def=ROOM_TYPES[room.type];
@@ -5396,8 +5433,8 @@ function tickHero(c){
 }
 
 // ===== Tug of war over reinforced walls =====
-// Original rule: enemies cannot dig reinforced walls. Ours adds a contest: every floor tile and every unit around the wall
-// (the 8 surrounding tiles) counts for whoever holds it. When the heroes outweigh the defenders there, the wall is neutralized
+// Original rule: enemies cannot dig reinforced walls. Ours adds a contest: every floor tile around the wall
+// (the 8 surrounding tiles) counts for whoever holds it. Only territory counts, not units. When the heroes hold more, the wall is neutralized
 // and they can dig it. Floors the heroes walk through turn to enemy control until an imp claims them back.
 const wallScoreCache={ tick:-1, map:new Map() };
 function wallScores(x,y){
@@ -5408,10 +5445,7 @@ function wallScores(x,y){
     const t=state.grid[ny][nx];
     if(t.type==='floor'){ if(t.owned) player++; else if(t.enemy) enemy+=0.5; }   // claimed land counts fully, ground merely walked over by heroes half
   }
-  const near=o=> !o.held && !o.unconscious && Math.abs(o.x-x)<=1 && Math.abs(o.y-y)<=1;
-  state.imps.forEach(o=>{ if(near(o)) player++; });
-  state.creatures.forEach(o=>{ if(!near(o)) return; if(o.faction==='good') enemy++; else player++; });
-  return { player, enemy };
+  return { player, enemy };   // territory only: units do not count
 }
 function wallNeutralized(x,y){
   if(wallScoreCache.tick!==state.tickCount){ wallScoreCache.tick=state.tickCount; wallScoreCache.map.clear(); }
@@ -5480,25 +5514,44 @@ function portalConnected(){
   return !!bfsFind(portal[0].x, portal[0].y, (x,y)=> state.grid[y][x].room==='throne');
 }
 
+// Every level has a fixed pool of enemies: a set number of waves, the last one led by the knight. No endless waves.
+function waveTotal(diff){ return Math.max(3, Math.min(8, 3+Math.floor(diff/2))); }
+// What a hero brings along. Gear tier follows the wave, the boss carries the best.
+function heroGear(kind, level, boss){
+  const tier = boss ? 'fine' : (level>=5 ? 'fine' : (level>=2 ? 'plain' : 'crude'));
+  const items=[];
+  const add=fam=>{ const id=fam+'_'+tier; if(ITEMS[id]) items.push({ id, q:1 }); };
+  if(kind==='barbarian'){ add(level>=3?'axe':'sword'); add(level>=4?'mediumArmor':'lightArmor'); }
+  else if(kind==='thief'){ add('sword'); add('lightArmor'); if(level>=2) add('buckler'); }
+  else if(kind==='wizard'){ add(level>=5?'wandIce':(level>=3?'wandBolt':'wandFire')); if(level>=4) add('lightArmor'); }
+  else if(kind==='knight'){ add(boss?'hammer':'sword'); add('heavyArmor'); add(boss?'tower':'kite'); }
+  return items;
+}
+
 function spawnWave(){
   const w=state.war;
   w.wave++;
   const n=w.wave;
   const diff=w.difficulty||0;   // set by the campaign; each turn on the overworld raises it
-  const count=Math.min(WAVE_MAX_SIZE, 1+Math.floor((n+diff)*0.8));
-  const level=Math.min(MAX_LEVEL, 1+Math.floor((n+diff-1)/2));
+  const total=waveTotal(diff), last=n>=total;
+  const count=Math.min(WAVE_MAX_SIZE, 1+Math.floor((n+diff)*0.7));
+  const level=Math.min(MAX_LEVEL, 1+Math.floor((n+diff-1)/3));
   const pool=['barbarian','thief'];
   if(n+diff>=3) pool.push('wizard');
   if(n+diff>=5) pool.push('knight');
   const tiles=tilesOfRoom('portal');
   if(!tiles.length) return;
-  for(let i=0;i<count;i++){
+  const spawn=(kind,lvl,boss,i)=>{
     const spot=tiles[i%tiles.length];
-    const h=createHero(pool[randInt(0,pool.length-1)], spot.x, spot.y);
-    h.level=level; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
+    const h=createHero(kind, spot.x, spot.y);
+    h.level=lvl; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
+    h.inventory=heroGear(kind, lvl, boss);
+    if(boss) h.name='Der Ritter';
     state.creatures.push(h);
-  }
-  logEvent(`Welle ${n}: ${count} Helden strömen aus dem Weltportal!`, tiles[0].x, tiles[0].y);
+  };
+  for(let i=0;i<count;i++) spawn(pool[randInt(0,pool.length-1)], level, false, i);
+  if(last) spawn('knight', Math.min(MAX_LEVEL, level+2), true, count);
+  logEvent(last ? `Letzte Welle (${n}/${total}): ${count} Helden und der Ritter strömen aus dem Weltportal!` : `Welle ${n}/${total}: ${count} Helden strömen aus dem Weltportal!`, tiles[0].x, tiles[0].y);
 }
 
 function tickWar(){
@@ -5518,10 +5571,12 @@ function tickWar(){
 
   // The heroes do not wait for the player to open the portal: scouts spawn on a timer from the start of the level
   // and dig their way to the throne themselves.
-  w.timer--;
-  if(w.timer<=0){
-    spawnWave();
-    w.timer=Math.max(WAVE_INTERVAL_MIN, WAVE_INTERVAL_BASE-12*w.wave);
+  if(w.wave<waveTotal(w.difficulty||0)){
+    w.timer--;
+    if(w.timer<=0){
+      spawnWave();
+      w.timer=Math.max(WAVE_INTERVAL_MIN, WAVE_INTERVAL_BASE-12*w.wave);
+    }
   }
 
   // Belagerung: Helden im Thronsaal zermuerben ihn
@@ -5551,11 +5606,13 @@ function updateWarUI(){
   const throneEl=document.getElementById('throneVal');
   const hintEl=document.getElementById('warHint');
   if(!waveEl) return;
-  waveEl.textContent=w.wave>0 ? String(w.wave) : '–';
+  waveEl.textContent=w.wave>0 ? `${w.wave}/${waveTotal(w.difficulty||0)}` : '–';
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
   const secs=Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)));
-  hintEl.textContent = w.connected ? `🔥 Nächste Welle in ${secs} s` : `🔥 Das Weltportal ist abgeriegelt. Späher kommen in ${secs} s und graben sich selbst zu euch durch.`;
+  const total=waveTotal(w.difficulty||0), alive=state.creatures.filter(h=>h.category==='hero'&&!h.unconscious).length;
+  hintEl.textContent = w.wave>=total ? (alive>0 ? `🔥 Alle ${total} Wellen sind unterwegs, noch ${alive} Helden im Dungeon.` : '🔥 Alle Wellen sind besiegt. Erobert jetzt das Weltportal!')
+    : (w.wave===0 ? `🔥 Das Weltportal ist abgeriegelt. Späher kommen in ${secs} s und graben sich selbst zu euch durch.` : `🔥 Nächste Welle (${w.wave+1}/${total}) in ${secs} s`);
   const overlay=document.getElementById('endOverlay');
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
@@ -7525,6 +7582,7 @@ function newCampaign(seed){
 
 // Fresh level state; the single place that resets all counters.
 function startLevel(nodeId){
+  if(typeof FX!=='undefined') FX.reset();
   const n=world.nodes[nodeId];
   campaign.levelNode=nodeId; campaign.inLevel=true;
   saveCampaign();
