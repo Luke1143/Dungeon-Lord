@@ -1,0 +1,48 @@
+// Headless balance check: how long does the throne last against the heroic waves?
+// Usage: NODE_PATH=$(npm root -g) node tools/balance-sim.js [maxTicks]
+// Needs Playwright with Chromium (see docs/dev-notes.md). The player is a fixed defender set standing in the throne room;
+// the path from the portal to the throne is dug by script, so waves start right away.
+const { chromium } = require('playwright');
+const path = require('path');
+const MAX_TICKS = Number(process.argv[2]) || 6000;
+const DEFENDERS = {
+  none: [],
+  small: ['hound','hound','beetle'],
+  medium: ['hound','hound','hound','beetle','beetle','warlock'],
+  large: ['hound','hound','hound','hound','beetle','beetle','beetle','warlock','warlock']
+};
+(async () => {
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
+  const rows = [];
+  for (const diff of [0, 2, 4, 6, 8]) {
+    for (const [dname, list] of Object.entries(DEFENDERS)) {
+      const p = await b.newPage({ viewport: { width: 1000, height: 700 } });
+      await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
+      await p.waitForTimeout(300);
+      const res = await p.evaluate(({ diff, list, MAX_TICKS }) => {
+        let seed = 12345 + diff; Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+        document.getElementById('menuNew').click(); startLevel(0);
+        state.war.difficulty = diff;
+        // dig an L-shaped corridor from the portal to the throne
+        const portal = tilesOfRoom('portal')[0], throne = tilesOfRoom('throne');
+        const tx = throne[0].x, ty = throne[0].y;
+        const carve = (x, y) => { const t = state.grid[y][x]; if (t.room === 'portal') return; if (t.type !== 'floor') { t.type = 'floor'; } t.owned = true; t.discovered = true; };   // never own portal tiles: that would be a victory
+        for (let x = Math.min(portal.x, tx); x <= Math.max(portal.x, tx); x++) carve(x, portal.y);
+        for (let y = Math.min(portal.y, ty); y <= Math.max(portal.y, ty); y++) carve(tx, y);
+        if (!window.__keepImps) state.imps.length = 0;   // imps would claim the portal within ~65 ticks and win before the first wave; see the claim row
+        const spots = throne.slice();
+        const make = { hound: createHound, beetle: createBeetle, warlock: createWarlock };
+        list.forEach((k, i) => { const s = spots[i % spots.length]; state.creatures.push(make[k](s.x, s.y)); });
+        let t = 0, minHp = 100;
+        for (; t < MAX_TICKS && !state.war.over; t++) { gameTick(); minHp = Math.min(minHp, state.war.throneHp); }
+        const heroes = state.creatures.filter(c => c.category === 'hero').length;
+        const mine = state.creatures.filter(c => c.faction !== 'good').length;
+        return { over: state.war.over, tick: t, wave: state.war.wave, minHp: Math.round(minHp), heroesAlive: heroes, defendersLeft: mine };
+      }, { diff, list, MAX_TICKS });
+      rows.push({ diff, defenders: dname, ...res });
+      console.log(`diff ${diff} · ${dname.padEnd(6)} -> ${res.over || 'survived'} at tick ${res.tick}, wave ${res.wave}, min throne hp ${res.minHp}, heroes alive ${res.heroesAlive}, defenders left ${res.defendersLeft}`);
+      await p.close();
+    }
+  }
+  await b.close();
+})();

@@ -57,12 +57,20 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - `view3d.js` is a second renderer for the level (Three.js, loaded on demand from `lib/`). Toggle with the `3D` button or `V`; the choice is remembered. Q/E rotate the camera, WASD and middle-drag pan relative to it, the wheel zooms, the minimap and all clicks work as before.
 - How it works without touching the game rules: `draw()` in 3D mode runs the old 2D drawing on a throwaway canvas while `capture` collects every sprite, prop and emoji the 2D code wants to draw (position, scale, offsets); `View3D.render` turns that list into billboards and ground decals. Terrain comes from `tileInfo3d(x,y)` (walls as blocks with the tile texture, floors/water as planes). Marks, queued rooms, room selection and the drag rectangle are drawn on the transparent 2D canvas above, projected with `View3D.project`. Picking uses a ray against the tile meshes (`tileFromEvent`).
 - Known gaps: the metal pipeline is only approximated (ingots as the ingot sprite, ore piles as emoji), no torch light or shadows yet, effects and thoughts are plain emoji billboards, bridges still look like water, the camera pitch and wall contrast are first guesses, and it has only been checked with software rendering.
-- Crowded tiles: `updateCrowds()` counts creatures per tile each frame; two to four share a tile as smaller sprites in their own quarter (`CROWD_SLOTS`, `CROWD_SCALE`), in 2D and 3D. A lone figure stays full size.
-- 3D lights: candles, fires, kilns and furnaces cast warm flickering point lights (the eight nearest to the camera, `LIGHT_KEYS` in `view3d.js`).
+- 3D lights: torches, candles, fires, kilns and furnaces cast warm flickering point lights (the eight nearest to the camera, `LIGHT_KEYS` in `view3d.js`).
 
 ## 0.8 Textures, room flavour, imps
 - `TILEGEN.full(kind, variant)` (sprites.js) gives opaque 16x16 block textures: conquered floor (`owned`), room floors (throne, library, dormitory, storage, hatchery, arena, smelter, forge, bridge, portal, entrance) and room walls (`wall:<room>`, `brick`). Overview: `prototypes/tiles.html`. Flat colour plus speckle (`TILEGEN.gen`) stays for neutral floor, rock, gold and ore.
 - `tileLook2d`, `wallFaceSpec` and `floorSpec` in `index.html` decide the look; walls take the look of the room they face (in 3D per face, in 2D by the first neighbouring room). `wallTorchItems()` puts torches on walls next to conquered floor (3D only, each one a light).
 - Imps are drawn at `IMP_SCALE` (0.62); the crowd shrinking was removed again.
 - Marked for real 3D models later (design doc): bookshelves, beds, throne, anvil, kiln, crates, hay bales, doors, torch brackets, arena podiums.
+
+## 0.9 Balance check (tools/balance-sim.js)
+- `NODE_PATH=$(npm root -g) node tools/balance-sim.js [maxTicks]` runs the level headless (Playwright + Chromium): it digs a corridor from the portal to the throne, puts a fixed set of defenders (none/small/medium/large) in the throne room, removes the imps and calls `gameTick()` until the throne falls. Math.random is seeded, so runs repeat.
+- First results (throne 100 hp, 350 ms per tick, first wave 150 ticks after the break-through, no traps, no healing, no imps):
+  - Difficulty 0: none 374 ticks (wave 1), small 1210 (wave 4), medium 1488 (wave 5), large 1758 (wave 6).
+  - Difficulty 2: wave 1 / 2 / 3 / 4 for none / small / medium / large.
+  - Difficulty 4 and up: the throne falls in wave 1 even against the large set (diff 8: 8 level-5 heroes in the first wave).
+  - Finding: with imps, **one imp conquers the portal about 65 ticks after the corridor opens, well before the first wave (150 ticks)**. Waves never matter if the player rushes. Needs a design decision (longer conquest, conquest blocked while heroes are near, shorter first wave, or something else).
+  - Finding: difficulty is added in full to the wave number, so late turns start with wave-9 strength.
 
