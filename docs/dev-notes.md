@@ -59,3 +59,10 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - Known gaps: the metal pipeline is only approximated (ingots as the ingot sprite, ore piles as emoji), no torch light or shadows yet, effects and thoughts are plain emoji billboards, bridges still look like water, the camera pitch and wall contrast are first guesses, and it has only been checked with software rendering.
 - Crowded tiles: `updateCrowds()` counts creatures per tile each frame; two to four share a tile as smaller sprites in their own quarter (`CROWD_SLOTS`, `CROWD_SCALE`), in 2D and 3D. A lone figure stays full size.
 - 3D lights: candles, fires, kilns and furnaces cast warm flickering point lights (the eight nearest to the camera, `LIGHT_KEYS` in `view3d.js`).
+
+## 0.8 Textures, room flavour, imps
+- `TILEGEN.full(kind, variant)` (sprites.js) gives opaque 16x16 block textures: conquered floor (`owned`), room floors (throne, library, dormitory, storage, hatchery, arena, smelter, forge, bridge, portal, entrance) and room walls (`wall:<room>`, `brick`). Overview: `prototypes/tiles.html`. Flat colour plus speckle (`TILEGEN.gen`) stays for neutral floor, rock, gold and ore.
+- `tileLook2d`, `wallFaceSpec` and `floorSpec` in `index.html` decide the look; walls take the look of the room they face (in 3D per face, in 2D by the first neighbouring room). `wallTorchItems()` puts torches on walls next to conquered floor (3D only, each one a light).
+- Imps are drawn at `IMP_SCALE` (0.62); the crowd shrinking was removed again.
+- Marked for real 3D models later (design doc): bookshelves, beds, throne, anvil, kiln, crates, hay bales, doors, torch brackets, arena podiums.
+

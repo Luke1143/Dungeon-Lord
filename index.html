@@ -4379,6 +4379,42 @@ function thoughtOf(c){
   }
 }
 
+// What a tile looks like: a full texture (conquered floors, room floors, room walls) or a flat colour with a speckle overlay.
+// Walls take on the look of the room they face: a library wall is a bookcase, a throne room wall carries banners.
+function wallBaseSpec(t){
+  const gem=t.gem&&t.gemRevealed;
+  return { color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), resource: !!(gem||t.gold||t.ore) };
+}
+function wallFaceSpec(base,nx,ny){
+  if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS||base.resource) return base;
+  const n=state.grid[ny][nx];
+  if(n.type!=='floor' || isHidden(nx,ny)){ return (n.room==='bridge'&&TILEGEN.has('wall:bridge'))?{full:'wall:bridge'}:base; }
+  if(n.room && TILEGEN.has('wall:'+n.room)) return { full:'wall:'+n.room };
+  if(n.owned) return { full:'brick' };
+  return base;
+}
+function floorSpec(t){
+  if(t.room && TILEGEN.has(t.room)) return { full:t.room };
+  if(t.owned) return { full:'owned' };
+  return { color:COLORS.floorNeutral, kind:'floor' };
+}
+// top-down look of a tile for the 2D view
+function tileLook2d(x,y,t){
+  if(t.type==='floor') return floorSpec(t);
+  if(t.type==='water') return t.room==='bridge'&&TILEGEN.has('bridge') ? { full:'bridge' } : null;
+  if(t.type==='bedrock') return null;
+  const base=wallBaseSpec(t);
+  for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){ const f=wallFaceSpec(base,x+dx,y+dy); if(f.full) return f; }
+  return base;
+}
+const FULL_TILES={};
+function fullTileCanvas(kind,x,y){
+  const v=(x*7+y*13)%4, id=kind+v;
+  if(FULL_TILES[id]) return FULL_TILES[id];
+  const o=TILEGEN.full(kind,v), cv=document.createElement('canvas'); cv.width=16; cv.height=16; const g=cv.getContext('2d');
+  o.g.forEach((row,yy)=>row.forEach((col,xx)=>{ g.fillStyle=col; g.fillRect(xx,yy,1,1); }));
+  return FULL_TILES[id]=cv;
+}
 // Speckle overlays over the flat tile colours (TILEGEN in sprites.js): 4 variants per kind, picked by position.
 const TILE_OVERLAYS={};
 function tileOverlay(kind,x,y){
@@ -4418,20 +4454,8 @@ function equipLook(c){
   return any?e:null;
 }
 
-// Up to four figures share a tile: each gets a smaller sprite in its own quarter (design: Darstellung, Maßstab).
-const CROWD_SLOTS={
-  2:[[-0.22,0],[0.22,0]],
-  3:[[-0.24,0.08],[0.24,0.08],[0,-0.14]],
-  4:[[-0.24,-0.14],[0.24,-0.14],[-0.24,0.14],[0.24,0.14]]
-};
-const CROWD_SCALE=0.58;
-let crowdMap=null;
-function updateCrowds(){
-  crowdMap=new Map();
-  const add=c=>{ if(c.held) return; const k=Math.round(rx(c))+','+Math.round(ry(c)); const l=crowdMap.get(k); if(l) l.push(c); else crowdMap.set(k,[c]); };
-  state.imps.forEach(add); state.creatures.forEach(add);
-  crowdMap.forEach(list=>{ list.sort((a,b)=>(a.id||0)-(b.id||0)); list.forEach((c,i)=>{ c._crowdN=Math.min(4,list.length); c._crowdI=i%4; }); });
-}
+// Imps are drawn smaller than the other creatures (design decision); everything else keeps the full tile scale.
+const IMP_SCALE=0.62;
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
   const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
@@ -4442,9 +4466,9 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  const crowd=(c._crowdN>1&&CROWD_SLOTS[c._crowdN])?CROWD_SLOTS[c._crowdN][c._crowdI]:null, sc=crowd?CROWD_SCALE:1;
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, ox:crowd?crowd[0]*TILE:0, oy:crowd?crowd[1]*TILE:0, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha }); return true; }
-  const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2+(crowd?crowd[0]*TILE:0), sy=(py-camY)*TILE+(TILE-size)+(crowd?crowd[1]*TILE:0), o=opts||{};
+  const sc=key==='imp'?IMP_SCALE:1;
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha }); return true; }
+  const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size), o=opts||{};
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
@@ -4511,11 +4535,31 @@ function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
-  if(t.type==='floor'){ const rc=t.room&&ROOM_TYPES[t.room]; return { wall:false, color: rc?rc.color:(t.owned?COLORS.floor:COLORS.floorNeutral), kind: t.room?'flag':'floor' }; }
-  if(t.type==='water') return { wall:false, water:true, color:COLORS.water, kind:null };
+  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind }; }
+  if(t.type==='water'){
+    if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
+    return { wall:false, water:true, color:COLORS.water, kind:null };
+  }
   if(t.type==='bedrock') return { wall:true, color:COLORS.bedrock, kind:null };
-  const gem=t.gem&&t.gemRevealed;
-  return { wall:true, color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), top: t.reinforced?'#7f94a8':undefined };
+  const base=wallBaseSpec(t);
+  return { wall:true, color:base.color, kind:base.kind, top: t.reinforced?'#7f94a8':undefined,
+    faces:[wallFaceSpec(base,x+1,y), wallFaceSpec(base,x-1,y), wallFaceSpec(base,x,y+1), wallFaceSpec(base,x,y-1)] };
+}
+// decorative torches on the walls next to conquered floor (3D only): a fixed pattern by tile position, each one a light source
+function wallTorchItems(){
+  const out=[], now=Math.floor(Date.now()/280);
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
+    const t=state.grid[y][x];
+    if(t.type!=='floor'||!t.owned||isHidden(x,y)) continue;
+    if((((x*73856093)^(y*19349663))>>>0)%4 !== 0) continue;
+    for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
+      const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) continue;
+      const n=state.grid[ny][nx]; if(n.type==='floor'||n.type==='water') continue;
+      out.push({ kind:'prop', key:'torch', canvas:spriteCanvas('prop_torch',now,false,false), x, y, wx:x+0.5+dx*0.44, wz:y+0.5+dy*0.44, wy:0.62, scale:0.55 });
+      break;
+    }
+  }
+  return out;
 }
 function drawOverlay3d(){
   const g=realCtx;
@@ -4541,6 +4585,7 @@ function draw(){
   capture=[]; ctx=dummyCtx; camX=0; camY=0; VIEW_COLS=WORLD_COLS; VIEW_ROWS=WORLD_ROWS;
   try{ draw2d(); } finally { ctx=realCtx; ({ camX, camY, VIEW_COLS, VIEW_ROWS }=saved); }
   const items=capture; capture=null;
+  wallTorchItems().forEach(it=>items.push(it));
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
   drawOverlay3d();
 }
@@ -4587,11 +4632,16 @@ function draw2d(){
       } else {
         color = (t.gem && t.gemRevealed) ? COLORS.gemRock : t.gold ? COLORS.goldRock : t.ore ? ORE_ROCK_COLOR : COLORS.rock;
       }
-      ctx.fillStyle=color;
-      ctx.fillRect(px,py,TILE,TILE);
-      if(typeof TILEGEN!=='undefined' && t.type!=='water' && t.type!=='bedrock'){
-        const kind = t.type==='floor' ? (t.room ? 'flag' : 'floor') : (t.gem&&t.gemRevealed ? 'rock' : t.gold ? 'gold' : t.ore ? 'ore' : 'rock');
-        ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(tileOverlay(kind,x,y),px,py,TILE,TILE); ctx.restore();
+      const look=tileLook2d(x,y,t);
+      if(look && look.full){
+        ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(fullTileCanvas(look.full,x,y),px,py,TILE,TILE); ctx.restore();
+      } else {
+        ctx.fillStyle=color;
+        ctx.fillRect(px,py,TILE,TILE);
+        if(typeof TILEGEN!=='undefined' && t.type!=='water' && t.type!=='bedrock'){
+          const kind = t.type==='floor' ? 'floor' : (look?look.kind:'rock');
+          ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(tileOverlay(kind,x,y),px,py,TILE,TILE); ctx.restore();
+        }
       }
       ctx.strokeStyle='rgba(0,0,0,0.28)';
       ctx.strokeRect(px+0.5,py+0.5,TILE-1,TILE-1);
@@ -4810,7 +4860,6 @@ function draw2d(){
     });
   }
 
-  updateCrowds();
   state.imps.forEach(imp=>{
     if(imp.held) return;
     drawActor(imp, '👹');

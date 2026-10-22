@@ -44,22 +44,29 @@ const View3D=(()=>{
     const n=parseInt(m[1],16); const f=v=>Math.max(0,Math.min(255,Math.round(v+amt)));
     return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(f).map(v=>v.toString(16).padStart(2,'0')).join('');
   }
-  function texture(color,kind,variant){
-    const key=color+'|'+kind+'|'+variant;
+  // spec: { full } (opaque texture from TILEGEN.full) or { color, kind } (flat colour plus speckle overlay)
+  const specKey=s=>s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||''));
+  function texture(spec,variant){
+    const key=specKey(spec)+'|'+variant;
     if(texCache.has(key)) return texCache.get(key);
     const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d');
-    g.fillStyle=color; g.fillRect(0,0,32,32);
-    if(kind && typeof TILEGEN!=='undefined'){
-      const o=TILEGEN.gen(kind,variant+1);
-      o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
+    if(spec.full){
+      const o=TILEGEN.full(spec.full,variant);
+      o.g.forEach((row,yy)=>row.forEach((col,xx)=>{ g.fillStyle=col; g.fillRect(xx*2,yy*2,2,2); }));
+    } else {
+      g.fillStyle=spec.color; g.fillRect(0,0,32,32);
+      if(spec.kind && typeof TILEGEN!=='undefined'){
+        const o=TILEGEN.gen(spec.kind,variant+1);
+        o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
+      }
     }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
     texCache.set(key,t); return t;
   }
-  function material(color,kind,variant,extra){
-    const key=color+'|'+kind+'|'+variant+'|'+(extra||'');
+  function material(spec,variant,extra){
+    const key=specKey(spec)+'|'+variant+'|'+(extra||'');
     if(matCache.has(key)) return matCache.get(key);
-    const m=new T.MeshLambertMaterial(Object.assign({ map:texture(color,kind,variant) }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
+    const m=new T.MeshLambertMaterial(Object.assign({ map:texture(spec,variant) }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
     matCache.set(key,m); return m;
   }
   const boxGeo=()=>boxGeo.g||(boxGeo.g=new T.BoxGeometry(1,WALL,1));
@@ -69,17 +76,19 @@ const View3D=(()=>{
     const v=(x*7+y*13)%4;
     let mesh;
     if(info.wall){
-      const side=material(info.color,info.kind,v), top=material(info.top||shadeHex(info.color,38),info.kind,v);
-      mesh=new T.Mesh(boxGeo(),[side,side,top,side,side,side]); mesh.position.set(x+0.5,WALL/2,y+0.5);
+      const base={ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
+      const top=material({ color:info.top||shadeHex(info.color,38), kind:info.kind },v);
+      const m=i=>material(f[i]||base,v);
+      mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
-      mesh=new T.Mesh(flatGeo(), material(info.color,info.kind,v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
+      mesh=new T.Mesh(flatGeo(), material(info.full?{ full:info.full }:{ color:info.color, kind:info.kind },v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
     }
     mesh.userData={ x, y };
     return mesh;
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0);
+      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       if(cur) tileGroup.remove(cur.mesh);
@@ -118,6 +127,7 @@ const View3D=(()=>{
       const size=0.5*it.scale; d.scale.set(size,1,size); d.position.set(it.x+0.5,0.03,it.y+0.5); d.rotation.y=-(it.rotation||0);
       return;
     }
+    if(it.wx!==undefined){ const t2=takeSprite(); t2.material.map=tex; t2.material.opacity=1; t2.material.rotation=0; t2.center.set(0.5,0.5); const sz=0.9*(it.scale||1); t2.scale.set(sz,sz,1); t2.position.set(it.wx,it.wy,it.wz); return; }
     const s=takeSprite(); s.material.map=tex; s.material.opacity=alpha; s.material.rotation=it.kind==='creature'?(it.rotation||0):0; s.material.needsUpdate=true;
     let size, base, anchorY=0, py=0;
     if(it.kind==='creature'){ size=0.78*(it.scale||1); }
@@ -139,16 +149,17 @@ const View3D=(()=>{
     camera.lookAt(cx,0,cy);
     camera.updateMatrixWorld();
   }
-  const LIGHT_KEYS={ candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
-  const MAX_LIGHTS=8;
+  const LIGHT_KEYS={ torch:[0xff9a40,3.4,5.5], candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
+  const MAX_LIGHTS=10;
   function updateLights(items,cx,cy,now){
     while(lights.length<MAX_LIGHTS){ const l=new T.PointLight(0xffa040,0,6,1.6); scene.add(l); lights.push(l); }
-    const cand=items.filter(it=>it.kind==='prop'&&LIGHT_KEYS[it.key]).map(it=>({ it, d:(it.x-cx)*(it.x-cx)+(it.y-cy)*(it.y-cy) })).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
+    const lp=it=>it.wx!==undefined?[it.wx,it.wz]:[it.x+0.5,it.y+0.5];
+    const cand=items.filter(it=>it.kind==='prop'&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
     cand.forEach(({it},i)=>{
       const l=lights[i];
       const [col,inten,dist]=LIGHT_KEYS[it.key];
       l.color.setHex(col); l.distance=dist; l.intensity=inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15;
-      l.position.set(it.x+0.5,0.8,it.y+0.5);
+      { const [lx,lz]=lp(it); l.position.set(lx, it.wy!==undefined?it.wy:0.8, lz); }
     });
     for(let i=cand.length;i<lights.length;i++) lights[i].intensity=0;   // keep all lights alive: toggling them would recompile the shaders
   }

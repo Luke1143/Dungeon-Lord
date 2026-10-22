@@ -349,6 +349,7 @@ function impFrame(state,t,facingRight){
   add('grain',()=>{ const f=mk(16,16); [4,8,12].forEach((x,i)=>{ for(let y=7;y<=13;y++) put(f,x,y,'g'); put(f,x,6-(i%2),'A'); put(f,x-1,7,'a'); put(f,x+1,8,'a'); put(f,x,5-(i%2),'A'); }); return f; });
   add('chicken',t=>{ const f=mk(16,16), h=flick(t); ell(f,7,9,4.4,3.4,'h'); ell(f,11.5,6+h,2.1,2.1,'h'); put(f,12,4+h,'t'); put(f,11,4+h,'t'); put(f,14,7+h,'y'); put(f,15,7+h,'Y'); put(f,12,6+h,'p'); put(f,12,5+h,'p'); put(f,3,7,'Z'); put(f,2,6,'Z'); put(f,6,13,'Y'); put(f,9,13,'Y'); shade(f,'h','H','Z'); return f; });
   add('chick',t=>{ const f=mk(16,16), h=flick(t); ell(f,8,10,3,2.6,'f'); ell(f,10.4,7.6+h,1.9,1.9,'f'); put(f,12,8+h,'o'); put(f,11,7+h,'p'); put(f,7,13,'o'); put(f,9,13,'o'); return f; });
+  add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
   add('ore',()=>{ const f=mk(16,16); ell(f,8,9,5,4,'n'); ell(f,6.5,8,2.2,2,'N'); put(f,10,8,'y'); put(f,9,11,'y'); shade(f,'n','N','k'); return f; });
   add('ingot',()=>{ const f=mk(16,16); rect(f,3,7,10,5,'s'); rect(f,4,6,8,1,'S'); rect(f,5,12,6,1,'z'); shade(f,'s','S','z'); return f; });
@@ -373,6 +374,70 @@ const TILEGEN=(()=>{
     if(kind==='ore') for(let i=0;i<5;i++){ const x=1+Math.floor(r()*12), y=1+Math.floor(r()*12); put(x,y,'o'); put(x+1,y,'o'); put(x,y+1,'O'); put(x+1,y+1,'O'); }
     return { g, pal:PAL };
   }
-  return { gen };
+
+  // ---- full tile textures (opaque, own palette, in the spirit of block texture packs): conquered floors, room floors and room walls ----
+  const FULL={};
+  const grid=(c)=>Array.from({length:16},()=>Array(16).fill(c));
+  const mk=(kind,fn)=>{ FULL[kind]=fn; };
+  // stone slabs: 2x2 slabs with a light top-left edge and dark mortar
+  function slabs(g,r,P,n){ const sz=16/n; for(let sy=0;sy<n;sy++) for(let sx=0;sx<n;sx++) for(let y=0;y<sz;y++) for(let x=0;x<sz;x++){ const X=sx*sz+x, Y=sy*sz+y; g[Y][X]= (x===sz-1||y===sz-1)?P.m:((x===0||y===0)?P.A:(r()<0.16?P.b:P.a)); } }
+  function planks(g,r,P,rows,seamP){ const h=16/rows; for(let p=0;p<rows;p++){ const sx=Math.floor(r()*14)+1; for(let y=0;y<h;y++) for(let x=0;x<16;x++){ const Y=p*h+y; g[Y][x]= y===h-1?P.d:(r()<0.1?P.W:(p%2?P.w:P.W2||P.w)); if(x===sx&&y<h-1) g[Y][x]=P.d; if(y===0&&(x%5!==0)&&r()<0.5) g[Y][x]=P.W; } } }
+  mk('owned',(v)=>{ const r=rng(v*31+1), P={ a:'#6d6256', A:'#867a6b', b:'#5f554a', m:'#3b342c', y:'#b8963c' }, g=grid(P.a); slabs(g,r,P,2);
+    if(v%2===1){ [[8,6],[7,7],[9,7],[6,8],[10,8],[7,9],[9,9],[8,10]].forEach(([x,y])=>{ g[y][x]=P.y; }); }
+    return { g, pal:{ a:P.a, A:P.A, b:P.b, m:P.m, y:P.y } }; });
+  mk('throne',(v)=>{ const r=rng(v*17+2), P={ r:'#7a1f2b', R:'#5a1420', y:'#d4af37', Y:'#9a7a24', p:'#a8344a' }, g=grid(P.r);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ if((x+y)%4===0&&x>1&&y>1&&x<14&&y<14) g[y][x]=P.R; if(r()<0.06) g[y][x]=P.p; }
+    for(let i=0;i<16;i++){ g[0][i]=P.y; g[15][i]=P.Y; g[i][0]=P.y; g[i][15]=P.Y; g[1][i]=P.R; g[14][i]=P.R; g[i][1]=P.R; g[i][14]=P.R; }
+    [[4,4],[11,4],[4,11],[11,11],[7,7],[8,8]].forEach(([x,y])=>{ g[y][x]=P.y; }); return { g, pal:P }; });
+  mk('library',(v)=>{ const r=rng(v*13+3), P={ w:'#8a5a34', W:'#9c6a3e', W2:'#7e5030', d:'#3f2916' }, g=grid(P.w); planks(g,r,P,4); return { g, pal:P }; });
+  mk('dormitory',(v)=>{ const r=rng(v*19+4), P={ b:'#2f3f7a', B:'#5a6ab0', c:'#1f2a56', y:'#d8c070' }, g=grid(P.b);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++) if(r()<0.08) g[y][x]=P.c;
+    for(let i=1;i<15;i++){ g[2][i]=P.B; g[13][i]=P.B; g[i][2]=P.B; g[i][13]=P.B; }
+    [[8,6],[7,7],[9,7],[8,8],[7,9],[9,9],[8,10],[8,7],[8,9]].forEach(([x,y])=>{ g[y][x]=P.y; }); return { g, pal:P }; });
+  mk('storage',(v)=>{ const r=rng(v*23+5), P={ w:'#7a6240', W:'#8d7450', d:'#463822', z:'#6a6e74' }, g=grid(P.w);
+    for(let x=0;x<16;x++) for(let y=0;y<16;y++){ g[y][x]= (x%4===3)?P.d:(r()<0.1?P.W:P.w); }
+    for(let x=0;x<16;x++){ g[3][x]=P.z; g[12][x]=P.z; } [[2,3],[6,3],[10,3],[14,3],[2,12],[6,12],[10,12],[14,12]].forEach(([x,y])=>{ g[y][x]=P.W; }); return { g, pal:P }; });
+  mk('hatchery',(v)=>{ const r=rng(v*29+6), P={ h:'#b8a24a', H:'#d8c468', d:'#8f7a2c' }, g=grid(P.h);
+    for(let i=0;i<34;i++){ const x=Math.floor(r()*13), y=Math.floor(r()*16), c=r()<0.5?P.H:P.d; g[y][x]=c; g[y][x+1]=c; if(r()<0.5) g[y][x+2]=c; } return { g, pal:P }; });
+  mk('arena',(v)=>{ const r=rng(v*37+7), P={ s:'#c9b080', S:'#dcc898', d:'#b39a68', r:'#7a2a22' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.12) g[y][x]=P.S; else if(q<0.3) g[y][x]=P.d; }
+    if(v%3===2) for(let i=0;i<5;i++){ g[4+Math.floor(r()*8)][4+Math.floor(r()*8)]=P.r; } return { g, pal:P }; });
+  const slag=(v)=>{ const r=rng(v*41+8), P={ s:'#2c2624', n:'#3d3532', o:'#ff7a1a', f:'#ffd23f', k:'#1a1512' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.2) g[y][x]=P.n; else if(q<0.28) g[y][x]=P.k; }
+    let x=Math.floor(r()*14)+1, y=0; for(let j=0;j<16;j++){ g[y][x]=r()<0.2?P.f:P.o; if(r()<0.5) x=Math.max(0,Math.min(15,x+(r()<0.5?-1:1))); y++; if(y>15) break; if(r()<0.25) break; } return { g, pal:P }; };
+  mk('smelter',slag); mk('forge',slag);
+  mk('bridge',(v)=>{ const r=rng(v*43+9), P={ w:'#a07a48', W:'#b58c58', d:'#4e3a20' }, g=grid(P.w); planks(g,r,P,4); [[2,1],[13,1],[2,9],[13,9]].forEach(([x,y])=>{ g[y][x]=P.d; }); return { g, pal:P }; });
+  const rune=(base,glow)=>(v)=>{ const r=rng(v*47+10), P={ s:base, n:'#3a4560', c:glow, k:'#141a2c' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++) if(r()<0.18) g[y][x]=P.n;
+    for(let i=2;i<14;i++){ g[2][i]=P.c; g[13][i]=P.c; g[i][2]=P.c; g[i][13]=P.c; } [[8,5],[7,6],[9,6],[6,7],[10,7],[8,8],[7,9],[9,9],[8,10]].forEach(([x,y])=>{ g[y][x]=P.c; }); return { g, pal:P }; };
+  mk('portal',rune('#26304a','#46b4ff')); mk('entrance',rune('#243a2a','#6ad06a'));
+  // walls
+  const bricks=(g,r,P)=>{ for(let row=0;row<4;row++){ const off=(row%2)*4; for(let y=0;y<4;y++) for(let x=0;x<16;x++){ const Y=row*4+y; const bx=(x+off)%8; g[Y][x]= (y===3||bx===7)?P.m:(y===0?P.A:(r()<0.2?P.b:P.a)); } } };
+  const brickKind=(pal)=>(v)=>{ const r=rng(v*53+11), g=grid(pal.a); bricks(g,r,pal); return { g, pal }; };
+  const BRICK={ a:'#6e6258', A:'#837668', b:'#5f554b', m:'#3a332c' };
+  mk('brick',brickKind(BRICK));
+  mk('wall:throne',(v)=>{ const r=rng(v*59+12), P={ a:'#58405c', A:'#6e5272', b:'#4a3350', m:'#2c1f31', r:'#a82a36', R:'#7a1f2b', y:'#d4af37' }, g=grid(P.a); bricks(g,r,P);
+    for(let y=0;y<12;y++) for(let x=5;x<=10;x++) g[y][x]=(x===5||x===10)?P.R:P.r; for(let x=5;x<=10;x++) g[0][x]=P.y; [[5,12],[6,12],[9,12],[10,12],[6,13],[9,13],[7,13],[8,13]].forEach(([x,y])=>{ g[y][x]=(x<7||x>8)?P.r:P.R; }); g[14][7]=P.y; g[14][8]=P.y; return { g, pal:P }; });
+  mk('wall:library',(v)=>{ const r=rng(v*61+13), P={ w:'#7a4e2c', d:'#3a2412', r:'#a02a2a', i:'#2f5a9a', y:'#d4b030', g:'#3f7a3a', c:'#e8dcc0', p:'#7a3a8a' }, g=grid(P.d); const cols=[P.r,P.i,P.y,P.g,P.c,P.p];
+    [0,5,10,15].forEach(y=>{ for(let x=0;x<16;x++) g[y][x]=P.w; });
+    [1,6,11].forEach(y0=>{ let x=1; while(x<15){ const w=1+Math.floor(r()*2), c=cols[Math.floor(r()*cols.length)], top=Math.floor(r()*2); for(let i=0;i<w&&x+i<15;i++) for(let y=y0+top;y<y0+4;y++) g[y][x+i]=c; x+=w; } });
+    return { g, pal:P }; });
+  mk('wall:dormitory',(v)=>{ const r=rng(v*67+14), P={ a:'#6e6258', A:'#837668', b:'#5f554b', m:'#3a332c', c:'#3a4a8a', C:'#5a6ab0', y:'#d8c070' }, g=grid(P.a); bricks(g,r,P);
+    for(let y=1;y<16;y++) for(let x=2;x<14;x++) g[y][x]=(x%3===0)?P.C:P.c; for(let x=1;x<15;x++) g[0][x]=P.y; return { g, pal:P }; });
+  mk('wall:storage',(v)=>{ const r=rng(v*71+15), P={ w:'#7a6240', W:'#8d7450', d:'#463822', z:'#6a6e74' }, g=grid(P.w);
+    for(let qy=0;qy<2;qy++) for(let qx=0;qx<2;qx++) for(let y=0;y<8;y++) for(let x=0;x<8;x++){ const X=qx*8+x, Y=qy*8+y; g[Y][X]=(x===0||y===0||x===7||y===7)?P.d:((x===y||x+y===7)?P.W:P.w); }
+    return { g, pal:P }; });
+  mk('wall:hatchery',(v)=>{ const r=rng(v*73+16), P={ h:'#b8a24a', H:'#d8c468', d:'#8f7a2c', s:'#5a4020' }, g=grid(P.h);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ if(r()<0.2) g[y][x]=P.H; else if(r()<0.18) g[y][x]=P.d; }
+    [3,11].forEach(y=>{ for(let x=0;x<16;x++) g[y][x]=P.s; }); for(let x=0;x<16;x++) g[7][x]=P.d; return { g, pal:P }; });
+  mk('wall:arena',(v)=>{ const r=rng(v*79+17), P={ a:'#b89a68', A:'#cdb27c', b:'#a08256', m:'#6a5232', r:'#a02a2a' }, g=grid(P.a); bricks(g,r,P); for(let x=0;x<16;x++){ g[6][x]=P.r; g[7][x]=P.r; } return { g, pal:P }; });
+  const soot=(v)=>{ const r=rng(v*83+18), P={ a:'#2e2826', A:'#3d3532', b:'#201b19', m:'#141110', o:'#ff7a1a', f:'#ffd23f' }, g=grid(P.a); bricks(g,r,P);
+    for(let i=0;i<3;i++){ const x=1+Math.floor(r()*13), y=3+4*Math.floor(r()*3); g[y][x]=P.o; g[y][x+1]=r()<0.4?P.f:P.o; } return { g, pal:P }; };
+  mk('wall:smelter',soot); mk('wall:forge',soot);
+  ['bridge','portal','entrance'].forEach(k=>mk('wall:'+k,brickKind(BRICK)));
+  const has=kind=>!!FULL[kind];
+  function full(kind,seed){ const o=FULL[kind](seed), pal={}; o.g.forEach(row=>row.forEach(c=>{ pal[c]=c; })); return { g:o.g, pal, opaque:true }; }   // cells hold colours directly
+  return { gen, full, has };
 })();
+
 

@@ -306,6 +306,11 @@ Nach Durchsicht von `index.html` und `dev-notes.md`:
 | Gebäude in der Welt | Platzhalter für Gebäude, die der Spieler in der Welt findet (die „mythische Zwergenschmelze“ ist ein Platzhalter). |
 | Sprache im Code | Code, Syntax und Kommentare einheitlich auf Englisch. |
 | Skalierung | Manche Elemente skalieren ohne Obergrenze, ein Run soll bis NG+ 900 und weiter möglich sein. |
+| Imp-Größe | Imps werden kleiner gezeichnet (etwa 60 %), alle anderen Kreaturen im jetzigen Maßstab (16×16 Pixel, zweifach vergrößert, füllt eine Kachel). |
+| Optik-Vorbild | Texturpakete wie bei Minecraft: Blockgelände mit eigenen 16×16-Texturen und einfachen Kanten. |
+| Eroberter Boden | Soll prunkvoller aussehen als neutraler Boden: Steinplatten mit Einlagen, Fackeln an den Wänden, später Teppiche und Verzierungen. Neutraler Boden bleibt schlicht. |
+| Raum-Flair | Jeder Raum hat eigenen Boden und eigene Wände: Thronsaal mit Teppich und Bannern, Bibliothek mit Dielen und Bücherregalen, Schlafsaal mit Teppich und Vorhängen, Lager mit Kisten, Hühnerfarm mit Stroh, Arena mit Sand, Schmelze und Schmiede mit verrußtem Stein und Glut. Die Wände richten sich nach dem Raum, an den sie grenzen. |
+| Echte 3D-Objekte | Vorgemerkt für später: Blockobjekte als echte 3D-Modelle statt Sprites, zum Beispiel Bücherregale, Betten, Thron, Amboss und Brennofen, Kisten, Heuballen, Türen, Fackelhalter, Arena-Podeste. Sprites bleiben der Standard für Kreaturen und Kleinkram. |
 | Level-Erzeugung | Vollständig prozedural mit wiederkehrenden Elementen, die der Ortstyp bestimmt (Elfenwald: Wurzeln, Zwergenzivilisation: Zwergenbauwerke). |
 
 ## 10. Offene Fragen
@@ -317,4 +322,4 @@ Ohne Antwort gilt der Vorschlag in Klammern.
 3. **Biome und Bosse:** Welche Biome und welche Bosse gibt es? *(Vorschlag: Für Stufe 2 reichen zwei Biome mit je einem Boss.)*
 4. **Bekehren und Korrumpieren:** Welche Regeln gelten (Dauer, Chance, Kosten), und was ist das Ergebnis? *(Vorschlag: Arbeit im Gefängnis, das Ergebnis ist eine Kreatur des Spielers mit eigener Palette und einem Perk „korrumpiert“.)*
 5. **Lebenspool der Bewusstlosen:** Gilt der eigene Lebenspool im bewusstlosen Zustand nur für den Lord oder für alle Kreaturen? *(Vorschlag: für alle, damit die Regel überall gleich ist. godhand.md, Teil 25, würde dann angepasst.)*
-6. **Figurengröße im Bild:** Das Dokument sagt, eine Figur ist halb so breit wie eine Kachel (bis zu vier pro Feld). Im Spiel füllt ein einzelner 16×16-Sprite die Kachel (zweifach vergrößert, wie die Kachel-Texturen), weil es so gut lesbar ist. *(Umgesetzt: teilen sich zwei bis vier Figuren ein Feld, werden sie verkleinert und auf ihre Viertel verteilt. Allein steht eine Figur groß.)*
+6. **Figurengröße im Bild:** *(Entschieden, siehe Tabelle: nur Imps werden kleiner gezeichnet, alle anderen Kreaturen behalten den jetzigen Maßstab. Wie mehrere Figuren auf einem Feld aussehen, ist offen. Vorschlag: leicht versetzt zeichnen, ohne zu verkleinern.)*

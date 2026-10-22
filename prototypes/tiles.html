@@ -1,0 +1,10 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Kacheln</title>
+<style>body{margin:0;background:#0e0a07;color:#e8dcc8;font:13px system-ui,sans-serif}main{max-width:1100px;margin:0 auto;padding:20px}h1{color:#d9b43a}.row{display:flex;flex-wrap:wrap;gap:10px}span{display:block;text-align:center;font-size:11px;color:#9d8d76}canvas{image-rendering:pixelated;display:block;background:#000}</style></head><body><main>
+<h1>Kachel-Texturen</h1><p>Eroberter Boden, Raumböden und Raumwände aus <code>sprites.js</code> (je vier Varianten nebeneinander).</p><div class="row" id="g"></div>
+<script src="../sprites.js"></script><script>
+const kinds=['owned','throne','library','dormitory','storage','hatchery','arena','smelter','bridge','portal','entrance','brick','wall:throne','wall:library','wall:dormitory','wall:storage','wall:hatchery','wall:arena','wall:smelter'];
+const g=document.getElementById('g'), S=3;
+kinds.forEach(k=>{ const w=document.createElement('span'), c=document.createElement('canvas'); c.width=16*S*4; c.height=16*S; const x=c.getContext('2d');
+ for(let v=0;v<4;v++){ const o=TILEGEN.full(k,v); o.g.forEach((row,yy)=>row.forEach((col,xx)=>{ x.fillStyle=col; x.fillRect(v*16*S+xx*S,yy*S,S,S); })); }
+ w.appendChild(c); w.append(k); g.appendChild(w); });
+</script></main></body></html>
