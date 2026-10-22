@@ -16,7 +16,7 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 </style></head><body><main>
 <h1>Skelett-Familie</h1>
 <p>Eine Grundfigur (Skelett C, die Seelenlaterne), sechs Gesichter: Knochenton, Waffe (beim Ring zusätzlich die Seelenfarbe) unterscheiden sie. Kein Sprite pro Variante, nur eine Tabelle. Die Seele flackert.</p>
-<p><label>Brustkorb: <select id="chest"><option value="offen" selected>Rippen mit Lücken (offen)</option><option value="kaefig">Rippen mit Lücken (Käfig)</option><option value="ring">Ring mit Seele (vorher)</option></select></label></p>
+<p><label>Stil: <select id="look"><option value="neu">Neu: großer Schädel, breites Schlüsselbein</option><option value="alt">Vorher (schmal)</option></select></label> &nbsp; <label>Brustkorb: <select id="chest"><option value="offen" selected>Rippen mit Lücken (offen)</option><option value="kaefig">Rippen mit Lücken (Käfig)</option><option value="ring">Ring mit Seele (vorher)</option></select></label></p>
 <h2>Die Familie</h2><div class="row" id="big"></div>
 <h2>Echte Größe: Kachel 32 px, Figur 16 px, 2-fach und 3-fach</h2>
 <canvas id="strip" width="960" height="150"></canvas>
@@ -47,6 +47,28 @@ function ribs(mode){
   shade(r,'s','S','z');
   return r;
 }
+// ---------- new look: big square skull, wide collarbone, short rib cage with empty pixels, spine, pelvis, thin legs ----------
+function skullNew(helm){
+  const sk=mk(9,6);
+  for(let x=1;x<=7;x++) put(sk,x,0,'s');
+  for(let y=1;y<=3;y++) for(let x=0;x<9;x++) put(sk,x,y,'s');
+  for(let x=1;x<=7;x++) put(sk,x,4,'s');
+  [2,4,6].forEach(x=>put(sk,x,5,'s')); [3,5].forEach(x=>put(sk,x,5,'p'));   // teeth
+  shade(sk,'s','S','z');
+  eye(sk,1,2,2,2,1,2); eye(sk,6,2,2,2,6,2); put(sk,4,3,'p'); put(sk,4,4,'p');
+  if(helm){ for(let x=0;x<9;x++){ if(sk.g[0][x]!=='.') sk.g[0][x]='M'; if(sk.g[1][x]!=='.') sk.g[1][x]='m'; } put(sk,0,2,'n'); put(sk,8,2,'n'); }
+  return sk;
+}
+function bodyNew(){
+  const b=mk(9,7), row=(y,x0,w)=>{ for(let x=0;x<w;x++) put(b,x0+x,y,'s'); };
+  row(0,0,9);                                  // collarbone, wider than the ribs
+  row(1,1,7); put(b,1,2,'s'); put(b,7,2,'s'); // first rib, then empty gap with side bones
+  row(3,2,5); put(b,2,4,'s'); put(b,6,4,'s'); // second rib, side bones
+  for(let y=1;y<=5;y++) put(b,4,y,'z');        // spine, one pixel
+  row(6,2,5);                                  // pelvis
+  shade(b,'s','S','z');
+  return b;
+}
 function ring(flick){
   const r=mk(10,6); ell(r,5,3,4.8,2.9,'s'); ell(r,5,3,3.3,1.9,'p'); shade(r,'s','S','z'); for(let x=2;x<=7;x++) put(r,x,2,'u');
   put(r,4,3,'y'); put(r,5,3,'y'); put(r,4,4,'Y'); put(r,5,4,'Y'); if(flick){ put(r,3,3,'Y'); put(r,6,3,'Y'); put(r,5,2,'Y'); }
@@ -63,8 +85,9 @@ function figure(v,t){
   for(let x=4;x<=12;x++) put(f,x,15,'k');
   if(v.weapon){ const w=WEAPONS[v.weapon]; w.px.forEach(([x,y,c])=>put(f,12-(w.w>3?1:0)+x,4+y+bob,c)); }
   const lx=6-(k===1?1:0), rx=8+(k===3?1:0);
+  const legN=(x,y)=>{ put(f,x,y,'z'); put(f,x,y+1,'s'); put(f,x,y+2,'s'); put(f,x+(x<7?-1:1),y+2,'s'); };
   const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); };
-  leg(lx,12); leg(rx,12);
+  if(look==='neu'){ legN(lx,12); legN(rx,12); } else { leg(lx,12); leg(rx,12); }
   if(chestMode==='ring') blit(f,ring(flick),3,6+bob); else blit(f,ribs(chestMode),4,6+bob); blit(f,skull(v.helm),4,bob+nod);
   return f;
 }
@@ -80,7 +103,7 @@ const FAMILY=[
 ];
 function paint(ctx,f,pal,ox,oy,s){ const P={...BASE,...pal,k:undefined}; f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=(c==='k'?'rgba(0,0,0,0.30)':(P[c]||BASE[c])||'#f0f'); ctx.fillRect(ox+x*s,oy+y*s,s,s); })); }
 // weapon wood colour must stay brown while the shadow is a grey: use 'k' for the shadow row and 'k' wood in sprites -> separate with 'j'
-let chestMode='offen'; document.getElementById('chest').addEventListener('change',e=>{ chestMode=e.target.value; });
+let look='neu', chestMode='offen'; document.getElementById('look').addEventListener('change',e=>{ look=e.target.value; }); document.getElementById('chest').addEventListener('change',e=>{ chestMode=e.target.value; });
 let t=0; const big=document.getElementById('big'), ctxs=[];
 FAMILY.forEach(v=>{ const c=document.createElement('canvas'); c.width=160; c.height=160; const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+v.name+'</b><span>'+v.note+'</span>'); big.appendChild(d); ctxs.push(c.getContext('2d')); });
 function tick(){ t++;
