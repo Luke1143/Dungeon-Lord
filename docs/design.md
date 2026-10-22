@@ -115,6 +115,13 @@ Den Dungeon Lord selbst zu steuern setzt den Zauber **Besessenheit** voraus, gen
 
 Die Regeln der Räume, Kreaturen, Bedürfnisse und des Kampfes stehen in **godhand.md**.
 
+### Gegner-KI *(Richtung, schrittweise umsetzen)*
+
+- **Gegner warten nicht auf den Spieler.** Sie erscheinen, bevor das Portal freigegraben wurde. *(Umgesetzt: Heldenwellen laufen ab Levelbeginn nach einem Zeitgeber, die ersten Helden sind Späher.)*
+- **Späher graben sich selbst zum Spieler durch** und suchen dabei die Wände nach Schwachstellen ab. *(Umgesetzt in der einfachsten Form: Helden graben durch jede Wand, die Route bevorzugt unverstärkte Wände, verstärkte kosten das Doppelte.)*
+- **Später:** Die Gegner-KI baut ein **eigenes Dungeon** auf, oder das Level beginnt schon mit **Strukturen und Einheiten** der Gegner. Späher werden in Abständen ausgesandt und erkunden, bevor die große Welle kommt.
+- **Folgen für das Balancing:** Der Spieler kann das Portal nicht mehr ungestört erobern, weil die Wellen vorher kommen. Der "Rush mit einem Imp" ist damit nicht mehr risikofrei.
+
 ### Dauer und Zeitdruck
 
 Normalerweise gibt es **kein Zeitlimit**. Zum Sieg samt aller Nebenziele braucht man etwa **20 bis 40 Minuten**, mit **starker Variation** je nach Ort. Manche Orte bringen **Zeitdruck als Nebenziel** mit: Auf einer Karte wie „Atlantis“ lautet es zum Beispiel „gewinne, bevor das Dungeon überflutet“.
@@ -135,6 +142,8 @@ Gefallene Helden kann der Spieler **bekehren oder korrumpieren**, statt sie nur 
 - **Ausrüstung verändert die Silhouette mit der Stufe** *(Vorschlag, erprobt in `prototypes/equipment.html`)*: Rüstung ist eine Regel auf den Pixeln der Kreatur (Helm färbt den Kopf, Panzer den Rumpf, Schienen die Beine), kein Sprite pro Kreatur. Niedrige Stufen färben nur um, höhere Stufen dürfen die Silhouette verändern (Schulterplatten, Gesichtsschutz, Helmkamm), über Ankerpunkte der Kreatur (Kopf, Schulter, Rücken, Griff). Bestien tragen keine Rüstung und keine Werkzeuge. Material (Leder, Bronze, Eisen, Stahl) ist eine Palette.
 - **Der Imp** *(Stand der Prototypen)*: Profilansicht, gebückt, großer Kopf mit zwei großen schwarzen Augen mit weißen Pupillen und sonst keinem Gesichtsdetail, rot-brauner Grundton, Sack auf dem Rücken beim Tragen von Gold oder Erz. 16×16, flach, ohne Kontur.
 - **3D-Optik** *(umgesetzt als zweite Ansicht, Stand heute)*: Gelände als Blöcke mit Pixel-Texturen, Kreaturen und Gegenstände als Billboard-Sprites, Kerzen, Feuer und Brennofen werfen Licht. Umschalten mit `V`, Kamera drehen mit Q/E. Die 2D-Ansicht bleibt als Alternative erhalten. Prototypen: `prototypes/3d-spike.html`, Code: `view3d.js`.
+- **Effekte und Partikel** *(umgesetzt als System, wird nach und nach erweitert)*: Ein kleines Partikelsystem (`fx.js`) für alles, was spritzt, staubt und funkelt. Ein neuer Effekt ist ein neuer Tabelleneintrag. Heute: Splitter beim Graben, Wände bekommen **Risse** (vier Stufen, je nach Grabfortschritt), beim Durchbruch zerbricht der Block in Teile mit **Staubwolke**, beim Erobern entsteht eine kleine **magische Wolke**, dazu Funken beim Verstärken, Baustaub und Rauch beim Ausknocken. Wirkt in 2D und 3D. Weitere Effekte (Treffer, Zauber, Portal) kommen mit den jeweiligen Systemen.
+- **Wandfackeln** *(umgesetzt)*: Fackeln sind echte kleine Objekte, fest an einer Wandseite und von der Wand weg geneigt (ähnlich Minecraft). Sie stehen auch frei aufrecht auf dem Boden, wenn man sie dort braucht. Jede Fackel ist eine Lichtquelle.
 - **Sprites im Spiel** *(umgesetzt)*: Alle Kreaturen (Imp, Fliege, Käfer, Höllenhund, Warlock, vier Heldenklassen) und die Einrichtung (Bett, Thron, Kerze, Regal, Feuer, Amboss …) kommen aus `sprites.js`, ebenso die Kachel-Texturen. Heldenrüstung und Waffen folgen den Ausrüstungsregeln (Stufe ändert die Silhouette, Material ist eine Palette). Noch Emoji: Metall-Kette (Barren, Erzhaufen), Effekte, Overworld, Oberflächen-Symbole.
 - *Hinweis:* Teil 26 („Drei Sichtplätze“, „Stapel“) beschreibt die Darstellung noch mit Emojis auf 32 Pixeln und muss für Sprites angepasst werden.
 - Ein Muster mit Imp, Dungeon Lord, Held und Warlock liegt als `sprite-muster.html` vor.

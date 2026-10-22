@@ -45,7 +45,7 @@ const View3D=(()=>{
     return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(f).map(v=>v.toString(16).padStart(2,'0')).join('');
   }
   // spec: { full } (opaque texture from TILEGEN.full) or { color, kind } (flat colour plus speckle overlay)
-  const specKey=s=>s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||''));
+  const specKey=s=>(s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||'')))+(s.crack?'#c'+s.crack:'');
   function texture(spec,variant){
     const key=specKey(spec)+'|'+variant;
     if(texCache.has(key)) return texCache.get(key);
@@ -61,6 +61,11 @@ const View3D=(()=>{
       }
     }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
+    if(spec.crack && typeof TILEGEN!=='undefined'){
+      const o=TILEGEN.crack(spec.crack,variant);
+      o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
+      t.needsUpdate=true;
+    }
     texCache.set(key,t); return t;
   }
   function material(spec,variant,extra){
@@ -76,9 +81,10 @@ const View3D=(()=>{
     const v=(x*7+y*13)%4;
     let mesh;
     if(info.wall){
+      const cr=info.crack||0, wc=s=>cr?Object.assign({},s,{ crack:cr }):s;   // dig progress shows as cracks on every face
       const base={ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
-      const top=material({ color:info.top||shadeHex(info.color,38), kind:info.kind },v);
-      const m=i=>material(f[i]||base,v);
+      const top=material(wc({ color:info.top||shadeHex(info.color,38), kind:info.kind }),v);
+      const m=i=>material(wc(f[i]||base),v);
       mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
       mesh=new T.Mesh(flatGeo(), material(info.full?{ full:info.full }:{ color:info.color, kind:info.kind },v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
@@ -88,7 +94,7 @@ const View3D=(()=>{
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.faces?info.faces.map(specKey).join(','):'');
+      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       if(cur) tileGroup.remove(cur.mesh);
@@ -111,7 +117,16 @@ const View3D=(()=>{
   function takeSprite(){
     let s=pool[poolUsed];
     if(!s){ s=new T.Sprite(new T.SpriteMaterial({ transparent:true, alphaTest:0.05 })); spriteGroup.add(s); pool.push(s); }
-    poolUsed++; s.visible=true; return s;
+    poolUsed++; s.visible=true; s.material.color.setHex(0xffffff); return s;
+  }
+  let chipTex=null, puffTex=null;
+  function particleTex(shape){
+    if(shape==='puff'){
+      if(!puffTex){ const c=document.createElement('canvas'); c.width=c.height=16; const g=c.getContext('2d'); g.fillStyle='#fff'; for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const dx=x+0.5-8, dy=y+0.5-8; if(dx*dx+dy*dy<=64) g.fillRect(x,y,1,1); } puffTex=texOfCanvas(c); }
+      return puffTex;
+    }
+    if(!chipTex){ const c=document.createElement('canvas'); c.width=c.height=2; const g=c.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,2,2); chipTex=texOfCanvas(c); }
+    return chipTex;
   }
   function takeDecal(){
     let d=decalPool[decalUsed];
@@ -119,7 +134,31 @@ const View3D=(()=>{
     decalUsed++; d.visible=true; return d;
   }
   // item: { canvas | emoji, x, y (tile units, tile top-left), ox, oy (css px offsets of the 2D draw), scale, alpha, rotation, kind: 'creature'|'prop'|'emoji' }
+  // torches: a stick fixed to a wall face (dx,dy point to the wall) leaning away from it; dx=dy=0 stands upright on the floor
+  const torchPool=[]; let torchUsed=0;
+  function takeTorch(){
+    let g=torchPool[torchUsed];
+    if(!g){
+      g=new T.Group();
+      const stick=new T.Mesh(new T.BoxGeometry(0.07,0.38,0.07), new T.MeshLambertMaterial({ color:0x5a3820 }));
+      const cup=new T.Mesh(new T.BoxGeometry(0.12,0.05,0.12), new T.MeshLambertMaterial({ color:0x575e66 })); cup.position.y=0.2;
+      g.add(stick,cup); spriteGroup.add(g); torchPool.push(g);
+    }
+    torchUsed++; g.visible=true; return g;
+  }
+  function placeTorch(it){
+    const lean=0.35, g=takeTorch(), cx=it.wx-it.dx*0.03, cz=it.wz-it.dy*0.03, cy=it.wy-0.18;
+    g.position.set(cx,cy,cz); g.rotation.set(-it.dy*lean,0,it.dx*lean);
+    const top=0.19, sx=-it.dx*Math.sin(lean)*top, sz=-it.dy*Math.sin(lean)*top;
+    const f=takeSprite(); f.material.map=texOfCanvas(it.canvas); f.material.opacity=1; f.material.rotation=0; f.center.set(0.5,0.3); f.scale.set(0.55,0.55,1);
+    f.position.set(cx+sx, cy+Math.cos(lean)*top+0.02, cz+sz);
+    it.wy=cy+Math.cos(lean)*top+0.1;
+  }
   function place(it){
+    if(it.kind==='wallTorch'){ placeTorch(it); return; }
+    if(it.kind==='particle'){
+      const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
+    }
     const tex=it.canvas?texOfCanvas(it.canvas):emojiTex(it.emoji);
     const ox=(it.ox||0)/32, oy=(it.oy||0)/32, alpha=it.alpha===undefined?1:it.alpha;
     if(it.emoji && it.scale>=1.5){
@@ -154,7 +193,7 @@ const View3D=(()=>{
   function updateLights(items,cx,cy,now){
     while(lights.length<MAX_LIGHTS){ const l=new T.PointLight(0xffa040,0,6,1.6); scene.add(l); lights.push(l); }
     const lp=it=>it.wx!==undefined?[it.wx,it.wz]:[it.x+0.5,it.y+0.5];
-    const cand=items.filter(it=>it.kind==='prop'&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
+    const cand=items.filter(it=>(it.kind==='prop'||it.kind==='wallTorch')&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
     cand.forEach(({it},i)=>{
       const l=lights[i];
       const [col,inten,dist]=LIGHT_KEYS[it.key];
@@ -167,8 +206,9 @@ const View3D=(()=>{
     if(!ready||!active) return;
     syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now());
-    poolUsed=0; decalUsed=0;
+    poolUsed=0; decalUsed=0; torchUsed=0;
     items.forEach(place);
+    for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);

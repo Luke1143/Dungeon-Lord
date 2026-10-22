@@ -350,6 +350,7 @@ function impFrame(state,t,facingRight){
   add('chicken',t=>{ const f=mk(16,16), h=flick(t); ell(f,7,9,4.4,3.4,'h'); ell(f,11.5,6+h,2.1,2.1,'h'); put(f,12,4+h,'t'); put(f,11,4+h,'t'); put(f,14,7+h,'y'); put(f,15,7+h,'Y'); put(f,12,6+h,'p'); put(f,12,5+h,'p'); put(f,3,7,'Z'); put(f,2,6,'Z'); put(f,6,13,'Y'); put(f,9,13,'Y'); shade(f,'h','H','Z'); return f; });
   add('chick',t=>{ const f=mk(16,16), h=flick(t); ell(f,8,10,3,2.6,'f'); ell(f,10.4,7.6+h,1.9,1.9,'f'); put(f,12,8+h,'o'); put(f,11,7+h,'p'); put(f,7,13,'o'); put(f,9,13,'o'); return f; });
   add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
+  add('flame',t=>{ const f=mk(16,16), k=flick(t); ell(f,8,10.5,2.6,3.8,'o'); ell(f,8,11.4,1.4,2.4,'f'); put(f,8,6-k,'o'); put(f,8,7,'o'); put(f,8,12,'F'); put(f,7+k,5,'o'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
   add('ore',()=>{ const f=mk(16,16); ell(f,8,9,5,4,'n'); ell(f,6.5,8,2.2,2,'N'); put(f,10,8,'y'); put(f,9,11,'y'); shade(f,'n','N','k'); return f; });
   add('bloom',t=>{ const f=mk(16,16); ell(f,8,9,4.6,3.6,'o'); ell(f,7,8,2.6,2,'f'); put(f,11,7,'F'); put(f,5,10,'F'); if(flick(t)) put(f,9,6,'F'); shade(f,'o','f','t'); return f; });
@@ -437,9 +438,19 @@ const TILEGEN=(()=>{
     for(let i=0;i<3;i++){ const x=1+Math.floor(r()*13), y=3+4*Math.floor(r()*3); g[y][x]=P.o; g[y][x+1]=r()<0.4?P.f:P.o; } return { g, pal:P }; };
   mk('wall:smelter',soot); mk('wall:forge',soot);
   ['bridge','portal','entrance'].forEach(k=>mk('wall:'+k,brickKind(BRICK)));
+  // damage overlay for a block being dug: stage 1 (first hairlines) to 4 (about to break)
+  function crack(stage,seed){
+    const r=rng(seed*101+17), g=Array.from({length:16},()=>Array(16).fill('.')), put=(x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16&&(g[y][x]==='.'||c==='k')) g[y][x]=c; };
+    const branches=1+stage;
+    for(let b=0;b<branches;b++){
+      let x=6+Math.floor(r()*4), y=6+Math.floor(r()*4), dx=r()<0.5?-1:1, dy=r()<0.5?-1:1; const len=2+stage*2+Math.floor(r()*3);
+      for(let i=0;i<len;i++){ put(x,y,'k'); put(x+1,y,'l'); if(r()<0.5) x+=dx; else y+=dy; if(r()<0.2) dx=-dx; }
+    }
+    return { g, pal:{ k:'rgba(0,0,0,0.6)', l:'rgba(255,255,255,0.14)' } };
+  }
   const has=kind=>!!FULL[kind];
   function full(kind,seed){ const o=FULL[kind](seed), pal={}; o.g.forEach(row=>row.forEach(c=>{ pal[c]=c; })); return { g:o.g, pal, opaque:true }; }   // cells hold colours directly
-  return { gen, full, has };
+  return { gen, full, has, crack };
 })();
 
 
