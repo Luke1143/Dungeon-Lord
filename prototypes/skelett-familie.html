@@ -15,7 +15,8 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 #strip{width:100%;max-width:960px;height:auto;border:1px solid #3a2a1d}
 </style></head><body><main>
 <h1>Skelett-Familie</h1>
-<p>Eine Grundfigur (Skelett C, die Seelenlaterne), sechs Gesichter: Seelenfarbe, Knochenton und Waffe unterscheiden sie. Kein Sprite pro Variante, nur eine Tabelle. Die Seele flackert.</p>
+<p>Eine Grundfigur (Skelett C, die Seelenlaterne), sechs Gesichter: Knochenton, Waffe (beim Ring zusätzlich die Seelenfarbe) unterscheiden sie. Kein Sprite pro Variante, nur eine Tabelle. Die Seele flackert.</p>
+<p><label>Brustkorb: <select id="chest"><option value="offen" selected>Rippen mit Lücken (offen)</option><option value="kaefig">Rippen mit Lücken (Käfig)</option><option value="ring">Ring mit Seele (vorher)</option></select></label></p>
 <h2>Die Familie</h2><div class="row" id="big"></div>
 <h2>Echte Größe: Kachel 32 px, Figur 16 px, 2-fach und 3-fach</h2>
 <canvas id="strip" width="960" height="150"></canvas>
@@ -36,6 +37,16 @@ function skull(helm){
   if(helm){ for(let y=0;y<=1;y++) for(let x=0;x<7;x++) if(sk.g[y][x]!=='.') sk.g[y][x]= y===0?'M':'m'; [0,6].forEach(x=>{ for(let y=2;y<=3;y++) if(sk.g[y][x]!=='.') sk.g[y][x]='n'; }); put(sk,3,2,'m'); }
   return sk;
 }
+// ribcage without a soul: bone bars with EMPTY pixels between them (the background shows through)
+function ribs(mode){
+  const r=mk(10,6), bar=(y,w)=>{ const x0=Math.floor((10-w)/2); for(let x=0;x<w;x++) put(r,x0+x,y,'s'); };
+  bar(0,10); bar(2,8); bar(4,6);
+  [4,5].forEach(x=>{ for(let y=0;y<6;y++) put(r,x,y,'z'); });            // spine, two pixels wide
+  if(mode==='kaefig'){ [1,3].forEach(y=>{ put(r,1,y,'s'); put(r,8,y,'s'); }); }   // outer rib arcs close the cage
+  put(r,3,5,'z'); put(r,6,5,'z');                                         // small pelvis wings
+  shade(r,'s','S','z');
+  return r;
+}
 function ring(flick){
   const r=mk(10,6); ell(r,5,3,4.8,2.9,'s'); ell(r,5,3,3.3,1.9,'p'); shade(r,'s','S','z'); for(let x=2;x<=7;x++) put(r,x,2,'u');
   put(r,4,3,'y'); put(r,5,3,'y'); put(r,4,4,'Y'); put(r,5,4,'Y'); if(flick){ put(r,3,3,'Y'); put(r,6,3,'Y'); put(r,5,2,'Y'); }
@@ -53,7 +64,7 @@ function figure(v,t){
   if(v.weapon){ const w=WEAPONS[v.weapon]; w.px.forEach(([x,y,c])=>put(f,13-(w.w>3?1:0)+x,4+y+bob,c)); }
   const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); };
   leg(6+ff,12); leg(9+fb,12);
-  blit(f,ring(flick),3,6+bob); blit(f,skull(v.helm),4,bob+nod);
+  blit(f,chestMode==='ring'?ring(flick):ribs(chestMode),3,6+bob); blit(f,skull(v.helm),4,bob+nod);
   return f;
 }
 // ---------- the family: only table entries ----------
@@ -68,6 +79,7 @@ const FAMILY=[
 ];
 function paint(ctx,f,pal,ox,oy,s){ const P={...BASE,...pal,k:undefined}; f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=(c==='k'?'rgba(0,0,0,0.30)':(P[c]||BASE[c])||'#f0f'); ctx.fillRect(ox+x*s,oy+y*s,s,s); })); }
 // weapon wood colour must stay brown while the shadow is a grey: use 'k' for the shadow row and 'k' wood in sprites -> separate with 'j'
+let chestMode='offen'; document.getElementById('chest').addEventListener('change',e=>{ chestMode=e.target.value; });
 let t=0; const big=document.getElementById('big'), ctxs=[];
 FAMILY.forEach(v=>{ const c=document.createElement('canvas'); c.width=160; c.height=160; const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+v.name+'</b><span>'+v.note+'</span>'); big.appendChild(d); ctxs.push(c.getContext('2d')); });
 function tick(){ t++;
