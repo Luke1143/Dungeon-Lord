@@ -1858,6 +1858,7 @@ function findOreHaulJob(imp){
   if(computeStorageSlots('ore').length===0) return null; // kein Lager nimmt Erz an
   if(storageFreeSpace('ore')<=0){ warnStorageFull('ore'); return null; }
   clearStorageWarning('ore');
+  if(!findStorageTile(imp,'ore')) return null;   // no reachable store: leave the ore lying
   const test=(x,y)=>{ const t=state.grid[y][x]; return t.orePile>0 && t.reserved===null; };
   const res=bfsFind(imp.x,imp.y,test);
   if(!res) return null;
@@ -1865,7 +1866,11 @@ function findOreHaulJob(imp){
 }
 
 function findHaulJob(imp){
-  if(state.gold>=computeStorageCapacity()) return null;
+  // Only take a pile if the gold can actually be delivered: a store that accepts gold, has room and can be reached.
+  // Otherwise the imp picked it up, found nowhere to go, dropped it and picked it up again, forever.
+  if(computeStorageSlots('gold').length===0) return null;
+  if(storageFreeSpace('gold')<=0) return null;
+  if(!findStorageTile(imp,'gold')) return null;
   const test=(x,y)=>state.grid[y][x].goldPile && state.grid[y][x].reserved===null;
   const res=bfsFind(imp.x,imp.y,test);
   if(!res) return null;
