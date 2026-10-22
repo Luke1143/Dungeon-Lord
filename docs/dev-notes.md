@@ -53,3 +53,8 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - The user pointed to https://dungeonkeeper.fandom.com/wiki/Dungeon_Keeper_Wiki as a source of design answers (rooms, creatures, happiness, payday, imp behaviour). Direct fetching is blocked (HTTP 402), single pages turn up through web search.
 - Use it for mechanics and design principles only. Names, art, sounds and exact numbers stay our own (see CLAUDE.md, open-source rule).
 
+## 0.7 3D view in the game
+- `view3d.js` is a second renderer for the level (Three.js, loaded on demand from `lib/`). Toggle with the `3D` button or `V`; the choice is remembered. Q/E rotate the camera, WASD and middle-drag pan relative to it, the wheel zooms, the minimap and all clicks work as before.
+- How it works without touching the game rules: `draw()` in 3D mode runs the old 2D drawing on a throwaway canvas while `capture` collects every sprite, prop and emoji the 2D code wants to draw (position, scale, offsets); `View3D.render` turns that list into billboards and ground decals. Terrain comes from `tileInfo3d(x,y)` (walls as blocks with the tile texture, floors/water as planes). Marks, queued rooms, room selection and the drag rectangle are drawn on the transparent 2D canvas above, projected with `View3D.project`. Picking uses a ray against the tile meshes (`tileFromEvent`).
+- Known gaps: the metal pipeline is only approximated (ingots as the ingot sprite, ore piles as emoji), no torch light or shadows yet, effects and thoughts are plain emoji billboards, bridges still look like water, the camera pitch and wall contrast are first guesses, and it has only been checked with software rendering.
+
