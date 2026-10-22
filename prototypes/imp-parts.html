@@ -15,7 +15,7 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 </style></head><body><main>
 <h1>Imp aus Teilen — der Sackträger</h1>
 <p>Seitenansicht (nach links schauend, rechts gespiegelt). Jede Figur besteht aus Teilen: Kopf, Körper, zwei Beine und optional ein Sack. Animiert wird nur durch Verschieben um ganze Pixel, kein Drehen. Der Sack erscheint nur, wenn der Imp etwas trägt.</p>
-<p><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
+<p><label><input type="checkbox" id="optHands" checked> Hände am Sack</label><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
 <h2>Die Teile</h2>
 <div class="row" id="parts"></div>
 <h2>Zustände (laufen von links nach rechts und zurück)</h2>
@@ -62,7 +62,11 @@ function partSack(content){   // 8x8 sack with a knot; content glints
   if(glint){ put(p,2,4,glint[0]); put(p,3,3,glint[0]); put(p,5,5,glint[0]); put(p,5,3,glint[1]); put(p,3,6,glint[1]); }
   return p;
 }
-const PARTS={ head:partHead(), body:partBody(), leg:partLeg(), sack:{none:null,gold:partSack('gold'),ore:partSack('ore'),empty:partSack('empty')} };
+function partHand(){   // 3x3: a little fist pushing up from below; it belongs to the carrying, not to the creature
+  const rows=['hhh','hoO','.OO'];
+  const p=mk(3,3); rows.forEach((r,y)=>[...r].forEach((c,x)=>{ if(c!=='.') put(p,x,y,c); })); return p;
+}
+const PARTS={ hand:partHand(), head:partHead(), body:partBody(), leg:partLeg(), sack:{none:null,gold:partSack('gold'),ore:partSack('ore'),empty:partSack('empty')} };
 // ---------- composing a frame ----------
 function blit(dst,part,ox,oy){ if(!part) return; for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.') put(dst,ox+x,oy+y,c); } }
 function frame(state,t,facingRight,outline){
@@ -74,9 +78,13 @@ function frame(state,t,facingRight,outline){
   for(let x=4;x<=12;x++) put(f,x,15,'s');
   const sackKind=state==='trägt gold'?'gold':state==='trägt erz'?'ore':null;
   blit(f,PARTS.leg,10+footB,11);                                      // back leg
-  if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack on the back
   blit(f,PARTS.body,6,5+hunch+bob);
+  if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack on the back, in front of the hump
   blit(f,PARTS.leg,5+footF,11);                                       // front leg
+  if(sackKind && handsBox.checked){                                    // two small hands lift the sack from below
+    const sy=1+hunch+bob+(walk&&k===2?1:0);
+    blit(f,PARTS.hand,8,sy+5); blit(f,PARTS.hand,12,sy+5+(walk&&k%2?1:0));
+  }
   blit(f,PARTS.head,1,1+hunch+bob+headLag);
   if(outline) outlineGrid(f);
   if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
@@ -93,9 +101,9 @@ function paint(ctx,f,ox,oy,s,swap){
   f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=pal[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s); }));
 }
 // ---------- the page ----------
-const outlineBox=document.getElementById('optOutline'), slowBox=document.getElementById('optSlow');
+const handsBox=document.getElementById('optHands'), outlineBox=document.getElementById('optOutline'), slowBox=document.getElementById('optSlow');
 const partsHost=document.getElementById('parts');
-[['Kopf',PARTS.head],['Körper',PARTS.body],['Bein',PARTS.leg],['Sack leer',PARTS.sack.empty],['Sack + Gold',PARTS.sack.gold],['Sack + Erz',PARTS.sack.ore]].forEach(([name,p])=>{
+[['Kopf',PARTS.head],['Hand',PARTS.hand],['Körper',PARTS.body],['Bein',PARTS.leg],['Sack leer',PARTS.sack.empty],['Sack + Gold',PARTS.sack.gold],['Sack + Erz',PARTS.sack.ore]].forEach(([name,p])=>{
   const c=document.createElement('canvas'); c.width=p.w*10+10; c.height=p.h*10+10; const x=c.getContext('2d');
   const f=mk(p.w+1,p.h+1); blit(f,p,0,0);
   f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=PAL[ch]||'#f0f'; x.fillRect(5+xx*10,5+yy*10,10,10); }));
