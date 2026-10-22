@@ -1250,7 +1250,7 @@ function recipeFor(actor, x, y){
   // Gestein: die Markierung entscheidet zwischen Abbauen und Verstaerken
   if(isDiggable(t)){
     // Verstaerkte Waende halten doppelt so viel aus
-    if(t.marked) return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };
+    if(t.marked || actor.faction==='good') return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };   // heroes tunnel through any wall (scouts), reinforced ones take twice as long
     if(!t.reinforced && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
       return { id:'reinforce', cost:WORK_COST.reinforce, range:1 };
     }
@@ -1295,7 +1295,7 @@ function applyRecipe(actor, rec, x, y){
 
     let anyMarked=false;
     digCheck: for(const row of state.grid){ for(const rt of row){ if(rt.marked){ anyMarked=true; break digCheck; } } }
-    if(!anyMarked) logEvent('Alle Grabaufgaben abgeschlossen.', x, y);
+    if(!anyMarked && actor.faction!=='good') logEvent('Alle Grabaufgaben abgeschlossen.', x, y);
 
     const cave=neighbors(x,y).find(([nx,ny])=>{ const nt=state.grid[ny][nx]; return nt.natural && !nt.discovered; });
     if(cave){
@@ -5310,7 +5310,7 @@ function markDirty(){ dirty=true; }
 const THRONE_MAX_HP=100;
 const SIEGE_DAMAGE_FACTOR=0.25;    // Thronschaden je Tick = Staerke aller Belagerer x Faktor
 const THRONE_REGEN=0.2;            // Erholung je Tick ohne Belagerer
-const WAVE_FIRST_TICKS=150;        // Vorlauf nach dem Durchbruch zum Portal
+const WAVE_FIRST_TICKS=450;        // lead time from the start of the level until the first scouts appear
 const WAVE_INTERVAL_BASE=340;
 const WAVE_INTERVAL_MIN=180;
 const WAVE_MAX_SIZE=10;
@@ -5342,7 +5342,48 @@ function tickHero(c){
   if(c.path && c.path.length){ stepAlong(c); return; }
   if(state.grid[c.y][c.x].room==='throne'){ c.state='besieging'; return; }
   const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne');
-  if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); }
+  if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); return; }
+  if(!res) heroDig(c);
+}
+
+// No open way to the throne: dig. The route runs through rock but prefers weak walls
+// (reinforced rock costs double), so scouts end up probing the dungeon for its weak spots.
+function digRouteToThrone(c){
+  const cost=(x,y)=>{
+    const t=state.grid[y][x];
+    if(t.type==='floor') return 1;
+    if(t.type==='water') return 2;
+    if(t.type==='rock') return t.reinforced?20:10;
+    return Infinity;   // bedrock
+  };
+  const key=(x,y)=>y*WORLD_COLS+x, dist=new Map([[key(c.x,c.y),0]]), prev=new Map();
+  const heap=[[0,c.x,c.y]];
+  const push=n=>{ heap.push(n); let i=heap.length-1; while(i>0){ const p=(i-1)>>1; if(heap[p][0]<=heap[i][0]) break; [heap[p],heap[i]]=[heap[i],heap[p]]; i=p; } };
+  const pop=()=>{ const top=heap[0], last=heap.pop(); if(heap.length){ heap[0]=last; let i=0; for(;;){ let l=2*i+1, r=l+1, m=i; if(l<heap.length&&heap[l][0]<heap[m][0]) m=l; if(r<heap.length&&heap[r][0]<heap[m][0]) m=r; if(m===i) break; [heap[m],heap[i]]=[heap[i],heap[m]]; i=m; } } return top; };
+  while(heap.length){
+    const [d,x,y]=pop();
+    if(d>(dist.get(key(x,y))??Infinity)) continue;
+    if(state.grid[y][x].room==='throne'){
+      const route=[]; let k=key(x,y);
+      while(prev.has(k)){ route.push({ x:k%WORLD_COLS, y:Math.floor(k/WORLD_COLS) }); k=prev.get(k); }
+      return route.reverse();
+    }
+    for(const [nx,ny] of neighbors(x,y)){
+      const w=cost(nx,ny); if(w===Infinity) continue;
+      const nd=d+w, nk=key(nx,ny);
+      if(nd<(dist.get(nk)??Infinity)){ dist.set(nk,nd); prev.set(nk,key(x,y)); push([nd,nx,ny]); }
+    }
+  }
+  return null;
+}
+function heroDig(c){
+  const route=digRouteToThrone(c);
+  if(!route || !route.length) return;
+  const walk=[];
+  for(const st of route){ if(isWalkable(st.x,st.y)) walk.push(st); else break; }
+  if(walk.length){ c.path=walk; c.state='marching'; stepAlong(c); return; }
+  c.state='digging';
+  interact(c, route[0].x, route[0].y);
 }
 
 function portalConnected(){
@@ -5386,12 +5427,12 @@ function tickWar(){
     }
   }
 
-  if(w.connected){
-    w.timer--;
-    if(w.timer<=0){
-      spawnWave();
-      w.timer=Math.max(WAVE_INTERVAL_MIN, WAVE_INTERVAL_BASE-12*w.wave);
-    }
+  // The heroes do not wait for the player to open the portal: scouts spawn on a timer from the start of the level
+  // and dig their way to the throne themselves.
+  w.timer--;
+  if(w.timer<=0){
+    spawnWave();
+    w.timer=Math.max(WAVE_INTERVAL_MIN, WAVE_INTERVAL_BASE-12*w.wave);
   }
 
   // Belagerung: Helden im Thronsaal zermuerben ihn
@@ -5424,8 +5465,8 @@ function updateWarUI(){
   waveEl.textContent=w.wave>0 ? String(w.wave) : '–';
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
-  if(!w.connected) hintEl.textContent='🔥 Das Weltportal ist noch abgeriegelt - die Helden kommen erst, wenn ihr euch hindurchgrabt.';
-  else hintEl.textContent=`🔥 Nächste Welle in ${Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)))} s`;
+  const secs=Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)));
+  hintEl.textContent = w.connected ? `🔥 Nächste Welle in ${secs} s` : `🔥 Das Weltportal ist abgeriegelt. Späher kommen in ${secs} s und graben sich selbst zu euch durch.`;
   const overlay=document.getElementById('endOverlay');
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';

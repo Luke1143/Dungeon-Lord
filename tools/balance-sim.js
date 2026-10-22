@@ -1,7 +1,7 @@
 // Headless balance check: how long does the throne last against the heroic waves?
 // Usage: NODE_PATH=$(npm root -g) node tools/balance-sim.js [maxTicks]
 // Needs Playwright with Chromium (see docs/dev-notes.md). The player is a fixed defender set standing in the throne room;
-// the path from the portal to the throne is dug by script, so waves start right away.
+// the portal stays sealed, so the heroes tunnel to the throne themselves.
 const { chromium } = require('playwright');
 const path = require('path');
 const MAX_TICKS = Number(process.argv[2]) || 6000;
@@ -23,12 +23,14 @@ const DEFENDERS = {
         let seed = 12345 + diff; Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
         document.getElementById('menuNew').click(); startLevel(0);
         state.war.difficulty = diff;
-        // dig an L-shaped corridor from the portal to the throne
+        // sealed portal: the heroes have to dig their own way (unless window.__corridor is set)
         const portal = tilesOfRoom('portal')[0], throne = tilesOfRoom('throne');
         const tx = throne[0].x, ty = throne[0].y;
         const carve = (x, y) => { const t = state.grid[y][x]; if (t.room === 'portal') return; if (t.type !== 'floor') { t.type = 'floor'; } t.owned = true; t.discovered = true; };   // never own portal tiles: that would be a victory
-        for (let x = Math.min(portal.x, tx); x <= Math.max(portal.x, tx); x++) carve(x, portal.y);
-        for (let y = Math.min(portal.y, ty); y <= Math.max(portal.y, ty); y++) carve(tx, y);
+        if (window.__corridor) {
+          for (let x = Math.min(portal.x, tx); x <= Math.max(portal.x, tx); x++) carve(x, portal.y);
+          for (let y = Math.min(portal.y, ty); y <= Math.max(portal.y, ty); y++) carve(tx, y);
+        }
         if (!window.__keepImps) state.imps.length = 0;   // imps would claim the portal within ~65 ticks and win before the first wave; see the claim row
         const spots = throne.slice();
         const make = { hound: createHound, beetle: createBeetle, warlock: createWarlock };
