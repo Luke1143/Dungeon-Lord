@@ -318,5 +318,41 @@ function impFrame(state,t,facingRight){
   ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
+
+// ---- props: furniture, goods and small things (ZOO['prop_*'], drawn like creatures; t only drives flicker) ----
+(()=>{
+  const mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+  const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+  const rect=(p,x,y,w,h,c)=>{ for(let j=0;j<h;j++) for(let i=0;i<w;i++) put(p,x+i,y+j,c); };
+  const ell=(p,cx,cy,rx,ry,c)=>{ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) put(p,x,y,c); } };
+  const shade=(p,base,light,dark)=>{ const at=(x,y)=>(x<0||y<0||x>=p.w||y>=p.h)?'.':p.g[y][x], o=p.g.map(r=>r.slice());
+    for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]===base){ if(at(x,y+1)==='.'||at(x+1,y)==='.') o[y][x]=dark; else if(at(x,y-1)==='.'||at(x-1,y)==='.') o[y][x]=light; } p.g=o; return p; };
+  const PAL={ w:'#8a5a34',W:'#b07a4a',d:'#5a3820', r:'#a02a2a',R:'#c84a4a', c:'#efe2c6', y:'#f4d03f',Y:'#b8860b', v:'#7b4bb0',V:'#9a6ad0',x:'#4a2a70',
+    s:'#8d949c',S:'#c4cad1',z:'#575e66', o:'#ff7a1a',f:'#ffd23f',F:'#fff2a0', k:'#2a2018', g:'#6b7a3a',G:'#9aaa4a', b:'#b4533a',B:'#d8785a', i:'#4a6a9a',I:'#7a9ac8',
+    n:'#7a6a58',N:'#a89a84', a:'#c9a96a',A:'#e8cf94', e:'#ffffff', p:'#14100c', h:'#e8dcc8',H:'#faf3e4',Z:'#b8ab94', l:'#3c4a5a', t:'#c8342e' };
+  const add=(key,fn,pal)=>{ ZOO['prop_'+key]={ name:key, prop:true, pal:{...PAL,...(pal||{})}, frame:(t)=>fn(t) }; };
+  const flick=t=>Math.floor(t/2)%2;
+  add('bed',()=>{ const f=mk(16,16); rect(f,2,7,12,6,'w'); rect(f,2,12,2,2,'d'); rect(f,12,12,2,2,'d'); rect(f,5,7,8,5,'r'); rect(f,5,7,8,1,'R'); rect(f,3,7,3,3,'c'); shade(f,'w','W','d'); return f; });
+  add('throne',()=>{ const f=mk(16,16); rect(f,5,1,6,9,'v'); rect(f,3,7,2,5,'v'); rect(f,11,7,2,5,'v'); rect(f,4,9,8,3,'v'); rect(f,5,1,6,1,'y'); rect(f,4,12,2,2,'Y'); rect(f,10,12,2,2,'Y'); put(f,7,4,'y'); put(f,8,4,'y'); put(f,7,5,'Y'); put(f,8,5,'Y'); shade(f,'v','V','x'); return f; });
+  add('candle',t=>{ const f=mk(16,16); rect(f,6,12,4,2,'Y'); rect(f,7,6,2,6,'c'); put(f,7,5,'p'); put(f,8,5-flick(t)+0,'p'); put(f,7,4-flick(t),'f'); put(f,8,4-flick(t),'o'); put(f,7,3-flick(t),'F'); return f; });
+  add('shelf',()=>{ const f=mk(16,16); rect(f,2,2,12,12,'w'); rect(f,3,3,10,3,'d'); rect(f,3,8,10,3,'d');
+    [[3,'r'],[4,'i'],[5,'y'],[6,'g'],[7,'r'],[8,'c'],[9,'i'],[10,'y'],[11,'g'],[12,'r']].forEach(([x,c],i)=>{ rect(f,x,3,1,3,c); rect(f,x,8,1,3,[ 'i','r','y','g','c'][(i+2)%5]); });
+    shade(f,'w','W','d'); return f; });
+  add('book',()=>{ const f=mk(16,16); rect(f,4,5,8,7,'t'); rect(f,4,5,1,7,'d'); rect(f,5,11,7,1,'c'); rect(f,6,7,4,1,'y'); rect(f,6,9,3,1,'y'); return f; });
+  add('fire',t=>{ const f=mk(16,16); rect(f,3,11,10,3,'s'); rect(f,4,10,8,1,'z'); ell(f,8,7,3,3.6,'o'); ell(f,8,8.4,1.8,2.4,'f'); put(f,flick(t)?5:10,5,'o'); put(f,8,flick(t)?2:3,'f'); shade(f,'s','S','z'); return f; });
+  add('furnace',()=>{ const f=mk(16,16); rect(f,3,4,10,10,'s'); rect(f,6,8,4,6,'k'); rect(f,3,3,10,1,'z'); rect(f,6,1,4,3,'z'); put(f,7,10,'d'); put(f,8,10,'d'); shade(f,'s','S','z'); return f; });
+  add('kiln',()=>{ const f=mk(16,16); for(let y=1;y<=14;y++){ const hw=2.6+y*0.3; for(let x=0;x<16;x++) if(Math.abs(x+.5-8)<=hw) put(f,x,y,'b'); } rect(f,6,10,4,4,'k'); put(f,7,11,'o'); put(f,8,12,'o'); [[3,5],[10,5],[5,8],[11,8],[4,12],[11,12]].forEach(([x,y])=>put(f,x,y,'n')); shade(f,'b','B','d'); return f; });
+  add('bellows',t=>{ const f=mk(16,16); const sq=flick(t); ell(f,7,8+sq,5,3.6-sq*0.6,'w'); rect(f,11,8,4,2,'z'); rect(f,2,6,3,2,'d'); [4,7,10].forEach(x=>rect(f,x-1,6+sq,1,5-sq*1,'d')); shade(f,'w','W','d'); return f; });
+  add('anvil',()=>{ const f=mk(16,16); rect(f,3,4,10,3,'s'); rect(f,1,5,3,2,'s'); rect(f,5,7,6,3,'s'); rect(f,4,10,8,3,'s'); shade(f,'s','S','z'); return f; });
+  add('bench',()=>{ const f=mk(16,16); rect(f,2,6,12,3,'w'); rect(f,3,9,2,5,'d'); rect(f,11,9,2,5,'d'); shade(f,'w','W','d'); return f; });
+  add('trough',()=>{ const f=mk(16,16); rect(f,2,8,12,5,'w'); rect(f,3,7,10,2,'a'); put(f,5,6,'A'); put(f,8,6,'A'); put(f,10,6,'A'); shade(f,'w','W','d'); return f; });
+  add('grain',()=>{ const f=mk(16,16); [4,8,12].forEach((x,i)=>{ for(let y=7;y<=13;y++) put(f,x,y,'g'); put(f,x,6-(i%2),'A'); put(f,x-1,7,'a'); put(f,x+1,8,'a'); put(f,x,5-(i%2),'A'); }); return f; });
+  add('chicken',t=>{ const f=mk(16,16), h=flick(t); ell(f,7,9,4.4,3.4,'h'); ell(f,11.5,6+h,2.1,2.1,'h'); put(f,12,4+h,'t'); put(f,11,4+h,'t'); put(f,14,7+h,'y'); put(f,15,7+h,'Y'); put(f,12,6+h,'p'); put(f,12,5+h,'p'); put(f,3,7,'Z'); put(f,2,6,'Z'); put(f,6,13,'Y'); put(f,9,13,'Y'); shade(f,'h','H','Z'); return f; });
+  add('chick',t=>{ const f=mk(16,16), h=flick(t); ell(f,8,10,3,2.6,'f'); ell(f,10.4,7.6+h,1.9,1.9,'f'); put(f,12,8+h,'o'); put(f,11,7+h,'p'); put(f,7,13,'o'); put(f,9,13,'o'); return f; });
+  add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
+  add('ore',()=>{ const f=mk(16,16); ell(f,8,9,5,4,'n'); ell(f,6.5,8,2.2,2,'N'); put(f,10,8,'y'); put(f,9,11,'y'); shade(f,'n','N','k'); return f; });
+  add('ingot',()=>{ const f=mk(16,16); rect(f,3,7,10,5,'s'); rect(f,4,6,8,1,'S'); rect(f,5,12,6,1,'z'); shade(f,'s','S','z'); return f; });
+  add('corpse',()=>{ const f=mk(16,16); ell(f,8,6.5,3.5,3,'h'); rect(f,6,6,2,2,'p'); rect(f,9,6,2,2,'p'); put(f,7,6,'e'); put(f,10,6,'e'); put(f,8,9,'p'); rect(f,3,11,10,1,'Z'); rect(f,3,13,10,1,'Z'); put(f,2,10,'h'); put(f,13,10,'h'); put(f,2,14,'h'); put(f,13,14,'h'); shade(f,'h','H','Z'); return f; });
+})();
 return ZOO;
 })();

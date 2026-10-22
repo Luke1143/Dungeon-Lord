@@ -1,0 +1,8 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Props</title>
+<style>body{margin:0;background:#0e0a07;color:#e8dcc8;font:13px system-ui,sans-serif}main{max-width:1100px;margin:0 auto;padding:20px}h1{color:#d9b43a}div{display:flex;flex-wrap:wrap;gap:10px}span{display:block;text-align:center;font-size:11px;color:#9d8d76}canvas{image-rendering:pixelated;background:#3a2f26;display:block}</style></head><body><main>
+<h1>Props: Möbel, Waren, Kleinkram</h1><p>Alles in 16x16, aus <code>sprites.js</code>. Unten in echter Größe (Kachel 32 px) neben einem Imp.</p><div id="g"></div>
+<script src="../sprites.js"></script><script>
+const keys=Object.keys(ZOO).filter(k=>k.startsWith('prop_')), g=document.getElementById('g'), S=6, cs=[];
+keys.forEach(k=>{ const w=document.createElement('span'), c=document.createElement('canvas'); c.width=c.height=16*S; w.appendChild(c); w.append(k.slice(5)); g.appendChild(w); cs.push([c.getContext('2d'),k]); });
+function tick(t){ cs.forEach(([x,k])=>{ const z=ZOO[k], f=z.frame(Math.floor(t/300)); x.fillStyle='#3a2f26'; x.fillRect(0,0,16*S,16*S); f.g.forEach((r,yy)=>r.forEach((c,xx)=>{ if(c==='.')return; x.fillStyle=z.pal[c]||'#f0f'; x.fillRect(xx*S,yy*S,S,S); })); }); requestAnimationFrame(tick); } requestAnimationFrame(tick);
+</script></main></body></html>

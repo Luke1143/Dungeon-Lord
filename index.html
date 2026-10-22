@@ -4280,6 +4280,7 @@ function drawSlots(icons, x, y, held){
   icons.slice(0,3).forEach((ic,i)=>{
     if(!ic) return;
     const o=SLOT_OFFSETS[i];
+    if(PROP_OF[ic] && drawProp(PROP_OF[ic], x, y, { scale:scale*1.15, offsetX:o.x*TILE*spread, offsetY:o.y*TILE*spread })) return;
     drawEmojiFx(ic, x, y, {
       scale,
       offsetX:o.x*TILE*spread,
@@ -4805,7 +4806,17 @@ function draw(){
   }
 }
 
+// Emojis that have a generated prop sprite (sprites.js). drawEmoji and drawSlots use the sprite instead; thoughts and effects stay emoji.
+const PROP_OF={ '🛏️':'bed', '👑':'throne', '🕯️':'candle', '📚':'shelf', '📕':'book', '🔥':'fire', '🜂':'furnace', '🗼':'kiln', '💨':'bellows', '🪵':'anvil', '🪑':'bench', '🥣':'trough', '🌾':'grain', '🐔':'chicken', '🐣':'chick', '🪙':'coin', '🪨':'ore', '🧱':'ingot', '☠️':'corpse' };
+function drawProp(key,x,y,o){
+  if(typeof ZOO==='undefined' || !ZOO['prop_'+key]) return false;
+  const cv=spriteCanvas('prop_'+key, Math.floor(Date.now()/280), false, false), op=o||{};
+  const size=TILE*(op.scale||1), sx=(x-camX)*TILE+TILE/2-size/2+(op.offsetX||0), sy=(y-camY)*TILE+TILE/2-size/2+(op.offsetY||0);
+  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,sx,sy,size,size); ctx.restore();
+  return true;
+}
 function drawEmoji(char,x,y,isImp){
+  if(PROP_OF[char] && drawProp(PROP_OF[char], x, y)) return;
   const px=(x-camX)*TILE, py=(y-camY)*TILE;
   ctx.font=(isImp?'18px':'16px')+' serif';
   ctx.textAlign='center'; ctx.textBaseline='middle';
