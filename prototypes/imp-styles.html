@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imp — vier Stile</title>
+<style>
+body{margin:0;background:#0f0b09;color:#e8dcc8;font-family:Inter,system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:980px;margin:0 auto}
+h1{font-family:Cinzel,Georgia,serif;color:#d4af37;font-size:1.4rem;margin:0 0 6px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:#d4af37;margin:26px 0 10px;border-bottom:1px solid #3a2a1d;padding-bottom:6px}
+p{color:#a8977e;margin:0 0 14px;font-size:.9rem;line-height:1.5}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.card{background:#1c140f;border:1px solid #3a2a1d;padding:10px;text-align:center;width:196px}
+.card b{display:block;color:#e8dcc8;font-size:.9rem;margin-top:8px}
+.card span{display:block;font-size:.75rem;color:#a8977e;margin-top:3px;line-height:1.4}
+canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
+#strip{width:100%;max-width:768px;height:auto;border:1px solid #3a2a1d}
+</style></head><body><main>
+<h1>Imp — vier Stile</h1>
+<p>Alle 16×16 Pixel, frontal, linke Hälfte beschrieben und gespiegelt. Gleiche Figur, vier Handschriften.</p>
+<div class="row" id="big"></div>
+<h2>Echte Größe in der Welt (Kachel 64 px, Figur 32 px)</h2>
+<canvas id="strip" width="768" height="192"></canvas>
+<h2>Vier Imps auf einer Kachel</h2>
+<canvas id="stack" width="768" height="160" style="width:100%;max-width:768px;height:auto;border:1px solid #3a2a1d"></canvas>
+<script>
+const K='#1a1210';
+const STYLES=[
+{ id:'A', name:'A · Klassisch', note:'Dunkle Kontur, drei Farbstufen, Schwanz. Wie das Muster.',
+  pal:{k:K,o:'#d9622b',O:'#8f3a1a',R:'#5a1810',y:'#f4d03f',w:'#f2e8d5'},
+  rows:["........","........",".k......",".kok....",".kookkkk","..kooooo","...kyyoo","...kooOO",
+        "...kooRR","....kkoo",".....koo","...kkooO","..kkooOO","...kkoOO","....kook","...kkkk."],
+  over:[[12,13,'o'],[13,13,'o'],[14,12,'o'],[14,11,'o'],[15,10,'k'],[15,11,'k'],[13,14,'k'],[14,13,'k'],[15,12,'k'],[12,14,'k']] },
+{ id:'B', name:'B · Knuffig', note:'Riesiger Kopf, große Augen, dicke Kontur, Pausbacken. Niedlich-böse.',
+  pal:{k:K,o:'#ff8a3c',O:'#d9622b',h:'#f2e8d5',w:'#ffffff',p:'#1a1210',c:'#ff6a5a',t:'#8f2a1a'},
+  rows:["........","..h.....","..hk....","..kkkkkk",".kooooOO","kooooooo","kowwwooo","kowpwooo",
+        "kowppooo","kcooooOo","kccookkk",".kooowtk",".kkooooo","..koOOOO","..kkoo.k","...kkkk."],
+  over:[[12,13,'O'],[13,13,'O'],[14,12,'O'],[14,11,'k'],[15,11,'t'],[15,10,'t']] },
+{ id:'C', name:'C · Retro 4-Farben', note:'Keine Kontur, nur vier Farben, flache Silhouette. Game-Boy-Anmutung.',
+  pal:{'0':'#2b1a12','1':'#8f3a1a','2':'#d9622b','3':'#f4d03f'},
+  rows:["........",".2......",".22.....",".222.222","..222222",".2222222","..223322","..222222",
+        "...22211","....2222","..222222",".2.12222","2..11222","...11122","...2....","..22...."],
+  over:[] },
+{ id:'D', name:'D · Düster', note:'Dunkler, hager, glühende Augen, Knochenhörner und Krallen, Randlicht von rechts.',
+  pal:{k:'#0d0807',d:'#3a1414',m:'#6e2222',e:'#ff3a1a',E:'#ffd2a0',l:'#c0603a',b:'#d8cfb8'},
+  rows:["..b.....","..bb....","..kbk...","..kdkkkk","..kdddmm",".kdddmmm","kddeEdmm","kddeedmm",
+        "kdddddmm",".kddkkkk",".kddkbkb","..kdddmm",".kddddmm","kbkdmddm","kb.kddmd","kb..kddk"],
+  over:[[8,6,'e'],[8,7,'e'],[9,6,'E'],[7,6,'d'],[9,8,'d'],[10,8,'d'],[15,3,'l'],[15,4,'l'],[15,5,'l'],[14,11,'l'],[15,11,'l'],[15,12,'l'],[15,13,'l']] }
+];
+function build(def){
+  const g=Array.from({length:16},()=>Array(16).fill('.'));
+  def.rows.forEach((r,y)=>{ if(r.length!==8) console.error(def.id,'row',y,r.length); for(let x=0;x<8;x++){ g[y][x]=r[x]; g[y][15-x]=r[x]; } });
+  (def.over||[]).forEach(([x,y,c])=>g[y][x]=c);
+  return g;
+}
+function draw(ctx,def,ox,oy,s){
+  build(def).forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=def.pal[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s); }));
+}
+STYLES.forEach(def=>{
+  const c=document.createElement('canvas'); c.width=160; c.height=160; draw(c.getContext('2d'),def,0,0,10);
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c);
+  d.insertAdjacentHTML('beforeend',`<b>${def.name}</b><span>${def.note}</span>`);
+  document.getElementById('big').appendChild(d);
+});
+{ const c=document.getElementById('strip'), x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,c.width,c.height);
+  STYLES.forEach((def,i)=>{ draw(x,def,40+i*180,50,4); draw(x,def,100+i*180,100,2); }); }
+{ const c=document.getElementById('stack'), x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,c.width,c.height);
+  STYLES.forEach((def,i)=>{ const ox=30+i*190;
+    x.strokeStyle='#33271c'; x.strokeRect(ox,16,128,128);
+    [[0,0],[64,0],[0,64],[64,64]].forEach(([dx,dy])=>draw(x,def,ox+dx,16+dy,4)); }); }
+</script></main></body></html>
