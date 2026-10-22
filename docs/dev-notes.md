@@ -6,6 +6,7 @@ Newest version on top.
 All in `prototypes/`, open the files directly in a browser. Three.js 0.160 (MIT) is vendored in `lib/`.
 - `3d-spike.html`: map as 3D blocks with billboard sprites, camera pan/rotate/zoom, picking. Now with the modular imp walking and carrying sacks.
 - `imp-parts.html`: modular imp (head, body, legs, sack) animated with whole-pixel offsets; hands deliberately dropped (design statement in `design.md`).
+- `zoo-humanoid.html`: hero, orc, warlock and three skeleton concepts (floating bones, hero chest, soul lantern). `equipment.html`: armor and weapons as rules on tagged pixels. `skelett-familie.html`: one skeleton base, six variants through soul colour, bone tone and weapon only.
 - `imp-silhouetten.html`, `imp-round.html`, `imp-oval.html`, `imp-flat.html`, `imp-detail.html`, `imp-head.html`, `imp-final.html`, `imp-creature.html`, `imp-styles*.html`, `sprite-32-test.html`: design explorations, kept as history. Own designs only; no art from other games.
 - Sprites are generated in code (ellipses, shading, edge rules); a creature is a table entry of parts plus a palette.
 - Next: move the part composer into `index.html` and replace the emojis; decide whether the level renderer goes 3D.
