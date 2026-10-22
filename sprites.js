@@ -356,3 +356,23 @@ function impFrame(state,t,facingRight){
 })();
 return ZOO;
 })();
+
+// ---- tile overlays: 16x16 pixel-art speckle drawn over the flat tile colour (kinds: floor, flag, rock, gold, ore) ----
+const TILEGEN=(()=>{
+  const rng=seed=>{ let t=seed>>>0; return ()=>((t=Math.imul(t^t>>>15,t|1)),(t^=t+Math.imul(t^t>>>7,t|61)),((t^t>>>14)>>>0)/4294967296); };
+  const PAL={ l:'rgba(255,240,210,0.10)', d:'rgba(0,0,0,0.20)', k:'rgba(0,0,0,0.38)', y:'#f4d03f', Y:'#b8860b', o:'#c2703a', O:'#7a3f1e' };
+  function gen(kind,seed){
+    const r=rng(seed*7919+kind.length*131), g=Array.from({length:16},()=>Array(16).fill('.'));
+    const put=(x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16) g[y][x]=c; };
+    const rock=kind==='rock'||kind==='gold'||kind==='ore';
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const v=r(); if(v<(rock?0.15:0.09)) put(x,y,'l'); else if(v<(rock?0.37:0.22)) put(x,y,'d'); }
+    if(rock){ for(let i=0;i<(r()<0.55?1:0);i++){ let x=1+Math.floor(r()*13), y=1+Math.floor(r()*7); for(let j=0;j<5+Math.floor(r()*3);j++){ put(x,y,'k'); x+=r()<0.5?1:0; y+=1; } } }
+    else if(kind==='floor'&&r()<0.35){ let x=2+Math.floor(r()*10), y=2+Math.floor(r()*12); for(let j=0;j<4;j++){ put(x,y,'k'); x+=1; y+=r()<0.5?1:0; } }
+    if(kind==='flag'){ for(let i=0;i<16;i++){ put(i,0,'l'); put(0,i,'l'); put(i,15,'d'); put(15,i,'d'); } }
+    if(kind==='gold') for(let i=0;i<5;i++){ const x=1+Math.floor(r()*12), y=1+Math.floor(r()*12); put(x,y,'y'); put(x+1,y,'y'); put(x,y+1,'Y'); put(x+2,y,'Y'); }
+    if(kind==='ore') for(let i=0;i<5;i++){ const x=1+Math.floor(r()*12), y=1+Math.floor(r()*12); put(x,y,'o'); put(x+1,y,'o'); put(x,y+1,'O'); put(x+1,y+1,'O'); }
+    return { g, pal:PAL };
+  }
+  return { gen };
+})();
+

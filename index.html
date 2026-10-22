@@ -4375,6 +4375,16 @@ function thoughtOf(c){
   }
 }
 
+// Speckle overlays over the flat tile colours (TILEGEN in sprites.js): 4 variants per kind, picked by position.
+const TILE_OVERLAYS={};
+function tileOverlay(kind,x,y){
+  const v=(x*7+y*13)%4, id=kind+v;
+  if(TILE_OVERLAYS[id]) return TILE_OVERLAYS[id];
+  const o=TILEGEN.gen(kind,v+1), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
+  const g=cv.getContext('2d');
+  o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx,yy,1,1); }));
+  return TILE_OVERLAYS[id]=cv;
+}
 // Code-generated creature sprites (sprites.js). Falls back to the emoji for kinds without a sprite.
 const SPRITE_CACHE={};
 function spriteCanvas(key,t,facingRight,moving,extra){
@@ -4522,6 +4532,10 @@ function draw(){
       }
       ctx.fillStyle=color;
       ctx.fillRect(px,py,TILE,TILE);
+      if(typeof TILEGEN!=='undefined' && t.type!=='water' && t.type!=='bedrock'){
+        const kind = t.type==='floor' ? (t.room ? 'flag' : 'floor') : (t.gem&&t.gemRevealed ? 'rock' : t.gold ? 'gold' : t.ore ? 'ore' : 'rock');
+        ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(tileOverlay(kind,x,y),px,py,TILE,TILE); ctx.restore();
+      }
       ctx.strokeStyle='rgba(0,0,0,0.28)';
       ctx.strokeRect(px+0.5,py+0.5,TILE-1,TILE-1);
       if(t.type==='water'){
