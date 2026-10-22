@@ -15,7 +15,7 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 </style></head><body><main>
 <h1>Imp aus Teilen — der Sackträger</h1>
 <p>Seitenansicht (nach links schauend, rechts gespiegelt). Jede Figur besteht aus Teilen: Kopf, Körper, zwei Beine und optional ein Sack. Animiert wird nur durch Verschieben um ganze Pixel, kein Drehen. Der Sack erscheint nur, wenn der Imp etwas trägt.</p>
-<p><label><input type="checkbox" id="optHands" checked> Hände am Sack</label><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
+<p><label><input type="checkbox" id="optHands" checked> Hand am Sack</label><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
 <h2>Die Teile</h2>
 <div class="row" id="parts"></div>
 <h2>Zustände (laufen von links nach rechts und zurück)</h2>
@@ -78,12 +78,12 @@ function frame(state,t,facingRight,outline){
   for(let x=4;x<=12;x++) put(f,x,15,'s');
   const sackKind=state==='trägt gold'?'gold':state==='trägt erz'?'ore':null;
   blit(f,PARTS.leg,10+footB,11);                                      // back leg
+  if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack behind the back
   blit(f,PARTS.body,6,5+hunch+bob);
-  if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack on the back, in front of the hump
   blit(f,PARTS.leg,5+footF,11);                                       // front leg
-  if(sackKind && handsBox.checked){                                    // two small hands lift the sack from below
+  if(sackKind && handsBox.checked){                                    // one small hand hints at lifting the sack
     const sy=1+hunch+bob+(walk&&k===2?1:0);
-    blit(f,PARTS.hand,8,sy+5); blit(f,PARTS.hand,12,sy+5+(walk&&k%2?1:0));
+    blit(f,PARTS.hand,12,sy+6+(walk&&k%2?1:0));        // one abstract hand, only hinted
   }
   blit(f,PARTS.head,1,1+hunch+bob+headLag);
   if(outline) outlineGrid(f);
