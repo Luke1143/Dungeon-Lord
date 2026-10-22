@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite 32 px — Höllenhund</title>
+<style>
+body{margin:0;background:#0f0b09;color:#e8dcc8;font-family:Inter,system-ui,sans-serif;padding:24px 16px}
+h1{font-family:Cinzel,Georgia,serif;color:#d4af37;font-size:1.4rem;margin:0 0 6px}
+p{color:#a8977e;margin:0 0 16px;font-size:.9rem}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+.card{background:#1c140f;border:1px solid #3a2a1d;padding:10px;text-align:center}
+.card span{display:block;font-size:.8rem;color:#a8977e;margin-top:6px}
+canvas{image-rendering:pixelated;display:block;background:#4a3b2d}
+</style></head><body>
+<h1>Höllenhund, 32×32</h1>
+<p>Frontalansicht, linke Hälfte beschrieben, rechte gespiegelt (wie im Muster). Rechts zum Größenvergleich ein 16-px-Imp.</p>
+<div class="row" id="row"></div>
+<script>
+const K='#1a1210';
+const hound={pal:{k:K,r:'#a8321f',R:'#6e1f14',o:'#ff7a1a',f:'#ffd36a',y:'#ffe14a',w:'#f2e8d5',n:'#1a1210',m:'#c25a35',p:'#c4454f'},rows:[
+"..............of",
+"...k.........ofo",
+"...kk.......kooo",
+"..kRRk.....kRrrr",
+"..kRrRk...kRrrrr",
+"..kRrrRkkkRrrrrr",
+"..kRrrrrrrrrrrrr",
+"..kRrrrrrrrrrrrr",
+"...kRkkrrrrrrrrr",
+"...kRyykkrrrrrrr",
+"...kRyywrrrrrrrr",
+"...kRrrrrrrrrrrr",
+"....kRrrrrmmmmmm",
+"....kRrrrmmmnnnn",
+"....kRrrrmmnnnnn",
+"....kRrrrmmmnnnn",
+"....kRrrkmmmmmmm",
+"....kRrrkkkkkkkk",
+"...kRRrrkwmmmwmm",
+"..kooRRrrkmmmmmm",
+"..kooRRRrrkkkkkk",
+".kooRRRRrrrrrrrr",
+".kooRRrrrrrrrrrR",
+".kkRRrrrrrrrRRRR",
+"kRRrrrrrrrRRRRRR",
+"kRrrrrrrrrRRRRRR",
+"kRrrrrkrrrrRRRRR",
+"kRrrrrk.krrrRRRR",
+"kRrrrrk..kkkrrRR",
+"kRrrrk....k.kkkk",
+"kRrwwk..........",
+"kkwkwkk........."],over:[]};
+const imp={pal:{k:K,o:'#d9622b',O:'#8f3a1a',R:'#5a1810',y:'#f4d03f',w:'#f2e8d5'},rows:[
+"........","........",".k......",".kok....",".kookkkk","..kooooo","...kyyoo","...kooOO",
+"...kooRR","....kkoo",".....koo","...kkooO","..kkooOO","...kkoOO","....kook","...kkkk."],
+over:[[12,13,'o'],[13,13,'o'],[14,12,'o'],[14,11,'o'],[15,10,'k'],[15,11,'k'],[13,14,'k'],[14,13,'k'],[15,12,'k'],[12,14,'k']]};
+function build(def,size){
+  const h=size/2, g=Array.from({length:size},()=>Array(size).fill('.'));
+  def.rows.forEach((r,y)=>{ if(r.length!==h) console.error('row length',y,r.length,r); for(let x=0;x<h;x++){ g[y][x]=r[x]; g[y][size-1-x]=r[x]; } });
+  (def.over||[]).forEach(([x,y,c])=>g[y][x]=c);
+  return g;
+}
+function card(label,def,size,scale){
+  const g=build(def,size), c=document.createElement('canvas'); c.width=size*scale; c.height=size*scale;
+  const x=c.getContext('2d');
+  g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=def.pal[ch]||'#f0f'; x.fillRect(xx*scale,yy*scale,scale,scale); }));
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c);
+  const s=document.createElement('span'); s.textContent=label; d.appendChild(s);
+  document.getElementById('row').appendChild(d);
+}
+card('Höllenhund 32 px (10×)',hound,32,10);
+card('Höllenhund 1×',hound,32,1);
+card('Imp 16 px (10×)',imp,16,10);
+</script></body></html>
