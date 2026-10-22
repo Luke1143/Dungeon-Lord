@@ -2,6 +2,14 @@
 
 Newest version on top.
 
+## 0.4 - View and comfort
+- **Layout**: the level fills the window (`#viewport`, resized by a `ResizeObserver`); the side panel is 290 px wide and scrolls on its own, stats sit in a 2-column grid. Below 900 px it stacks. Top bar holds speed, zoom, throne, minimap and menu buttons.
+- **Zoom** (`zoom`, 0.5x-3x, saved in localStorage): `draw()` applies one transform, so all drawing code still works in 32 px tile units. `VIEW_COLS/VIEW_ROWS` are now derived from viewport size and zoom. Mouse wheel zooms at the cursor, `+`/`-`/`0` on the keyboard.
+- **Pan**: WASD or arrow keys, middle mouse drag, minimap click/drag, `Home` jumps to the throne.
+- **Minimap** (`drawMinimap`, key `M`): terrain, rooms, gold, imps, creatures (heroes red) and the visible area; hidden caves stay hidden.
+- **Speed** (`gameSpeed`): pause (Space), 1x, 2x, 4x (keys 1/2/3). `tickLoop` replaces the fixed interval.
+- `docs/sprite-muster.html` added (sprite sample referenced in design.md).
+
 ## 0.3 - Campaign skeleton (main menu + overworld)
 - **Screens**: `menuScreen` (Neue Welt / Kampagne fortsetzen, optional seed), `overworldScreen`, `levelScreen`. `showScreen(name)` switches; `gameTick` and autosave only run on the level screen.
 - **Overworld** (`buildWorld(seed)`): deterministic from the seed, never saved (only `{seed,pos,visited,levelNode,inLevel}` goes to `dungeon-lord-campaign-v1`). 80x45 tiles from three value-noise layers (water, grass, forest, hills, mountain, swamp).

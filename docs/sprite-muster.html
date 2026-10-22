@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprite-Muster</title>
+<style>
+:root{--bg:#0f0b09;--panel:#1c140f;--line:#3a2a1d;--text:#e8dcc8;--dim:#a8977e;--gold:#d4af37}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:860px;margin:0 auto}
+h1{font-family:Cinzel,Georgia,serif;color:var(--gold);font-size:1.5rem;margin:0 0 4px;letter-spacing:.04em}
+p{color:var(--dim);margin:0 0 20px;line-height:1.5}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);margin:28px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.row{display:flex;flex-wrap:wrap;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);padding:10px;text-align:center;min-width:0}
+.card canvas{display:block;image-rendering:pixelated;background:#2b2118;margin:0 auto 6px}
+.card span{font-size:.8rem;color:var(--dim)}
+canvas{image-rendering:pixelated}
+#strip{width:100%;max-width:768px;height:auto;border:1px solid var(--line);display:block}
+</style></head><body><main>
+<h1>Sprite-Muster</h1>
+<p>Figuren sind 16×16 Pixel, Kacheln 32×32, beides mit gleich großen Pixeln gezeichnet. Eine Figur ist damit halb so breit wie eine Kachel, und vier passen auf ein Feld. Gezeichnet wird als Text im Code, nur die halbe Figur wird beschrieben (die andere Hälfte wird gespiegelt). Farben lassen sich pro Fraktion tauschen.</p>
+<h2>Figuren, 8-fach vergrößert</h2><div class="row" id="chars"></div>
+<h2>Kacheln und Beute</h2><div class="row" id="tiles"></div>
+<h2>Im Spiel: Kachel 64 px, Figur 32 px, bis zu vier pro Kachel</h2><canvas id="strip" width="768" height="320"></canvas>
+<h2>Gleiche Figur, andere Palette</h2><div class="row" id="variants"></div>
+</main>
+<script>
+const K='#1a1210';
+const SPR={
+imp:{pal:{k:K,o:'#d9622b',O:'#8f3a1a',R:'#5a1810',y:'#f4d03f',w:'#f2e8d5'},rows:[
+"........","........",".k......",".kok....",".kookkkk","..kooooo","...kyyoo","...kooOO",
+"...kooRR","....kkoo",".....koo","...kkooO","..kkooOO","...kkoOO","....kook","...kkkk."],
+over:[[12,13,'o'],[13,13,'o'],[14,12,'o'],[14,11,'o'],[15,10,'k'],[15,11,'k'],[13,14,'k'],[14,13,'k'],[15,12,'k'],[12,14,'k']]},
+lord:{pal:{k:K,n:'#2e2e3a',N:'#55556f',c:'#9b1c31',C:'#5e0f1d',y:'#ffd23f',g:'#d4af37'},rows:[
+"........","..k.....","..kn....","..knkkkk","...knnNN","...kNnnn","...kyynn","...knnnn",
+"....kkNn","..kkNNnn",".kggNnnn",".kgnNnnn",".kcnnnng",".kccnnnn",".kccknnn",".kCckknn"],over:[]},
+hero:{pal:{k:K,g:'#b8bcc4',G:'#6e737c',u:'#3b6fb6',w:'#f2e8d5',y:'#d4af37',b:'#6b4a2f'},rows:[
+"......uu",".....kuu","...kkkgg","..kggggg","..kgGGGG","..kgkkkk","..kggGGg","..kgggGG",
+"...kkggg","..kgggww",".kgguuuw",".kguuuuw",".kguuuuw","..kgguuu","..kggkk.","..kkkk.."],
+over:[[14,5,'w'],[14,6,'g'],[14,7,'g'],[14,8,'g'],[14,9,'g'],[14,10,'g'],[13,11,'y'],[14,11,'y'],[15,11,'y'],[14,12,'b']]},
+warlock:{pal:{k:K,p:'#7b4bb0',P:'#4a2a70',y:'#ffd23f',s:'#e0b48c',w:'#e8e2d0',b:'#6b4a2f'},rows:[
+".......P","......pp",".....ppp","....pppp","..PPPPPP","...kssss","...kyyss","...kssss",
+"...kwwww","..kppwww",".kpppPww",".kppppPw",".kppppPP","kppppPPP","kppppPPP","kkkkkkkk"],
+over:[[14,3,'y'],[14,4,'y'],[14,5,'b'],[14,6,'b'],[14,7,'b'],[14,8,'b'],[14,9,'b'],[14,10,'b'],[14,11,'b'],[14,12,'b'],[14,13,'b'],[14,14,'b']]},
+gold:{pal:{k:K,y:'#f4d03f',Y:'#b8860b',w:'#fff6c8'},rows:[
+"........","........","........","........","........","........",".......y","....kyyw",
+"...kyyYy","..kyyyyY","..kyYyyy",".kyyyyYY",".kyyYyyy","kyyyyYYY","kYYYYYYY","kkkkkkkk"],
+over:[[6,9,'w'],[10,11,'w']]}
+};
+function build(def){
+  const g=Array.from({length:16},()=>Array(16).fill('.'));
+  def.rows.forEach((r,y)=>{ if(r.length!==8) console.error('row length',y,r);
+    for(let x=0;x<8;x++){g[y][x]=r[x];g[y][15-x]=r[x];}});
+  (def.over||[]).forEach(([x,y,c])=>g[y][x]=c);
+  return g;
+}
+function draw(ctx,g,pal,ox,oy,s){
+  g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.')return; ctx.fillStyle=pal[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s);}));
+}
+function rng(seed){let t=seed;return()=>((t=Math.imul(t^t>>>15,t|1)),(t^=t+Math.imul(t^t>>>7,t|61)),((t^t>>>14)>>>0)/4294967296)}
+const N=32;
+function tile(kind,seed){
+  const r=rng(seed),g=Array.from({length:N},()=>Array(N).fill(0));
+  const P={floor:['#4a3b2d','#41332a','#53432f'],rock:['#2b2118','#241b14','#34281d'],
+    throne:['#58306a','#4a2859','#693d7e'],vein:['#2b2118','#241b14','#34281d']}[kind];
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){const v=r();g[y][x]=v<.62?P[0]:v<.84?P[1]:P[2];}
+  if(kind==='rock'||kind==='vein'){for(let i=0;i<6;i++){let x=2+Math.floor(r()*(N-4)),y=2+Math.floor(r()*(N-8));for(let j=0;j<6;j++){g[y][x]='#17110c';x+=r()<.5?1:0;y+=1;if(x>N-1||y>N-1)break;}}}
+  if(kind==='vein'){for(let i=0;i<7;i++){const x=2+Math.floor(r()*(N-5)),y=2+Math.floor(r()*(N-5));g[y][x]='#f4d03f';g[y][x+1]='#f4d03f';g[y+1][x]='#b8860b';g[y+1][x+1]='#b8860b';g[y][x+2]='#b8860b';}}
+  if(kind==='throne'){for(let i=0;i<N;i++){for(const k of [0,15,16,31]){g[k][i]='#3a1f48';g[i][k]='#3a1f48';}}for(let i=1;i<N-1;i++){g[1][i]=g[1][i]==='#3a1f48'?g[1][i]:'#7b4a92';g[17][i]='#7b4a92';}}
+  return g;
+}
+function tileImg(kind,seed){const g=tile(kind,seed),c=document.createElement('canvas');c.width=N;c.height=N;const x=c.getContext('2d');g.forEach((row,yy)=>row.forEach((col,xx)=>{x.fillStyle=col;x.fillRect(xx,yy,1,1);}));return c;}
+function card(host,label,make,s,bg){
+  const c=document.createElement('canvas');c.width=16*s;c.height=16*s;if(bg)c.style.background=bg;
+  const cx=c.getContext('2d');cx.imageSmoothingEnabled=false;make(cx,s);
+  const d=document.createElement('div');d.className='card';d.appendChild(c);
+  const sp=document.createElement('span');sp.textContent=label;d.appendChild(sp);host.appendChild(d);
+}
+const names={imp:'Imp',lord:'Dungeon Lord',hero:'Held (Ritter)',warlock:'Warlock'};
+for(const k of ['imp','lord','hero','warlock']){
+  const g=build(SPR[k]);card(document.getElementById('chars'),names[k],(ctx,s)=>draw(ctx,g,SPR[k].pal,0,0,s),8);
+}
+const T=document.getElementById('tiles');
+card(T,'Fels',(ctx,s)=>ctx.drawImage(tileImg('rock',3),0,0,16*s,16*s),8);
+card(T,'Goldader',(ctx,s)=>ctx.drawImage(tileImg('vein',7),0,0,16*s,16*s),8);
+card(T,'Gang',(ctx,s)=>ctx.drawImage(tileImg('floor',5),0,0,16*s,16*s),8);
+card(T,'Thronsaal',(ctx,s)=>ctx.drawImage(tileImg('throne',9),0,0,16*s,16*s),8);
+{const g=build(SPR.gold);card(T,'Gold (Haufen)',(ctx,s)=>draw(ctx,g,SPR.gold.pal,0,0,s),8,'#4a3b2d');}
+// strip
+{const cv=document.getElementById('strip'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
+ const map=["RRRRRRRRRRRR","RTTTRRRVRRRR","RTTTFFFFRRRR","RTTTRRRFFFVR","RRRRRRRRRRRR"];
+ const kind={R:'rock',T:'throne',F:'floor',V:'vein'};
+ map.forEach((row,y)=>[...row].forEach((c,x)=>ctx.drawImage(tileImg(kind[c],x*7+y*13),x*64,y*64,64,64)));
+ const SLOTS={1:[[16,16]],2:[[0,16],[32,16]],3:[[16,0],[0,32],[32,32]],4:[[0,0],[32,0],[0,32],[32,32]]};
+ const stack=(tx,ty,list)=>{const sl=SLOTS[list.length];list.forEach((k,i)=>draw(ctx,build(SPR[k]),SPR[k].pal,tx*64+sl[i][0],ty*64+sl[i][1],2));};
+ stack(2,2,['lord']);stack(1,1,['warlock']);stack(5,2,['imp','imp','imp']);stack(6,2,['imp']);
+ stack(7,2,['gold']);stack(8,3,['imp','imp','imp','imp']);stack(9,3,['hero','imp']);
+}
+// variants
+{const V=document.getElementById('variants');
+ const pal=(base,m)=>Object.assign({},base,m);
+ const imp=build(SPR.imp);
+ card(V,'Imp',(ctx,s)=>draw(ctx,imp,SPR.imp.pal,0,0,s),6,'#2b2118');
+ card(V,'Eis-Imp',(ctx,s)=>draw(ctx,imp,pal(SPR.imp.pal,{o:'#5aa9d6',O:'#2f6c95',R:'#173f5a'}),0,0,s),6,'#2b2118');
+ card(V,'Gift-Imp',(ctx,s)=>draw(ctx,imp,pal(SPR.imp.pal,{o:'#6fb13c',O:'#3f7524',R:'#244a14'}),0,0,s),6,'#2b2118');
+ const w=build(SPR.warlock);
+ card(V,'Warlock',(ctx,s)=>draw(ctx,w,SPR.warlock.pal,0,0,s),6,'#2b2118');
+ card(V,'Nekromant',(ctx,s)=>draw(ctx,w,pal(SPR.warlock.pal,{p:'#3f6b4a',P:'#243f2c',s:'#c9d6c2'}),0,0,s),6,'#2b2118');
+}
+</script></body></html>

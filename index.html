@@ -26,10 +26,34 @@
   }
   .subtitle{ color:var(--text-dim); font-size:13px; margin-bottom:14px; text-align:center;}
   .layout{ display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; justify-content:center;}
-  #board{
-    background:#2a201a; border:3px solid var(--panel-border); border-radius:6px; cursor:pointer;
+  body.inLevel{ padding:8px 12px; height:100vh; overflow:hidden; }
+  #levelScreen{ height:100%; gap:8px; min-height:0; }
+  #levelScreen .layout{ flex:1; min-height:0; width:100%; flex-wrap:nowrap; align-items:stretch; justify-content:flex-start; gap:12px; }
+  #board{ display:block; background:#2a201a; cursor:pointer; }
+  .boardWrap{ position:relative; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; min-height:0; }
+  #viewport{ position:relative; flex:1; min-height:0; border:3px solid var(--panel-border); border-radius:6px; overflow:hidden; background:#2a201a; }
+  #minimap{ position:absolute; left:8px; bottom:8px; border:2px solid var(--panel-border); border-radius:4px; background:rgba(15,11,9,.85); cursor:crosshair; image-rendering:pixelated; }
+  #minimap[hidden]{ display:none; }
+  #pauseLabel{ position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(15,11,9,.85); color:var(--gold); font-family:'Cinzel',serif; padding:4px 14px; border:1px solid var(--gold); border-radius:4px; letter-spacing:2px; pointer-events:none; }
+  #pauseLabel[hidden]{ display:none; }
+  .topbar{ display:flex; align-items:center; gap:16px; width:100%; flex-wrap:wrap; }
+  .topbar h1{ font-size:20px; text-align:left; }
+  .topbar .subtitle{ margin:0; text-align:left; flex:1; min-width:200px; font-size:12px; }
+  .toolbar{ display:flex; gap:4px; align-items:center; }
+  .toolbar button{ padding:5px 10px; font-size:13px; }
+  .toolbar .sep{ width:10px; }
+  .statGrid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; }
+  .statGrid .stat .value{ font-size:16px; }
+  .statGrid .stat .label{ font-size:12px; }
+  #levelScreen .panel{ width:290px; flex:0 0 290px; overflow-y:auto; padding:12px; gap:12px; min-height:0; }
+  #levelScreen .eventLog{ max-height:180px; }
+  @media (max-width:900px){
+    body.inLevel{ height:auto; overflow:auto; }
+    #levelScreen{ height:auto; }
+    #levelScreen .layout{ flex-direction:column; }
+    #viewport{ height:60vh; flex:none; }
+    #levelScreen .panel{ width:100%; flex:none; overflow:visible; }
   }
-  .boardWrap{ position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; }
   .hint{ font-size:11px; color:var(--text-dim); }
   .eventLog{ max-height:130px; overflow-y:auto; border:1px solid var(--panel-border); border-radius:4px; }
   .logEntry{ font-size:11px; color:var(--text-dim); padding:6px 8px; border-bottom:1px solid var(--panel-border); cursor:pointer; }
@@ -163,16 +187,37 @@
   </div>
 
   <div id="levelScreen" class="screen" hidden>
-  <h1>Der Dungeon Lord erwacht</h1>
-  <div class="subtitle" id="levelSubtitle">Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen</div>
+  <div class="topbar">
+    <h1>Der Dungeon Lord erwacht</h1>
+    <div class="subtitle" id="levelSubtitle">Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen</div>
+    <div class="toolbar">
+      <button data-speed="0" title="Pause (Leertaste)">⏸</button>
+      <button data-speed="1" title="Normal (1)">▶</button>
+      <button data-speed="2" title="Doppelt (2)">⏩</button>
+      <button data-speed="4" title="Vierfach (3)">⏭</button>
+      <span class="sep"></span>
+      <button id="zoomOut" title="Verkleinern (-)">−</button>
+      <button id="zoomReset" title="Zoom zurücksetzen (0)">100%</button>
+      <button id="zoomIn" title="Vergrößern (+)">+</button>
+      <button id="homeBtn" title="Zum Thronsaal (Pos1)">🏰</button>
+      <button id="mapToggle" title="Minimap (M)">🗺</button>
+      <span class="sep"></span>
+      <button id="levelMenuBtn" title="Zurück zum Hauptmenü">☰</button>
+    </div>
+  </div>
   <div class="layout">
     <div class="boardWrap">
+      <div id="viewport">
       <canvas id="board"></canvas>
+      <canvas id="minimap" width="192" height="128" title="Klick zum Springen"></canvas>
+      <div id="pauseLabel" hidden>PAUSE</div>
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
+      </div>
       <div id="combatBar" hidden></div>
-      <div class="hint">🎮 WASD zum Erkunden der Karte</div>
+      <div class="hint">🎮 WASD/Pfeile: Karte · Mausrad: Zoom · Mittlere Maustaste ziehen: Karte verschieben · Leertaste: Pause · 1/2/3: Tempo · M: Minimap · Pos1: Thronsaal</div>
     </div>
     <div class="panel">
+      <div class="statGrid">
       <div class="stat"><span class="label">Gold</span><span class="value" id="goldVal">0</span></div>
       <div class="stat"><span class="label">Erz</span><span class="value" id="oreVal">0</span></div>
       <div class="stat"><span class="label">Eisen</span><span class="value" id="ironVal">0</span></div>
@@ -180,6 +225,7 @@
       <div class="stat"><span class="label">Nächster Lohn</span><span class="value" id="wageVal">0</span></div>
       <div class="stat"><span class="label">Welle</span><span class="value" id="waveVal">–</span></div>
       <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
+      </div>
       <div class="hint" id="warHint"></div>
       <button id="modeToggle" class="modeToggle active" title="Umschalten: Graben / Untersuchen">⛏️</button>
 
@@ -249,10 +295,12 @@
   </div>
 
 <script>
-const WORLD_COLS=48, WORLD_ROWS=32, VIEW_COLS=22, VIEW_ROWS=14, TILE=32;
+const WORLD_COLS=48, WORLD_ROWS=32, TILE=32;
+let VIEW_COLS=22, VIEW_ROWS=14;     // visible tiles; recomputed from the viewport size and zoom
 const canvas=document.getElementById('board');
-canvas.width=VIEW_COLS*TILE; canvas.height=VIEW_ROWS*TILE;
 const ctx=canvas.getContext('2d');
+const ZOOM_MIN=0.5, ZOOM_MAX=3;
+let zoom=1, viewDpr=1;
 const STORAGE_KEY='dungeon-lord-v1';
 // Ausserhalb von Claude gibt es kein window.storage - dann speichert der Browser selbst.
 if(!window.storage){
@@ -4378,16 +4426,18 @@ function drawActor(c, baseIcon){
 function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 
 function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.setTransform(zoom*viewDpr,0,0,zoom*viewDpr,0,0);
   const digTiles=new Set(state.imps.filter(i=>i.state==='digging' && i.digTile).map(i=>i.digTile.x+','+i.digTile.y));
   const reinforceTiles=new Set(state.imps.filter(i=>i.state==='reinforcing' && i.wallTile).map(i=>i.wallTile.x+','+i.wallTile.y));
   const buildTiles=new Set(state.imps.filter(i=>(i.state==='building'||i.state==='buildingBridge') && i.buildTile).map(i=>i.buildTile.x+','+i.buildTile.y));
   const claimTiles=new Set(state.imps.filter(i=>i.state==='claiming' && i.claimTile).map(i=>i.claimTile.x+','+i.claimTile.y));
 
   const startX=Math.max(0, Math.floor(camX));
-  const endX=Math.min(WORLD_COLS-1, Math.floor(camX)+VIEW_COLS);
+  const endX=Math.min(WORLD_COLS-1, Math.floor(camX)+Math.ceil(VIEW_COLS));
   const startY=Math.max(0, Math.floor(camY));
-  const endY=Math.min(WORLD_ROWS-1, Math.floor(camY)+VIEW_ROWS);
+  const endY=Math.min(WORLD_ROWS-1, Math.floor(camY)+Math.ceil(VIEW_ROWS));
 
   for(let y=startY;y<=endY;y++){
     for(let x=startX;x<=endX;x++){
@@ -5172,7 +5222,7 @@ function updateWarUI(){
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
   if(!w.connected) hintEl.textContent='🔥 Das Weltportal ist noch abgeriegelt - die Helden kommen erst, wenn ihr euch hindurchgrabt.';
-  else hintEl.textContent=`🔥 Nächste Welle in ${Math.max(0,Math.ceil(w.timer*0.35))} s`;
+  else hintEl.textContent=`🔥 Nächste Welle in ${Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)))} s`;
   const overlay=document.getElementById('endOverlay');
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
@@ -5420,9 +5470,8 @@ async function load(){
 
 function tileFromEvent(e){
   const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width, scaleY=canvas.height/rect.height;
-  const x=Math.floor((e.clientX-rect.left)*scaleX/TILE + camX);
-  const y=Math.floor((e.clientY-rect.top)*scaleY/TILE + camY);
+  const x=Math.floor((e.clientX-rect.left)/(TILE*zoom) + camX);
+  const y=Math.floor((e.clientY-rect.top)/(TILE*zoom) + camY);
   return {x,y};
 }
 function inBounds(x,y){ return x>=0&&x<WORLD_COLS&&y>=0&&y<WORLD_ROWS; }
@@ -6738,7 +6787,7 @@ resetBtn.addEventListener('click', async ()=>{
 
 window.addEventListener('keydown', e=>{
   if(screen!=='level' || (e.target && e.target.tagName==='INPUT' && e.target.type==='text')) return;
-  const k=e.key.toLowerCase();
+  const k=ARROW_ALIAS[e.key.toLowerCase()]||e.key.toLowerCase();
   if(e.key==='Escape' && (possessed||possessMode)){ endPossession(); e.preventDefault(); return; }
   // Besessen: WASD bewegt die Kreatur selbst, nicht die Kamera
   if(possessed && (k==='w'||k==='a'||k==='s'||k==='d')){
@@ -6759,8 +6808,9 @@ window.addEventListener('keydown', e=>{
   }
   if(k==='w'||k==='a'||k==='s'||k==='d'){ keysDown[k]=true; e.preventDefault(); }
 });
+const ARROW_ALIAS={arrowup:'w',arrowdown:'s',arrowleft:'a',arrowright:'d'};
 window.addEventListener('keyup', e=>{
-  const k=e.key.toLowerCase();
+  const k=ARROW_ALIAS[e.key.toLowerCase()]||e.key.toLowerCase();
   if(k==='w'||k==='a'||k==='s'||k==='d'){ keysDown[k]=false; }
 });
 
@@ -6795,7 +6845,7 @@ function updateRenderPositions(dt){
     if(dist>3){ e.renderX=e.x; e.renderY=e.y; return; }
     // Haengt die Darstellung mehr als eine Kachel hinterher (Eile, schnelle Kreaturen),
     // wird proportional aufgeholt - so bleibt die Bewegung fluessig statt zu ruckeln.
-    const speed=MOVE_TILES_PER_SEC*Math.max(1, dist);
+    const speed=MOVE_TILES_PER_SEC*Math.max(1, dist)*Math.max(1, gameSpeed);
     const step=speed*dt;
     if(step>=dist){ e.renderX=e.x; e.renderY=e.y; return; }
     e.renderX += dx/dist*step;
@@ -6805,14 +6855,14 @@ function updateRenderPositions(dt){
   state.creatures.forEach(ease);
 }
 
-let lastFrameTime=null;
+let lastFrameTime=null, lastMinimap=0;
 function renderLoop(now){
   if(lastFrameTime===null) lastFrameTime=now;
   const dt=Math.min(0.1, (now-lastFrameTime)/1000);
   lastFrameTime=now;
   updateCamera(dt);
   updateRenderPositions(dt);
-  if(state){ refreshInspect(); renderCombatBar(); draw(); }
+  if(state && screen==='level'){ refreshInspect(); renderCombatBar(); draw(); if(now-lastMinimap>200){ lastMinimap=now; drawMinimap(); } }
   requestAnimationFrame(renderLoop);
 }
 requestAnimationFrame(renderLoop);
@@ -7109,7 +7159,8 @@ function showScreen(name){
   document.getElementById('levelScreen').hidden = name!=='level';
   if(name==='menu') document.getElementById('menuContinue').hidden=!campaign;
   if(name==='overworld'){ owRefresh(); }
-  if(name==='level'){ draw(); updateUI(); renderEventLog(); refreshRoomButtons(); }
+  document.body.classList.toggle('inLevel', name==='level');
+  if(name==='level'){ resizeBoard(); jumpToThrone(); draw(); updateUI(); renderEventLog(); refreshRoomButtons(); }
 }
 
 async function saveCampaign(){
@@ -7210,6 +7261,145 @@ document.getElementById('owCanvas').addEventListener('click', e=>{
   oc.width=OW_COLS*OW_TILE; oc.height=OW_ROWS*OW_TILE;
 }
 
+// ---------- View: viewport size, zoom, minimap, game speed ----------
+let gameSpeed=1;        // 0 = pause, otherwise ticks per normal tick
+let minimapOn=true;
+let panDrag=null;       // middle mouse drag: { x, y, camX, camY }
+const viewportEl=document.getElementById('viewport');
+const minimap=document.getElementById('minimap');
+const mmCtx=minimap.getContext('2d');
+
+function resizeBoard(){
+  const w=viewportEl.clientWidth, h=viewportEl.clientHeight;
+  if(!w || !h) return;
+  viewDpr=window.devicePixelRatio||1;
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
+  canvas.width=Math.round(w*viewDpr); canvas.height=Math.round(h*viewDpr);
+  updateViewTiles();
+}
+function updateViewTiles(){
+  VIEW_COLS=canvas.clientWidth/(TILE*zoom);
+  VIEW_ROWS=canvas.clientHeight/(TILE*zoom);
+  camX=clampCam(camX, VIEW_COLS, WORLD_COLS);
+  camY=clampCam(camY, VIEW_ROWS, WORLD_ROWS);
+  document.getElementById('zoomReset').textContent=Math.round(zoom*100)+'%';
+}
+// Zoom keeps the point under (px,py) (css pixels inside the viewport) fixed
+function setZoom(z, px, py){
+  z=Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+  if(px===undefined){ px=canvas.clientWidth/2; py=canvas.clientHeight/2; }
+  const wx=camX+px/(TILE*zoom), wy=camY+py/(TILE*zoom);
+  zoom=z;
+  updateViewTiles();
+  camX=clampCam(wx-px/(TILE*zoom), VIEW_COLS, WORLD_COLS);
+  camY=clampCam(wy-py/(TILE*zoom), VIEW_ROWS, WORLD_ROWS);
+  try{ localStorage.setItem('dungeon-lord-zoom', String(zoom)); }catch(e){}
+}
+function jumpToThrone(){
+  const t=tilesOfRoom('throne');
+  if(t.length) jumpCameraTo(t[0].x, t[0].y);
+}
+function setSpeed(n){
+  gameSpeed=n;
+  document.querySelectorAll('[data-speed]').forEach(b=> b.classList.toggle('active', Number(b.dataset.speed)===n));
+  document.getElementById('pauseLabel').hidden = n!==0;
+}
+function setMinimap(on){
+  minimapOn=on;
+  minimap.hidden=!on;
+  document.getElementById('mapToggle').classList.toggle('active', on);
+}
+
+if(window.ResizeObserver) new ResizeObserver(resizeBoard).observe(viewportEl);
+window.addEventListener('resize', resizeBoard);
+try{ const z=parseFloat(localStorage.getItem('dungeon-lord-zoom')); if(z>=ZOOM_MIN && z<=ZOOM_MAX) zoom=z; }catch(e){}
+
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  setZoom(zoom*Math.pow(1.0015, -e.deltaY), e.clientX-r.left, e.clientY-r.top);
+}, { passive:false });
+
+// Middle mouse button drags the map
+canvas.addEventListener('mousedown', e=>{
+  if(e.button!==1) return;
+  e.preventDefault();
+  panDrag={ x:e.clientX, y:e.clientY, camX, camY };
+  canvas.style.cursor='grabbing';
+});
+window.addEventListener('mousemove', e=>{
+  if(!panDrag) return;
+  camX=clampCam(panDrag.camX-(e.clientX-panDrag.x)/(TILE*zoom), VIEW_COLS, WORLD_COLS);
+  camY=clampCam(panDrag.camY-(e.clientY-panDrag.y)/(TILE*zoom), VIEW_ROWS, WORLD_ROWS);
+});
+window.addEventListener('mouseup', e=>{ if(e.button===1 && panDrag){ panDrag=null; canvas.style.cursor=''; } });
+
+document.querySelectorAll('[data-speed]').forEach(b=> b.addEventListener('click', ()=> setSpeed(Number(b.dataset.speed))));
+document.getElementById('zoomIn').addEventListener('click', ()=> setZoom(zoom*1.25));
+document.getElementById('zoomOut').addEventListener('click', ()=> setZoom(zoom/1.25));
+document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
+document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
+document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
+document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ await save(); showScreen('menu'); });
+
+// Minimap: one pixel block per tile; click or drag to jump
+const MM_SCALE=4;
+const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
+const MM_ROOMS={ throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
+function drawMinimap(){
+  if(!minimapOn || !state) return;
+  const g=mmCtx;
+  g.fillStyle='#0f0b09'; g.fillRect(0,0,minimap.width,minimap.height);
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
+    const t=state.grid[y][x];
+    let c=MM_COLORS[t.type]||MM_COLORS.rock;
+    if(t.type==='floor' && t.owned) c='#6a5640';
+    if(t.room) c=MM_ROOMS[t.room]||'#8a7a5c';
+    else if(t.gold && !isHidden(x,y)) c='#d4af37';
+    else if(t.type==='floor' && !t.owned && isHidden(x,y)) c=MM_COLORS.rock;
+    g.fillStyle=c; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE);
+  }
+  state.imps.forEach(i=>{ g.fillStyle='#ff9a3c'; g.fillRect(i.x*MM_SCALE,i.y*MM_SCALE,MM_SCALE,MM_SCALE); });
+  state.creatures.forEach(c=>{
+    g.fillStyle = c.faction==='good' ? '#ff4a4a' : '#7fe0ff';
+    g.fillRect(c.x*MM_SCALE-1,c.y*MM_SCALE-1,MM_SCALE+2,MM_SCALE+2);
+  });
+  g.strokeStyle='#ffffff'; g.lineWidth=1;
+  g.strokeRect(camX*MM_SCALE+0.5, camY*MM_SCALE+0.5, Math.min(VIEW_COLS,WORLD_COLS)*MM_SCALE-1, Math.min(VIEW_ROWS,WORLD_ROWS)*MM_SCALE-1);
+}
+let mmDrag=false;
+function mmJump(e){
+  const r=minimap.getBoundingClientRect();
+  const x=(e.clientX-r.left)*minimap.width/r.width/MM_SCALE, y=(e.clientY-r.top)*minimap.height/r.height/MM_SCALE;
+  jumpCameraTo(x,y);
+}
+minimap.addEventListener('mousedown', e=>{ if(e.button!==0) return; mmDrag=true; mmJump(e); e.stopPropagation(); });
+window.addEventListener('mousemove', e=>{ if(mmDrag) mmJump(e); });
+window.addEventListener('mouseup', ()=>{ mmDrag=false; });
+minimap.addEventListener('contextmenu', e=>e.preventDefault());
+
+// Game ticks run in a self-scheduling loop so the speed can change (and pause) at any time
+function tickLoop(){
+  if(gameSpeed>0) gameTick();
+  setTimeout(tickLoop, TICK_MS/Math.max(1,gameSpeed));
+}
+
+// Comfort keys
+window.addEventListener('keydown', e=>{
+  if(screen!=='level' || (e.target && e.target.tagName==='INPUT')) return;
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const k=e.key.toLowerCase();
+  if(k===' '){ setSpeed(gameSpeed===0 ? 1 : 0); e.preventDefault(); }
+  else if(k==='1'){ setSpeed(1); }
+  else if(k==='2'){ setSpeed(2); }
+  else if(k==='3'){ setSpeed(4); }
+  else if(k==='+'||k==='='){ setZoom(zoom*1.25); }
+  else if(k==='-'){ setZoom(zoom/1.25); }
+  else if(k==='0'){ setZoom(1); }
+  else if(k==='m'){ setMinimap(!minimapOn); }
+  else if(k==='home'){ jumpToThrone(); }
+});
+
 async function init(){
   state=makeDefaultState();
   ensurePortal();
@@ -7217,7 +7407,8 @@ async function init(){
   if(campaign) world=buildWorld(campaign.seed);
   drawMaterialPreview();
   showScreen('menu');
-  setInterval(gameTick, 350);
+  setSpeed(1); setMinimap(true);
+  tickLoop();
   setInterval(()=>{ if(dirty && screen==='level'){ dirty=false; save(); } }, 2000);
 }
 init();
