@@ -16,7 +16,7 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 </style></head><body><main>
 <h1>Zoo — Humanoide</h1>
 <p>Held, Ork, Warlock, Skelett im Stil der Imps: Profil nach links, 16×16, flach, große schwarze Augen mit weißen Pupillen, <b>keine Hände</b>, aus Teilen zusammengesetzt und durch Pixelversatz animiert. Jeder hat <b>ein</b> Erkennungsmerkmal.</p>
-<p><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
+<p><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label><label><input type="checkbox" id="optFeet"> Füße 1 px breit (Test für Held und Ork)</label></p>
 <h2>Groß</h2>
 <div class="row" id="big"></div>
 <h2>Laufen (links nach rechts und zurück)</h2>
@@ -41,17 +41,7 @@ function eyesGood2(p,list){ list.forEach(([x,y])=>{ for(let j=0;j<2;j++) for(let
 function eyesGood(p,list){ list.forEach(([x,y,w,h])=>{ for(let j=0;j<h;j++) for(let i=0;i<w;i++) put(p,x+i,y+j,'e'); put(p,x,y+1,'p'); put(p,x,y+2,'p'); }); }
 // ---------- creatures: each returns its parts, the code poses them ----------
 const CREATURES={
- held:{ name:'Held, niedlich', note:'Riesiges Kinn, blonder Schopf, breite Schultern, Gürtel, jetzt aufrecht. Weiße Augen mit schwarzen Pupillen: die Guten sehen anders aus als die Bösen.',
-  pal:{s:'#e0b48c',S:'#f2cfa8',z:'#b88a62',F:'#e8c04a',G:'#f6dc7a',g:'#b8902a',t:'#3b6fb6',T:'#5a8ad0',u:'#274a80',y:'#d4af37',l:'#7a5a3c',L:'#9a7650',m:'#4e3a26',b:'#4e3a26'},
-  parts(){
-   const head=mk(9,8); ell(head,4.4,3.7,4.2,3.6,'s'); ell(head,2.6,6.0,2.4,1.7,'s'); shade(head,'s','S','z');
-   for(let y=0;y<8;y++) for(let x=0;x<9;x++) if(head.g[y][x]!=='.'&&(y<=2||(x>=6&&y<=4))) head.g[y][x]=(y<=0||x<=3)?'G':'F';
-   eyesGood(head,[[1,3,2,3]]);
-   const torso=mk(8,7); ell(torso,4,3.5,3.9,3.3,'t'); shade(torso,'t','T','u'); for(let x=0;x<8;x++) if(torso.g[4][x]!=='.') torso.g[4][x]='u'; put(torso,2,4,'y');
-   const leg=mk(3,4); cap(leg,1.5,0.6,1.5,3.0,1.1,'l'); shade(leg,'l','L','m'); put(leg,0,3,'b'); put(leg,1,3,'b'); put(leg,2,3,'b'); put(leg,0,2,'b'); put(leg,1,2,'b');
-   return {head,torso,leg,hx:3,hy:0,tx:4,ty:5,lyBack:11,lxBack:9,lxFront:5,ly:11};
-  } },
- held2:{ name:'Held, kernig', note:'Gleicher Held, weniger niedlich: kleinere Augen, strenge Braue, Nase, eckiger Kiefer, breitere Schultern.',
+ held:{ name:'Held', note:'Kleine weiße Augen mit schwarzer Pupille, strenge Braue, Nase, eckiger Kiefer, blonder Schopf, breite Schultern, Gürtel. Entschlossen statt niedlich.',
   pal:{s:'#e0b48c',S:'#f2cfa8',z:'#b88a62',F:'#e8c04a',G:'#f6dc7a',g:'#8a5a28',t:'#3b6fb6',T:'#5a8ad0',u:'#274a80',y:'#d4af37',l:'#7a5a3c',L:'#9a7650',m:'#4e3a26',b:'#4e3a26'},
   parts(){
    const head=mk(9,8); ell(head,4.6,3.6,3.9,3.4,'s'); for(let y=5;y<=7;y++) for(let x=1;x<=5;x++) put(head,x,y,'s'); put(head,0,4,'s'); put(head,0,5,'s'); shade(head,'s','S','z');
@@ -79,22 +69,25 @@ const CREATURES={
    shade(robe,'v','V','x'); for(let x=0;x<9;x++) if(robe.g[8][x]!=='.') robe.g[8][x]='x';
    return {hood,robe,hx:2,hy:0,rx:3,ry:6};
   } },
- skelett:{ name:'Skelett', note:'Ein gefallener Held, jetzt im Dienst der Dunkelheit: derselbe starke Kiefer, aufrechte Haltung, der Rest eines roten Umhangs. Rippenkorb statt Latten.',
-  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',t:'#e8dcc8',T:'#faf3e4',u:'#8f836f',l:'#d0c3ac',L:'#e6dac4',y:'#9a8e78',c:'#8a2a2a',C:'#5e1a1a'},
+ skelett:{ name:'Skelett', note:'Frontaler Totenschädel (Form wie das Gesicht des Warlocks), kleiner als zuvor, aufrechte Haltung, breite Brust, Rippenkorb mit Lücken, einpixelige Füße. Kein Umhang mehr.',
+  pal:{s:'#e8dcc8',S:'#faf3e4',z:'#b8ab94',t:'#e8dcc8',T:'#faf3e4',u:'#8f836f',l:'#d0c3ac',L:'#e6dac4',y:'#9a8e78'},
   parts(){
-   const head=mk(9,8); ell(head,4.8,3.3,3.6,3.1,'s'); ell(head,3.0,5.6,2.5,1.6,'s'); shade(head,'s','S','z');
-   eyes(head,[[1,2,3,3,1,3]]); put(head,1,5,'p'); [1,2,3,4,5].forEach((x,i)=>put(head,x,6,i%2?'p':'w')); put(head,0,3,'z');
-   const torso=mk(8,8); ell(torso,4,3.7,3.4,3.4,'t'); shade(torso,'t','T','u');
+   const head=mk(7,7); ell(head,3.5,3.0,3.3,3.0,'s'); ell(head,3.5,5.2,2.2,1.8,'s'); shade(head,'s','S','z');
+   eyes(head,[[1,2,2,3,1,3],[4,2,2,3,4,3]]);          // two big black sockets, white pupils
+   put(head,3,4,'p'); put(head,3,5,'p');                   // nose cavity
+   [1,2,3,4,5].forEach((x,i)=>put(head,x,6,i%2?'p':'w')); // teeth
+   const torso=mk(8,8); ell(torso,4,3.7,3.7,3.4,'t'); shade(torso,'t','T','u');
    [1,3,5].forEach(y=>{ for(let x=2;x<=5;x++) if(torso.g[y][x]!=='.') torso.g[y][x]='u'; }); for(let y=0;y<8;y++) if(torso.g[y][6]!=='.') torso.g[y][6]='T';
    for(let x=2;x<=5;x++) put(torso,x,7,'t');
-   const leg=mk(3,5); cap(leg,1.5,0.4,1.5,4.0,0.75,'l'); put(leg,0,2,'L'); put(leg,1,2,'L'); put(leg,0,4,'l'); put(leg,1,4,'l'); put(leg,2,4,'l');
-   const cape=mk(3,6); [[0,0,'c'],[1,1,'c'],[1,2,'C'],[2,2,'c'],[1,3,'c'],[2,4,'C'],[1,5,'C']].forEach(([x,y,c])=>put(cape,x,y,c));
-   return {head,torso,leg,cape,cx:12,cy:6,hx:3,hy:0,tx:4,ty:5,lxBack:9,lxFront:5,ly:10,lyBack:10};
+   const leg=mk(3,5); cap(leg,1.5,0.4,1.5,4.0,0.75,'l'); put(leg,1,2,'L'); put(leg,0,4,'.'); put(leg,2,4,'.');
+   return {head,torso,leg,hx:4,hy:0,tx:4,ty:5,lxBack:9,lxFront:5,ly:10,lyBack:10};
   } }
 };
 // ---------- posing + animation (whole pixel offsets only) ----------
+function thinLeg(leg){ let last=-1; for(let y=0;y<leg.h;y++) if(leg.g[y].some(c=>c!=='.')) last=y; if(last<0) return; const keep=Math.floor(leg.w/2); for(let x=0;x<leg.w;x++) if(x!==keep) leg.g[last][x]='.'; }
 function frame(key,state,t,facingRight,outline){
   const f=mk(N,N), P=CREATURES[key].parts(), k=t%4, walk=state==='laufen';
+  if(document.getElementById('optFeet').checked && P.leg) thinLeg(P.leg);
   const bob=walk?[0,-1,0,-1][k]:0, ff=walk?[-1,0,1,0][k]:0, fb=-ff, nod=walk?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
   for(let x=4;x<=12;x++) put(f,x,15,'k');
   if(key==='warlock'){
