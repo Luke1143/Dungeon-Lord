@@ -1,0 +1,26 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Ausrüstung im Zoo</title>
+<style>body{margin:0;background:#0e0a07;color:#e8dcc8;font:14px/1.5 system-ui,sans-serif}main{max-width:1200px;margin:0 auto;padding:20px}
+h1{color:#d9b43a;margin:0 0 6px}p{color:#b6a58c}table{border-collapse:collapse}td,th{padding:4px 6px;font-size:12px;color:#9d8d76;text-align:center}canvas{image-rendering:pixelated;background:#4a3b2d;display:block}</style></head><body><main>
+<h1>Ausrüstung im Zoo</h1>
+<p>Die Regeln aus <code>sprites.js</code>: dieselben Körper (Held, Ork), fünf Stufen, jede Rüstung ändert auch die Silhouette (Federbusch, Schulterplatten, Kieferschutz, Schilde). Waffen und Schilde sind je ein Sprite für alle.</p>
+<table id="grid"></table>
+<script src="../sprites.js"></script>
+<script>
+const LOADOUTS=[
+ ['nackt',null],
+ ['leicht',{mat:'leder',helm:1,chest:1,legs:1,weapon:'speer'}],
+ ['mittel',{mat:'bronze',helm:2,chest:2,legs:1,weapon:'schwert',shield:'buckler'}],
+ ['schwer',{mat:'eisen',helm:3,chest:3,legs:2,weapon:'axt',shield:'kite'}],
+ ['elite',{mat:'stahl',helm:3,chest:3,legs:2,weapon:'hacke',shield:'tower'}],
+ ['magier',{mat:'leder',helm:1,chest:1,legs:1,weapon:'stab'}],
+ ['bogen',{mat:'leder',helm:2,chest:1,legs:1,weapon:'bogen'}]
+];
+const KEYS=['held','ork','knight','barbarian'];
+const grid=document.getElementById('grid'), S=8;
+grid.insertAdjacentHTML('beforeend','<tr><th></th>'+LOADOUTS.map(l=>'<th>'+l[0]+'</th>').join('')+'</tr>');
+const cells=[];
+KEYS.forEach(k=>{ const tr=document.createElement('tr'); tr.innerHTML='<th>'+ZOO[k].name+(k!=='held'&&k!=='ork'?' ('+k+')':'')+'</th>'; LOADOUTS.forEach(l=>{ const td=document.createElement('td'), c=document.createElement('canvas'); c.width=16*S; c.height=16*S; td.appendChild(c); tr.appendChild(td); cells.push([c.getContext('2d'),k,l[1]]); }); grid.appendChild(tr); });
+function paint(ctx,key,eq,t){ const z=ZOO[key], f=z.frame(t,false,t%2===1,eq), pal=f.pal?{...z.pal,...f.pal}:z.pal; ctx.fillStyle='#4a3b2d'; ctx.fillRect(0,0,16*S,16*S); f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=pal[c]||'#f0f'; ctx.fillRect(x*S,y*S,S,S); })); }
+let t=0; function tick(){ t++; cells.forEach(([ctx,k,eq])=>paint(ctx,k,eq,Math.floor(t/3))); }
+setInterval(tick,140); tick();
+</script></main></body></html>

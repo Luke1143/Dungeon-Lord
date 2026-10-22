@@ -861,6 +861,7 @@ function buildItems(){
       label: (tier.prefix ? tier.prefix+' ' : '') + (fam.names ? flavour : fam.label),
       baseLabel: fam.label,
       icon: fam.icon,
+      family: baseId,
       tier: tier.id,
       tierLabel: tier.label || 'Normal',
       tags: (fam.tags||[]).concat(WEIGHT_TAGS[fam.weight]||[])
@@ -4297,9 +4298,9 @@ function tileSlotIcons(t, x, y){
 }
 
 // Was traegt diese Kreatur? Ausruestung zuerst in ihre festen Plaetze.
-function heldSlotIcons(c){
+function heldSlotIcons(c, skipGear){
   const slots=[null,null,null];
-  (c.inventory||[]).forEach(inst=>{
+  (skipGear?[]:(c.inventory||[])).forEach(inst=>{
     const d=instDef(inst);
     if(!d) return;
     const idx = d.type==='weapon' ? 0 : d.type==='shield' ? 1 : d.type==='armor' ? 2 : -1;
@@ -4375,14 +4376,33 @@ function thoughtOf(c){
 
 // Code-generated creature sprites (sprites.js). Falls back to the emoji for kinds without a sprite.
 const SPRITE_CACHE={};
-function spriteCanvas(key,t,facingRight,moving,carry){
-  const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0)+'|'+(carry||'');
+function spriteCanvas(key,t,facingRight,moving,extra){
+  const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0)+'|'+(extra?JSON.stringify(extra):'');
   if(SPRITE_CACHE[id]) return SPRITE_CACHE[id];
-  const z=ZOO[key], f=z.frame(t,facingRight,moving,carry), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
-  const g=cv.getContext('2d');
-  f.g.forEach((row,y)=>row.forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=z.pal[ch]||'#f0f'; g.fillRect(x,y,1,1); }));
+  const z=ZOO[key], f=z.frame(t,facingRight,moving,extra), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
+  const g=cv.getContext('2d'), pal=f.pal?{...z.pal,...f.pal}:z.pal;
+  f.g.forEach((row,y)=>row.forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=pal[ch]||'#f0f'; g.fillRect(x,y,1,1); }));
   return SPRITE_CACHE[id]=cv;
 }
+// What a humanoid wears, as sprite rules: material and tier follow the armour weight and quality, weapons and shields map to one shared sprite each.
+const WEAPON_SPRITE={ sword:'schwert', axe:'axt', hammer:'hacke', javelin:'speer', bow:'bogen', crossbow:'bogen', wandFire:'stab', wandBolt:'stab', wandIce:'stab' };
+function equipLook(c){
+  const e={}; let any=false;
+  (c.inventory||[]).forEach(inst=>{
+    const d=instDef(inst); if(!d) return;
+    if(d.type==='weapon' && !e.weapon){ e.weapon=WEAPON_SPRITE[d.family]; any=any||!!e.weapon; }
+    else if(d.type==='shield' && !e.shield){ e.shield=d.family; any=true; }
+    else if(d.type==='armor' && !e.chest){
+      const w=d.family==='heavyArmor'?3:(d.family==='mediumArmor'?2:1), step=d.tier==='fine'?1:(d.tier==='crude'?-1:0);
+      e.chest=w; e.helm=w; e.legs=w>=3?2:1;
+      e.mat=['leder','bronze','eisen','stahl'][Math.max(0,Math.min(3,w-1+step))];   // fine pieces are one material better, crude ones one worse
+      any=true;
+    }
+  });
+  if(!e.mat) e.mat='eisen';
+  return any?e:null;
+}
+
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
   const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
@@ -4391,8 +4411,8 @@ function drawCreatureSprite(c,px,py,opts){
   if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; if(Math.abs(dx)>0.004) c._faceRight=dx>0; } }
   c._sx=px; c._sy=py;
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
-  const carry=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : undefined;
-  const cv=spriteCanvas(key,t,!!c._faceRight,moving,carry);
+  const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
+  const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
   const sx=(px-camX)*TILE, sy=(py-camY)*TILE, o=opts||{};
   ctx.save();
   ctx.imageSmoothingEnabled=false;
@@ -4448,7 +4468,7 @@ function drawActor(c, baseIcon){
     ctx.restore();
   }
 
-  drawSlots(heldSlotIcons(c), px, py, true);
+  drawSlots(heldSlotIcons(c, !!(typeof ZOO!=='undefined' && ZOO[c.kind||'imp'] && ZOO[c.kind||'imp'].humanoid)), px, py, true);   // worn gear is part of the sprite
 
   const th=thoughtOf(c);
   if(th) drawEmojiFx(th, px, py, { scale:0.5, offsetY:-TILE*0.36 });

@@ -128,8 +128,8 @@ const ZOO_TEX={};
 function zooTexture(key,t,facingRight,moving){
   const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0);
   if(ZOO_TEX[id]) return ZOO_TEX[id];
-  const z=ZOO[key], f=z.frame(t,facingRight,moving), c=document.createElement('canvas'); c.width=16; c.height=16; const x=c.getContext('2d');
-  f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=z.pal[ch]||'#f0f'; x.fillRect(xx,yy,1,1); }));
+  const z=ZOO[key], f=z.frame(t,facingRight,moving), pal=f.pal?{...z.pal,...f.pal}:z.pal, c=document.createElement('canvas'); c.width=16; c.height=16; const x=c.getContext('2d');
+  f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=pal[ch]||'#f0f'; x.fillRect(xx,yy,1,1); }));
   const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; tex.generateMipmaps=false; tex.colorSpace=THREE.SRGBColorSpace;
   return ZOO_TEX[id]=tex;
 }

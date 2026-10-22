@@ -87,16 +87,73 @@ const CREATURES={
 };
 
   const doc=null;
-  function frame(key,t,facingRight,moving){
+  // ---- equipment: rules on tagged pixels (head 'H', torso 'T', legs 'L'), no per-creature armour art ----
+  // equip = { mat:'leder'|'bronze'|'eisen'|'stahl', helm:0-3, chest:0-3, legs:0-2, weapon:name, shield:'buckler'|'kite'|'tower' }
+  const MATS={
+    leder:{m:'#8a5a34',M:'#b07a4a',n:'#5a3820',W:'#8a5a34',K:'#5a3820'},
+    bronze:{m:'#b87a2e',M:'#e0a64e',n:'#7a4c18',W:'#d4a04a',K:'#7a4c18'},
+    eisen:{m:'#8d949c',M:'#c4cad1',n:'#575e66',W:'#c4cad1',K:'#575e66'},
+    stahl:{m:'#b4c4d6',M:'#e6f0fb',n:'#6b7e92',W:'#e6f0fb',K:'#6b7e92'}
+  };
+  const WEAPONS={   // grip = pixel held at the anchor behind the back; 'j' = wood
+    schwert:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[0,6,'K'],[1,6,'K'],[2,6,'K'],[1,7,'j'],[1,8,'j']], grip:[1,7] },
+    axt:{ px:[[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[2,0,'W'],[3,0,'W'],[2,1,'W'],[3,1,'W'],[2,2,'W'],[3,2,'W'],[2,3,'W']], grip:[1,7] },
+    hacke:{ px:[[0,0,'W'],[1,0,'W'],[2,0,'W'],[3,0,'W'],[0,1,'W'],[3,1,'W'],[1,1,'j'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,7] },
+    stab:{ px:[[0,0,'Q'],[1,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,6] },
+    speer:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[1,9,'j']], grip:[1,6] },
+    bogen:{ px:[[1,0,'j'],[0,1,'j'],[0,2,'j'],[0,3,'j'],[0,4,'j'],[0,5,'j'],[0,6,'j'],[1,7,'j'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[1,6,'W']], grip:[0,3] }
+  };
+  const SHIELDS={   // drawn in front of the chest (left side), no arm needed
+    buckler:[[0,0,'m'],[1,0,'M'],[0,1,'M'],[1,1,'M'],[0,2,'n'],[1,2,'m']],
+    kite:[[0,0,'M'],[1,0,'M'],[2,0,'m'],[0,1,'m'],[1,1,'M'],[2,1,'m'],[0,2,'m'],[1,2,'m'],[2,2,'n'],[1,3,'n'],[2,3,'n'],[1,4,'n']],
+    tower:[[0,0,'M'],[1,0,'M'],[2,0,'M'],[0,1,'m'],[1,1,'M'],[2,1,'m'],[0,2,'m'],[1,2,'m'],[2,2,'m'],[0,3,'m'],[1,3,'M'],[2,3,'m'],[0,4,'m'],[1,4,'m'],[2,4,'n'],[0,5,'n'],[1,5,'n'],[2,5,'n']]
+  };
+  const bbox=(f,tag)=>{ let x0=99,x1=-1,y0=99,y1=-1; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(f.tag[y][x]===tag){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } return {x0,x1,y0,y1}; };
+  function armour(f,e){
+    const H=bbox(f,'H'), T=bbox(f,'T'), L=bbox(f,'L');
+    const set=(x,y,c)=>{ if(x>=0&&y>=0&&x<N&&y<N) f.g[y][x]=c; };
+    if(e.helm){
+      const t=e.helm;
+      for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='H'){
+        const c=f.g[y][x]; if(c==='p'||c==='e'||c==='w') continue;
+        const rel=y-H.y0, back=x>=H.x0+5;
+        if(rel<=Math.min(t,3) || (t>=2&&back&&rel<=4)) f.g[y][x]=(rel===0||(x<=H.x0+3&&rel<=1))?'M':'m';
+      }
+      if(t>=2) for(let r=4;r<=5;r++) if(f.tag[H.y0+r]&&f.tag[H.y0+r][H.x0+4]==='H') set(H.x0+4,H.y0+r,'n');   // cheek plate
+      if(t===3){ for(let x=H.x0;x<=H.x0+3;x++) if(f.tag[H.y1]&&f.tag[H.y1][x]==='H') set(x,H.y1,'n');           // jaw guard
+        [[H.x1+1,H.y0],[H.x1+1,H.y0+1],[H.x1+2,H.y0+1]].forEach(([x,y])=>set(x,y,'R')); }                        // plume trails behind the helm
+    }
+    if(e.chest){
+      const t=e.chest;
+      for(let y=T.y0;y<=T.y1;y++) for(let x=T.x0;x<=T.x1;x++) if(f.tag[y][x]==='T'){
+        const rel=y-T.y0;
+        if(t===1&&rel>=1&&rel<=4) f.g[y][x]=rel===1?'M':(rel===4?'n':'m');
+        if(t>=2) f.g[y][x]=rel<=1?'M':(rel>=5?'n':'m');
+      }
+      if(t>=2) set(T.x1-1,T.y0+4,'M');                                                                            // rivet
+      if(t===3){ [[T.x1+1,T.y0,'M'],[T.x1+1,T.y0+1,'m'],[T.x1,T.y0-1,'M'],[T.x0-1,T.y0+1,'M'],[T.x0-1,T.y0+2,'m']].forEach(([x,y,c])=>set(x,y,c)); }   // pauldrons widen the silhouette
+    }
+    if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
+    if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-3+x,sy+y,c)); }
+    if(e.weapon&&WEAPONS[e.weapon]){ const wp=WEAPONS[e.weapon], ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
+      wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }
+  }
+  function frame(key,t,facingRight,moving,equip){
     const f=mk(N,N), P=CREATURES[key].parts(), k=t%4;
+    f.tag=Array.from({length:N},()=>Array(N).fill(''));
+    const tb=(part,ox,oy,tag)=>{ for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.'&&ox+x>=0&&oy+y>=0&&ox+x<N&&oy+y<N){ f.g[oy+y][ox+x]=c; f.tag[oy+y][ox+x]=tag; } } };
     const bob=moving?[0,-1,0,-1][k]:0, ff=moving?[-1,0,1,0][k]:0, fb=-ff, nod=moving?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
     for(let x=4;x<=12;x++) put(f,x,15,'k');
     if(key==='warlock'){ blit(f,P.robe,P.rx,P.ry+bob); put(f,P.rx+2+ff,14,'R'); put(f,P.rx+5+fb,14,'R'); blit(f,P.hood,P.hx,P.hy+bob+nod); }
-    else { blit(f,P.leg,P.lxBack+fb,P.lyBack); blit(f,P.torso,P.tx,P.ty+bob); blit(f,P.leg,P.lxFront+ff,P.ly); blit(f,P.head,P.hx,P.hy+bob+nod); }
+    else {
+      tb(P.leg,P.lxBack+fb,P.lyBack,'L'); tb(P.torso,P.tx,P.ty+bob,'T'); tb(P.leg,P.lxFront+ff,P.ly,'L'); tb(P.head,P.hx,P.hy+bob+nod,'H');
+      if(equip){ armour(f,equip); f.pal={ j:'#6b4a2f', R:'#b02a2a', Q:'#9a6aff', q:'#e8d8ff', ...(MATS[equip.mat||'eisen']) }; }
+    }
     if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
     return f;
   }
-  ['held','ork','warlock'].forEach(key=>{ ZOO[key]={ name:CREATURES[key].name, pal:{...BASEPAL,...CREATURES[key].pal}, frame:(t,fr,mv)=>frame(key,t,fr,mv) }; });
+  const HUM={ held:true, ork:true, warlock:false };
+  Object.keys(HUM).forEach(key=>{ ZOO[key]={ name:CREATURES[key].name, humanoid:HUM[key], pal:{...BASEPAL,...CREATURES[key].pal}, frame:(t,fr,mv,eq)=>frame(key,t,fr,mv,eq) }; });
 })();
 
 // ---- skeleton (native facing: front, symmetric) ----
