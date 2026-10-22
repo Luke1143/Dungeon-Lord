@@ -66,6 +66,22 @@ Eine Kampagnenkarte im Stil von Dwarf Fortress, erzeugt beim Start eines neuen S
 - Jeder Ort hat **Eigenschaften und Quirks**, **eigene Spielmechaniken** und einen **Nebenauftrag** zusätzlich zum Primärziel.
 - *(Vorschlag)* Ein Run hat etwa 10 Züge. Die Karte enthält mehr Orte, als man besucht.
 
+### Die Weltwirtschaft *(Entwurf, mit dem Spieler abgestimmt)*
+
+**Leitsatz: „Losing is fun“.** Verlieren soll Spaß machen, weil der Spieler **versteht, warum** er verloren hat, und es im nächsten Run besser machen kann. Wer von Gegnern in epischer Plattenrüstung überrollt wird, greift im nächsten Run früher Schmieden und Bergwerke an. Dafür muss das Spiel offenlegen, woher die Stärke der Gegner kommt, und der Spieler wird **immer zu Kompromissen gezwungen**: Greife ich das Trainingslager an, damit weniger Verstärkung kommt, oder gleich die Schmiede in der Hoffnung auf ein episches Artefakt?
+
+- **Die Welt hat eine Uhr.** Die Overworld läuft in **Runden**. Mit jedem Zug des Spielers (in eine Nachbarregion) vergeht eine Runde, und die gute Seite sammelt Ressourcen aus allen Regionen, die ihr noch gehören. Daraus wächst ihre **Heldenmacht**, und die bestimmt, was in jedem Level und im Finale auf den Spieler wartet.
+- **Regionen.** Die Karte besteht aus Regionen (Zellen um die Orte). Das **Gelände** bestimmt ihre Eigenschaft: Gras ergibt Farmland, Dörfer und Trainingslager, Wald Magierhaine und Elfenwälder, Hügel Festungen und Lager, Gebirge Zwergenschmieden und Bergwerke, Sumpf Moorsiedlungen. Flussnähe macht Handelsdörfer.
+- **Fünf Werte der Heldenmacht**, jeder mit klarer Wirkung im Level: **Nachschub** (Helden pro Welle), **Rüstung** (Ausrüstungsstufe von krude bis episch), **Ausbildung** (Heldenstufe), **Magie** (Zauberer, stärkerer Boss), **Befestigung** (mehr Wellen). Jede Region liefert pro Runde einen Teil davon.
+- **Nachschubwege.** Eine Region liefert nur, solange sie über die Karte mit der Hauptstadt verbunden ist. Wer eine **Engstelle** erobert, schneidet alles dahinter ab, ohne es angreifen zu müssen. Das ist der Hebel fürs Zerlegen der Gegnerwirtschaft. Ein Rush ignoriert das und nimmt mehr Gegnermacht im Finale in Kauf.
+- **Jedes gewonnene Level ist eine eroberte Region.** Sie liefert dem Feind nichts mehr, und der **Landstrich verändert sich sichtbar** auf der Karte (verdorrt, dunkel, glühende Adern).
+- **Das Level liest die Region:** Der Ortstyp wirkt lokal (eine Schmiede-Region hat bessere Ausrüstung, ein Lager höhere Heldenstufen, eine Festung mehr Wellen, ein Sumpf viel Wasser), dazu kommen die globalen Werte der Heldenmacht. Eine Vorschau vor dem Angriff zeigt, was den Spieler erwartet.
+- **Aufklärung.** Von entfernten Regionen sieht man den Typ nicht. Man kennt eroberte Regionen und die Nachbarn der eigenen Position. Ereignisse können weitere Regionen aufdecken.
+- **Ereignisse und Würfel.** Auf der Karte liegen **leere Orte** ohne Level, sie lösen nur ein Ereignis aus. Dazu kommen Zufallsereignisse (Verstärkung, Seuche, Spione, Schmuggler). Ereignisse entscheiden per **Würfelwurf**, das Ergebnis wird angezeigt.
+- **Länge.** Ein Run hat **12 bis 15 Züge**. Der kürzeste Weg zur Hauptstadt ist deutlich kürzer, das ist der Rush.
+- **Niederlage erklärt sich.** Der Endbildschirm zeigt, wie die Heldenmacht entstanden ist (Werte, liefernde Regionen) und gibt Hinweise, was beim nächsten Mal anders laufen könnte.
+- Neue Regionstypen, Ereignisse und Modifikatoren sind **Tabelleneinträge**, kein neuer Code.
+
 ### Beispiele
 
 | Ort | Charakter | Beispiel-Nebenziel |
