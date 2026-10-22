@@ -131,7 +131,7 @@ Gefallene Helden kann der Spieler **bekehren oder korrumpieren**, statt sie nur 
 - **Emojis bleiben** für Gedanken und Stimmung in Sprechblasen (godhand.md, Teil 17 und 26).
 - **Keine sichtbaren Hände.** Kreaturen haben keine Hände und keine Arme im Bild, Hände sind unsichtbar (wie in RimWorld). Was eine Kreatur trägt oder hält, zeigt sich über das Objekt selbst (Sack auf dem Rücken, Werkzeug, Waffe), nicht über Arme. Bei Bedarf darf ein Objekt eine abstrakte Hand mitbringen, die zum Objekt gehört und nicht zur Kreatur. *(Entscheidung nach Prototypen in `prototypes/imp-parts.html`.)*
 - **Kreaturen aus Teilen** *(Vorschlag, erprobt)*: Kopf, Körper, Beine und Tragegut sind getrennte kleine Sprites, die der Code zusammensetzt. Animiert wird durch Verschieben um ganze Pixel, nie durch Drehen. Der Sack erscheint nur, wenn die Kreatur etwas trägt (diegetisch). Paletten färben dieselben Teile um.
-- **Augen zeigen die Seite** *(Vorschlag, erprobt am Helden)*: Die dunklen Kreaturen haben schwarze Augen mit weißen Pupillen, die guten (Helden) weiße Augen mit schwarzen Pupillen. So erkennt man auch aus der Ferne, wer Freund und wer Feind ist.
+- **Augen zeigen die Seite** *(entschieden)*: Alles auf der Seite des Spielers oder neutral hat schwarze Augen mit weißen Pupillen, nur die Heldenseite hat weiße Augen mit schwarzen Pupillen. So erkennt man auch aus der Ferne, wer Freund und wer Feind ist.
 - **Ausrüstung verändert die Silhouette mit der Stufe** *(Vorschlag, erprobt in `prototypes/equipment.html`)*: Rüstung ist eine Regel auf den Pixeln der Kreatur (Helm färbt den Kopf, Panzer den Rumpf, Schienen die Beine), kein Sprite pro Kreatur. Niedrige Stufen färben nur um, höhere Stufen dürfen die Silhouette verändern (Schulterplatten, Gesichtsschutz, Helmkamm), über Ankerpunkte der Kreatur (Kopf, Schulter, Rücken, Griff). Bestien tragen keine Rüstung und keine Werkzeuge. Material (Leder, Bronze, Eisen, Stahl) ist eine Palette.
 - **Der Imp** *(Stand der Prototypen)*: Profilansicht, gebückt, großer Kopf mit zwei großen schwarzen Augen mit weißen Pupillen und sonst keinem Gesichtsdetail, rot-brauner Grundton, Sack auf dem Rücken beim Tragen von Gold oder Erz. 16×16, flach, ohne Kontur.
 - **3D-Optik** *(Vorschlag, erprobt in `prototypes/3d-spike.html`)*: Gelände als Blöcke, Kreaturen als Billboard-Sprites. Der Imp schaut je nach Bewegungsrichtung auf dem Bildschirm nach links oder rechts.
@@ -281,6 +281,7 @@ Nach Durchsicht von `index.html` und `dev-notes.md`:
 | Darstellung | Pixel-Sprites (Figur 16×16, Kachel 32×32, bis zu vier Figuren pro Feld), Emojis nur in Sprechblasen. |
 | Hände | Kreaturen haben keine sichtbaren Hände oder Arme. Getragenes zeigt sich über das Objekt. |
 | Imp-Grundgestalt | Gebückter Sackträger mit großem Kopf, großen schwarzen Augen mit weißen Pupillen, rot-braun, ohne Ohren, Hörner, Schwanz und Mund. |
+| Augen | Spielerseite und Neutrale: schwarze Augen, weiße Pupillen. Heldenseite: weiße Augen, schwarze Pupillen. |
 | Pixelgröße | Bei 16×16 bleiben wir. Ein Wechsel auf 24×24 (Kachel 48×48) wurde erwogen und verworfen. |
 | Offenheit | Das Projekt soll so offen wie möglich sein. Nur selbst Gemachtes oder frei Lizenziertes, keine fremden Inhalte ohne klare Lizenz. |
 | Meta-Progression | Keine dauerhaften Freischaltungen. |
