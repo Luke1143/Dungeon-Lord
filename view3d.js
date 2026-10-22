@@ -45,7 +45,7 @@ const View3D=(()=>{
     return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(f).map(v=>v.toString(16).padStart(2,'0')).join('');
   }
   // spec: { full } (opaque texture from TILEGEN.full) or { color, kind } (flat colour plus speckle overlay)
-  const specKey=s=>(s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||'')))+(s.crack?'#c'+s.crack:'');
+  const specKey=s=>(s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||'')))+(s.crack?'#c'+s.crack:'')+(s.tint?'#t'+s.tint:'');
   function texture(spec,variant){
     const key=specKey(spec)+'|'+variant;
     if(texCache.has(key)) return texCache.get(key);
@@ -61,6 +61,7 @@ const View3D=(()=>{
       }
     }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
+    if(spec.tint){ g.fillStyle=spec.tint; g.fillRect(0,0,32,32); }
     if(spec.crack && typeof TILEGEN!=='undefined'){
       const o=TILEGEN.crack(spec.crack,variant);
       o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
@@ -87,14 +88,14 @@ const View3D=(()=>{
       const m=i=>material(wc(f[i]||base),v);
       mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
-      mesh=new T.Mesh(flatGeo(), material(info.full?{ full:info.full }:{ color:info.color, kind:info.kind },v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
+      mesh=new T.Mesh(flatGeo(), material(Object.assign(info.full?{ full:info.full }:{ color:info.color, kind:info.kind }, info.tint?{ tint:info.tint }:{}),v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
     }
     mesh.userData={ x, y };
     return mesh;
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.faces?info.faces.map(specKey).join(','):'');
+      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       if(cur) tileGroup.remove(cur.mesh);

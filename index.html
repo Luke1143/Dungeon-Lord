@@ -1251,7 +1251,14 @@ function recipeFor(actor, x, y){
   // Gestein: die Markierung entscheidet zwischen Abbauen und Verstaerken
   if(isDiggable(t)){
     // Verstaerkte Waende halten doppelt so viel aus
-    if(t.marked || actor.faction==='good') return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };   // heroes tunnel through any wall (scouts), reinforced ones take twice as long
+    if(actor.faction==='good'){
+      if(t.gem) return null;
+      // Heroes tunnel through plain rock. A reinforced wall holds against them (as in the original game) until they
+      // outweigh the defenders around it: see wallNeutralized().
+      if(t.reinforced && !wallNeutralized(x,y)) return null;
+      return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };
+    }
+    if(t.marked) return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };
     if(!t.reinforced && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
       return { id:'reinforce', cost:WORK_COST.reinforce, range:1 };
     }
@@ -1319,7 +1326,7 @@ function applyRecipe(actor, rec, x, y){
   }
   if(rec.id==='claim'){
     const wasEntrance=t.room==='entrance';
-    t.owned=true; t.reserved=null;
+    t.owned=true; t.enemy=false; t.reserved=null;
     if(wasEntrance && entranceFullyClaimed()) logEvent('Ihr habt den Eingang erobert.', x, y);
     return;
   }
@@ -4577,7 +4584,7 @@ function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
-  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind }; }
+  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined }; }
   if(t.type==='water'){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
     return { wall:false, water:true, color:COLORS.water, kind:null };
@@ -4685,6 +4692,7 @@ function draw2d(){
           ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(tileOverlay(kind,x,y),px,py,TILE,TILE); ctx.restore();
         }
       }
+      if(t.type==='floor' && t.enemy && !t.owned){ ctx.fillStyle='rgba(150,25,25,0.28)'; ctx.fillRect(px,py,TILE,TILE); }
       const cs=crackStage(t);
       if(cs>0){ ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(crackCanvas(cs,x,y),px,py,TILE,TILE); ctx.restore(); }
       ctx.strokeStyle='rgba(0,0,0,0.28)';
@@ -5379,6 +5387,7 @@ function createHero(kind, x, y, id){
 }
 
 function tickHero(c){
+  { const ft=state.grid[c.y][c.x]; if(ft.type==='floor' && !ft.owned && !ft.enemy && !ft.room) ft.enemy=true; }   // heroes take the ground they stand on
   if(c.path && c.path.length){ stepAlong(c); return; }
   if(state.grid[c.y][c.x].room==='throne'){ c.state='besieging'; return; }
   const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne');
@@ -5386,14 +5395,46 @@ function tickHero(c){
   if(!res) heroDig(c);
 }
 
+// ===== Tug of war over reinforced walls =====
+// Original rule: enemies cannot dig reinforced walls. Ours adds a contest: every floor tile and every unit around the wall
+// (the 8 surrounding tiles) counts for whoever holds it. When the heroes outweigh the defenders there, the wall is neutralized
+// and they can dig it. Floors the heroes walk through turn to enemy control until an imp claims them back.
+const wallScoreCache={ tick:-1, map:new Map() };
+function wallScores(x,y){
+  let player=0, enemy=0;
+  for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+    if(!dx&&!dy) continue;
+    const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) continue;
+    const t=state.grid[ny][nx];
+    if(t.type==='floor'){ if(t.owned) player++; else if(t.enemy) enemy+=0.5; }   // claimed land counts fully, ground merely walked over by heroes half
+  }
+  const near=o=> !o.held && !o.unconscious && Math.abs(o.x-x)<=1 && Math.abs(o.y-y)<=1;
+  state.imps.forEach(o=>{ if(near(o)) player++; });
+  state.creatures.forEach(o=>{ if(!near(o)) return; if(o.faction==='good') enemy++; else player++; });
+  return { player, enemy };
+}
+function wallNeutralized(x,y){
+  if(wallScoreCache.tick!==state.tickCount){ wallScoreCache.tick=state.tickCount; wallScoreCache.map.clear(); }
+  const k=y*WORLD_COLS+x; let v=wallScoreCache.map.get(k);
+  if(v===undefined){ const sc=wallScores(x,y); v=sc.enemy>sc.player; wallScoreCache.map.set(k,v); }
+  return v;
+}
+// a reinforced wall only stays reinforced while claimed land touches it (original rule)
+function decayReinforcedWalls(){
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
+    const t=state.grid[y][x];
+    if(t.type==='rock' && t.reinforced && !neighbors(x,y).some(([nx,ny])=>{ const n=state.grid[ny][nx]; return n.type==='floor' && n.owned; })) t.reinforced=false;
+  }
+}
+
 // No open way to the throne: dig. The route runs through rock but prefers weak walls
 // (reinforced rock costs double), so scouts end up probing the dungeon for its weak spots.
-function digRouteToThrone(c){
+function digRouteToThrone(c, allowReinforced){
   const cost=(x,y)=>{
     const t=state.grid[y][x];
     if(t.type==='floor') return 1;
     if(t.type==='water') return 2;
-    if(t.type==='rock') return t.reinforced?20:10;
+    if(t.type==='rock'){ if(t.gem) return Infinity; return t.reinforced ? (allowReinforced||wallNeutralized(x,y) ? 30 : Infinity) : 10; }   // a diamond field never breaks: heroes keep out
     return Infinity;   // bedrock
   };
   const key=(x,y)=>y*WORLD_COLS+x, dist=new Map([[key(c.x,c.y),0]]), prev=new Map();
@@ -5417,12 +5458,19 @@ function digRouteToThrone(c){
   return null;
 }
 function heroDig(c){
-  const route=digRouteToThrone(c);
+  // 1. a route that only needs plain rock (or walls that are neutralized right now)
+  let route=digRouteToThrone(c,false), blocked=false;
+  // 2. none: head for the cheapest route through reinforced walls and press against the wall; the heroes gathering there
+  //    (and the floors they hold) can tip the contest
+  if(!route){ route=digRouteToThrone(c,true); blocked=true; }
   if(!route || !route.length) return;
   const walk=[];
   for(const st of route){ if(isWalkable(st.x,st.y)) walk.push(st); else break; }
   if(walk.length){ c.path=walk; c.state='marching'; stepAlong(c); return; }
+  const wall=state.grid[route[0].y][route[0].x];
+  if(blocked && wall.reinforced && !wallNeutralized(route[0].x,route[0].y)){ c.state='probing'; return; }
   c.state='digging';
+  if(wall.reinforced && !wall.breachLogged){ wall.breachLogged=true; logEvent('Helden überwältigen eine verstärkte Wand!', route[0].x, route[0].y); }
   interact(c, route[0].x, route[0].y);
 }
 
@@ -5458,6 +5506,7 @@ function tickWar(){
   if(!w || w.over) return;
 
   if(state.tickCount%WAR_CHECK_INTERVAL===0){
+    decayReinforcedWalls();
     w.connected=portalConnected();
     const portal=tilesOfRoom('portal');
     if(portal.length && portal.every(t=> state.grid[t.y][t.x].owned)){
