@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imp — zwölf Silhouetten</title>
+<style>
+body{margin:0;background:#0f0b09;color:#e8dcc8;font-family:Inter,system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:1040px;margin:0 auto}
+h1{font-family:Cinzel,Georgia,serif;color:#d4af37;font-size:1.4rem;margin:0 0 6px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:#d4af37;margin:26px 0 10px;border-bottom:1px solid #3a2a1d;padding-bottom:6px}
+p{color:#a8977e;margin:0 0 14px;font-size:.9rem;line-height:1.5}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.card{background:#1c140f;border:1px solid #3a2a1d;padding:8px;text-align:center;width:150px}
+.card b{display:block;margin-top:6px;font-size:.8rem}
+.card span{display:block;font-size:.7rem;color:#a8977e;margin-top:2px;line-height:1.35}
+canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#cfc3ad}
+#strip{width:100%;max-width:960px;height:auto;border:1px solid #3a2a1d;background:#4a3b2d}
+</style></head><body><main>
+<h1>Imp — zwölf Silhouetten</h1>
+<p>Neuanfang, Form vor Farbe. Der Imp ist der <b>Arbeiter</b> des Dungeons: Er gräbt, trägt, schleppt und putzt. Jede Silhouette erzählt das anders. Alles 16×16, nur schwarze Fläche. Welche erkennst du schon aus 2 Metern Abstand?</p>
+<div class="row" id="big"></div>
+<h2>Im Spiel: Kachel 32 px, Figur 16 px, 2-fach (wie im Spiel gezoomt)</h2>
+<canvas id="strip" width="960" height="150"></canvas>
+<script>
+const N=16;
+const grid=()=>Array.from({length:N},()=>Array(N).fill(0));
+const put=(g,x,y)=>{ if(x>=0&&y>=0&&x<N&&y<N) g[y][x]=1; };
+const ell=(g,cx,cy,rx,ry)=>{ for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) put(g,x,y); } };
+const cap=(g,x0,y0,x1,y1,r)=>{ for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const px=x+.5,py=y+.5,vx=x1-x0,vy=y1-y0,L=vx*vx+vy*vy||1; let t=((px-x0)*vx+(py-y0)*vy)/L; t=Math.max(0,Math.min(1,t)); const dx=px-(x0+vx*t),dy=py-(y0+vy*t); if(dx*dx+dy*dy<=r*r) put(g,x,y); } };
+const rect=(g,x0,y0,x1,y1)=>{ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) put(g,x,y); };
+const tri=(g,a,b,c)=>{ for(let y=0;y<N;y++) for(let x=0;x<N;x++){ const px=x+.5,py=y+.5; const d1=(px-b[0])*(a[1]-b[1])-(a[0]-b[0])*(py-b[1]); const d2=(px-c[0])*(b[1]-c[1])-(b[0]-c[0])*(py-c[1]); const d3=(px-a[0])*(c[1]-a[1])-(c[0]-a[0])*(py-a[1]); const neg=d1<0||d2<0||d3<0, pos=d1>0||d2>0||d3>0; if(!(neg&&pos)) put(g,x,y); } };
+// every imp: big head, small body, short legs
+const legs=(g,x=7,y=13)=>{ cap(g,x-1.5,y,x-1.5,15,0.9); cap(g,x+1.5,y,x+1.5,15,0.9); };
+const IDEAS=[
+ { name:'1 · Spitzhacke', note:'Trägt eine riesige Hacke über der Schulter. Das Werkzeug IST die Figur.', f(g){ ell(g,6.5,5,3.8,3.4); ell(g,6.5,10,2.8,3); legs(g,6.5,12.5); cap(g,12,15,12,2.5,0.6); cap(g,9.2,2.8,14.6,2.8,0.9); cap(g,9,9,12,8.5,0.8); } },
+ { name:'2 · Sackträger', note:'Gebückt unter einem riesigen Beutel, Gold oder Beute. Er schuftet.', f(g){ ell(g,5,7,3.4,3); ell(g,7.5,11,3,3); ell(g,11,8.5,3.6,4.4); cap(g,11,4.2,11,2.2,0.7); legs(g,7.2,13); } },
+ { name:'3 · Eimerkopf', note:'Trägt einen Eimer wie einen Helm. Albern, original, sofort erkennbar.', f(g){ rect(g,4,1,10,2); rect(g,3,3,11,5); cap(g,3.5,2,11.5,2,0.5); ell(g,7,8,2.6,2.2); ell(g,7,11.5,2.4,2.2); legs(g,7,13.5); } },
+ { name:'4 · Laternenträger', note:'Hält eine Laterne hoch, leuchtet sich den Weg.', f(g){ ell(g,6,6,3.8,3.4); ell(g,6,11,2.8,3); legs(g,6,13); cap(g,8.5,9,12,6,0.7); rect(g,11,2,14,5); rect(g,12,0,13,1); } },
+ { name:'5 · Rußkugel', note:'Fast nur Kugel mit Stummelbeinen und einem Haarbüschel.', f(g){ ell(g,8,9,6,5); cap(g,6,13,6,15,0.9); cap(g,10,13,10,15,0.9); cap(g,8,4,8,1.5,0.6); cap(g,6.5,4.5,6,2.5,0.5); cap(g,9.5,4.5,10,2.5,0.5); } },
+ { name:'6 · Langarm', note:'Gebückt, Arme fast bis zum Boden. Affenartig.', f(g){ ell(g,6,6.5,3.4,3); ell(g,7,10.5,2.6,3); cap(g,6,13,6,15,0.9); cap(g,9,13,9,15,0.9); cap(g,4.5,9,2.5,15,0.8); cap(g,9.5,9,13,15,0.8); } },
+ { name:'7 · Schneckenhaus', note:'Trägt ein Schneckenhaus als Rucksack und Panzer.', f(g){ ell(g,10.5,8.5,4.4,4.4); ell(g,5,9.5,3.4,3); cap(g,3.2,13,3.2,15,0.9); cap(g,6.8,13,6.8,15,0.9); } },
+ { name:'8 · Fledermaus', note:'Kleiner Körper, große Flügel, flattert statt zu laufen.', f(g){ ell(g,8,8,2.8,3); tri(g,[5.5,6],[0,3],[1.5,11]); tri(g,[10.5,6],[16,3],[14.5,11]); cap(g,7,11,7,13,0.8); cap(g,9,11,9,13,0.8); } },
+ { name:'9 · Maulwurf', note:'Spitze Schnauze, kräftige Grabkrallen.', f(g){ ell(g,6,9,4,3.6); tri(g,[9,7.5],[15,9],[9,11]); cap(g,8,12.5,13,13,1); cap(g,5,12.5,5,15,0.9); cap(g,8,13.5,8,15,0.9); ell(g,3.5,5.5,1.4,1.4); } },
+ { name:'10 · Spitzhut', note:'Hoher Hut, der halbe Figur ist. Wie ein Wicht.', f(g){ tri(g,[7,0],[3.5,5],[10.5,5]); ell(g,7,7,3,2.4); ell(g,7,11.2,2.6,2.6); legs(g,7,13.3); } },
+ { name:'11 · Fassträger', note:'Rollt ein Fass vor sich her. Nur Kopf und Füße lugen heraus.', f(g){ ell(g,7.5,4.5,2.8,2.5); rect(g,3,7,12,13); cap(g,5,13,5,15,0.9); cap(g,10,13,10,15,0.9); } },
+ { name:'12 · Stachelrücken', note:'Rücken voller Stacheln wie ein Igel. Wehrhaft, nicht süß.', f(g){ ell(g,6,8,3.6,3.2); ell(g,9.5,9,3.6,3.6); [[8,2],[10,2.5],[12,4],[13,6.5],[13.5,9]].forEach(([x,y])=>tri(g,[x,y],[x-1.2,y+2.4],[x+1.2,y+2.2])); cap(g,5,12,5,15,0.9); cap(g,9,12.5,9,15,0.9); } }
+];
+const sprites=IDEAS.map(i=>{ const g=grid(); i.f(g); return g; });
+const drawG=(ctx,g,ox,oy,s,col)=>{ ctx.fillStyle=col; g.forEach((row,y)=>row.forEach((v,x)=>{ if(v) ctx.fillRect(ox+x*s,oy+y*s,s,s); })); };
+IDEAS.forEach((s,i)=>{
+  const c=document.createElement('canvas'); c.width=128; c.height=128; drawG(c.getContext('2d'),sprites[i],0,0,8,'#14100c');
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c);
+  d.insertAdjacentHTML('beforeend','<b>'+s.name+'</b><span>'+s.note+'</span>'); document.getElementById('big').appendChild(d);
+});
+{ const c=document.getElementById('strip'),x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,c.width,c.height);
+  sprites.forEach((g,i)=>{ const ox=14+i*78; x.strokeStyle='#33271c'; x.strokeRect(ox,14,64,64); drawG(x,g,ox+16,30,2,'#14100c'); drawG(x,g,ox+16,95,2,'#e8dcc8'); });
+}
+</script></main></body></html>
