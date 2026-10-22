@@ -2,6 +2,14 @@
 
 Newest version on top.
 
+## 0.5 - Sprite and 3D exploration (prototypes only, game unchanged)
+All in `prototypes/`, open the files directly in a browser. Three.js 0.160 (MIT) is vendored in `lib/`.
+- `3d-spike.html`: map as 3D blocks with billboard sprites, camera pan/rotate/zoom, picking. Now with the modular imp walking and carrying sacks.
+- `imp-parts.html`: modular imp (head, body, legs, sack) animated with whole-pixel offsets; hands deliberately dropped (design statement in `design.md`).
+- `imp-silhouetten.html`, `imp-round.html`, `imp-oval.html`, `imp-flat.html`, `imp-detail.html`, `imp-head.html`, `imp-final.html`, `imp-creature.html`, `imp-styles*.html`, `sprite-32-test.html`: design explorations, kept as history. Own designs only; no art from other games.
+- Sprites are generated in code (ellipses, shading, edge rules); a creature is a table entry of parts plus a palette.
+- Next: move the part composer into `index.html` and replace the emojis; decide whether the level renderer goes 3D.
+
 ## 0.4 - View and comfort
 - **Layout**: the level fills the window (`#viewport`, resized by a `ResizeObserver`); the side panel is 290 px wide and scrolls on its own, stats sit in a 2-column grid. Below 900 px it stacks. Top bar holds speed, zoom, throne, minimap and menu buttons.
 - **Zoom** (`zoom`, 0.5x-3x, saved in localStorage): `draw()` applies one transform, so all drawing code still works in 32 px tile units. `VIEW_COLS/VIEW_ROWS` are now derived from viewport size and zoom. Mouse wheel zooms at the cursor, `+`/`-`/`0` on the keyboard.

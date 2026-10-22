@@ -79,6 +79,49 @@ SPR.hound={pal:{k:K,r:'#a8321f',R:'#6e1f14',o:'#ff7a1a',f:'#ffd36a',y:'#ffe14a',
 "kRrrrk....k.kkkk",
 "kRrwwk..........",
 "kkwkwkk........."],over:[]};
+// ---- Modular imp (see imp-parts.html): head, body, legs, sack; animation by whole-pixel offsets ----
+const IMP_PAL={ o:'#d9622b', h:'#f08a4b', O:'#8f3a1a', R:'#5a1810', p:'#14100c', e:'#ffffff', b:'#c9a96a', B:'#8a7048', y:'#f4d03f', Y:'#b8860b', g:'#aab3bd', G:'#6b7580', s:'rgba(0,0,0,0.30)' };
+const IMP_N=16;
+const impMk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+const impPut=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+function impEll(p,cx,cy,rx,ry,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) impPut(p,x,y,c); } }
+function impCap(p,x0,y0,x1,y1,r,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const px=x+.5,py=y+.5,vx=x1-x0,vy=y1-y0,L=vx*vx+vy*vy||1; let t=((px-x0)*vx+(py-y0)*vy)/L; t=Math.max(0,Math.min(1,t)); const dx=px-(x0+vx*t),dy=py-(y0+vy*t); if(dx*dx+dy*dy<=r*r) impPut(p,x,y,c); } }
+function impShade(p,base,light,dark){ const at=(x,y)=>(x<0||y<0||x>=p.w||y>=p.h)?'.':p.g[y][x], o=p.g.map(r=>r.slice());
+  for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]===base){ if(at(x,y+1)==='.'||at(x+1,y)==='.') o[y][x]=dark; else if(at(x,y-1)==='.'||(at(x-1,y)==='.'&&y<p.h/2)) o[y][x]=light; }
+  p.g=o; return p; }
+const IMP_PARTS=(()=>{
+  const head=impMk(9,8); impEll(head,4.5,4.1,4.5,3.9,'o'); impShade(head,'o','h','O');
+  [[1,2],[5,2]].forEach(([x,y])=>{ for(let j=0;j<3;j++){ impPut(head,x,y+j,'p'); impPut(head,x+1,y+j,'p'); } impPut(head,x,y+1,'e'); });
+  const body=impMk(8,7); impEll(body,4,3.6,4,3.5,'o'); impEll(body,3.2,4.3,2,1.8,'h'); impShade(body,'o','h','O');
+  const leg=impMk(3,4); impCap(leg,1.5,0.6,1.5,3.0,1.1,'o'); impShade(leg,'o','h','O'); [0,1,2].forEach(x=>impPut(leg,x,3,'R'));
+  const sack=c=>{ const p=impMk(8,8); impEll(p,4,4.9,3.9,3.1,'b'); [[3,1],[4,1],[2,0],[5,0]].forEach(([x,y])=>impPut(p,x,y,'b')); impPut(p,3,0,'B'); impPut(p,4,0,'B'); impShade(p,'b','b','B');
+    const gl=c==='gold'?['y','Y']:c==='ore'?['g','G']:null; if(gl){ impPut(p,2,4,gl[0]); impPut(p,3,3,gl[0]); impPut(p,5,5,gl[0]); impPut(p,5,3,gl[1]); impPut(p,3,6,gl[1]); } return p; };
+  return { head, body, leg, sack:{gold:sack('gold'),ore:sack('ore')} };
+})();
+function impBlit(dst,part,ox,oy){ for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.') impPut(dst,ox+x,oy+y,c); } }
+// state: 'stehen' | 'laufen' | 'gold' | 'erz'
+function impFrame(state,t,facingRight){
+  const f=impMk(IMP_N,IMP_N), carry=state==='gold'||state==='erz', walk=state!=='stehen', hunch=carry?1:0, k=t%4;
+  const bob=walk?[0,-1,0,-1][k]:0, footF=walk?[-1,0,1,0][k]:0, footB=-footF, headLag=walk?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
+  for(let x=4;x<=12;x++) impPut(f,x,15,'s');
+  impBlit(f,IMP_PARTS.leg,10+footB,11);
+  if(carry) impBlit(f,IMP_PARTS.sack[state==='gold'?'gold':'ore'],8,1+hunch+bob+(walk&&k===2?1:0));
+  impBlit(f,IMP_PARTS.body,6,5+hunch+bob);
+  impBlit(f,IMP_PARTS.leg,5+footF,11);
+  impBlit(f,IMP_PARTS.head,1,1+hunch+bob+headLag);
+  if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
+  return f;
+}
+const IMP_TEX={};   // cache: state|frame|facing -> texture
+function impTexture(state,t,facingRight){
+  const key=state+'|'+(state==='stehen'?(t%4>=2?2:0):t%4)+'|'+(facingRight?1:0);
+  if(IMP_TEX[key]) return IMP_TEX[key];
+  const f=impFrame(state,t,facingRight), c=document.createElement('canvas'); c.width=IMP_N; c.height=IMP_N; const x=c.getContext('2d');
+  f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=IMP_PAL[ch]; x.fillRect(xx,yy,1,1); }));
+  const tex=new THREE.CanvasTexture(c); tex.magFilter=THREE.NearestFilter; tex.minFilter=THREE.NearestFilter; tex.generateMipmaps=false; tex.colorSpace=THREE.SRGBColorSpace;
+  return IMP_TEX[key]=tex;
+}
+
 // ---- Tile textures (32x32, from the sprite sample) ----
 function rng(seed){let t=seed;return()=>((t=Math.imul(t^t>>>15,t|1)),(t^=t+Math.imul(t^t>>>7,t|61)),((t^t>>>14)>>>0)/4294967296)}
 const N=32;
@@ -170,11 +213,18 @@ function build(seed){
     sp.position.set(x+slot[o.s][0],0,y+slot[o.s][1]); o.big=big; world.add(sp); sprites.push(o); return o;
   };
   add('lord',3,3,0); add('warlock',4,4,0);
-  add('hero',15,13,1); add('imp',15,13,2); add('hero',16,14,0);
+  add('hero',15,13,1); add('hero',16,14,0);
   add('gold',12,14,0);
   add('hound',5,3,0).fixed=true;
-  add('imp',7,3,0,true); add('imp',7,3,1,true); add('imp',7,3,2,true);
-  for(let i=0;i<8;i++){ const f=floors[Math.floor(Math.random()*floors.length)]; add('imp',f[0],f[1],0,true); }
+  // modular imps: some walk empty-handed, some carry gold or ore on their back
+  const addImp=(x,y,state)=>{
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:impTexture(state,0,false),transparent:true,alphaTest:0.1}));
+    sp.center.set(0.5,0); sp.scale.set(0.5,0.5,1); sp.position.set(x+0.5,0,y+0.5); world.add(sp);
+    const o={sp,x,y,s:0,wander:true,tx:x,ty:y,t:0,imp:true,state,facingRight:false,frame:0,frameT:Math.random()*0.14,pause:0}; sprites.push(o); return o;
+  };
+  const states=['laufen','gold','laufen','erz','gold','laufen','erz','laufen','gold','laufen'];
+  states.forEach((st,i)=>{ const f=floors[Math.floor(Math.random()*floors.length)]; addImp(f[0],f[1],st); });
+  addImp(7,3,'gold'); addImp(7,3,'erz'); addImp(6,3,'laufen');
 }
 function stepWander(o){
   const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
@@ -234,7 +284,27 @@ function frame(now){
   camera.lookAt(cam.tx,0,cam.tz);
   // wandering imps
   tickAcc+=dt;
+  const camRight={x:Math.cos(cam.yaw), z:-Math.sin(cam.yaw)};   // screen-right direction on the ground
   sprites.forEach(o=>{
+    if(o.imp){
+      // walk tile to tile at a constant speed, pause now and then
+      if(o.pause>0){ o.pause-=dt; }
+      else {
+        const dx=o.tx-o.x, dy=o.ty-o.y, dist=Math.hypot(dx,dy);
+        if(dist<0.02){ if(Math.random()<0.25){ o.pause=0.4+Math.random()*1.2; } else stepWander(o); }
+        else {
+          const sp=Math.min(dist, 1.8*dt); o.x+=dx/dist*sp; o.y+=dy/dist*sp;
+          const side=dx*camRight.x+dy*camRight.z;       // movement on screen: left or right
+          if(Math.abs(side)>0.05) o.facingRight=side>0;
+        }
+      }
+      const moving=o.pause<=0 && Math.hypot(o.tx-o.x,o.ty-o.y)>0.02;
+      o.frameT+=dt; if(o.frameT>0.14){ o.frameT=0; o.frame++; }
+      const st=moving?o.state:(o.state==='laufen'?'stehen':o.state);   // carriers keep their pose while resting
+      o.sp.material.map=impTexture(st==='stehen'?'stehen':st, st==='stehen'?o.frame*2:o.frame, o.facingRight);
+      o.sp.position.set(o.x+0.5, 0, o.y+0.5);
+      return;
+    }
     if(o.wander && tickAcc>0.55){ stepWander(o); }
     const px=(o.tx+0.0), py=(o.ty+0.0);
     o.x+=(px-o.x)*Math.min(1,dt*3.2); o.y+=(py-o.y)*Math.min(1,dt*3.2);

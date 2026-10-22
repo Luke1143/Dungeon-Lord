@@ -129,6 +129,10 @@ Gefallene Helden kann der Spieler **bekehren oder korrumpieren**, statt sie nur 
 - **Maßstab:** Figuren sind 16×16 Pixel, Kacheln 32×32, beides mit gleich großen Pixeln. Eine Figur ist halb so breit wie eine Kachel, also passen **bis zu vier Figuren auf ein Feld**. Das passt zu den Regeln der Kachelbelegung (godhand.md, Teil 19: jede weitere Kreatur bremst).
 - **Paletten statt neuer Zeichnungen:** Fraktionen und Perks färben dasselbe Sprite um (Eis-Imp, Gift-Imp, Nekromant).
 - **Emojis bleiben** für Gedanken und Stimmung in Sprechblasen (godhand.md, Teil 17 und 26).
+- **Keine sichtbaren Hände.** Kreaturen haben keine Hände und keine Arme im Bild, Hände sind unsichtbar (wie in RimWorld). Was eine Kreatur trägt oder hält, zeigt sich über das Objekt selbst (Sack auf dem Rücken, Werkzeug, Waffe), nicht über Arme. Bei Bedarf darf ein Objekt eine abstrakte Hand mitbringen, die zum Objekt gehört und nicht zur Kreatur. *(Entscheidung nach Prototypen in `prototypes/imp-parts.html`.)*
+- **Kreaturen aus Teilen** *(Vorschlag, erprobt)*: Kopf, Körper, Beine und Tragegut sind getrennte kleine Sprites, die der Code zusammensetzt. Animiert wird durch Verschieben um ganze Pixel, nie durch Drehen. Der Sack erscheint nur, wenn die Kreatur etwas trägt (diegetisch). Paletten färben dieselben Teile um.
+- **Der Imp** *(Stand der Prototypen)*: Profilansicht, gebückt, großer Kopf mit zwei großen schwarzen Augen mit weißen Pupillen und sonst keinem Gesichtsdetail, rot-brauner Grundton, Sack auf dem Rücken beim Tragen von Gold oder Erz. 16×16, flach, ohne Kontur.
+- **3D-Optik** *(Vorschlag, erprobt in `prototypes/3d-spike.html`)*: Gelände als Blöcke, Kreaturen als Billboard-Sprites. Der Imp schaut je nach Bewegungsrichtung auf dem Bildschirm nach links oder rechts.
 - *Hinweis:* Teil 26 („Drei Sichtplätze“, „Stapel“) beschreibt die Darstellung noch mit Emojis auf 32 Pixeln und muss für Sprites angepasst werden.
 - Ein Muster mit Imp, Dungeon Lord, Held und Warlock liegt als `sprite-muster.html` vor.
 
@@ -273,6 +277,9 @@ Nach Durchsicht von `index.html` und `dev-notes.md`:
 | Overworld-Navigation | Endziel ist immer die Hauptstadt des Guten. Der Spieler bahnt sich den Weg selbst, es gibt verzweigende Wege, die Schwierigkeit steigt mit jedem Zug. |
 | Niederlage | Permadeath: ein verlorener Thronsaal beendet den Run, und **alles geht verloren**. |
 | Darstellung | Pixel-Sprites (Figur 16×16, Kachel 32×32, bis zu vier Figuren pro Feld), Emojis nur in Sprechblasen. |
+| Hände | Kreaturen haben keine sichtbaren Hände oder Arme. Getragenes zeigt sich über das Objekt. |
+| Imp-Grundgestalt | Gebückter Sackträger mit großem Kopf, großen schwarzen Augen mit weißen Pupillen, rot-braun, ohne Ohren, Hörner, Schwanz und Mund. |
+| Pixelgröße | Bei 16×16 bleiben wir. Ein Wechsel auf 24×24 (Kachel 48×48) wurde erwogen und verworfen. |
 | Offenheit | Das Projekt soll so offen wie möglich sein. Nur selbst Gemachtes oder frei Lizenziertes, keine fremden Inhalte ohne klare Lizenz. |
 | Meta-Progression | Keine dauerhaften Freischaltungen. |
 | Vault | Kommt. Ein Artefakt „In die Vault transferieren“ bringt ein gewähltes Objekt in Stase. Keine Obergrenze, die Seltenheit begrenzt. |
