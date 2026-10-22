@@ -120,15 +120,15 @@ const View3D=(()=>{
     }
     const s=takeSprite(); s.material.map=tex; s.material.opacity=alpha; s.material.rotation=it.kind==='creature'?(it.rotation||0):0; s.material.needsUpdate=true;
     let size, base, anchorY=0, py=0;
-    if(it.kind==='creature'){ size=0.78; }
+    if(it.kind==='creature'){ size=0.78*(it.scale||1); }
     else if(it.kind==='prop'){ size=0.78*(it.scale||1); }
     else { size=0.5*(it.scale||1)*1.25; }
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
     else if(it.kind==='emoji'){ anchorY=0.5; py=0.28+size/2; }
     s.center.set(0.5,it.kind==='emoji'?0.5:0);
     s.scale.set(size,size,1);
-    const zOff=(it.kind!=='emoji'&&oy>0)?oy*0.6:0;
-    s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5+zOff-ox*Math.sin(yaw));
+    if(it.kind==='emoji') s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5-ox*Math.sin(yaw));
+    else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py, it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer
   }
 
   // ---- camera, render, pick, project ----

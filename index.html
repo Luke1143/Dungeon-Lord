@@ -4418,6 +4418,20 @@ function equipLook(c){
   return any?e:null;
 }
 
+// Up to four figures share a tile: each gets a smaller sprite in its own quarter (design: Darstellung, Maßstab).
+const CROWD_SLOTS={
+  2:[[-0.22,0],[0.22,0]],
+  3:[[-0.24,0.08],[0.24,0.08],[0,-0.14]],
+  4:[[-0.24,-0.14],[0.24,-0.14],[-0.24,0.14],[0.24,0.14]]
+};
+const CROWD_SCALE=0.58;
+let crowdMap=null;
+function updateCrowds(){
+  crowdMap=new Map();
+  const add=c=>{ if(c.held) return; const k=Math.round(rx(c))+','+Math.round(ry(c)); const l=crowdMap.get(k); if(l) l.push(c); else crowdMap.set(k,[c]); };
+  state.imps.forEach(add); state.creatures.forEach(add);
+  crowdMap.forEach(list=>{ list.sort((a,b)=>(a.id||0)-(b.id||0)); list.forEach((c,i)=>{ c._crowdN=Math.min(4,list.length); c._crowdI=i%4; }); });
+}
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
   const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
@@ -4428,13 +4442,14 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha }); return true; }
-  const sx=(px-camX)*TILE, sy=(py-camY)*TILE, o=opts||{};
+  const crowd=(c._crowdN>1&&CROWD_SLOTS[c._crowdN])?CROWD_SLOTS[c._crowdN][c._crowdI]:null, sc=crowd?CROWD_SCALE:1;
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, ox:crowd?crowd[0]*TILE:0, oy:crowd?crowd[1]*TILE:0, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha }); return true; }
+  const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2+(crowd?crowd[0]*TILE:0), sy=(py-camY)*TILE+(TILE-size)+(crowd?crowd[1]*TILE:0), o=opts||{};
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
-  if(o.rotation){ ctx.translate(sx+TILE/2, sy+TILE/2); ctx.rotate(o.rotation); ctx.drawImage(cv,-TILE/2,-TILE/2,TILE,TILE); }
-  else ctx.drawImage(cv,sx,sy,TILE,TILE);
+  if(o.rotation){ ctx.translate(sx+size/2, sy+size/2); ctx.rotate(o.rotation); ctx.drawImage(cv,-size/2,-size/2,size,size); }
+  else ctx.drawImage(cv,sx,sy,size,size);
   ctx.restore();
   return true;
 }
@@ -4795,6 +4810,7 @@ function draw2d(){
     });
   }
 
+  updateCrowds();
   state.imps.forEach(imp=>{
     if(imp.held) return;
     drawActor(imp, '👹');
