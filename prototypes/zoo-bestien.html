@@ -26,16 +26,14 @@ function hound(t){
   const f=mk(N,N), k=t%4, bob=(k%2)?0:-1, flick=(Math.floor(t/2)%2)===0;
   shadow(f,2,14);
   const lift=(pair)=> (k===pair||k===pair+1)?1:0;               // diagonal pairs lift alternately
-  const leg=(x,up)=>{ for(let y=11;y<=13-up;y++) put(f,x,y+bob*0,'z'); put(f,x,13-up,'s'); if(up) put(f,x,14-up,'.'); };
-  const b=mk(N,N);
-  ell(b,6.5,8,4.6,2.8,'s');                                      // body
-  ell(b,11.8,7,2.8,2.6,'s'); [[14,7],[14,8],[15,8],[14,9],[13,9]].forEach(([x,y])=>put(b,x,y,'s')); // head and snout
-  put(b,10,3,'z'); put(b,10,4,'z'); put(b,11,4,'z');             // ear
-  [[2,6],[1,5],[1,4]].forEach(([x,y])=>put(b,x,y,'s'));           // tail
+  const b=mk(N,N), span=(y,x0,x1,c)=>{ for(let x=x0;x<=x1;x++) put(b,x,y,c); };
+  span(4,10,11,'z'); span(5,9,11,'z');                           // ears
+  span(5,12,13,'s'); span(6,9,13,'s'); span(7,2,14,'s'); span(8,2,15,'s'); span(9,2,13,'s'); span(10,3,10,'s'); // lower back, raised head, snout
+  [[1,6],[1,5],[0,4]].forEach(([x,y])=>put(b,x,y,'s'));           // tail
   shade(b,'s','S','z');
-  eye(b,12,6,13,6); put(b,15,8,'p');                              // eye and nose
-  for(let x=4;x<=9;x++) if((x+(flick?0:1))%2===0) put(b,x,5,'y'); // ember glow, flickers
-  put(b,1,3,flick?'y':'Y');                                       // tail tip spark
+  eye(b,11,6,12,6); put(b,15,8,'p');          // eye and nose
+  for(let x=3;x<=8;x++) if((x+(flick?0:1))%2===0) put(b,x,6,'y'); // ember glow, flickers
+  put(b,0,3,flick?'y':'Y');                                       // tail tip spark
   for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(b.g[y][x]!=='.') put(f,x,y+bob,b.g[y][x]);
   const L=(x,w,up,c)=>{ for(let y=11+bob;y<=13-up;y++) for(let i=0;i<w;i++) put(f,x+i,y,c); for(let i=0;i<w;i++) put(f,x+i,13-up,'s'); };
   L(6,1,lift(2),'z'); L(11,1,lift(2),'z');                  // far legs
@@ -63,9 +61,9 @@ function fly(t){
   const f=mk(N,N), k=t%4, up=(k%2)===0, hov=[0,-1,0,1][k];
   for(let x=5;x<=10;x++) put(f,x,15,'k');                         // shadow stays on the ground
   const b=mk(N,N);
+  const wy=up?6:9;
+  ell(b,5.8,wy,2.6,1.4,'W'); ell(b,8.6,wy-1,1.8,1.2,'W');
   ell(b,7,9.4,2.6,2,'s'); ell(b,10.2,8.4,2.2,2,'s');
-  const wy=up?4:6;
-  ell(b,5.5,wy,3,1.8,'W'); ell(b,8.8,wy-1,2.2,1.4,'W');
   shade(b,'s','S','z');
   eye(b,10,7,10,7); put(b,12,9,'z');
   [[6,11],[8,11]].forEach(([x,y])=>{ put(b,x,y,'z'); put(b,x,y+1,'z'); });
@@ -75,7 +73,7 @@ function fly(t){
 const BEASTS=[
  { name:'Höllenhund', note:'Kohlerot, Glut auf dem Rücken. Läuft in diagonalen Beinpaaren.', make:hound, pal:{s:'#7a3a2e',S:'#a85a44',z:'#4a1f1a',y:'#ffb02e',Y:'#ff7a1a'} },
  { name:'Käfer', note:'Gewölbter Panzer mit Naht und Glanzpunkt. Läuft im Dreibeingang.', make:beetle, pal:{s:'#3f7a5a',S:'#6cc08e',z:'#244a38',u:'#173025',w:'#d6ffe6',h:'#2f5a44',H:'#4f8a68',Z:'#1b3a2c'} },
- { name:'Fliege', note:'Winzig, riesiges Auge, flirrende Flügel. Schwebt über dem Boden.', make:fly, pal:{s:'#4d4a56',S:'#7a7788',z:'#2a2831',W:'rgba(200,230,240,0.75)'} }
+ { name:'Fliege', note:'Winzig, riesiges Auge, flirrende Flügel. Schwebt über dem Boden.', make:fly, pal:{s:'#4d4a56',S:'#7a7788',z:'#2a2831',W:'rgba(150,185,205,0.85)'} }
 ];
 const BASE={p:'#0a0807',e:'#ffffff',k:'rgba(0,0,0,0.30)'};
 function paint(ctx,f,pal,ox,oy,s){ const P={...BASE,...pal}; f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=P[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s); })); }
