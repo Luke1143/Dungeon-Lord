@@ -143,6 +143,9 @@
   #endOverlay[hidden]{ display:none; }
   .endBox{ text-align:center; padding:24px 32px; background:var(--panel); border:2px solid var(--gold); border-radius:10px; max-width:380px; }
   .endBox h2{ font-family:'Cinzel',serif; color:var(--gold); margin:0 0 10px; font-size:28px; }
+  .goalsBox{ font-size:12px; line-height:1.45; border:1px solid var(--gold); border-radius:6px; padding:6px 8px; margin-top:6px; background:rgba(212,175,55,.06); }
+  .goalsBox b{ color:var(--gold); }
+  .goalsBox .goalDone{ color:#8fd05a; }
   .endBox p{ color:var(--text); font-size:13px; line-height:1.5; margin:0 0 16px; white-space:pre-line; text-align:left; }
   .screen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; }
   .screen[hidden]{ display:none; }
@@ -242,6 +245,7 @@
       <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
       </div>
       <div class="hint" id="warHint"></div>
+      <div class="goalsBox" id="goalsBox" hidden></div>
       <button id="modeToggle" class="modeToggle active" title="Umschalten: Graben / Untersuchen">⛏️</button>
 
       <div class="section">
@@ -312,6 +316,7 @@
 <script src="sprites.js"></script>
 <script src="fx.js"></script>
 <script src="overworld.js"></script>
+<script src="objectives.js"></script>
 <script src="view3d.js"></script>
 <script>
 const WORLD_COLS=48, WORLD_ROWS=32, TILE=32;
@@ -461,6 +466,9 @@ const SPECIES={
   wizard:  { label:'Zauberer',    category:'hero',     hp:20, strength:3,  defense:0,  dex:12, dexGrowth:0.05, speed:1.0, tempo:1.0,
              needsFood:false, avoidsWater:false, intellectual:true,  canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', passive:'Gelehrter — springt Verbündeten bei' },
+  dwarfking:{ label:'Zwergenkönig', category:'boss',  hp:90, strength:9,  defense:20, dex:6,  dexGrowth:0.02, speed:0.7, tempo:0.7,
+             needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:true,  inventoryBase:3, loyalty:100,
+             style:'fighter', passive:'Hüter des Horts — jagt Diebe, bleibt sonst bei seinem Gold' },
   knight:  { label:'Ritter',      category:'hero',     hp:44, strength:6,  defense:40, dex:5,  dexGrowth:0.02, speed:0.6, tempo:0.6,
              needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', passive:'Plattenpanzer — hohe Verteidigung, meidet Wasser' }
@@ -575,6 +583,7 @@ function creatureEmoji(c){
     case 'thief': return '🥷';
     case 'wizard': return '🧙‍♂️';
     case 'knight': return '🤺';
+    case 'dwarfking': return '👑';
     default: return '❔';
   }
 }
@@ -589,6 +598,7 @@ function faintCreature(c){
 }
 
 function killCreature(c, killer){
+  if(c.isBoss && c.faction==='good') state.war.bossDead=true;
   if(killer){ killer.kills=(killer.kills||0)+1; grantXp(killer, 3); }
   if(c.category==='hero'){
     const bounty=HERO_GOLD_REWARD*(c.level||1);
@@ -692,6 +702,7 @@ function pickFightTarget(c){
   let foes=state.creatures.concat(state.imps)
     .filter(o=> !o.held && !o.unconscious && areHostile(c,o));
   if(c.category==='hero') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=HERO_AGGRO_RADIUS);
+  else if(c.category==='boss') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=(c.alert?80:7));
   if(!foes.length) return null;
   const dist=o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   const style=(SPECIES[c.kind]||{}).style || 'fighter';
@@ -1496,6 +1507,16 @@ function createWarlock(x,y){
     hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null, energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0,
     earnedWage:false, owedWages:0, wageTile:null, workLog:{}, lastPayslip:null,
     name: WARLOCK_NAMES[randInt(0,WARLOCK_NAMES.length-1)], pendingTopic:null, lookTimer:0, writeProgress:0 }, 'warlock');
+}
+
+// A boss: a strong named unit that guards a place (home). Good side = the level's boss; evil side = corrupted, fights for the player.
+function createBoss(kind,x,y,opts){
+  const o=opts||{};
+  const b=applySpecies({ id:creatureIdCounter++, x, y, state:'guarding', path:[], held:false, faction:o.faction||'good', name:o.name||SPECIES[kind].label, isBoss:true,
+    home:{ x, y }, alert:false, level:o.level||1 }, kind);
+  b.maxHp=statMaxHp(b)+(o.extraHp||0); b.hp=b.maxHp;
+  b.inventory=(o.gear||[]).map(id=>({ id, q:1 }));
+  return b;
 }
 
 function createWarlockAt(id,x,y){ const w=createWarlock(x,y); w.id=id; return w; }
@@ -2963,6 +2984,27 @@ function tickCreatureOnce(c){
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
   else if(c.category==='hero') tickHero(c);
+  else if(c.category==='boss') tickBoss(c);
+}
+
+// Bosses guard their home; the boss of a level hunts thieves once alerted, a corrupted one stays near its home and fights.
+function tickBoss(c){
+  if(c.path && c.path.length){ stepAlong(c); return; }
+  if(c.faction==='good' && c.alert){
+    const foes=state.creatures.concat(state.imps).filter(o=>!o.held&&!o.unconscious&&areHostile(c,o));
+    if(foes.length){
+      const d=o=>Math.abs(o.x-c.x)+Math.abs(o.y-c.y), t=foes.reduce((a,b)=>d(a)<=d(b)?a:b);
+      const res=bfsFind(c.x,c.y,(x,y)=>Math.abs(x-t.x)+Math.abs(y-t.y)<=1);
+      if(res && res.path.length){ c.path=res.path; c.state='hunting'; stepAlong(c); return; }
+    }
+    return;
+  }
+  const hx=c.home.x, hy=c.home.y;
+  if(Math.abs(c.x-hx)+Math.abs(c.y-hy)>2){
+    const res=bfsFind(c.x,c.y,(x,y)=>x===hx&&y===hy);
+    if(res && res.path.length){ c.path=res.path; c.state='returning'; stepAlong(c); return; }
+  }
+  c.state='guarding';
 }
 
 function nudgeEat(c){
@@ -3823,6 +3865,11 @@ const CARGO={
       t.reserved=null;
       imp.carryAmount=(imp.carryAmount||0)+taken;
       imp.carrying=true;
+      if(t.hoard){            // loot from the king's hoard: counts for the heist once delivered, and wakes the guard
+        imp.carryHoard=(imp.carryHoard||0)+taken;
+        const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
+        if(boss && !boss.alert){ boss.alert=true; logEvent(`${boss.name} bemerkt den Diebstahl und jagt eure Diener!`, boss.x, boss.y); }
+      }
       return true;
     },
     findDest(imp){
@@ -3832,10 +3879,12 @@ const CARGO={
     },
     drop(imp){
       state.gold+=(imp.carryAmount||1);
+      if(imp.carryHoard){ state.war.stolen=(state.war.stolen||0)+imp.carryHoard; imp.carryHoard=0; }
       imp.carryAmount=0; imp.carrying=false;
     },
     abandon(imp){
       dropGold(imp.x, imp.y, imp.carryAmount||1);
+      imp.carryHoard=0;
       imp.carryAmount=0; imp.carrying=false;
     }
   },
@@ -4595,7 +4644,7 @@ function silhouetteOf(cv){
 }
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
-  const key=c.kind||'imp', z=typeof ZOO!=='undefined'&&ZOO[key];
+  const baseKey=c.kind||'imp', key=(typeof ZOO!=='undefined' && c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=typeof ZOO!=='undefined'&&ZOO[key];
   if(!z) return false;
   const now=Date.now();
   if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; const side=capture?View3D.sideOf(dx,dy):dx; if(Math.abs(side)>0.004) c._faceRight=side>0; } }
@@ -4603,7 +4652,7 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  const sc=key==='imp'?IMP_SCALE:1;
+  const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:1);
   const fl=(opts&&opts.flash)||0;
   if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
   const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size), o=opts||{};
@@ -5552,7 +5601,7 @@ function wallNeutralized(x,y){
 function decayReinforcedWalls(){
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
-    if(t.type==='rock' && t.reinforced && !neighbors(x,y).some(([nx,ny])=>{ const n=state.grid[ny][nx]; return n.type==='floor' && n.owned; })) t.reinforced=false;
+    if(t.type==='rock' && t.reinforced && !t.fixed && !neighbors(x,y).some(([nx,ny])=>{ const n=state.grid[ny][nx]; return n.type==='floor' && n.owned; })) t.reinforced=false;
   }
 }
 
@@ -5698,6 +5747,21 @@ function spawnWave(){
   logEvent(last ? `Letzte Welle (${n}/${total}): ${count} Helden und der Ritter strömen aus dem Weltportal!` : `Welle ${n}/${total}: ${count} Helden strömen aus dem Weltportal!`, tiles[0].x, tiles[0].y);
 }
 
+// A goal was reached: the cunning way corrupts the boss, who then fights for the player.
+function winByGoal(g){
+  const w=state.war, boss=state.creatures.find(c=>c.isBoss);
+  if(g.id==='steal_gold' && boss){
+    boss.faction='evil'; boss.alert=false; boss.fightTarget=null; boss.path=[]; boss.state='guarding'; boss.grudges={};
+    boss.home={ x:2, y:2 };
+    w.ally={ kind:boss.kind, name:boss.name, level:boss.level };
+    w.wonText=`${boss.name} wurde um sein Gold gebracht und gehört nun euch. Er wird euch in den nächsten Leveln dienen.`;
+    logEvent(`${boss.name} ist korrumpiert und kämpft jetzt für euch!`, boss.x, boss.y);
+  } else if(g.id==='defeat_boss'){
+    w.wonText=`${g.bossName||'Der Boss'} ist im epischen Kampf gefallen.`;
+    logEvent(`${g.bossName||'Der Boss'} ist gefallen!`, 2, 2);
+  }
+}
+
 function tickWar(){
   const w=state.war;
   if(!w || w.over) return;
@@ -5706,7 +5770,13 @@ function tickWar(){
     decayReinforcedWalls();
     w.connected=portalConnected();
     const portal=tilesOfRoom('portal');
-    if(portal.length && portal.every(t=> state.grid[t.y][t.x].owned)){
+    if(w.goals){
+      // levels with their own goals (gates): any goal reached wins
+      for(const g of w.goals){
+        const r=GOALS[g.id].check(state,g);
+        if(r.done){ w.over='won'; w.wonBy=g.way||'standard'; winByGoal(g); return; }
+      }
+    } else if(portal.length && portal.every(t=> state.grid[t.y][t.x].owned)){
       w.over='won';
       logEvent('Ihr habt das Weltportal erobert!', portal[0].x, portal[0].y);
       return;
@@ -5754,6 +5824,11 @@ function updateWarUI(){
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
   const secs=Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)));
+  { const box=document.getElementById('goalsBox');
+    if(w.goals){
+      box.hidden=false;
+      box.innerHTML='<b>Wege durch die Pforte</b><br>'+w.goals.map(g=>{ const r=GOALS[g.id].check(state,g); return `<span class="${r.done?'goalDone':''}">${g.way==='cunning'?'Listig':'Direkt'}: ${GOALS[g.id].label(g)} <i>(${r.text})</i></span>`; }).join('<br>');
+    } else box.hidden=true; }
   const total=waveTotal(w), alive=state.creatures.filter(h=>h.category==='hero'&&!h.unconscious).length;
   hintEl.textContent = w.wave>=total ? (alive>0 ? `🔥 Alle ${total} Wellen sind unterwegs, noch ${alive} Helden im Dungeon.` : '🔥 Alle Wellen sind besiegt. Erobert jetzt das Weltportal!')
     : (w.wave===0 ? `🔥 Das Weltportal ist abgeriegelt. Späher kommen in ${secs} s und graben sich selbst zu euch durch.` : `🔥 Nächste Welle (${w.wave+1}/${total}) in ${secs} s`);
@@ -5761,7 +5836,7 @@ function updateWarUI(){
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
     document.getElementById('endText').textContent = w.over==='won'
-      ? `Das Weltportal gehört euch. Eure Horde hat ${w.wave} Welle(n) überstanden.`
+      ? (w.wonText || `Das Weltportal gehört euch. Eure Horde hat ${w.wave} Welle(n) überstanden.`)
       : `Die Helden haben euren Thronsaal eingenommen. Ihr habt ${w.wave} Welle(n) überlebt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):'');
     overlay.hidden=false;
   } else overlay.hidden=true;
@@ -7775,7 +7850,7 @@ function owShowInfo(){
     } else if(!prod.length && rt.playable) html+=`<br><br>Liefert den Gegnern nichts.`;
     if(rt.gate){
       html+=`<br><br><b>Pforte</b>: Jeder Weg zur Hauptstadt führt hier durch.<br>Boss: ${rt.boss.name}`;
-      html+=`<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`;
+      html+=`<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`+(rt.goals?'':'<br><i>(Sonderziel und Boss folgen noch, bis dahin gilt: Portal erobern.)</i>');
     }
     if(rt.aura && !conquered) html+=`<br>Verstärkt die Nachbarregionen (+${rt.aura.waves} Welle).`;
     if(rt.playable && !conquered){
@@ -7878,6 +7953,35 @@ function newCampaign(seed){
   showScreen('overworld');
 }
 
+// The dwarf king's hoard: a walled hall far from the throne, full of gold, with the king himself inside.
+const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'] };
+function setupDwarfHoard(){
+  const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
+  for(let attempt=0;attempt<600;attempt++){
+    const x0=randInt(10,WORLD_COLS-11), y0=randInt(2,WORLD_ROWS-9);   // 9 x 7 block
+    // phases: solid rock far from everything, then solid rock anywhere, then also through caves (never water, bedrock, gems or rooms)
+    const phase=attempt<300?0:(attempt<450?1:2);
+    let ok=true;
+    for(let y=y0;y<y0+7&&ok;y++) for(let x=x0;x<x0+9;x++){
+      const t=g[y][x];
+      if(t.room||t.gem||t.type==='bedrock'||t.type==='water'){ ok=false; break; }
+      if(phase<2 && (t.type!=='rock'||t.gold||t.ore||t.natural)){ ok=false; break; }
+    }
+    if(!ok) continue;
+    const cx=x0+4, cy=y0+3;
+    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<18 || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<7)) continue;
+    for(let y=y0+1;y<=y0+5;y++) for(let x=x0+1;x<=x0+7;x++){
+      const t=g[y][x], inHall=(y>=y0+2&&y<=y0+4&&x>=x0+2&&x<=x0+6);
+      if(inHall){ t.type='floor'; t.owned=false; t.natural=false; t.goldPile=3; t.hoard=true; t.gold=false; t.ore=false; }
+      else { t.type='rock'; t.gold=false; t.ore=false; t.natural=false; t.reinforced=true; t.fixed=true; }
+    }
+    const king=createBoss('dwarfking', cx, cy, { name:'Alberich', level:4, extraHp:40, gear:BOSS_GEAR.dwarfking });
+    state.creatures.push(king);
+    return true;
+  }
+  return false;
+}
+
 // Fresh level state; the single place that resets all counters.
 function startLevel(nodeId){
   if(typeof FX!=='undefined') FX.reset();
@@ -7889,6 +7993,10 @@ function startLevel(nodeId){
   state.war.difficulty=0;
   state.war.mods=OW.levelMods(world,campaign,n);   // global hero power plus what this region adds
   state.war.regionName=n.name;
+  { const rt=LOCATION_TYPES[n.type];
+    state.war.goals = rt.goals ? rt.goals.map(g=>Object.assign({}, g)) : null;
+    if(rt.setup==='dwarf_hoard') setupDwarfHoard();
+    (campaign.allies||[]).forEach(a=>{ const b=createBoss(a.kind, 2, 2, { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
@@ -7908,6 +8016,7 @@ function finishLevel(){
     campaign.pos=n.id;
     if(!campaign.conquered.includes(n.id)) campaign.conquered.push(n.id);
     campaign.skillPoints=(campaign.skillPoints||0)+1;
+    if(w.ally){ campaign.allies=(campaign.allies||[]).concat([w.ally]); }
     owSelected=null;
     if(n.type==='capital'){
       campaign=null; saveCampaign();

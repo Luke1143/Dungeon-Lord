@@ -50,7 +50,8 @@ const OW=(()=>{
     // Two ways through: the frontal assault (beat the boss in an epic fight) or the cunning way (a special goal with a bigger reward).
     gate_dwarf:   { label:'Pforte: Alberichs Hallen', playable:true, gate:true, fixedName:'Alberichs Hallen', terrain:'mountain', prod:{ iron:3 }, local:{ waves:2, gearTier:1 },
       gen:{ caveDensity:0.46, oreVeins:5, goldVeins:4, bedrock:2 },
-      boss:{ name:'Alberich, der Zwergenkönig' },
+      boss:{ name:'Alberich, der Zwergenkönig' }, setup:'dwarf_hoard',
+      goals:[ { id:'defeat_boss', way:'frontal', bossName:'Alberich' }, { id:'steal_gold', way:'cunning', amount:15 } ],
       paths:{ frontal:'Alberich im Kampf besiegen und die Halle erobern.', cunning:'Ihm das geliebte Gold stehlen und ihn korrumpieren: er dient dir dann als mächtige Einheit.' },
       desc:'Tief im Berg liegt der Hort des Zwergenkönigs. Der einzige Weg nach Osten führt durch seine Hallen.', side:'Das Gold des Königs rauben.', suffixes:[] },
     gate_elf:     { label:'Pforte: Hain des Weltenbaums', playable:true, gate:true, fixedName:'Hain des Weltenbaums', terrain:'forest', prod:{ magic:3 }, local:{ waves:2, wizards:2 },
@@ -110,7 +111,7 @@ const OW=(()=>{
 
   function initCampaign(c){
     c.round=c.round||0; c.bonus=c.bonus||{};
-    c.conquered=c.conquered||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
+    c.conquered=c.conquered||[]; c.allies=c.allies||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
     return c;
   }
   const neighbours=(world,id)=>world.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);

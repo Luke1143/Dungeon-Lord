@@ -316,6 +316,10 @@ function impFrame(state,t,facingRight){
   ZOO.barbarian=v({ t:'#8a4a28',T:'#b06a3c',u:'#5a2c14',F:'#b0561e',G:'#d8782e' });
   ZOO.thief=v({ t:'#3a3a46',T:'#555566',u:'#22222a',F:'#2a2218',G:'#3c3224',l:'#2a2a32',L:'#3c3c46',m:'#1c1c22',b:'#1c1c22' });
   ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
+  // the dwarf king (a boss that can be corrupted): the hero body, red beard, heavy armour; the ally version has the player side's eyes
+  const dwarf=swap=>({ ...held, name:'Zwergenkönig', pal:{ ...held.pal, F:'#b8561e', G:'#d8782e', t:'#5a2c14', T:'#7a4a2a', u:'#3a1c0c' },
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'bronze', helm:1, chest:3, legs:2, weapon:'hacke', shield:'tower' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+  ZOO.dwarfking=dwarf(false); ZOO.dwarfking_ally=dwarf(true);
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
