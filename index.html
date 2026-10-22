@@ -4953,6 +4953,12 @@ const CLUSTER_LAYOUTS={
   3: [[0.32,0.36,0.68],[0.66,0.42,0.68],[0.48,0.68,0.68]]
 };
 function drawEmojiCluster(char, x, y, count, tint){
+  if(char==='🔴'||char==='🌑'){
+    const key=char==='🔴'?'bloom':'bloomcool';
+    const lay=CLUSTER_LAYOUTS[Math.min(3,Math.max(1,count))];
+    let done=true; lay.forEach(([fx,fy,sc])=>{ if(!drawProp(key,x,y,{ scale:0.75*sc, offsetX:(fx-0.5)*TILE, offsetY:(fy-0.5)*TILE })) done=false; });
+    if(done) return;
+  }
   if(capture){ for(let i=0;i<Math.min(3,count);i++) capture.push({ kind:'emoji', emoji:char, x, y, ox:(i-1)*7, oy:2, scale:0.8 }); return; }
   const layout=CLUSTER_LAYOUTS[Math.min(3, Math.max(1, count))];
   const px=(x-camX)*TILE, py=(y-camY)*TILE;
@@ -4971,6 +4977,7 @@ function drawEmojiCluster(char, x, y, count, tint){
 // des Originals wiederhergestellt, damit der Umriss erhalten bleibt.
 let seamCanvas=null;
 function drawEmojiSeamTint(char, x, y, color, preFilter){
+  if(drawProp('ingot', x, y, { scale:0.85 })) return;
   if(capture){ drawProp('ingot', x, y); return; }
   if(!seamCanvas){ seamCanvas=document.createElement('canvas'); seamCanvas.width=TILE; seamCanvas.height=TILE; }
   const s=seamCanvas.getContext('2d');

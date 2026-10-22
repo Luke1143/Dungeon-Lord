@@ -352,6 +352,8 @@ function impFrame(state,t,facingRight){
   add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
   add('ore',()=>{ const f=mk(16,16); ell(f,8,9,5,4,'n'); ell(f,6.5,8,2.2,2,'N'); put(f,10,8,'y'); put(f,9,11,'y'); shade(f,'n','N','k'); return f; });
+  add('bloom',t=>{ const f=mk(16,16); ell(f,8,9,4.6,3.6,'o'); ell(f,7,8,2.6,2,'f'); put(f,11,7,'F'); put(f,5,10,'F'); if(flick(t)) put(f,9,6,'F'); shade(f,'o','f','t'); return f; });
+  add('bloomcool',()=>{ const f=mk(16,16); ell(f,8,9,4.6,3.6,'n'); ell(f,7,8,2.4,1.8,'N'); put(f,10,10,'k'); put(f,6,11,'k'); shade(f,'n','N','k'); return f; });
   add('ingot',()=>{ const f=mk(16,16); rect(f,3,7,10,5,'s'); rect(f,4,6,8,1,'S'); rect(f,5,12,6,1,'z'); shade(f,'s','S','z'); return f; });
   add('corpse',()=>{ const f=mk(16,16); ell(f,8,6.5,3.5,3,'h'); rect(f,6,6,2,2,'p'); rect(f,9,6,2,2,'p'); put(f,7,6,'e'); put(f,10,6,'e'); put(f,8,9,'p'); rect(f,3,11,10,1,'Z'); rect(f,3,13,10,1,'Z'); put(f,2,10,'h'); put(f,13,10,'h'); put(f,2,14,'h'); put(f,13,14,'h'); shade(f,'h','H','Z'); return f; });
 })();
