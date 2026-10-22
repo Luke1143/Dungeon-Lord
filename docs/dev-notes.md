@@ -47,3 +47,8 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - Still emoji: items, rooms, effects, thoughts and the overworld. Cargo icons over carriers remain as the amount indicator.
 - Equipment is part of `sprites.js` now: `ZOO[key].frame(t, facingRight, moving, equip)` with `equip = { mat, helm, chest, legs, weapon, shield }`. Rules work on tagged pixels (head/torso/legs); tier 3 adds plume, jaw guard and pauldrons (silhouette changes), weapons and shields are one sprite each. `equipLook(c)` in `index.html` derives it from the inventory (armour family = tier, quality = one material better/worse, weapon family = sprite). Overview: `prototypes/equipment-zoo.html`.
 - Next: ranged/magic weapon sprites need hand-tuning, creature-specific gear anchors for non-humanoids stay out (beasts carry nothing), then the decision on the 3D renderer.
+
+## Reference: Dungeon Keeper wiki
+- The user pointed to https://dungeonkeeper.fandom.com/wiki/Dungeon_Keeper_Wiki as a source of design answers (rooms, creatures, happiness, payday, imp behaviour). Direct fetching is blocked (HTTP 402), single pages turn up through web search.
+- Use it for mechanics and design principles only. Names, art, sounds and exact numbers stay our own (see CLAUDE.md, open-source rule).
+
