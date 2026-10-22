@@ -15,9 +15,11 @@ canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
 </style></head><body><main>
 <h1>Imp aus Teilen — der Sackträger</h1>
 <p>Seitenansicht (nach links schauend, rechts gespiegelt). Jede Figur besteht aus Teilen: Kopf, Körper, zwei Beine und optional ein Sack. Animiert wird nur durch Verschieben um ganze Pixel, kein Drehen. Der Sack erscheint nur, wenn der Imp etwas trägt.</p>
-<p><label><input type="checkbox" id="optHands" checked> Hand am Sack</label><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
+<p><label>Hand: <select id="optHands"><option value="small" selected>3 Pixel</option><option value="big">klein-fäustig (vorher)</option><option value="none">keine</option></select></label><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
 <h2>Die Teile</h2>
 <div class="row" id="parts"></div>
+<h2>Hand im Vergleich (Sack mit Gold)</h2>
+<div class="row" id="handcmp"></div>
 <h2>Zustände (laufen von links nach rechts und zurück)</h2>
 <div class="row" id="stages"></div>
 <h2>Gleiche Teile, andere Paletten</h2>
@@ -66,10 +68,13 @@ function partHand(){   // 3x3: a little fist pushing up from below; it belongs t
   const rows=['hhh','hoO','.OO'];
   const p=mk(3,3); rows.forEach((r,y)=>[...r].forEach((c,x)=>{ if(c!=='.') put(p,x,y,c); })); return p;
 }
-const PARTS={ hand:partHand(), head:partHead(), body:partBody(), leg:partLeg(), sack:{none:null,gold:partSack('gold'),ore:partSack('ore'),empty:partSack('empty')} };
+function partHandSmall(){   // exactly three pixels: two light, one shade
+  const p=mk(2,2); put(p,0,0,'h'); put(p,1,0,'h'); put(p,0,1,'O'); return p;
+}
+const PARTS={ handSmall:partHandSmall(), hand:partHand(), head:partHead(), body:partBody(), leg:partLeg(), sack:{none:null,gold:partSack('gold'),ore:partSack('ore'),empty:partSack('empty')} };
 // ---------- composing a frame ----------
 function blit(dst,part,ox,oy){ if(!part) return; for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.') put(dst,ox+x,oy+y,c); } }
-function frame(state,t,facingRight,outline){
+function frame(state,t,facingRight,outline,handMode=handsBox.value){
   const f=mk(N,N), carry=state.startsWith('trag'), walk=state==='laufen'||carry;
   const hunch=carry?1:0, k=t%4;
   const bob=walk?[0,-1,0,-1][k]:0, footF=walk?[-1,0,1,0][k]:0, footB=-footF;
@@ -81,9 +86,10 @@ function frame(state,t,facingRight,outline){
   if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack behind the back
   blit(f,PARTS.body,6,5+hunch+bob);
   blit(f,PARTS.leg,5+footF,11);                                       // front leg
-  if(sackKind && handsBox.checked){                                    // one small hand hints at lifting the sack
-    const sy=1+hunch+bob+(walk&&k===2?1:0);
-    blit(f,PARTS.hand,12,sy+6+(walk&&k%2?1:0));        // one abstract hand, only hinted
+  if(sackKind && handMode!=='none'){                                   // one hand hints at lifting the sack
+    const sy=1+hunch+bob+(walk&&k===2?1:0), wob=(walk&&k%2?1:0);
+    if(handMode==='small') blit(f,PARTS.handSmall,14,sy+7+wob);        // three pixels peeking out under the sack
+    else blit(f,PARTS.hand,12,sy+6+wob);
   }
   blit(f,PARTS.head,1,1+hunch+bob+headLag);
   if(outline) outlineGrid(f);
@@ -103,7 +109,7 @@ function paint(ctx,f,ox,oy,s,swap){
 // ---------- the page ----------
 const handsBox=document.getElementById('optHands'), outlineBox=document.getElementById('optOutline'), slowBox=document.getElementById('optSlow');
 const partsHost=document.getElementById('parts');
-[['Kopf',PARTS.head],['Hand',PARTS.hand],['Körper',PARTS.body],['Bein',PARTS.leg],['Sack leer',PARTS.sack.empty],['Sack + Gold',PARTS.sack.gold],['Sack + Erz',PARTS.sack.ore]].forEach(([name,p])=>{
+[['Kopf',PARTS.head],['Hand (3 px)',PARTS.handSmall],['Körper',PARTS.body],['Bein',PARTS.leg],['Sack leer',PARTS.sack.empty],['Sack + Gold',PARTS.sack.gold],['Sack + Erz',PARTS.sack.ore]].forEach(([name,p])=>{
   const c=document.createElement('canvas'); c.width=p.w*10+10; c.height=p.h*10+10; const x=c.getContext('2d');
   const f=mk(p.w+1,p.h+1); blit(f,p,0,0);
   f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=PAL[ch]||'#f0f'; x.fillRect(5+xx*10,5+yy*10,10,10); }));
@@ -120,6 +126,12 @@ const varCanvases=VARS.map((v,i)=>{
   const c=document.createElement('canvas'); c.width=288; c.height=84;
   const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+v+(i%2?' · trägt Gold':' · läuft')+'</b>'); document.getElementById('variants').appendChild(d);
   return {v,c,ctx:c.getContext('2d'),state:i%2?'trägt gold':'laufen'};
+});
+[['keine','none'],['3 Pixel','small'],['vorher','big']].forEach(([label,mode])=>{
+  const c=document.createElement('canvas'); c.width=160; c.height=160; c.getContext('2d');
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+label+'</b>'); document.getElementById('handcmp').appendChild(d);
+  const x=c.getContext('2d'); x.fillStyle='#4a3b2d'; x.fillRect(0,0,160,160);
+  paint(x,frame('trägt gold',0,false,false,mode),0,0,10);
 });
 let t=0;
 function tick(){
