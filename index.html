@@ -1213,7 +1213,7 @@ function grantXp(actor, amount){
 // Ein Schwung dauert laenger als ein Schritt: bei Tempo 1.0 holt eine Kreatur
 // drei Ticks lang aus, bevor der Schlag sitzt. Schnelle Kreaturen schlagen oefter.
 const SWING_COST=3;
-const WORK_COST={ pickup:1, claim:3, rock:10, reinforce:24, build:8 };
+const WORK_COST={ pickup:1, claim:3, rock:10, reinforce:60, build:8 };   // reinforcing is a long job: a wall is an investment, not a reflex
 
 // Wieviel Wucht bringt der Akteur pro Treffer auf? Stufe und Staerke zaehlen.
 function actorPower(actor){
@@ -1645,6 +1645,83 @@ function placeMapBorder(g){
   }
 }
 
+// ---- terrain: connected cave systems, rivers and lakes ----
+// Caves come from cellular automata (organic caverns) and are joined by winding tunnels into one network, so the underground
+// has real structure to defend. Rivers and lakes cut across it: water cannot be reinforced, so a dungeon is hard to seal completely.
+function growCaveSystem(g){
+  const W=WORLD_COLS, H=WORLD_ROWS;
+  const inZone=(x,y)=> x>=2 && y>=2 && x<W-2 && y<H-2 && !(x<=7 && y<=7);   // keep the rock around the throne
+  let m=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=> inZone(x,y) && Math.random()<0.41));
+  for(let it=0;it<4;it++){
+    m=m.map((row,y)=>row.map((v,x)=>{
+      if(!inZone(x,y)) return false;
+      let n=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy) continue; const yy=y+dy, xx=x+dx; if(yy>=0&&yy<H&&xx>=0&&xx<W&&m[yy][xx]) n++; }
+      return v ? n>=4 : n>=5;
+    }));
+  }
+  // label components, keep the big ones
+  const comp=Array.from({length:H},()=>Array(W).fill(-1)), comps=[];
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    if(!m[y][x] || comp[y][x]>=0) continue;
+    const cells=[], q=[[x,y]]; comp[y][x]=comps.length;
+    while(q.length){ const [cx,cy]=q.pop(); cells.push([cx,cy]); for(const [nx,ny] of [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]]){ if(nx>=0&&ny>=0&&nx<W&&ny<H&&m[ny][nx]&&comp[ny][nx]<0){ comp[ny][nx]=comps.length; q.push([nx,ny]); } } }
+    comps.push(cells);
+  }
+  const keep=comps.filter(c=>c.length>=12).sort((a,b)=>b.length-a.length);
+  const open=new Set(); keep.forEach(c=>c.forEach(([x,y])=>open.add(x+','+y)));
+  // join the caverns: each one gets a winding tunnel to the nearest already joined one
+  const joined=[keep[0]].filter(Boolean);
+  for(let i=1;i<keep.length;i++){
+    let best=null;
+    joined.forEach(j=>{ for(let a=0;a<keep[i].length;a+=3) for(let b=0;b<j.length;b+=3){ const d=Math.abs(keep[i][a][0]-j[b][0])+Math.abs(keep[i][a][1]-j[b][1]); if(!best||d<best.d) best={ d, from:keep[i][a], to:j[b] }; } });
+    if(best){
+      let [x,y]=best.from; const [tx,ty]=best.to;
+      for(let guard=0;guard<200 && (x!==tx||y!==ty);guard++){
+        if(inZone(x,y)) open.add(x+','+y);
+        const stepX = x!==tx && (y===ty || Math.random()<0.5);
+        if(Math.random()<0.18){ const jx=Math.random()<0.5?1:-1; if(inZone(x,y+jx)) y+=jx; }
+        else if(stepX) x+= tx>x?1:-1; else y+= ty>y?1:-1;
+      }
+    }
+    joined.push(keep[i]);
+  }
+  open.forEach(k=>{ const [x,y]=k.split(',').map(Number); const t=g[y][x]; if(t.type==='rock' && !t.room){ t.type='floor'; t.owned=false; t.natural=true; } });
+}
+
+function growRivers(g,count){
+  const W=WORLD_COLS, H=WORLD_ROWS;
+  for(let r=0;r<count;r++){
+    // from the top or the left edge to the opposite side, wandering; never through the throne corner
+    const fromTop=Math.random()<0.5;
+    let x=fromTop ? randInt(12,W-6) : 1, y=fromTop ? 1 : randInt(10,H-6);
+    const width=Math.random()<0.4?2:1;
+    for(let guard=0; guard<400; guard++){
+      for(let w=0;w<width;w++){
+        const wx=fromTop?x+w:x, wy=fromTop?y:y+w;
+        if(wx<1||wy<1||wx>=W-1||wy>=H-1) continue;
+        if(wx<=6 && wy<=6) continue;
+        const t=g[wy][wx];
+        if(t.type==='rock'||t.type==='floor'){ if(!t.room){ t.type='water'; t.natural=false; t.owned=false; t.gold=false; t.ore=false; } }
+      }
+      if(fromTop){ y++; x+= Math.random()<0.35 ? (Math.random()<0.5?-1:1) : 0; if(y>=H-1) break; }
+      else { x++; y+= Math.random()<0.35 ? (Math.random()<0.5?-1:1) : 0; if(x>=W-1) break; }
+      x=Math.max(1,Math.min(W-2,x)); y=Math.max(1,Math.min(H-2,y));
+    }
+  }
+}
+
+function growLake(g,x,y,size){
+  const cells=[[x,y]], seen=new Set([x+','+y]);
+  for(let i=0;i<cells.length && cells.length<size;i++){
+    const [cx,cy]=cells[i];
+    [[1,0],[-1,0],[0,1],[0,-1]].sort(()=>Math.random()-0.5).forEach(([dx,dy])=>{
+      const nx=cx+dx, ny=cy+dy, k=nx+','+ny;
+      if(cells.length<size && !seen.has(k) && nx>1 && ny>1 && nx<WORLD_COLS-2 && ny<WORLD_ROWS-2 && Math.random()<0.75){ seen.add(k); cells.push([nx,ny]); }
+    });
+  }
+  cells.forEach(([cx,cy])=>{ if(cx<=6&&cy<=6) return; const t=g[cy][cx]; if((t.type==='rock'||t.type==='floor') && !t.room){ t.type='water'; t.natural=false; t.owned=false; t.gold=false; t.ore=false; } });
+}
+
 function makeDefaultState(){
   const g=[];
   for(let y=0;y<WORLD_ROWS;y++){ const row=[]; for(let x=0;x<WORLD_COLS;x++) row.push(emptyTile()); g.push(row); }
@@ -1665,11 +1742,9 @@ function makeDefaultState(){
     do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);
     growOreVein(g,x,y, randInt(4,9));
   }
-  for(let i=0;i<5;i++){
-    let x,y,tries=0;
-    do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);
-    growCave(g,x,y, randInt(8,18));
-  }
+  growCaveSystem(g);
+  growRivers(g, randInt(1,2));
+  for(let i=0,n=randInt(0,2);i<n;i++){ let x,y,tries=0; do{ x=randInt(8,WORLD_COLS-4); y=randInt(8,WORLD_ROWS-4); tries++; } while(!farFromStart(x,y) && tries<50); growLake(g,x,y,randInt(8,18)); }
   for(let i=0;i<3;i++){
     let x,y,tries=0;
     do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);

@@ -91,3 +91,9 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - Visual-only knockback: the creature does not change tiles. A real shove is a possible next step.
 - Sim with finite waves, territory-only tug of war (5x5), 3 imps, pre-reinforced ring (`node tools/balance-sim.js 6000 3 ring 0,4`): difficulty 0 (3 waves): none/small/medium lose at tick ~1030/1150/1570, **large holds** (all heroes dead, throne untouched). Difficulty 4 (5 waves): lost at ~660/860/1010/1325 (wave 1-3). Without territory widening the ring was unbreakable (5000 ticks, heroes piled up), so heroes now dig out and take the ground around a wall they cannot break (`heroWiden`) and commit to one siege wall (`c.siege`).
 
+## 1.2 Terrain and wall cost (balance levers)
+- Design call: heroes failing to break a perfect ring is not a bug; the balance sim's static defender is the limitation (a real player expands, digs towards gold and takes risks, and may line a deliberate weak point with traps). Levers instead: wall cost, terrain, water.
+- `WORK_COST.reinforce` 24 -> 60 (dig stays 10).
+- `makeDefaultState` now builds the terrain from `growCaveSystem` (cellular automata caverns, components >= 12 tiles joined by winding tunnels), `growRivers` (1-2 meandering rivers from the top or left edge, width 1-2, never through the throne corner) and `growLake` (0-2 lakes). Water is walkable for heroes, cannot be reinforced and needs bridges for the player. The old blob caves with basins are gone. Quick check: four maps gave 146-276 cave tiles and 67-181 water tiles.
+- The balance sim has no real player behaviour; use its numbers only as a lower bound.
+
