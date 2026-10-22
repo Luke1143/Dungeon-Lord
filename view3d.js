@@ -9,6 +9,7 @@ const View3D=(()=>{
   const texCache=new Map(), matCache=new Map(), canvasTex=new Map(), emojiCanvas=new Map();
   const pool=[]; let poolUsed=0, decalPool=[], decalUsed=0;
   let rayTarget=[];
+  const lights=[];   // pooled point lights for candles, fires and kilns (nearest few)
 
   function load(){
     if(window.THREE) return Promise.resolve();
@@ -24,7 +25,7 @@ const View3D=(()=>{
     host.insertBefore(renderer.domElement, host.firstChild);
     scene=new T.Scene(); scene.background=new T.Color(0x0f0b09); scene.fog=new T.Fog(0x0f0b09,26,70);
     camera=new T.PerspectiveCamera(FOV,1,0.1,200);
-    scene.add(new T.AmbientLight(0xa8a0b8,2.3));
+    scene.add(new T.AmbientLight(0xa8a0b8,1.7));
     const sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
     tileGroup=new T.Group(); spriteGroup=new T.Group(); scene.add(tileGroup, spriteGroup);
     ready=true;
@@ -138,9 +139,23 @@ const View3D=(()=>{
     camera.lookAt(cx,0,cy);
     camera.updateMatrixWorld();
   }
+  const LIGHT_KEYS={ candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
+  const MAX_LIGHTS=8;
+  function updateLights(items,cx,cy,now){
+    while(lights.length<MAX_LIGHTS){ const l=new T.PointLight(0xffa040,0,6,1.6); scene.add(l); lights.push(l); }
+    const cand=items.filter(it=>it.kind==='prop'&&LIGHT_KEYS[it.key]).map(it=>({ it, d:(it.x-cx)*(it.x-cx)+(it.y-cy)*(it.y-cy) })).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
+    cand.forEach(({it},i)=>{
+      const l=lights[i];
+      const [col,inten,dist]=LIGHT_KEYS[it.key];
+      l.color.setHex(col); l.distance=dist; l.intensity=inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15;
+      l.position.set(it.x+0.5,0.8,it.y+0.5);
+    });
+    for(let i=cand.length;i<lights.length;i++) lights[i].intensity=0;   // keep all lights alive: toggling them would recompile the shaders
+  }
   function render(tileInfo, items, cx, cy, viewRows){
     if(!ready||!active) return;
     syncTiles(tileInfo);
+    updateLights(items,cx,cy,performance.now());
     poolUsed=0; decalUsed=0;
     items.forEach(place);
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;

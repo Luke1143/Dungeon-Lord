@@ -134,7 +134,8 @@ Gefallene Helden kann der Spieler **bekehren oder korrumpieren**, statt sie nur 
 - **Augen zeigen die Seite** *(entschieden)*: Alles auf der Seite des Spielers oder neutral hat schwarze Augen mit weißen Pupillen, nur die Heldenseite hat weiße Augen mit schwarzen Pupillen. So erkennt man auch aus der Ferne, wer Freund und wer Feind ist.
 - **Ausrüstung verändert die Silhouette mit der Stufe** *(Vorschlag, erprobt in `prototypes/equipment.html`)*: Rüstung ist eine Regel auf den Pixeln der Kreatur (Helm färbt den Kopf, Panzer den Rumpf, Schienen die Beine), kein Sprite pro Kreatur. Niedrige Stufen färben nur um, höhere Stufen dürfen die Silhouette verändern (Schulterplatten, Gesichtsschutz, Helmkamm), über Ankerpunkte der Kreatur (Kopf, Schulter, Rücken, Griff). Bestien tragen keine Rüstung und keine Werkzeuge. Material (Leder, Bronze, Eisen, Stahl) ist eine Palette.
 - **Der Imp** *(Stand der Prototypen)*: Profilansicht, gebückt, großer Kopf mit zwei großen schwarzen Augen mit weißen Pupillen und sonst keinem Gesichtsdetail, rot-brauner Grundton, Sack auf dem Rücken beim Tragen von Gold oder Erz. 16×16, flach, ohne Kontur.
-- **3D-Optik** *(Vorschlag, erprobt in `prototypes/3d-spike.html`)*: Gelände als Blöcke, Kreaturen als Billboard-Sprites. Der Imp schaut je nach Bewegungsrichtung auf dem Bildschirm nach links oder rechts.
+- **3D-Optik** *(umgesetzt als zweite Ansicht, Stand heute)*: Gelände als Blöcke mit Pixel-Texturen, Kreaturen und Gegenstände als Billboard-Sprites, Kerzen, Feuer und Brennofen werfen Licht. Umschalten mit `V`, Kamera drehen mit Q/E. Die 2D-Ansicht bleibt als Alternative erhalten. Prototypen: `prototypes/3d-spike.html`, Code: `view3d.js`.
+- **Sprites im Spiel** *(umgesetzt)*: Alle Kreaturen (Imp, Fliege, Käfer, Höllenhund, Warlock, vier Heldenklassen) und die Einrichtung (Bett, Thron, Kerze, Regal, Feuer, Amboss …) kommen aus `sprites.js`, ebenso die Kachel-Texturen. Heldenrüstung und Waffen folgen den Ausrüstungsregeln (Stufe ändert die Silhouette, Material ist eine Palette). Noch Emoji: Metall-Kette (Barren, Erzhaufen), Effekte, Overworld, Oberflächen-Symbole.
 - *Hinweis:* Teil 26 („Drei Sichtplätze“, „Stapel“) beschreibt die Darstellung noch mit Emojis auf 32 Pixeln und muss für Sprites angepasst werden.
 - Ein Muster mit Imp, Dungeon Lord, Held und Warlock liegt als `sprite-muster.html` vor.
 
@@ -262,7 +263,7 @@ Nach Durchsicht von `index.html` und `dev-notes.md`:
 | Weltkarte | 48×32, Kamera mit WASD, Nebel des Krieges, Goldadern, natürliche Höhlen |
 | Graben, Imps | Ja (Markieren, Imps arbeiten, Verstärken, Erobern) |
 | Räume | Thronsaal, Lagerraum, Schlafsaal, Bibliothek, Hühnerfarm, Arena; Weltportal fest |
-| Kreaturen | Imp, Fliege, Käfer, Höllenhund, Warlock |
+| Kreaturen | Imp, Fliege, Käfer, Höllenhund, Warlock (als generierte Sprites). Im Prototyp außerdem Ork und Skelett-Familie. |
 | Helden | Barbar, Dieb, Zauberer, Ritter; kommen in Wellen, sobald der Weg vom Portal zum Thron frei ist |
 | Sieg / Niederlage | Ja (Portal erobert / Thronsaal verloren), Endbildschirm mit „Neues Spiel“ |
 | Besessenheit | Ja (Zauber) |
@@ -270,7 +271,9 @@ Nach Durchsicht von `index.html` und `dev-notes.md`:
 | Balancing | **Nein.** Wellenstärke gegen Verteidigung und Thronschaden sind ungetestet |
 | Dungeon Lord als Figur | Nein (bisher nur der Thronsaal) |
 | Sprache im Code | Gemischt: Bezeichner meist englisch, einzelne Kommentare deutsch. Angleichung steht aus. |
-| Overworld, Level-Auswahl, Artefakte, Fortschritt zwischen Leveln, Finale, New Game Plus | Nein |
+| Overworld, Level-Auswahl | Ja (Kampagnen-Skelett: Hauptmenü, prozedurale Weltkarte von links nach rechts, Schwierigkeit pro Zug) |
+| Darstellung | Sprites für Figuren, Möbel und Kacheln; 2D- und 3D-Ansicht |
+| Artefakte, Fortschritt zwischen Leveln, Finale, New Game Plus | Nein |
 
 ## 9. Entschieden
 
@@ -314,3 +317,4 @@ Ohne Antwort gilt der Vorschlag in Klammern.
 3. **Biome und Bosse:** Welche Biome und welche Bosse gibt es? *(Vorschlag: Für Stufe 2 reichen zwei Biome mit je einem Boss.)*
 4. **Bekehren und Korrumpieren:** Welche Regeln gelten (Dauer, Chance, Kosten), und was ist das Ergebnis? *(Vorschlag: Arbeit im Gefängnis, das Ergebnis ist eine Kreatur des Spielers mit eigener Palette und einem Perk „korrumpiert“.)*
 5. **Lebenspool der Bewusstlosen:** Gilt der eigene Lebenspool im bewusstlosen Zustand nur für den Lord oder für alle Kreaturen? *(Vorschlag: für alle, damit die Regel überall gleich ist. godhand.md, Teil 25, würde dann angepasst.)*
+6. **Figurengröße im Bild:** Das Dokument sagt, eine Figur ist halb so breit wie eine Kachel (bis zu vier pro Feld). Im Spiel füllt ein 16×16-Sprite bisher die ganze Kachel (zweifach vergrößert, wie die Kachel-Texturen), weil es so gut lesbar ist. Bei mehreren Kreaturen auf einem Feld überlappen sie sich. *(Vorschlag: so lassen und mehrere Figuren auf einem Feld leicht versetzt und verkleinert zeichnen.)*

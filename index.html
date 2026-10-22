@@ -4867,7 +4867,7 @@ const PROP_OF={ '🛏️':'bed', '👑':'throne', '🕯️':'candle', '📚':'sh
 function drawProp(key,x,y,o){
   if(typeof ZOO==='undefined' || !ZOO['prop_'+key]) return false;
   const cv=spriteCanvas('prop_'+key, Math.floor(Date.now()/280), false, false), op=o||{};
-  if(capture){ capture.push({ kind:'prop', canvas:cv, x, y, ox:op.offsetX, oy:op.offsetY, scale:op.scale||1 }); return true; }
+  if(capture){ capture.push({ kind:'prop', key, canvas:cv, x, y, ox:op.offsetX, oy:op.offsetY, scale:op.scale||1 }); return true; }
   const size=TILE*(op.scale||1), sx=(x-camX)*TILE+TILE/2-size/2+(op.offsetX||0), sy=(y-camY)*TILE+TILE/2-size/2+(op.offsetY||0);
   ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,sx,sy,size,size); ctx.restore();
   return true;
