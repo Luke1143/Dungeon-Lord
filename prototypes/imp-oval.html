@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imp — schmaler, ovaler Körper</title>
+<style>
+body{margin:0;background:#0f0b09;color:#e8dcc8;font-family:Inter,system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:1000px;margin:0 auto}
+h1{font-family:Cinzel,Georgia,serif;color:#d4af37;font-size:1.4rem;margin:0 0 6px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:#d4af37;margin:26px 0 10px;border-bottom:1px solid #3a2a1d;padding-bottom:6px}
+p{color:#a8977e;margin:0 0 14px;font-size:.9rem;line-height:1.5}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.card{background:#1c140f;border:1px solid #3a2a1d;padding:10px;text-align:center;width:216px}
+.card b{display:block;margin-top:8px;font-size:.9rem}
+.card span{display:block;font-size:.75rem;color:#a8977e;margin-top:3px;line-height:1.4}
+canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
+#strip{width:100%;max-width:900px;height:auto;border:1px solid #3a2a1d}
+</style></head><body><main>
+<h1>Imp — schmaler, ovaler Körper, vier Stile</h1>
+<p>Alle vier: Feuer-Imp-Farben, schwarze Augen mit weißen Pupillen, schmalerer Körper. Verschieden ist die <b>Handschrift</b>: Kontur, Schattierung und Silhouette.</p>
+<div class="row" id="big"></div>
+<h2>Echte Größe: Kachel 64 px (Figur 32 px), dazu 3-fach, auf Boden und auf Dunkel</h2>
+<canvas id="strip" width="900" height="260"></canvas>
+<script>
+// ---------- Sprite generator (16 px figures) ----------
+const N=16;
+function grid(){ return Array.from({length:N},()=>Array(N).fill('.')); }
+function put(g,x,y,c){ if(x>=0&&y>=0&&x<N&&y<N) g[y][x]=c; }
+function ell(g,cx,cy,rx,ry,fn){
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry;
+    if(dx*dx+dy*dy<=1) put(g,x,y,fn(dx,dy,x,y));
+  }
+}
+// shading modes: light from the top left
+const SHADE={
+  three:t=>(dx,dy)=>{ const l=-0.55*dx-0.75*dy; return l>0.38?t[0]:(l<-0.38?t[2]:t[1]); },
+  flat:t=>(dx,dy)=>{ const l=-0.55*dx-0.75*dy; return l<-0.5?t[2]:t[1]; },
+  dither:t=>(dx,dy,x,y)=>{ const l=-0.55*dx-0.75*dy, chk=(x+y)%2===0;
+    if(l>0.45) return t[0]; if(l>0.3) return chk?t[0]:t[1];
+    if(l<-0.45) return t[2]; if(l<-0.3) return chk?t[2]:t[1]; return t[1]; }
+};
+function ring(g,cx,cy,rx,ry,c){
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry;
+    if(dx*dx+dy*dy<=1 && g[y][x]!=='.') g[y][x]=c;
+  }
+}
+const N4=[[1,0],[-1,0],[0,1],[0,-1]];
+function outline(g,pick){   // pick(neighbourChar) -> outline char
+  const s=g.map(r=>r.slice());
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(s[y][x]==='.'){
+    for(const [a,b] of N4){ const nx=x+a, ny=y+b; if(nx>=0&&ny>=0&&nx<N&&ny<N&&s[ny][nx]!=='.'){ g[y][x]=pick(s[ny][nx]); break; } }
+  }
+}
+function glow(g,c){
+  const s=g.map(r=>r.slice());
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(s[y][x]==='.'){
+    for(const [a,b] of N4){ const nx=x+a, ny=y+b; if(nx>=0&&ny>=0&&nx<N&&ny<N&&s[ny][nx]!=='.'){ g[y][x]=c; break; } }
+  }
+}
+const EYE=[[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[1,3],[2,3]];
+function generate(spec){
+  const g=grid(), t=spec.tones, hd=spec.head, bd=spec.body, sh=SHADE[spec.shade](t);
+  const mir=(list,fn)=>(list||[]).forEach(([x,y,c])=>{ fn(x,y,c); fn(N-1-x,y,c); });
+  const rc=spec.ringColor||'k';
+  mir(spec.horns,(x,y,c)=>put(g,x,y,c||spec.horn));
+  mir(spec.ears,(x,y,c)=>put(g,x,y,c||t[1]));
+  ell(g,8,bd.cy,bd.rx,bd.ry,sh);
+  ell(g,8,bd.cy+0.6,bd.rx*0.5,bd.ry*0.62,()=>t[0]);
+  [[spec.arms.x,spec.arms.cy],[N-spec.arms.x,spec.arms.cy]].forEach(([x,y])=>{ if(spec.rings) ring(g,x,y,spec.arms.rx+0.6,spec.arms.ry+0.6,rc); ell(g,x,y,spec.arms.rx,spec.arms.ry,sh); });
+  [spec.feet.x,N-spec.feet.x].forEach(x=>{ if(spec.rings) ring(g,x,spec.feet.cy,spec.feet.rx+0.6,spec.feet.ry+0.6,rc); ell(g,x,spec.feet.cy,spec.feet.rx,spec.feet.ry,SHADE[spec.shade]([t[1],t[2],t[3]])); });
+  (spec.tail||[]).forEach(([x,y,c])=>put(g,x,y,c||t[2]));
+  if(spec.rings) ring(g,8,hd.cy,hd.rx+0.7,hd.ry+0.7,rc);
+  ell(g,8,hd.cy,hd.rx,hd.ry,sh);
+  const e=spec.eyes;
+  [0,1].forEach(side=>{
+    const sx=(x)=> side? N-1-x : x;
+    EYE.forEach(([x,y])=>put(g,sx(e.x+x),e.y+y,'p'));
+    e.pupil.forEach(([px,py])=>put(g,sx(e.x+px),e.y+py,'e'));
+  });
+  (spec.mouth||[]).forEach(([x,y,c])=>put(g,x,y,c));
+  mir(spec.extra,(x,y,c)=>put(g,x,y,c));
+  if(spec.outline==='black') outline(g,()=>'k');
+  else if(spec.outline==='tone') outline(g,n=>({h:'o',o:'O',O:'R',R:'k',w:'O',b:'O',c:'O',p:'k',e:'k'}[n]||'R'));
+  if(spec.glow) glow(g,'x');
+  return g;
+}
+function drawSprite(ctx,g,pal,ox,oy,s){
+  g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=pal[c]; ctx.fillRect(ox+x*s,oy+y*s,s,s); }));
+}
+// ---------- Four styles, one fire imp ----------
+const PAL={k:'#1a1210',h:'#f08a4b',o:'#d9622b',O:'#8f3a1a',R:'#5a1810',w:'#f2e8d5',e:'#ffffff',p:'#14100c',b:'#f4d03f',c:'#ff7a6a',x:'rgba(255,150,60,0.45)'};
+// narrower, oval body; head stays round but smaller
+const BASE={ tones:['h','o','O','R'], pal:PAL, horn:'w',
+  head:{cy:5.3,rx:5.2,ry:4.2}, body:{cy:11.2,rx:3.3,ry:3.5}, arms:{x:3.1,cy:10.6,rx:1.2,ry:1.6}, feet:{x:6.0,cy:14.6,rx:1.8,ry:1.0},
+  horns:[[4,0],[4,1]], ears:[[2,2],[1,3],[2,3]], eyes:{x:3,y:3,pupil:[[2,1],[2,2]]},
+  mouth:[[7,8,'k'],[8,8,'k']], extra:[[3,7,'c']],
+  tail:[[11,13],[12,14],[13,14],[14,13],[14,12],[15,11,'b'],[15,10,'b']] };
+const IMPS=[
+ { ...BASE, name:'1 · Schwarze Kontur', note:'Wie bisher: dicke schwarze Kontur, drei Farbstufen. Der klare Dungeon-Keeper-Look.',
+   shade:'three', outline:'black', rings:true },
+ { ...BASE, name:'2 · Weiche Kontur', note:'Die Kontur ist ein dunkler Ton der eigenen Farbe, keine schwarze Linie. Weicher, wärmer, malerischer.',
+   shade:'three', outline:'tone', rings:true, ringColor:'O' },
+ { ...BASE, name:'3 · Flach', note:'Keine Kontur, nur zwei Farbtöne und eine Schattenkante. Silhouette zählt. Moderner Indie-Look.',
+   shade:'flat', outline:'none', rings:false, horns:[[4,0],[4,1],[5,1]], ears:[[2,1],[1,2],[2,2],[2,3],[1,3]],
+   tail:[[11,13],[12,14],[13,14],[14,13],[14,12],[15,11,'b'],[15,10,'b']] },
+ { ...BASE, name:'4 · Raster + Glut', note:'Gerastert (Dithering) statt glatter Stufen, schwarze Kontur und ein glimmender Rand wie von innen erhitzt.',
+   shade:'dither', outline:'black', rings:true, glow:true }
+];
+const sprites=IMPS.map(generate);
+IMPS.forEach((s,i)=>{
+  const c=document.createElement('canvas'); c.width=192; c.height=192; drawSprite(c.getContext('2d'),sprites[i],s.pal,0,0,12);
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c);
+  d.insertAdjacentHTML('beforeend','<b>'+s.name+'</b><span>'+s.note+'</span>');
+  document.getElementById('big').appendChild(d);
+});
+{ const c=document.getElementById('strip'),x=c.getContext('2d');
+  x.fillStyle='#4a3b2d'; x.fillRect(0,0,450,260); x.fillStyle='#1c1410'; x.fillRect(450,0,450,260);
+  IMPS.forEach((s,i)=>{ const ox=18+i*110;
+    x.strokeStyle='#33271c'; x.strokeRect(ox,16,64,64); drawSprite(x,sprites[i],s.pal,ox+16,32,2);
+    drawSprite(x,sprites[i],s.pal,ox,110,3);
+    drawSprite(x,sprites[i],s.pal,ox+450,40,3);
+    drawSprite(x,sprites[i],s.pal,ox+450,110,5);
+  });
+}
+</script></main></body></html>
