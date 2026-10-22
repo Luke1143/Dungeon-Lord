@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imp aus Teilen — Sackträger</title>
+<style>
+body{margin:0;background:#0f0b09;color:#e8dcc8;font-family:Inter,system-ui,sans-serif;padding:24px 16px 48px}
+main{max-width:1040px;margin:0 auto}
+h1{font-family:Cinzel,Georgia,serif;color:#d4af37;font-size:1.4rem;margin:0 0 6px}
+h2{font-size:.8rem;text-transform:uppercase;letter-spacing:.12em;color:#d4af37;margin:26px 0 10px;border-bottom:1px solid #3a2a1d;padding-bottom:6px}
+p{color:#a8977e;margin:0 0 14px;font-size:.9rem;line-height:1.5}
+label{font-size:.85rem;color:#e8dcc8;margin-right:16px;cursor:pointer}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.card{background:#1c140f;border:1px solid #3a2a1d;padding:8px;text-align:center}
+.card b{display:block;margin-top:6px;font-size:.8rem}
+canvas{image-rendering:pixelated;display:block;margin:0 auto;background:#4a3b2d}
+</style></head><body><main>
+<h1>Imp aus Teilen — der Sackträger</h1>
+<p>Seitenansicht (nach links schauend, rechts gespiegelt). Jede Figur besteht aus Teilen: Kopf, Körper, zwei Beine und optional ein Sack. Animiert wird nur durch Verschieben um ganze Pixel, kein Drehen. Der Sack erscheint nur, wenn der Imp etwas trägt.</p>
+<p><label><input type="checkbox" id="optOutline"> dunkle Kontur</label><label><input type="checkbox" id="optSlow"> langsamer</label></p>
+<h2>Die Teile</h2>
+<div class="row" id="parts"></div>
+<h2>Zustände (laufen von links nach rechts und zurück)</h2>
+<div class="row" id="stages"></div>
+<h2>Gleiche Teile, andere Paletten</h2>
+<div class="row" id="variants"></div>
+<script>
+const N=16;
+const PAL={ o:'#d9622b', h:'#f08a4b', O:'#8f3a1a', R:'#5a1810', p:'#14100c', e:'#ffffff',
+  b:'#c9a96a', B:'#8a7048', y:'#f4d03f', Y:'#b8860b', g:'#aab3bd', G:'#6b7580', k:'#1a1210', s:'rgba(0,0,0,0.30)' };
+const SWAPS={
+  feuer:{}, eis:{o:'#5aa9d6',h:'#bfe6ff',O:'#2f6c95',R:'#173f5a'}, gift:{o:'#6fb13c',h:'#a6d86a',O:'#3f7524',R:'#244a14'}, schatten:{o:'#6a4a9a',h:'#9a74c8',O:'#3f2a66',R:'#241640'}
+};
+// ---------- tiny helpers on arbitrary sized grids ----------
+const mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+function ell(p,cx,cy,rx,ry,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const dx=(x+.5-cx)/rx, dy=(y+.5-cy)/ry; if(dx*dx+dy*dy<=1) put(p,x,y,c); } }
+function cap(p,x0,y0,x1,y1,r,c){ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++){ const px=x+.5,py=y+.5,vx=x1-x0,vy=y1-y0,L=vx*vx+vy*vy||1; let t=((px-x0)*vx+(py-y0)*vy)/L; t=Math.max(0,Math.min(1,t)); const dx=px-(x0+vx*t),dy=py-(y0+vy*t); if(dx*dx+dy*dy<=r*r) put(p,x,y,c); } }
+// light from the top left: lower/right edge dark, upper edge light (per part, so overlaps get a clean seam)
+function shade(p,base,light,dark){
+  const at=(x,y)=>(x<0||y<0||x>=p.w||y>=p.h)?'.':p.g[y][x], o=p.g.map(r=>r.slice());
+  for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]===base){
+    if(at(x,y+1)==='.'||at(x+1,y)==='.') o[y][x]=dark;
+    else if(at(x,y-1)==='.'||(at(x-1,y)==='.'&&y<p.h/2)) o[y][x]=light;
+  }
+  p.g=o; return p;
+}
+// ---------- the parts ----------
+function partHead(){   // 9x8, faces left, two big black eyes with white pupils
+  const p=mk(9,8); ell(p,4.5,4.1,4.5,3.9,'o'); shade(p,'o','h','O');
+  [[1,2],[5,2]].forEach(([x,y])=>{ for(let j=0;j<3;j++){ put(p,x,y+j,'p'); put(p,x+1,y+j,'p'); } put(p,x,y+1,'e'); });
+  return p;
+}
+function partBody(){   // 8x7, a rounded hump
+  const p=mk(8,7); ell(p,4,3.6,4,3.5,'o'); ell(p,3.2,4.3,2,1.8,'h'); shade(p,'o','h','O'); return p;
+}
+function partLeg(){    // 3x4
+  const p=mk(3,4); cap(p,1.5,0.6,1.5,3.0,1.1,'o'); shade(p,'o','h','O'); put(p,0,3,'R'); put(p,1,3,'R'); put(p,2,3,'R'); return p;
+}
+function partSack(content){   // 8x8 sack with a knot; content glints
+  const p=mk(8,8); ell(p,4,4.9,3.9,3.1,'b'); put(p,3,1,'b'); put(p,4,1,'b'); put(p,3,0,'B'); put(p,4,0,'B'); put(p,2,0,'b'); put(p,5,0,'b');
+  shade(p,'b','b','B');
+  const glint=content==='gold'?['y','Y']:content==='ore'?['g','G']:null;
+  if(glint){ put(p,2,4,glint[0]); put(p,3,3,glint[0]); put(p,5,5,glint[0]); put(p,5,3,glint[1]); put(p,3,6,glint[1]); }
+  return p;
+}
+const PARTS={ head:partHead(), body:partBody(), leg:partLeg(), sack:{none:null,gold:partSack('gold'),ore:partSack('ore'),empty:partSack('empty')} };
+// ---------- composing a frame ----------
+function blit(dst,part,ox,oy){ if(!part) return; for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.') put(dst,ox+x,oy+y,c); } }
+function frame(state,t,facingRight,outline){
+  const f=mk(N,N), carry=state.startsWith('trag'), walk=state==='laufen'||carry;
+  const hunch=carry?1:0, k=t%4;
+  const bob=walk?[0,-1,0,-1][k]:0, footF=walk?[-1,0,1,0][k]:0, footB=-footF;
+  const headLag=walk?[0,0,1,0][k]:(Math.floor(t/2)%2? 1:0);       // idle: slow nod
+  // ground shadow
+  for(let x=4;x<=12;x++) put(f,x,15,'s');
+  const sackKind=state==='trägt gold'?'gold':state==='trägt erz'?'ore':null;
+  blit(f,PARTS.leg,10+footB,11);                                      // back leg
+  if(sackKind) blit(f,PARTS.sack[sackKind],8,1+hunch+bob+(walk&&k===2?1:0));  // sack on the back
+  blit(f,PARTS.body,6,5+hunch+bob);
+  blit(f,PARTS.leg,5+footF,11);                                       // front leg
+  blit(f,PARTS.head,1,1+hunch+bob+headLag);
+  if(outline) outlineGrid(f);
+  if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
+  return f;
+}
+function outlineGrid(f){
+  const s=f.g.map(r=>r.slice());
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(s[y][x]==='.'){
+    for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=x+a, ny=y+b; if(nx>=0&&ny>=0&&nx<N&&ny<N&&s[ny][nx]!=='.'&&s[ny][nx]!=='s'){ f.g[y][x]='k'; break; } }
+  }
+}
+function paint(ctx,f,ox,oy,s,swap){
+  const pal={...PAL,...(swap||{})};
+  f.g.forEach((row,y)=>row.forEach((c,x)=>{ if(c==='.') return; ctx.fillStyle=pal[c]||'#f0f'; ctx.fillRect(ox+x*s,oy+y*s,s,s); }));
+}
+// ---------- the page ----------
+const outlineBox=document.getElementById('optOutline'), slowBox=document.getElementById('optSlow');
+const partsHost=document.getElementById('parts');
+[['Kopf',PARTS.head],['Körper',PARTS.body],['Bein',PARTS.leg],['Sack leer',PARTS.sack.empty],['Sack + Gold',PARTS.sack.gold],['Sack + Erz',PARTS.sack.ore]].forEach(([name,p])=>{
+  const c=document.createElement('canvas'); c.width=p.w*10+10; c.height=p.h*10+10; const x=c.getContext('2d');
+  const f=mk(p.w+1,p.h+1); blit(f,p,0,0);
+  f.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; x.fillStyle=PAL[ch]||'#f0f'; x.fillRect(5+xx*10,5+yy*10,10,10); }));
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+name+'</b>'); partsHost.appendChild(d);
+});
+const STAGES=['stehen','laufen','trägt gold','trägt erz'];
+const stageCanvases=STAGES.map(name=>{
+  const c=document.createElement('canvas'); c.width=288; c.height=120;
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+name+'</b>'); document.getElementById('stages').appendChild(d);
+  return {name,c,ctx:c.getContext('2d')};
+});
+const VARS=['feuer','eis','gift','schatten'];
+const varCanvases=VARS.map((v,i)=>{
+  const c=document.createElement('canvas'); c.width=288; c.height=84;
+  const d=document.createElement('div'); d.className='card'; d.appendChild(c); d.insertAdjacentHTML('beforeend','<b>'+v+(i%2?' · trägt Gold':' · läuft')+'</b>'); document.getElementById('variants').appendChild(d);
+  return {v,c,ctx:c.getContext('2d'),state:i%2?'trägt gold':'laufen'};
+});
+let t=0;
+function tick(){
+  t++;
+  const o=outlineBox.checked;
+  stageCanvases.forEach(({name,c,ctx})=>{
+    ctx.fillStyle='#4a3b2d'; ctx.fillRect(0,0,c.width,c.height);
+    const s=6, span=c.width-16*s, walking=name!=='stehen';
+    const step=Math.floor(t/2), pos=walking? step%(2*Math.floor(span/s)) : 0, maxp=Math.floor(span/s);
+    const px=(pos<=maxp? pos : 2*maxp-pos), right=pos<=maxp;
+    paint(ctx,frame(name,t,right,o),walking?px*s:(c.width-16*s)/2,12,s);
+  });
+  varCanvases.forEach(({v,c,ctx,state})=>{
+    ctx.fillStyle='#4a3b2d'; ctx.fillRect(0,0,c.width,c.height);
+    const s=4, maxp=Math.floor((c.width-16*s)/s), pos=Math.floor(t/2)%(2*maxp), px=pos<=maxp?pos:2*maxp-pos;
+    paint(ctx,frame(state,t,pos<=maxp,o),px*s,10,s,SWAPS[v]);
+  });
+}
+let timer=setInterval(tick,120);
+slowBox.addEventListener('change',()=>{ clearInterval(timer); timer=setInterval(tick,slowBox.checked?300:120); });
+tick();
+</script></main></body></html>
