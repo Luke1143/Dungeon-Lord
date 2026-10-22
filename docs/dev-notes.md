@@ -2,6 +2,14 @@
 
 Newest version on top.
 
+## 0.3 - Campaign skeleton (main menu + overworld)
+- **Screens**: `menuScreen` (Neue Welt / Kampagne fortsetzen, optional seed), `overworldScreen`, `levelScreen`. `showScreen(name)` switches; `gameTick` and autosave only run on the level screen.
+- **Overworld** (`buildWorld(seed)`): deterministic from the seed, never saved (only `{seed,pos,visited,levelNode,inLevel}` goes to `dungeon-lord-campaign-v1`). 80x45 tiles from three value-noise layers (water, grass, forest, hills, mountain, swamp).
+- **Nodes**: `OW_TURNS` (9) columns left to right, 1 / 2-3 / ... / 1 nodes; column 0 is the river village, the last one the capital. Terrain under a node picks its type from `LOCATION_TYPES` (table: label, description, side goal, name suffixes). Edges lead to the next column; every node is reachable.
+- **Flow**: click a glowing node -> "Angreifen" -> `startLevel(nodeId)`. Win -> `finishLevel()` returns to the map, capital won -> back to menu. Loss -> run deleted (permadeath), back to menu. "Level neu starten" restarts the current level.
+- **Difficulty**: `state.war.difficulty` = column index; `spawnWave` adds it to the wave number for size, hero level and hero types.
+- Location types so far only change name and text; level generation per type (roots, dwarf structures, rivers) is still to do.
+
 ## 0.2 - Game loop (war)
 - **Weltportal** (`portal` room, 2x2, placed 30+ tiles from the throne, not buildable/demolishable). Conquering all portal tiles = **victory**.
 - **Waves**: as soon as a walkable path from portal to throne exists (`portalConnected`, checked every 5 ticks), heroes spawn at the portal. First wave after 150 ticks, then every `max(180, 340 - 12*wave)` ticks. Wave size `1 + 0.8*wave` (max 10), hero level `1 + (wave-1)/2`.

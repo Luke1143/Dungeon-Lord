@@ -120,12 +120,51 @@
   .endBox{ text-align:center; padding:24px 32px; background:var(--panel); border:2px solid var(--gold); border-radius:10px; max-width:380px; }
   .endBox h2{ font-family:'Cinzel',serif; color:var(--gold); margin:0 0 10px; font-size:28px; }
   .endBox p{ color:var(--text); font-size:13px; line-height:1.5; margin:0 0 16px; }
+  .screen{ display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; }
+  .screen[hidden]{ display:none; }
+  .bigTitle{ font-size:44px; margin-top:60px; }
+  .menuBox{ display:flex; flex-direction:column; gap:12px; align-items:stretch; margin-top:24px; width:280px; }
+  .menuMain{ font-family:'Cinzel',serif; font-size:18px; font-weight:600; color:#1c140f; background:var(--gold); border:0; border-radius:6px; padding:12px 16px; cursor:pointer; }
+  .menuMain:hover{ filter:brightness(1.1); }
+  .seedRow{ font-size:12px; color:var(--text-dim); display:flex; flex-direction:column; gap:4px; }
+  .seedRow input{ background:#2a201a; border:1px solid var(--panel-border); color:var(--text); border-radius:4px; padding:6px 8px; font-size:13px; }
+  #owCanvas{ border:3px solid var(--panel-border); border-radius:6px; cursor:pointer; max-width:100%; }
+  .owPanel{ width:260px; display:flex; flex-direction:column; gap:10px; }
+  .owInfo{ font-size:13px; line-height:1.5; color:var(--text); min-height:120px; }
+  .owInfo b{ color:var(--gold); font-family:'Cinzel',serif; }
   #status{ font-size:12px; color:var(--text-dim); min-height:32px; line-height:1.5;}
 </style>
 </head>
 <body>
+  <div id="menuScreen" class="screen" hidden>
+    <h1 class="bigTitle">Dungeon Lord</h1>
+    <div class="subtitle">Erobert die Welt der Helden, Ort für Ort</div>
+    <div class="menuBox">
+      <button id="menuNew" class="menuMain">Neue Welt</button>
+      <button id="menuContinue" class="menuMain" hidden>Kampagne fortsetzen</button>
+      <label class="seedRow">Seed (leer = Zufall) <input id="seedInput" type="text" maxlength="20" placeholder="z. B. Moorhafen"></label>
+    </div>
+  </div>
+
+  <div id="overworldScreen" class="screen" hidden>
+    <h1>Die Welt</h1>
+    <div class="subtitle" id="owSubtitle"></div>
+    <div class="layout">
+      <canvas id="owCanvas"></canvas>
+      <div class="panel owPanel">
+        <div class="stat"><span class="label">Zug</span><span class="value" id="owTurn">1</span></div>
+        <div class="stat"><span class="label">Schwierigkeit</span><span class="value" id="owDiff">1</span></div>
+        <div class="section-title">Ort</div>
+        <div id="owInfo" class="owInfo">Wähle einen leuchtenden Ort auf der Karte.</div>
+        <button id="owAttack" class="menuMain" hidden>Angreifen</button>
+        <button id="owMenu" class="dangerBtn">Hauptmenü</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="levelScreen" class="screen" hidden>
   <h1>Der Dungeon Lord erwacht</h1>
-  <div class="subtitle">Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen</div>
+  <div class="subtitle" id="levelSubtitle">Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen</div>
   <div class="layout">
     <div class="boardWrap">
       <canvas id="board"></canvas>
@@ -204,8 +243,9 @@
           <button id="cheatReveal">Karte aufdecken</button>
         </div>
       </div>
-      <button id="resetBtn">Spielstand zurücksetzen</button>
+      <button id="resetBtn">Level neu starten</button>
     </div>
+  </div>
   </div>
 
 <script>
@@ -5062,11 +5102,12 @@ function spawnWave(){
   const w=state.war;
   w.wave++;
   const n=w.wave;
-  const count=Math.min(WAVE_MAX_SIZE, 1+Math.floor(n*0.8));
-  const level=Math.min(MAX_LEVEL, 1+Math.floor((n-1)/2));
+  const diff=w.difficulty||0;   // set by the campaign; each turn on the overworld raises it
+  const count=Math.min(WAVE_MAX_SIZE, 1+Math.floor((n+diff)*0.8));
+  const level=Math.min(MAX_LEVEL, 1+Math.floor((n+diff-1)/2));
   const pool=['barbarian','thief'];
-  if(n>=3) pool.push('wizard');
-  if(n>=5) pool.push('knight');
+  if(n+diff>=3) pool.push('wizard');
+  if(n+diff>=5) pool.push('knight');
   const tiles=tilesOfRoom('portal');
   if(!tiles.length) return;
   for(let i=0;i<count;i++){
@@ -5143,6 +5184,7 @@ function updateWarUI(){
 }
 
 function gameTick(){
+  if(screen!=='level') return;
   if(state.war && state.war.over){ draw(); updateUI(); return; }
   state.tickCount++;
   state.imps.forEach(tickImp);
@@ -6676,7 +6718,7 @@ document.getElementById('cheatReveal').addEventListener('click', ()=>{
   draw(); updateUI(); markDirty();
 });
 
-document.getElementById('endBtn').addEventListener('click', ()=>{ resetArmed=true; document.getElementById('resetBtn').click(); });
+document.getElementById('endBtn').addEventListener('click', ()=>finishLevel());
 let resetArmed=false;
 let resetArmTimer=null;
 const resetBtn=document.getElementById('resetBtn');
@@ -6684,27 +6726,18 @@ resetBtn.addEventListener('click', async ()=>{
   if(!resetArmed){
     resetArmed=true;
     resetBtn.textContent='Sicher? Nochmal klicken';
-    resetArmTimer=setTimeout(()=>{ resetArmed=false; resetBtn.textContent='Spielstand zurücksetzen'; }, 4000);
+    resetArmTimer=setTimeout(()=>{ resetArmed=false; resetBtn.textContent='Level neu starten'; }, 4000);
     return;
   }
   clearTimeout(resetArmTimer);
   resetArmed=false;
-  resetBtn.textContent='Spielstand zurücksetzen';
+  resetBtn.textContent='Level neu starten';
   try{ await window.storage.delete(STORAGE_KEY, false); }catch(e){}
-  const d=makeDefaultState();
-  state=d;
-  state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
-  eventIdCounter=0;
-  creatureIdCounter=0;
-  chickenIdCounter=0;
-  corpseIdCounter=0;
-  selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
-  document.querySelectorAll('.roomBtn[data-room]').forEach(b=>{ if(RESEARCH_TOPICS.some(t=>t.unlocksRoom===b.dataset.room)) b.hidden=true; });
-  camX=0; camY=0;
-  draw(); updateUI(); renderEventLog(); markDirty();
+  startLevel(campaign.levelNode);
 });
 
 window.addEventListener('keydown', e=>{
+  if(screen!=='level' || (e.target && e.target.tagName==='INPUT' && e.target.type==='text')) return;
   const k=e.key.toLowerCase();
   if(e.key==='Escape' && (possessed||possessMode)){ endPossession(); e.preventDefault(); return; }
   // Besessen: WASD bewegt die Kreatur selbst, nicht die Kamera
@@ -6825,17 +6858,367 @@ function drawMaterialPreview(){
   });
 }
 
-async function init(){
-  const loaded=await load();
-  if(!loaded){
-    const d=makeDefaultState();
-    state=d;
+// ---------- Campaign: main menu, overworld, level hand-over ----------
+const CAMPAIGN_KEY='dungeon-lord-campaign-v1';
+const OW_COLS=80, OW_ROWS=45, OW_TILE=12;
+const OW_TURNS=9;                       // columns left to right, the last one is the capital
+const OW_WATER_LEVEL=0.36;
+
+// Location types are table entries: terrain decides the type, the type decides flavour and side goal.
+const LOCATION_TYPES={
+  river_village:{ label:'Flussdorf', desc:'Ein Dorf an vielen Flüssen. Leichte Beute.', side:'Das gesamte Dorf untergraben.', suffixes:['bach','furt','au','mühl'] },
+  dwarf_mountain:{ label:'Zwergberg', desc:'Siedlung eines Zwergenkönigs. Tunnel und Hallen durchziehen den Berg.', side:'Die Schatzkammer des Zwergenkönigs plündern.', suffixes:['fels','berg','hort','stollen'] },
+  elf_forest:{ label:'Elfenwald', desc:'Ein uralter Wald, von Wurzeln durchzogen.', side:'Den Waldfürsten unterwerfen.', suffixes:['wald','hain','tann','lauf'] },
+  bog_village:{ label:'Moorsiedlung', desc:'Nebel, Schlamm und argwöhnische Bewohner.', side:'Das Dorf versenken.', suffixes:['moor','sumpf','brück','nebel'] },
+  human_keep:{ label:'Grenzburg', desc:'Eine Festung der Menschen mit festen Mauern.', side:'Den Burgherrn stürzen.', suffixes:['burg','stein','wacht','stedt'] },
+  capital:{ label:'Hauptstadt des Guten', desc:'Der Sitz des Heldenkönigs. Hier endet jede Kampagne.', side:'Den Boss der Welt besiegen oder unterwerfen.', suffixes:[] }
+};
+const OW_NAME_PREFIX=['Moor','Eich','Stein','Raben','Nebel','Gold','Birken','Falken','Wolfs','Eisen','Linden','Dorn','Nacht','Silber','Hirsch','Bären'];
+const OW_TERRAIN={
+  water:   {base:[47,93,138]},
+  grass:   {base:[95,143,58]},
+  forest:  {base:[63,122,52]},
+  hills:   {base:[138,154,69]},
+  mountain:{base:[120,120,116]},
+  swamp:   {base:[74,107,82]}
+};
+
+let campaign=null;      // { seed, pos, levelNode, inLevel }
+let world=null;         // generated from campaign.seed, never saved
+let screen='menu';
+let owSelected=null;
+let owTerrainCache=null;
+
+function hashSeed(str){
+  let h=2166136261;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+  return h>>>0;
+}
+function mulberry32(a){
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+function makeNoise(rnd, cells){
+  const g=[];
+  for(let i=0;i<(cells+1)*(cells+1);i++) g.push(rnd());
+  return (u,v)=>{
+    const x=Math.min(u,0.9999)*cells, y=Math.min(v,0.9999)*cells;
+    const x0=Math.floor(x), y0=Math.floor(y), fx=x-x0, fy=y-y0;
+    const sx=fx*fx*(3-2*fx), sy=fy*fy*(3-2*fy);
+    const w=cells+1;
+    const top=g[y0*w+x0]+(g[y0*w+x0+1]-g[y0*w+x0])*sx;
+    const bot=g[(y0+1)*w+x0]+(g[(y0+1)*w+x0+1]-g[(y0+1)*w+x0])*sx;
+    return top+(bot-top)*sy;
+  };
+}
+
+function buildWorld(seed){
+  const rnd=mulberry32(hashSeed(String(seed)));
+  const rInt=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+  const n1=makeNoise(rnd,5), n2=makeNoise(rnd,11), n3=makeNoise(rnd,23), moist=makeNoise(rnd,7);
+  const terrain=[];
+  for(let y=0;y<OW_ROWS;y++){
+    const row=[];
+    for(let x=0;x<OW_COLS;x++){
+      const u=x/(OW_COLS-1), v=y/(OW_ROWS-1);
+      const edge=Math.min(u,1-u,v,1-v);
+      const fall=Math.min(1,edge/0.16);
+      const h=0.6*n1(u,v)+0.3*n2(u,v)+0.1*n3(u,v)-(1-fall*fall)*0.45;
+      const m=moist(u,v);
+      let t;
+      if(h<OW_WATER_LEVEL) t='water';
+      else if(h>0.72) t='mountain';
+      else if(h>0.62) t='hills';
+      else if(m>0.7 && h<0.48) t='swamp';
+      else if(m>0.58) t='forest';
+      else t='grass';
+      row.push(t);
+    }
+    terrain.push(row);
   }
+
+  // Nodes: one column per turn, left to right.
+  const nodes=[];
+  const marginX=6, usableW=OW_COLS-2*marginX;
+  const used=new Set();
+  for(let c=0;c<OW_TURNS;c++){
+    const count = c===0||c===OW_TURNS-1 ? 1 : rInt(2,3);
+    const bandH=(OW_ROWS-8)/count;
+    for(let k=0;k<count;k++){
+      let x=Math.round(marginX+c*usableW/(OW_TURNS-1)+(rnd()-0.5)*4);
+      let y=Math.round(4+bandH*k+rnd()*(bandH-1));
+      if(c===0) y=Math.round(OW_ROWS/2);
+      if(c===OW_TURNS-1) y=Math.round(OW_ROWS/2);
+      x=Math.max(2,Math.min(OW_COLS-3,x)); y=Math.max(2,Math.min(OW_ROWS-3,y));
+      // a node needs land under its feet: look for land nearby, otherwise raise a small island
+      let found=null;
+      for(let r=0;r<=6&&!found;r++) for(let dy=-r;dy<=r&&!found;dy++) for(let dx=-r;dx<=r&&!found;dx++){
+        const tx=x+dx, ty=y+dy;
+        if(tx<1||ty<1||tx>=OW_COLS-1||ty>=OW_ROWS-1) continue;
+        if(terrain[ty][tx]!=='water') found={x:tx,y:ty};
+      }
+      if(!found){
+        found={x,y};
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++) terrain[y+dy][x+dx]='grass';
+      }
+      nodes.push({ id:nodes.length, col:c, x:found.x, y:found.y });
+    }
+  }
+  nodes.forEach(n=>{
+    const here=terrain[n.y][n.x];
+    let nearWater=false;
+    for(let dy=-3;dy<=3;dy++) for(let dx=-3;dx<=3;dx++){
+      const tx=n.x+dx, ty=n.y+dy;
+      if(tx>=0&&ty>=0&&tx<OW_COLS&&ty<OW_ROWS&&terrain[ty][tx]==='water') nearWater=true;
+    }
+    if(n.col===0) n.type='river_village';
+    else if(n.col===OW_TURNS-1) n.type='capital';
+    else if(here==='forest') n.type='elf_forest';
+    else if(here==='mountain'||here==='hills') n.type='dwarf_mountain';
+    else if(here==='swamp') n.type='bog_village';
+    else n.type = nearWater ? 'river_village' : 'human_keep';
+    const lt=LOCATION_TYPES[n.type];
+    n.name = n.type==='capital' ? 'Hohenlicht' : OW_NAME_PREFIX[Math.floor(rnd()*OW_NAME_PREFIX.length)]+lt.suffixes[Math.floor(rnd()*lt.suffixes.length)];
+    n.difficulty=n.col+1;
+  });
+
+  // Edges: every node leads to the next column, every node of the next column is reachable.
+  const edges=[];
+  const byCol=c=>nodes.filter(n=>n.col===c);
+  const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+  const addEdge=(a,b)=>{ if(!edges.some(e=>e.a===a.id&&e.b===b.id)) edges.push({a:a.id,b:b.id}); };
+  for(let c=0;c<OW_TURNS-1;c++){
+    const from=byCol(c), to=byCol(c+1);
+    from.forEach(a=>{
+      const sorted=to.slice().sort((p,q)=>dist(a,p)-dist(a,q));
+      addEdge(a,sorted[0]);
+      if(sorted[1] && rnd()<0.45) addEdge(a,sorted[1]);
+    });
+    to.forEach(b=>{ if(!edges.some(e=>e.b===b.id)) addEdge(from.slice().sort((p,q)=>dist(p,b)-dist(q,b))[0], b); });
+  }
+  return { seed, terrain, nodes, edges };
+}
+
+function owReachable(){
+  if(!campaign||!world) return [];
+  if(campaign.pos<0) return world.nodes.filter(n=>n.col===0).map(n=>n.id);
+  return world.edges.filter(e=>e.a===campaign.pos).map(e=>e.b);
+}
+
+function owRenderTerrain(){
+  const c=document.createElement('canvas');
+  c.width=OW_COLS*OW_TILE; c.height=OW_ROWS*OW_TILE;
+  const g=c.getContext('2d');
+  const rnd=mulberry32(hashSeed(String(world.seed))^0x9e3779b9);
+  for(let y=0;y<OW_ROWS;y++) for(let x=0;x<OW_COLS;x++){
+    const t=world.terrain[y][x], b=OW_TERRAIN[t].base, s=Math.floor((rnd()-0.5)*14);
+    g.fillStyle=`rgb(${b[0]+s},${b[1]+s},${b[2]+s})`;
+    g.fillRect(x*OW_TILE,y*OW_TILE,OW_TILE,OW_TILE);
+    const px=x*OW_TILE, py=y*OW_TILE, r=rnd();
+    if(t==='forest' && r<0.6){
+      g.fillStyle='#1f4d22'; g.fillRect(px+4,py+5,4,4); g.fillRect(px+5,py+3,2,2);
+      g.fillStyle='#4b3320'; g.fillRect(px+5,py+9,2,2);
+    } else if(t==='mountain' && r<0.7){
+      g.fillStyle='#b8b8b2'; g.fillRect(px+4,py+3,4,2); g.fillRect(px+2,py+5,8,3);
+      g.fillStyle='#4f4f4c'; g.fillRect(px+2,py+8,8,2);
+    } else if(t==='hills' && r<0.5){
+      g.fillStyle='#a6b85a'; g.fillRect(px+3,py+5,6,3); g.fillRect(px+2,py+8,8,1);
+    } else if(t==='swamp' && r<0.5){
+      g.fillStyle='#8fb7c9'; g.fillRect(px+2,py+6,4,1); g.fillRect(px+6,py+3,3,1);
+    } else if(t==='water' && r<0.12){
+      g.fillStyle='#4a7fb0'; g.fillRect(px+3,py+6,5,1);
+    }
+  }
+  owTerrainCache=c;
+}
+
+function owDrawNode(g,n,state){
+  const px=n.x*OW_TILE+OW_TILE/2, py=n.y*OW_TILE+OW_TILE/2;
+  if(state==='reachable'){
+    g.fillStyle='rgba(255,215,90,0.35)'; g.beginPath(); g.arc(px,py,15,0,Math.PI*2); g.fill();
+  }
+  if(owSelected===n.id){
+    g.strokeStyle='#ffffff'; g.lineWidth=2; g.beginPath(); g.arc(px,py,13,0,Math.PI*2); g.stroke();
+  }
+  const wall = state==='done' ? '#5a5a52' : state==='reachable' ? '#e6d9bd' : '#8a7f6d';
+  const roof = n.type==='capital' ? '#a02424' : state==='done' ? '#3d3d38' : '#7a3b1e';
+  g.fillStyle='#000000'; g.fillRect(px-7,py-6,14,13);
+  g.fillStyle=wall; g.fillRect(px-6,py-3,12,9);
+  g.fillStyle=roof; g.fillRect(px-7,py-6,14,3); g.fillRect(px-5,py-8,10,2);
+  g.fillStyle='#2a1a10'; g.fillRect(px-1,py+1,3,5);
+  if(n.type==='capital'){ g.fillStyle='#d4af37'; g.fillRect(px-1,py-13,2,6); g.fillRect(px+1,py-13,4,3); }
+  if(state==='done'){ g.fillStyle='#7fdc7f'; g.fillRect(px+5,py-9,3,3); }
+  g.font='11px Inter, sans-serif'; g.textAlign='center'; g.textBaseline='top';
+  g.lineWidth=3; g.strokeStyle='rgba(10,6,4,0.9)'; g.strokeText(n.name,px,py+9);
+  g.fillStyle = state==='locked' ? '#b8ab94' : '#f4e9d0'; g.fillText(n.name,px,py+9);
+}
+
+function owDraw(){
+  if(!world) return;
+  if(!owTerrainCache) owRenderTerrain();
+  const c=document.getElementById('owCanvas'), g=c.getContext('2d');
+  g.drawImage(owTerrainCache,0,0);
+  const reach=new Set(owReachable());
+  const nodeById=id=>world.nodes[id];
+  // roads
+  world.edges.forEach(e=>{
+    const a=nodeById(e.a), b=nodeById(e.b);
+    const live = campaign.pos===e.a;
+    g.strokeStyle = live ? '#e6c36a' : 'rgba(70,45,25,0.85)';
+    g.lineWidth = live ? 3 : 2;
+    g.setLineDash(live ? [] : [5,4]);
+    g.beginPath();
+    g.moveTo(a.x*OW_TILE+OW_TILE/2,a.y*OW_TILE+OW_TILE/2);
+    g.lineTo(b.x*OW_TILE+OW_TILE/2,b.y*OW_TILE+OW_TILE/2);
+    g.stroke();
+  });
+  g.setLineDash([]);
+  world.nodes.forEach(n=>{
+    const done=owWasVisited(n.id);
+    owDrawNode(g,n, done ? 'done' : reach.has(n.id) ? 'reachable' : 'locked');
+  });
+}
+
+// visited nodes: the chain of positions the run has taken, kept in the campaign
+function owWasVisited(id){ return (campaign.visited||[]).includes(id); }
+
+function owShowInfo(){
+  const info=document.getElementById('owInfo'), btn=document.getElementById('owAttack');
+  const n = owSelected===null ? null : world.nodes[owSelected];
+  if(!n){ info.textContent='Wähle einen leuchtenden Ort auf der Karte.'; btn.hidden=true; return; }
+  const lt=LOCATION_TYPES[n.type];
+  info.innerHTML=`<b>${n.name}</b><br>${lt.label}<br><br>${lt.desc}<br><br>Nebenziel: ${lt.side}<br>Schwierigkeit: ${n.difficulty}`;
+  btn.hidden=!owReachable().includes(n.id);
+}
+
+function owRefresh(){
+  document.getElementById('owTurn').textContent=String((campaign.visited||[]).length+1);
+  document.getElementById('owDiff').textContent=String((campaign.visited||[]).length+1);
+  document.getElementById('owSubtitle').textContent=`Seed: ${campaign.seed} — Erobert die Hauptstadt des Guten`;
+  owDraw(); owShowInfo();
+}
+
+function showScreen(name){
+  screen=name;
+  document.getElementById('menuScreen').hidden = name!=='menu';
+  document.getElementById('overworldScreen').hidden = name!=='overworld';
+  document.getElementById('levelScreen').hidden = name!=='level';
+  if(name==='menu') document.getElementById('menuContinue').hidden=!campaign;
+  if(name==='overworld'){ owRefresh(); }
+  if(name==='level'){ draw(); updateUI(); renderEventLog(); refreshRoomButtons(); }
+}
+
+async function saveCampaign(){
+  try{
+    if(campaign) await window.storage.set(CAMPAIGN_KEY, JSON.stringify(campaign), false);
+    else await window.storage.delete(CAMPAIGN_KEY, false);
+  }catch(e){}
+}
+async function loadCampaign(){
+  try{
+    const res=await window.storage.get(CAMPAIGN_KEY, false);
+    if(res && res.value){
+      const c=JSON.parse(res.value);
+      if(c && c.seed!==undefined) return c;
+    }
+  }catch(e){}
+  return null;
+}
+
+function newCampaign(seed){
+  campaign={ seed, pos:-1, visited:[], levelNode:null, inLevel:false };
+  world=buildWorld(seed); owTerrainCache=null; owSelected=null;
+  saveCampaign();
+  showScreen('overworld');
+}
+
+// Fresh level state; the single place that resets all counters.
+function startLevel(nodeId){
+  const n=world.nodes[nodeId];
+  campaign.levelNode=nodeId; campaign.inLevel=true;
+  saveCampaign();
+  state=makeDefaultState();
+  state.war.difficulty=n.col;   // first level keeps the base balance
+  state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
+  eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
+  selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
+  document.querySelectorAll('.roomBtn[data-room]').forEach(b=>{ if(RESEARCH_TOPICS.some(t=>t.unlocksRoom===b.dataset.room)) b.hidden=true; });
+  camX=0; camY=0;
+  document.getElementById('levelSubtitle').textContent=`${n.name} (${LOCATION_TYPES[n.type].label}) — Schwierigkeit ${n.difficulty}. Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen`;
+  markDirty();
+  showScreen('level');
+}
+
+// Called by the end overlay button of a level
+function finishLevel(){
+  const w=state.war, n=world.nodes[campaign.levelNode];
+  campaign.inLevel=false;
+  if(w.over==='won'){
+    campaign.pos=n.id;
+    campaign.visited=(campaign.visited||[]).concat(n.id);
+    owSelected=null;
+    if(n.type==='capital'){
+      campaign=null; saveCampaign();
+      try{ window.storage.delete(STORAGE_KEY,false); }catch(e){}
+      showScreen('menu');
+      alert('Die Hauptstadt des Guten ist gefallen. Die Welt gehört euch!');
+      return;
+    }
+    saveCampaign();
+    showScreen('overworld');
+  } else {
+    // permadeath: the run ends
+    campaign=null; saveCampaign();
+    try{ window.storage.delete(STORAGE_KEY,false); }catch(e){}
+    showScreen('menu');
+  }
+}
+
+document.getElementById('menuNew').addEventListener('click', ()=>{
+  const typed=document.getElementById('seedInput').value.trim();
+  const seed = typed || ('Welt'+Math.floor(Math.random()*100000));
+  newCampaign(seed);
+});
+document.getElementById('menuContinue').addEventListener('click', async ()=>{
+  if(!campaign) return;
+  if(campaign.inLevel){
+    const ok=await load();
+    if(ok){ showScreen('level'); return; }
+    startLevel(campaign.levelNode); return;
+  }
+  showScreen('overworld');
+});
+document.getElementById('owMenu').addEventListener('click', ()=>showScreen('menu'));
+document.getElementById('owAttack').addEventListener('click', ()=>{ if(owSelected!==null && owReachable().includes(owSelected)) startLevel(owSelected); });
+document.getElementById('owCanvas').addEventListener('click', e=>{
+  const c=e.currentTarget, r=c.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*c.width/r.width, my=(e.clientY-r.top)*c.height/r.height;
+  let best=null, bd=20;
+  world.nodes.forEach(n=>{
+    const d=Math.hypot(n.x*OW_TILE+OW_TILE/2-mx, n.y*OW_TILE+OW_TILE/2-my);
+    if(d<bd){ bd=d; best=n.id; }
+  });
+  owSelected=best;
+  owDraw(); owShowInfo();
+});
+{
+  const oc=document.getElementById('owCanvas');
+  oc.width=OW_COLS*OW_TILE; oc.height=OW_ROWS*OW_TILE;
+}
+
+async function init(){
+  state=makeDefaultState();
   ensurePortal();
-  document.getElementById('corpseFeedToggle').checked = state.allowCorpseFeeding;
-  draw(); updateUI(); renderEventLog(); refreshRoomButtons(); drawMaterialPreview();
+  campaign=await loadCampaign();
+  if(campaign) world=buildWorld(campaign.seed);
+  drawMaterialPreview();
+  showScreen('menu');
   setInterval(gameTick, 350);
-  setInterval(()=>{ if(dirty){ dirty=false; save(); } }, 2000);
+  setInterval(()=>{ if(dirty && screen==='level'){ dirty=false; save(); } }, 2000);
 }
 init();
 </script>
