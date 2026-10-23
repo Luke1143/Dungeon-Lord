@@ -221,19 +221,36 @@ function keepGuardRoot(c){
   return true;
 }
 
-// a recruit waiting at the portal for the trupp to gather
+// A recruit waiting at the portal lives like the player's creatures do: it eats from the keep's stock (hatchery), rests in the dormitory
+// and trains in the arena. Waiting makes heroes stronger but costs food; when the stock runs dry they march out hungry.
+const KEEP_UPKEEP=0.004, KEEP_TRAIN_XP=0.05, KEEP_STARVE_TICKS=150;
 function keepGarrison(c){
+  const k=state.keep;
   if(Math.abs(c.x-c.post.x)+Math.abs(c.y-c.post.y)>1){
     const res=bfsFind(c.x,c.y,(x,y)=>x===c.post.x&&y===c.post.y);
     if(res&&res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); return true; }
   }
   c.state='guarding';
+  if(!k) return true;
+  const r=k.rooms||{};
+  if(k.food>0){ k.food=Math.max(0,k.food-KEEP_UPKEEP); c.hungry=0; }
+  else {
+    c.hungry=(c.hungry||0)+1; c.state='hungry';
+    if(c.hungry>KEEP_STARVE_TICKS){ c.post=null; c.hungry=0; logEvent('Hungrige Gegner verlassen den Posten und marschieren los!', c.x, c.y); return false; }
+  }
+  if(r.dormitory && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+0.04*Math.min(3,r.dormitory/3));
+  if(r.arena && k.food>0 && (c.level||1)<MAX_LEVEL){
+    c.state='training';
+    c.xp=(c.xp||0)+KEEP_TRAIN_XP*Math.min(3,r.arena/3);
+    if(c.xp>=xpForLevel((c.level||1)+1)){ c.level=(c.level||1)+1; c.maxHp=statMaxHp(c); c.hp=c.maxHp; }
+  }
   return true;
 }
 
 function tickKeep(){
   const k=state.keep, w=state.war; if(!k) return;
   const prof=k.profile, mods=waveMods(w), rooms=keepRoomCounts();
+  k.rooms=rooms;
   // economy: a trickle plus the farms; the keep is only as strong as what is still standing
   k.food+=(0.004+0.012*(rooms.hatchery||0))*prof.speed*k.boost;
   if(k.builder){
@@ -257,6 +274,6 @@ function keepSummary(){
   const r=keepRoomCounts();
   const names={ dormitory:'Kaserne', hatchery:'Vorratskammer', library:'Zauberschule', arena:'Übungsplatz', forge:'Schmiede', storage:'Lager' };
   const parts=Object.keys(r).map(t=>`${names[t]||t} ${r[t]}`);
-  const wk=keepWorkers().length;
-  return `${k.recruited}/${k.total} Rekruten${wk?' · Handwerker '+wk:''}${parts.length?' · '+parts.join(' · '):''}`;
+  const wk=keepWorkers().length, food=Math.floor(k.food);
+  return `${k.recruited}/${k.total} Rekruten${wk?' · Handwerker '+wk:''} · Nahrung ${food}${parts.length?' · '+parts.join(' · '):''}`;
 }
