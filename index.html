@@ -464,6 +464,10 @@ const SPECIES={
   thief:   { label:'Dieb',        category:'hero',     hp:14, strength:2,  defense:0,  dex:28, dexGrowth:0.06, speed:1.6, tempo:1.6,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              ignoresCrowding:true, style:'assassin', passive:'schlängelt sich durch — kein Malus durch Gedränge' },
+  // The enemy's builders (keep.js): they carve and build the enemy rooms and win back conquered ones. Kill them and the keep stops growing.
+  worker:  { label:'Handwerker',  category:'worker',   hp:12, strength:2,  defense:0,  dex:10, dexGrowth:0.02, speed:1.0, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:false, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', passive:'baut und gräbt für die Gegner, flieht vor Kämpfen' },
   wizard:  { label:'Zauberer',    category:'hero',     hp:20, strength:3,  defense:0,  dex:12, dexGrowth:0.05, speed:1.0, tempo:1.0,
              needsFood:false, avoidsWater:false, intellectual:true,  canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', passive:'Gelehrter — springt Verbündeten bei' },
@@ -3037,6 +3041,7 @@ function tickCreatureOnce(c){
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
   else if(c.category==='hero') tickHero(c);
+  else if(c.category==='worker') keepTickWorker(c);
   else if(c.category==='boss') tickBoss(c);
 }
 
@@ -4808,7 +4813,7 @@ function drawParticles(){
 function emitFx(type,x,y,opts){ if(typeof FX!=='undefined') FX.emit(type,x,y,opts); }
 if(typeof FX!=='undefined') FX.solidAt=(tx,ty)=>{ if(!state||tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return true; const ty_=state.grid[ty][tx].type; return ty_!=='floor' && ty_!=='water'; };
 // what comes out of a creature when it is hit: blood colour per kind (null = bone chips)
-const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, barbarian:'#b01818', thief:'#b01818', wizard:'#b01818', knight:'#b01818' };
+const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
 function bloodOf(c){ const k=c.kind||'imp'; return k in BLOOD ? BLOOD[k] : '#b01818'; }
 function hitFx(attacker, defender, dmg, crit, killed){
   const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
@@ -6041,7 +6046,7 @@ async function save(){
     const payload={
       grid: state.grid.map(row=>row.map(t=>({
         type:t.type, gold:t.gold, gem:t.gem, gemRevealed:t.gemRevealed, ore:t.ore, goldPile:t.goldPile, orePile:t.orePile, marked:t.marked, room:t.room, queuedRoom:t.queuedRoom,
-        owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, seen:t.seen, goodRoom:t.goodRoom, enemy:t.enemy, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
+        owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, seen:t.seen, goodRoom:t.goodRoom, wasGood:t.wasGood, enemy:t.enemy, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
       }))),
       imps: state.imps.map(i=>({id:i.id,x:i.x,y:i.y,carrying:i.carrying,name:i.name,flavor:i.flavor,hp:i.hp,maxHp:i.maxHp,level:i.level,xp:i.xp,baseHp:i.baseHp,baseStrength:i.baseStrength,baseDefense:i.baseDefense,baseDex:i.baseDex,baseSpeed:i.baseSpeed,baseTempo:i.baseTempo,luck:i.luck,loyalty:i.loyalty,kills:i.kills,goldEarned:i.goldEarned,inventory:i.inventory})),
       creatures: state.creatures.map(c=>({id:c.id,kind:c.kind,x:c.x,y:c.y,hp:c.hp,maxHp:c.maxHp,level:c.level,hunger:c.hunger,energy:c.energy,name:c.name,faction:c.faction,happiness:c.happiness,earnedWage:c.earnedWage,owedWages:c.owedWages,xp:c.xp,workLog:c.workLog,lastPayslip:c.lastPayslip,baseHp:c.baseHp,baseStrength:c.baseStrength,baseDefense:c.baseDefense,baseDex:c.baseDex,baseSpeed:c.baseSpeed,baseTempo:c.baseTempo,luck:c.luck,loyalty:c.loyalty,kills:c.kills,goldEarned:c.goldEarned,inventory:c.inventory})),

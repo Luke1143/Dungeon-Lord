@@ -5,18 +5,18 @@
 // and defensive, a legendary hero like Oberon is hyper aggressive and reacts to what the player does.
 // Everything here works on the game state (state.keep) and is called from tickWar().
 const AI_PROFILES={
-  panic:     { label:'Unkoordiniert und panisch (der Bürgermeister packt lieber seinen Karren)', aggression:0.12, speed:0.55, coordination:0.15, patience:1.7, maxRooms:3,
+  panic:     { workers:1, label:'Unkoordiniert und panisch (der Bürgermeister packt lieber seinen Karren)', aggression:0.12, speed:0.55, coordination:0.15, patience:1.7, maxRooms:3,
                rooms:['hatchery','dormitory','storage'] },
-  cautious:  { label:'Vorsichtig und langsam', aggression:0.3, speed:0.8, coordination:0.5, patience:1.3, maxRooms:5,
+  cautious:  { workers:2, label:'Vorsichtig und langsam', aggression:0.3, speed:0.8, coordination:0.5, patience:1.3, maxRooms:5,
                rooms:['hatchery','dormitory','forge','library','storage'] },
-  drilled:   { label:'Gedrillt und koordiniert', aggression:0.55, speed:1.0, coordination:0.9, patience:1.0, maxRooms:7,
+  drilled:   { workers:2, label:'Gedrillt und koordiniert', aggression:0.55, speed:1.0, coordination:0.9, patience:1.0, maxRooms:7,
                rooms:['dormitory','arena','hatchery','forge','library','dormitory','arena'] },
-  aggressive:{ label:'Aggressiv: schickt früh Trupps', aggression:0.9, speed:1.15, coordination:0.55, patience:0.8, maxRooms:6,
+  aggressive:{ workers:1, label:'Aggressiv: schickt früh Trupps', aggression:0.9, speed:1.15, coordination:0.55, patience:0.8, maxRooms:6,
                rooms:['dormitory','arena','hatchery','dormitory','forge','library'] },
-  fortified: { label:'Verschanzt: wartet auf den Angriff', aggression:0.15, speed:0.9, coordination:0.9, patience:1.5, maxRooms:7,
+  fortified: { workers:3, label:'Verschanzt: wartet auf den Angriff', aggression:0.15, speed:0.9, coordination:0.9, patience:1.5, maxRooms:7,
                rooms:['dormitory','forge','hatchery','dormitory','storage','arena','library'] },
-  hyper:     { label:'Hyperaggressiv und reagiert auf dein Handeln', aggression:1.0, speed:1.4, coordination:0.9, patience:0.6, maxRooms:0, reacts:true, rooms:[] },
-  greedy:    { label:'Geizig: bewacht seinen Schatz und baut aus', aggression:0.25, speed:0.9, coordination:0.7, patience:1.4, maxRooms:5,
+  hyper:     { workers:0, label:'Hyperaggressiv und reagiert auf dein Handeln', aggression:1.0, speed:1.4, coordination:0.9, patience:0.6, maxRooms:0, reacts:true, rooms:[] },
+  greedy:    { workers:3, label:'Geizig: bewacht seinen Schatz und baut aus', aggression:0.25, speed:0.9, coordination:0.7, patience:1.4, maxRooms:5,
                rooms:['storage','forge','dormitory','hatchery','storage'] }
 };
 
@@ -48,8 +48,8 @@ function initKeep(rt, mods, builder){
     buildTimer:Math.round(KEEP_BUILD_BASE/(prof.speed*1.5)), builder:!!builder && prof.maxRooms>0, roomsBuilt:0, rootGuards:0, boost:1, log:[] };
 }
 
-// grow one room next to the keep by carving rock (the good side's workers are abstract for now)
-function keepBuildRoom(){
+// choose a site for the next room next to the keep (rock only, never against the player's dungeon); the workers carve and build it
+function keepPlanRoom(){
   const k=state.keep, prof=k.profile;
   if(k.roomsBuilt>=prof.maxRooms) return false;
   const type=prof.rooms[k.roomsBuilt%prof.rooms.length];
@@ -61,7 +61,7 @@ function keepBuildRoom(){
     const t=g[y][x];
     if(t.owned||t.room||t.goodRoom||t.gem||t.root||t.fixed||t.reinforced||t.hoard||t.tree||t.castle||t.grove) return false;
     if(t.type!=='rock' && !(t.type==='floor'&&t.natural)) return false;
-    return !neighbors(x,y).some(([nx,ny])=>g[ny][nx].owned);    // never carve right against the player's dungeon
+    return !neighbors(x,y).some(([nx,ny])=>g[ny][nx].owned);
   };
   for(let attempt=0;attempt<80;attempt++){
     const s=seeds[randInt(0,seeds.length-1)], dir=[[1,0],[-1,0],[0,1],[0,-1]][randInt(0,3)];
@@ -70,15 +70,79 @@ function keepBuildRoom(){
     let ok=true;
     for(let y=y0;y<y0+h&&ok;y++) for(let x=x0;x<x0+w;x++) if(!free(x,y)){ ok=false; break; }
     if(!ok) continue;
-    for(let y=y0;y<y0+h;y++) for(let x=x0;x<x0+w;x++){
-      const t=g[y][x]; t.type='floor'; t.owned=false; t.natural=false; t.gold=false; t.ore=false; t.marked=false; t.goodRoom=type; t.enemy=false;
-    }
-    k.roomsBuilt++;
-    logEvent(`Die Gegner bauen: ${ROOM_TYPES[type]?ROOM_TYPES[type].label:type}.`, x0, y0);
+    k.job={ x0, y0, w, h, type, progress:0 };
     return true;
   }
-  k.buildTimer=Math.round(KEEP_BUILD_BASE/2);   // no space this time, try again soon
   return false;
+}
+const KEEP_BUILD_WORK=36;      // worker swings needed to finish a room once the site is dug out
+const KEEP_RECLAIM_WORK=18;    // swings to win back one conquered tile
+
+function keepSiteTiles(job){ const out=[]; for(let y=job.y0;y<job.y0+job.h;y++) for(let x=job.x0;x<job.x0+job.w;x++) out.push({ x, y }); return out; }
+// a conquered enemy tile the workers want back: next to the keep, with no player unit near it
+function keepReclaimTarget(c){
+  const g=state.grid, units=state.imps.concat(state.creatures.filter(o=>o.faction!=='good'));
+  const ours=(x,y)=>{ const t=g[y][x]; return t.type==='floor' && !t.owned && (t.goodRoom || t.room==='portal'); };
+  const test=(x,y)=>{
+    const t=g[y][x];
+    if(!(t.type==='floor' && t.owned && t.wasGood)) return false;
+    if(!neighbors(x,y).some(([nx,ny])=>ours(nx,ny))) return false;
+    return !units.some(u=>Math.abs(u.x-x)<=3&&Math.abs(u.y-y)<=3);
+  };
+  const res=bfsFind(c.x,c.y,(x,y)=>neighbors(x,y).some(([nx,ny])=>test(nx,ny)));
+  if(!res) return null;
+  const end=res.path.length?res.path[res.path.length-1]:{ x:c.x, y:c.y };
+  const t=neighbors(end.x,end.y).find(([nx,ny])=>test(nx,ny));
+  return t?{ x:t[0], y:t[1], path:res.path }:null;
+}
+function keepTickWorker(c){
+  const k=state.keep, g=state.grid;
+  if(c.path && c.path.length){ stepAlong(c); return; }
+  if(!k){ return; }
+  // 1. win back conquered rooms (shared ground: whoever holds it, uses it)
+  const rt=keepReclaimTarget(c);
+  if(rt){
+    if(rt.path.length){ c.path=rt.path; c.state='marching'; stepAlong(c); return; }
+    const t=g[rt.y][rt.x]; c.state='building';
+    t.reclaim=(t.reclaim||0)+1;
+    if(t.reclaim>=KEEP_RECLAIM_WORK){
+      t.reclaim=0; t.owned=false; t.enemy=false; t.goodRoom=t.wasGood; t.room=null; t.reserved=null; t.queuedRoom=null;
+      logEvent('Die Gegner holen sich einen Raum zurück.', rt.x, rt.y);
+      emitFx('build', rt.x, rt.y);
+    }
+    return;
+  }
+  // 2. the current building site: dig it out, then build
+  const job=k.job; if(!job){ c.state='idle'; return; }
+  const sites=keepSiteTiles(job), isRock=p=>g[p.y][p.x].type==='rock';
+  if(sites.some(isRock)){
+    const adj=sites.find(p=>isRock(p)&&Math.abs(c.x-p.x)+Math.abs(c.y-p.y)===1);
+    if(adj){ c.state='digging'; interact(c, adj.x, adj.y); return; }
+    const res=bfsFind(c.x,c.y,(x,y)=>sites.some(p=>isRock(p) && Math.abs(x-p.x)+Math.abs(y-p.y)===1));
+    if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); }
+    else k.job=null;          // unreachable (walled in): plan something else
+    return;
+  }
+  const near=sites.some(p=>Math.abs(c.x-p.x)+Math.abs(c.y-p.y)<=1);
+  if(!near){
+    const res=bfsFind(c.x,c.y,(x,y)=>sites.some(p=>Math.abs(x-p.x)+Math.abs(y-p.y)<=1));
+    if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); } else k.job=null;
+    return;
+  }
+  c.state='building'; job.progress++;
+  if(job.progress>=KEEP_BUILD_WORK){
+    sites.forEach(p=>{ const t=g[p.y][p.x]; t.type='floor'; t.owned=false; t.gold=false; t.ore=false; t.marked=false; t.goodRoom=job.type; t.wasGood=job.type; t.enemy=false; emitFx('build', p.x, p.y); });
+    k.roomsBuilt++; k.job=null;
+    logEvent(`Die Gegner bauen: ${ROOM_TYPES[job.type]?ROOM_TYPES[job.type].label:job.type}.`, job.x0, job.y0);
+  }
+}
+function keepWorkers(){ return state.creatures.filter(c=>c.kind==='worker'&&!c.unconscious); }
+function keepSpawnWorker(){
+  const tiles=heroSpawnTiles(); if(!tiles.length) return false;
+  const h=createHero('worker', tiles[0].x, tiles[0].y);
+  h.inventory=[]; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
+  state.creatures.push(h);
+  return true;
 }
 
 function keepPickKind(rooms,mods){
@@ -172,7 +236,11 @@ function tickKeep(){
   const prof=k.profile, mods=waveMods(w), rooms=keepRoomCounts();
   // economy: a trickle plus the farms; the keep is only as strong as what is still standing
   k.food+=(0.004+0.012*(rooms.hatchery||0))*prof.speed*k.boost;
-  if(k.builder){ k.buildTimer--; if(k.buildTimer<=0){ keepBuildRoom(); k.buildTimer=Math.round(KEEP_BUILD_BASE/(prof.speed*(1+0.1*k.roomsBuilt))); } }
+  if(k.builder){
+    const workers=keepWorkers();
+    if(workers.length<prof.workers){ k.workerTimer=(k.workerTimer===undefined?60:k.workerTimer)-1; if(k.workerTimer<=0){ keepSpawnWorker(); k.workerTimer=Math.round(240/prof.speed); } }
+    if(!k.job && workers.length){ k.buildTimer--; if(k.buildTimer<=0){ keepPlanRoom(); k.buildTimer=Math.round(KEEP_BUILD_BASE/(prof.speed*(1+0.1*k.roomsBuilt))); } }
+  }
   if(k.recruited<k.total){
     k.timer--;
     if(k.timer<=0){
@@ -189,5 +257,6 @@ function keepSummary(){
   const r=keepRoomCounts();
   const names={ dormitory:'Kaserne', hatchery:'Vorratskammer', library:'Zauberschule', arena:'Übungsplatz', forge:'Schmiede', storage:'Lager' };
   const parts=Object.keys(r).map(t=>`${names[t]||t} ${r[t]}`);
-  return `${k.recruited}/${k.total} Rekruten${parts.length?' · '+parts.join(' · '):''}`;
+  const wk=keepWorkers().length;
+  return `${k.recruited}/${k.total} Rekruten${wk?' · Handwerker '+wk:''}${parts.length?' · '+parts.join(' · '):''}`;
 }

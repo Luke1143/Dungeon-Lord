@@ -315,6 +315,7 @@ function impFrame(state,t,facingRight){
   const held=ZOO.held, v=pal=>({ ...held, pal:{...held.pal,...pal} });
   ZOO.barbarian=v({ t:'#8a4a28',T:'#b06a3c',u:'#5a2c14',F:'#b0561e',G:'#d8782e' });
   ZOO.thief=v({ t:'#3a3a46',T:'#555566',u:'#22222a',F:'#2a2218',G:'#3c3224',l:'#2a2a32',L:'#3c3c46',m:'#1c1c22',b:'#1c1c22' });
+  ZOO.worker=v({ t:'#7a6a4a',T:'#9a8a62',u:'#4a3e28',F:'#6a4a2a',G:'#8a6a3a',l:'#5a4a30',L:'#6a5a3c',m:'#3a2c1a',b:'#3a2c1a' });
   ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
   // the dwarf king (a boss that can be corrupted): the hero body, red beard, heavy armour; the ally version has the player side's eyes
   const dwarf=swap=>({ ...held, name:'Zwergenkönig', pal:{ ...held.pal, F:'#b8561e', G:'#d8782e', t:'#5a2c14', T:'#7a4a2a', u:'#3a1c0c' },

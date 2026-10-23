@@ -141,3 +141,9 @@ Stufe 1 der Wirtschaft der Guten (siehe `docs/design.md`). Das Weltportal ist Ei
 - Oberon (`hyper`, `reacts`): nach jeder gekappten Wurzel `keepOnRootCut`: schnelleres Rekrutieren und Wächter, die sich zu den übrigen Wurzeln graben (`c.guardRoot`, `keepGuardRoot`; `digRouteToThrone` nimmt dafür ein Ziel).
 - Erobern: die normale Claim-Regel; `applyRecipe` wandelt `goodRoom` in `room` (Spieler-Skin). Darstellung: Raumtextur mit blauem Tint (2D und 3D).
 - Offen: Stufe 2 bis 4 (gemeinsamer Boden, Arbeiter, gespiegelte Bedürfnisse, Kartenboni steuern Startvorrat), Balancing der Profile.
+
+## 1.9 Nebel des Krieges, Wandoptik, Handwerker (Stufe 2)
+- Nebel über alles: jede Kachel hat `t.seen` (gespeichert). `updateFog()` (alle 2 Ticks) leuchtet eigenes Land (Radius 2) und eigene Einheiten (Radius 3) aus. Ungesehenes ist schwarz (2D, 3D, Minikarte), nur gesehene Kacheln sind markierbar. Gegner werden nur gezeigt, solange sie im Licht stehen (`state.vis`, `fogHidden`). Alle Zeichenhelfer (drawProp/Emoji/Creature, Partikel, Flecken) fragen `fogHidden`.
+- Wände: `wallFaceSpec(base,nx,ny,reinforced)` liefert Ziegel- bzw. Raumwandtextur nur noch für verstärkte Wände. Fackeln hängen nur an verstärkten Wänden (`wallTorchItems`).
+- Handwerker (`worker`, Kategorie 'worker', Fraktion good): bauen die Räume der Gegner sichtbar. `keepPlanRoom` wählt einen Bauplatz am Keep, `keepTickWorker` gräbt ihn aus (normales `interact`) und baut (`KEEP_BUILD_WORK`). Fällt ein Handwerker, kommt nach einer Weile ein neuer; ohne Handwerker wächst die Burg nicht. Profile haben `workers` (Dorf 1, Verschanzt/Geizig 3, Oberon 0).
+- Geteilter Boden: erobert der Spieler einen Gegnerraum, bleibt `t.wasGood`. Handwerker holen ihn zurück (`KEEP_RECLAIM_WORK`), wenn er am Keep anliegt und keine Spielereinheit im Umkreis 3 steht. Wer den Boden hält, nutzt den Raum.
