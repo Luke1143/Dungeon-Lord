@@ -192,6 +192,13 @@ function keepRecruit(){
   const h=spawnHero(kind, level, last, k.recruited, Object.assign({}, mods, { gearTier:tier }));
   if(!h) return false;
   k.recruited++; w.wave=k.recruited;
+  // champions sent by a legend join once about 60% of the pool is out: stronger, better armed, named
+  if(w.champions && w.champions.length && k.recruited>=Math.ceil(k.total*0.6)){
+    w.champions.splice(0).forEach((ch,i)=>{
+      const c2=spawnHero(ch.kind, Math.min(MAX_LEVEL, level+3), false, i, Object.assign({}, mods, { gearTier:tier }));
+      if(c2){ c2.name=ch.name; c2.maxHp=Math.round(statMaxHp(c2)*1.5); c2.hp=c2.maxHp; c2.inventory=heroGear(ch.kind, c2.level, true, tier); logEvent(`${ch.name} schickt einen Streiter: ${ch.name}!`, tiles[0].x, tiles[0].y); }
+    });
+  }
   // the director: attack at once (aggression) or wait at the portal until enough are gathered (coordination)
   if(Math.random()>=prof.aggression){ h.post={ x:tiles[0].x+randInt(-1,1), y:tiles[0].y+randInt(-1,1) }; }
   return true;

@@ -118,7 +118,7 @@ const OW=(()=>{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
   function initCampaign(c){
-    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0;
+    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0; c.legends=c.legends||{}; c.champions=c.champions||[];
     c.conquered=c.conquered||[]; c.allies=c.allies||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
     return c;
   }
@@ -223,7 +223,25 @@ const OW=(()=>{
       }
     });
   }
+  // Legends hear of the Dark: the more you conquer (and the more bosses serve you), the more they react.
+  const LEGEND_FAME=[4,8], CHAMPION_KIND={ dwarf:'barbarian', elf:'elf', human:'knight' };
+  function legendsTurn(world,c){
+    const fame=c.conquered.length+2*c.allies.length;
+    world.nodes.forEach(n=>{
+      const rt=REGION_TYPES[n.type]; if(!rt.gate||rt.enabled===false||!rt.boss||c.conquered.includes(n.id)) return;
+      const who=rt.boss.name.split(',')[0], st=c.legends[n.id]||0;
+      if(st<1 && fame>=LEGEND_FAME[0]){
+        c.legends[n.id]=1; const f=c.fort[n.id]=c.fort[n.id]||{}; f.waves=(f.waves||0)+1; f.levelBonus=(f.levelBonus||0)+1;
+        c.report.push(`${who} hat vom Dunkel erfahren: ${n.name} rüstet auf.`);
+      }
+      if((c.legends[n.id]||0)<2 && fame>=LEGEND_FAME[1]){
+        c.legends[n.id]=2; c.armies.push({ at:n.id, target:-1, route:[n.id], i:0, legend:who, kind:CHAMPION_KIND[rt.race]||'knight' });
+        c.report.push(`${who} zieht selbst aus, um dich zu jagen!`);
+      }
+    });
+  }
   function goodTurn(world,c){
+    legendsTurn(world,c);
     const out=c.report, name=id=>world.nodes[id].name;
     // messengers
     c.messengers=c.messengers.filter(m=>{
@@ -245,7 +263,12 @@ const OW=(()=>{
       if(a.target===-1 && a.at!==c.pos){ a.route=route(world,a.at,id=>id===c.pos,()=>true)||[a.at]; a.i=0; }
       if(a.i<a.route.length-1){ a.i++; a.at=a.route[a.i]; }
       if(a.target===-1){
-        if(a.at===c.pos){ c.ambush=(c.ambush||0)+2; out.push(`Eine Armee hat dich bei ${name(a.at)} gestellt! Die nächste Schlacht wird härter.`); return false; }
+        if(a.at===c.pos){
+          c.ambush=(c.ambush||0)+(a.legend?3:2);
+          if(a.legend){ c.champions.push({ name:a.legend, kind:a.kind }); out.push(`${a.legend} hat dich bei ${name(a.at)} gestellt! Er schickt seine Streiter in die nächste Schlacht.`); }
+          else out.push(`Eine Armee hat dich bei ${name(a.at)} gestellt! Die nächste Schlacht wird härter.`);
+          return false;
+        }
         return true;
       }
       if(a.at===a.target){ const f=c.fort[a.target]=c.fort[a.target]||{}; f.waves=(f.waves||0)+2; f.levelBonus=(f.levelBonus||0)+1; out.push(`Die Armee ist in ${name(a.target)} eingetroffen: die Verteidigung dort ist stärker.`); return false; }
@@ -276,6 +299,7 @@ const OW=(()=>{
     notes.push(`${GEAR_NAMES[gearIdx]} Ausrüstung (Rüstung ${v('iron')}${local.gearTier?', Schmiede':''})`);
     notes.push(`${mods.wizards} zusätzliche Zauberer (Magie ${v('magic')}${local.wizards?', Turm':''})`);
     if(extra && Object.keys(extra).length) notes.push('Die Gegner haben sich vorbereitet (Alarm in dieser Region)');
+    if(c.encounter){ mods.waves=clamp(mods.waves+3,3,12); mods.levelBonus+=1; notes.push(`Ihr trefft ${c.encounter.legend?c.encounter.legend+'s Heer':'eine Armee'}: +3 Wellen, Heldenstufe +1`); }
     if(c.ambush){ mods.waves=clamp(mods.waves+c.ambush,3,12); notes.push(`Eine Armee ist euch auf den Fersen: +${c.ambush} Wellen`); }
     mods.notes=notes; mods.gearName=GEAR_NAMES[gearIdx];
     return mods;

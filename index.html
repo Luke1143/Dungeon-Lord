@@ -8153,7 +8153,7 @@ function owDraw(){
   });
   g.font='16px serif'; g.textAlign='center'; g.textBaseline='middle';
   (campaign.messengers||[]).forEach(m=>{ const n=world.nodes[m.route[Math.min(m.i,m.route.length-1)]]; if(OW.knownTo(world,campaign,n.id)) g.fillText('📯', n.x*OW_TILE+OW_TILE/2-16, n.y*OW_TILE+OW_TILE/2+8); });
-  (campaign.armies||[]).forEach(a=>{ const n=world.nodes[a.at]; if(OW.knownTo(world,campaign,n.id)) g.fillText('⚔️', n.x*OW_TILE+OW_TILE/2+16, n.y*OW_TILE+OW_TILE/2+8); });
+  (campaign.armies||[]).forEach(a=>{ const n=world.nodes[a.at]; if(OW.knownTo(world,campaign,n.id)) g.fillText(a.legend?'👑':'⚔️', n.x*OW_TILE+OW_TILE/2+16, n.y*OW_TILE+OW_TILE/2+8); });
 }
 
 // visited nodes: the chain of positions the run has taken, kept in the campaign
@@ -8180,6 +8180,7 @@ function owShowInfo(){
     }
     if(rt.build && !conquered && rt.playable){ const m=OW.levelMods(world,campaign,n); const plan=keepRoomPlan(rt,m); if(plan.length) html+=`<br><br><b>Die Gegner bauen dort:</b> `+plan.map(t=>KEEP_ROOM_NAMES[t]).join(', '); }
     if(rt.ai && !conquered && AI_PROFILES[rt.ai]) html+=`<br><br><b>So kämpfen die Gegner hier:</b> ${AI_PROFILES[rt.ai].label}`;
+    { const ar=(campaign.armies||[]).filter(a=>a.at===n.id); if(ar.length) html+=`<br><br><b>Hier steht ${ar.some(a=>a.legend)?'ein legendäres Heer':'eine Armee'}.</b> Wer sie angreift, trifft stärkere Wellen und zerschlägt sie bei einem Sieg.`; }
     if(rt.aura && !conquered) html+=`<br>Verstärkt die Nachbarregionen (+${rt.aura.waves} Welle).`;
     if(rt.playable && !conquered){
       const m=OW.levelMods(world,campaign,n);
@@ -8248,6 +8249,9 @@ function owMove(id){
     owModal(`${n.name}: ${r.event.title}`, owEventHtml(r), ()=>owAfterMove());
     return;
   }
+  // an army standing on the target region is met in battle: stronger waves, but destroying it pays
+  const ai=(campaign.armies||[]).findIndex(a=>a.at===id && a.target!==-1);
+  campaign.encounter = ai>=0 ? { idx:ai, legend:campaign.armies[ai].legend||null } : null;
   startLevel(id);
 }
 
@@ -8430,6 +8434,7 @@ function startLevel(nodeId){
   state=makeDefaultState();
   state.war.difficulty=0;
   state.war.mods=OW.levelMods(world,campaign,n);   // global hero power plus what this region adds
+  state.war.champions=(campaign.champions||[]).slice(); campaign.champions=[];
   campaign.ambush=0;
   state.war.regionName=n.name;
   { const rt=LOCATION_TYPES[n.type];
@@ -8463,6 +8468,7 @@ function finishLevel(){
     campaign.skillPoints=(campaign.skillPoints||0)+1;
     if(w.ally){ campaign.allies=(campaign.allies||[]).concat([w.ally]); }
     OW.alarm(world,campaign,n.id);
+    if(campaign.encounter){ const ar=campaign.armies.splice(campaign.encounter.idx,1)[0]; const gain=ar&&ar.legend?2:1; campaign.skillPoints+=gain; campaign.report.push(`Das Heer ${ar&&ar.legend?'von '+ar.legend+' ':''}wurde zerschlagen (+${gain} Fertigkeitspunkt${gain>1?'e':''}).`); campaign.encounter=null; }
     owSelected=null;
     if(n.type==='capital'){
       campaign=null; saveCampaign();
