@@ -13,20 +13,21 @@ const DEFENDERS = {
   medium: ['hound','hound','hound','beetle','beetle','warlock'],
   large: ['hound','hound','hound','hound','beetle','beetle','beetle','warlock','warlock']
 };
+const REGIONS = (process.argv[6] || 'village,farmland,camp,fortress,capital').split(',');   // region types whose keep (build plan, AI profile) is simulated
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
   const rows = [];
   for (const diff of (process.argv[5] ? process.argv[5].split(',').map(Number) : [0, 2, 4, 6])) {
-    for (const [dname, list] of Object.entries(DEFENDERS)) {
+    for (const region of REGIONS) for (const [dname, list] of Object.entries(DEFENDERS)) {
       const p = await b.newPage({ viewport: { width: 1000, height: 700 } });
       await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
       await p.waitForTimeout(300);
-      const res = await p.evaluate(({ diff, list, MAX_TICKS, IMPS, RING }) => {
+      const res = await p.evaluate(({ diff, list, MAX_TICKS, IMPS, RING, region }) => {
         let seed = 12345 + diff; Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
         document.getElementById('menuNew').click(); startLevel(0);
         state.war.difficulty = diff;
         { const h = diff >> 1; state.war.mods = { waves: 3 + h, size: h, levelBonus: h, gearTier: Math.min(3, h), wizards: 0, notes: [] }; }   // stand-in for the world economy
-        initKeep({ ai: window.__ai || 'cautious' }, state.war.mods, true);
+        initKeep(OW.REGION_TYPES[region], state.war.mods, true);
         // sealed portal: the heroes have to dig their own way (unless window.__corridor is set)
         const portal = tilesOfRoom('portal')[0], throne = tilesOfRoom('throne');
         const tx = throne[0].x, ty = throne[0].y;
@@ -47,9 +48,9 @@ const DEFENDERS = {
         const heroes = state.creatures.filter(c => c.category === 'hero').length;
         const mine = state.creatures.filter(c => c.faction !== 'good').length;
         return { over: state.war.over, tick: t, wave: state.war.wave, rooms: state.keep ? state.keep.roomsBuilt : 0, minHp: Math.round(minHp), heroesAlive: heroes, defendersLeft: mine };
-      }, { diff, list, MAX_TICKS, IMPS, RING });
-      rows.push({ diff, defenders: dname, ...res });
-      console.log(`diff ${diff} · ${dname.padEnd(6)} -> ${res.over || 'survived'} at tick ${res.tick}, wave ${res.wave}, enemy rooms ${res.rooms}, min throne hp ${res.minHp}, heroes alive ${res.heroesAlive}, defenders left ${res.defendersLeft}`);
+      }, { diff, list, MAX_TICKS, IMPS, RING, region });
+      rows.push({ diff, region, defenders: dname, ...res });
+      console.log(`diff ${diff} · ${region.padEnd(9)} · ${dname.padEnd(6)} -> ${res.over || 'survived'} at tick ${res.tick}, wave ${res.wave}, enemy rooms ${res.rooms}, min throne hp ${res.minHp}, heroes alive ${res.heroesAlive}, defenders left ${res.defendersLeft}`);
       await p.close();
     }
   }

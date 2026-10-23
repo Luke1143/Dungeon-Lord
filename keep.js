@@ -34,6 +34,7 @@ function keepRoomPlan(rt, mods){
   return plan.slice(0, prof.maxRooms + (mods.waves>=5?1:0));
 }
 
+const KEEP_FOOD_CAP=12;           // the stock does not pile up forever
 const KEEP_RECRUIT_BASE=130;      // ticks between two recruits at speed 1
 const KEEP_BUILD_BASE=260;        // ticks between two new rooms at speed 1
 const KEEP_FIRST_RECRUIT=1500;    // the province needs time to react: the player gets a real opening to dig in (about 9 minutes at normal speed)
@@ -272,7 +273,7 @@ function tickKeep(){
   const prof=k.profile, mods=waveMods(w), rooms=keepRoomCounts();
   k.rooms=rooms;
   // economy: a trickle plus the farms; the keep is only as strong as what is still standing
-  k.food+=(0.004+0.012*(rooms.hatchery||0))*prof.speed*k.boost;
+  k.food=Math.min(KEEP_FOOD_CAP, k.food+(0.004+0.012*(rooms.hatchery||0))*prof.speed*k.boost);
   if(k.builder){
     const workers=keepWorkers();
     if(workers.length<prof.workers){ k.workerTimer=(k.workerTimer===undefined?60:k.workerTimer)-1; if(k.workerTimer<=0){ keepSpawnWorker(); k.workerTimer=Math.round(240/prof.speed); } }
