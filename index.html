@@ -5249,11 +5249,20 @@ function draw2d(){
 
 // Emojis that have a generated prop sprite (sprites.js). drawEmoji and drawSlots use the sprite instead; thoughts and effects stay emoji.
 const PROP_OF={ '🛏️':'bed', '👑':'throne', '🕯️':'candle', '📚':'shelf', '📕':'book', '🔥':'fire', '🜂':'furnace', '🗼':'kiln', '💨':'bellows', '🪵':'anvil', '🪑':'bench', '🥣':'trough', '🌾':'grain', '🐔':'chicken', '🐣':'chick', '🪙':'coin', '🪨':'ore', '🧱':'ingot', '☠️':'corpse' };
+// a prop with a back (shelf, bed) turns away from a wall next to it
+function propFacing(x,y){
+  const tx=Math.round(x), ty=Math.round(y);
+  for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
+    const nx=tx+dx, ny=ty+dy; if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) continue;
+    const n=state.grid[ny][nx]; if(n.type==='rock'||n.type==='bedrock') return { dx:-dx, dz:-dy };
+  }
+  return { dx:0, dz:1 };
+}
 function drawProp(key,x,y,o){
   if(fogHidden(x,y)) return true;
   if(typeof ZOO==='undefined' || !ZOO['prop_'+key]) return false;
   const cv=spriteCanvas('prop_'+key, Math.floor(Date.now()/280), false, false), op=o||{};
-  if(capture){ capture.push({ kind:'prop', key, canvas:cv, x, y, ox:op.offsetX, oy:op.offsetY, scale:op.scale||1 }); return true; }
+  if(capture){ capture.push({ kind:'prop', key, canvas:cv, x, y, ox:op.offsetX, oy:op.offsetY, scale:op.scale||1, face:(key==='bed'||key==='shelf')?propFacing(x,y):undefined }); return true; }
   const size=TILE*(op.scale||1), sx=(x-camX)*TILE+TILE/2-size/2+(op.offsetX||0), sy=(y-camY)*TILE+TILE/2-size/2+(op.offsetY||0);
   ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,sx,sy,size,size); ctx.restore();
   return true;

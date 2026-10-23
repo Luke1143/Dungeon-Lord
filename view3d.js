@@ -155,8 +155,42 @@ const View3D=(()=>{
     f.position.set(cx+sx, cy+Math.cos(lean)*top+0.02, cz+sz);
     it.wy=cy+Math.cos(lean)*top+0.1;
   }
+  // ---- 3D models (Minecraft-like boxes with pixel textures) for props that have one; everything else stays a billboard ----
+  const MODELS={}, modelPool={}, modelUsed={};
+  const pixTex=(w,h,paint)=>{ const c=document.createElement('canvas'); c.width=w; c.height=h; paint(c.getContext('2d'),w,h); return texOfCanvas(c); };
+  const lam=(map,color)=>new T.MeshLambertMaterial(map?{ map }:{ color });
+  const woodTex=(base,dark)=>pixTex(16,16,(g)=>{ g.fillStyle=base; g.fillRect(0,0,16,16); g.fillStyle=dark; for(let y=3;y<16;y+=4) g.fillRect(0,y,16,1); for(let i=0;i<14;i++) g.fillRect((i*7)%16,(i*5)%16,2,1); });
+  function box(w,h,d,mats,x,y,z){ const m=new T.Mesh(new T.BoxGeometry(w,h,d),mats); m.position.set(x,y,z); return m; }
+  MODELS.shelf=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a4e2a','#5a3820')), top=lam(woodTex('#8a5a34','#6a4426'));
+    const front=lam(pixTex(16,16,(c)=>{
+      c.fillStyle='#5a3820'; c.fillRect(0,0,16,16); c.fillStyle='#2a1a10';
+      const cols=['#a02828','#2a5aa0','#2a8a4a','#c8a030','#7a3a9a','#d8d0b8','#b05a1c'];
+      for(let row=0;row<3;row++){ const y0=1+row*5; c.fillRect(1,y0,14,4); let x=1; let i=row*3;
+        while(x<15){ const wd=1+((x*3+row*7)%2), h=2+((x+row)%3)%2+1; c.fillStyle=cols[(i++)%cols.length]; c.fillRect(x,y0+4-h,wd,h); x+=wd; } c.fillStyle='#5a3820'; c.fillRect(0,y0+4,16,1); }
+    }));
+    g.add(box(0.9,0.94,0.34,[wood,wood,top,wood,front,wood],0,0.47,-0.3));
+    return g; };
+  MODELS.bed=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#6a4426','#4a2e18')), sheet=lam(null,0xe8e0d0);
+    const wool=lam(pixTex(16,16,(c)=>{ c.fillStyle='#a02828'; c.fillRect(0,0,16,16); c.fillStyle='#862020'; for(let y=0;y<16;y+=2) c.fillRect(0,y,16,1); c.fillStyle='#b83a3a'; for(let i=0;i<10;i++) c.fillRect((i*5)%16,(i*7)%16,1,1); }));
+    g.add(box(0.8,0.2,0.9,wood,0,0.1,0));
+    g.add(box(0.74,0.14,0.8,[sheet,sheet,wool,sheet,sheet,sheet],0,0.27,0.02));
+    g.add(box(0.5,0.08,0.22,lam(null,0xf4f0e6),0,0.38,-0.3));
+    g.add(box(0.8,0.5,0.07,wood,0,0.25,-0.43));
+    return g; };
+  function takeModel(key){
+    const pool=modelPool[key]||(modelPool[key]=[]); const i=modelUsed[key]||0;
+    let m=pool[i]; if(!m){ m=MODELS[key](); spriteGroup.add(m); pool.push(m); }
+    modelUsed[key]=i+1; m.visible=true; return m;
+  }
+  function placeModel(it){
+    const m=takeModel(it.key), f=it.face||{ dx:0, dz:1 };
+    m.position.set(it.x+0.5,0,it.y+0.5); m.rotation.y=Math.atan2(f.dx,f.dz);
+  }
   const pendingFlash=[];
   function place(it){
+    if(it.kind==='prop' && MODELS[it.key]){ placeModel(it); return; }
     if(it.kind==='stain'){ placeStain(it); return; }
     if(it.kind==='wallTorch'){ placeTorch(it); return; }
     if(it.kind==='particle'){
@@ -206,7 +240,15 @@ const View3D=(()=>{
 
   // ---- camera, render, pick, project ----
   function camRight(){ return { x:Math.cos(yaw), z:-Math.sin(yaw) }; }
+  // first person: { x, y (tile units, centre = +0.5), yaw (angle of the view direction in the floor plane) } or null
+  let fp=null;
+  function setFirstPerson(o){ fp=o; if(ready){ camera.fov=o?72:FOV; camera.near=o?0.05:0.1; camera.updateProjectionMatrix(); } }
   function setCamera(cx,cy,viewRows){
+    if(fp){
+      camera.position.set(fp.x+0.5, 0.55, fp.y+0.5);
+      camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), 0.55, fp.y+0.5+Math.sin(fp.yaw));
+      camera.updateMatrixWorld(); return;
+    }
     const d=Math.max(4,viewRows*Math.sin(PITCH)/(2*Math.tan(FOV*Math.PI/360)));
     camera.position.set(cx+Math.sin(yaw)*Math.cos(PITCH)*d, Math.sin(PITCH)*d, cy+Math.cos(yaw)*Math.cos(PITCH)*d);
     camera.lookAt(cx,0,cy);
@@ -231,8 +273,10 @@ const View3D=(()=>{
     syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now());
     poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0;
+    Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
+    Object.keys(modelPool).forEach(k=>{ for(let i=modelUsed[k]||0;i<modelPool[k].length;i++) modelPool[k][i].visible=false; });
     for(let i=wallUsed;i<wallPool.length;i++) wallPool[i].visible=false;
     { const cr=camRight(); pendingFlash.forEach(({f,s})=>{ f.position.set(s.position.x+Math.sin(yaw)*0.02, s.position.y, s.position.z+Math.cos(yaw)*0.02); f.scale.copy(s.scale); f.renderOrder=3; }); }
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
@@ -252,6 +296,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { init, resize, setActive, render, pick, project, sideOf, camRight,
+  return { init, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();
