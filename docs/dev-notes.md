@@ -156,3 +156,8 @@ Wartende Rekruten (Besatzung am Portal, `keepGarrison`) leben wie die Kreaturen 
 - Eine entwickelte Region (`mods.waves-3`) startet mit schon gebauten Räumen.
 - Technik hängt an Räumen: Zauberer gibt es nur mit Zauberschule, Ritter nur mit Schmiede und `gearTier≥1`; Ausrüstungsstufe wie bisher aus Schmiede und `mods`.
 - Das Portal und der Eingang sind nie im Nebel (`updateFog`).
+
+## 1.12 Dungeon Lord und der Zug der Guten
+- Der Dungeon Lord (`dungeonlord`, schwarze Plattenrüstung, Stachelkrone, Streitkolben, `MATS.schwarz`, `WEAPONS.keule`) entsteht in `startLevel` am Thron (`spawnDungeonLord`), bewacht ihn wie ein Boss mit `guard` und ist besessen-bar. Fällt er, sammelt er sich nach `LORD_RESPAWN_TICKS` neu (`state.war.lordTimer`). Seine Stufe wächst mit den Fertigkeitspunkten.
+- Zug der Guten (`overworld.js`): `alarm` (nach jedem Sieg, Würfel pro Nachbar, Wurf ≥4) und `goodTurn` (bei `advanceRound`). `REGION_TYPES[...].alert`: `'call'` (Dorf, Farmland, Moor, Elfenwald: Bote zur nächsten Festung/Hauptstadt, dort entsteht eine Armee, die zur rufenden Region marschiert und sie verstärkt; ist sie gefallen, jagt sie den Spieler und gibt bei Ankunft `campaign.ambush` = +2 Wellen) oder ein Objekt, das `campaign.fort[id]` (lokale Boni) erhöht. Boten kann der Spieler abfangen (auf seinem Feld). Karte: 📯 Bote, ⚔️ Armee, 🛡️ vorbereitet. `campaign.report` wird in `owAfterMove` als Modal „Der Zug der Guten“ gezeigt.
+- Offen: legendäre Helden hören vom Spieler, Armeen als eigene Begegnung, Abfangen von Armeen.

@@ -7943,7 +7943,11 @@ function owDraw(){
   world.nodes.forEach(n=>{
     const done=owWasVisited(n.id), known=OW.knownTo(world,campaign,n.id);
     owDrawNode(g,n, done ? 'done' : reach.has(n.id) ? 'reachable' : 'locked', known);
+    if(known && !done && campaign.fort && campaign.fort[n.id]){ g.font='12px serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('🛡️', n.x*OW_TILE+OW_TILE/2+15, n.y*OW_TILE+OW_TILE/2-12); }
   });
+  g.font='16px serif'; g.textAlign='center'; g.textBaseline='middle';
+  (campaign.messengers||[]).forEach(m=>{ const n=world.nodes[m.route[Math.min(m.i,m.route.length-1)]]; if(OW.knownTo(world,campaign,n.id)) g.fillText('📯', n.x*OW_TILE+OW_TILE/2-16, n.y*OW_TILE+OW_TILE/2+8); });
+  (campaign.armies||[]).forEach(a=>{ const n=world.nodes[a.at]; if(OW.knownTo(world,campaign,n.id)) g.fillText('⚔️', n.x*OW_TILE+OW_TILE/2+16, n.y*OW_TILE+OW_TILE/2+8); });
 }
 
 // visited nodes: the chain of positions the run has taken, kept in the campaign
@@ -8019,10 +8023,15 @@ function owAfterMove(next){
   OW.advanceRound(world,campaign);
   owLiveCache=null;
   const ev=OW.roundEvent(world,campaign);
+  const report=campaign.report||[]; campaign.report=[];
   saveCampaign();
   showScreen('overworld');
-  if(ev) owModal('Die Welt dreht sich weiter: '+ev.event.title, owEventHtml(ev), ()=>{ owRefresh(); saveCampaign(); if(next) next(); });
-  else if(next) next();
+  const showEvent=()=>{
+    if(ev) owModal('Die Welt dreht sich weiter: '+ev.event.title, owEventHtml(ev), ()=>{ owRefresh(); saveCampaign(); if(next) next(); });
+    else if(next) next();
+  };
+  if(report.length) owModal('Der Zug der Guten', report.map(t=>'· '+t).join('<br>'), showEvent);
+  else showEvent();
 }
 function owMove(id){
   const n=world.nodes[id], rt=LOCATION_TYPES[n.type];
@@ -8215,6 +8224,7 @@ function startLevel(nodeId){
   state=makeDefaultState();
   state.war.difficulty=0;
   state.war.mods=OW.levelMods(world,campaign,n);   // global hero power plus what this region adds
+  campaign.ambush=0;
   state.war.regionName=n.name;
   { const rt=LOCATION_TYPES[n.type];
     state.war.goals = rt.goals ? rt.goals.map(g=>Object.assign({}, g)) : null;
@@ -8246,6 +8256,7 @@ function finishLevel(){
     if(!campaign.conquered.includes(n.id)) campaign.conquered.push(n.id);
     campaign.skillPoints=(campaign.skillPoints||0)+1;
     if(w.ally){ campaign.allies=(campaign.allies||[]).concat([w.ally]); }
+    OW.alarm(world,campaign,n.id);
     owSelected=null;
     if(n.type==='capital'){
       campaign=null; saveCampaign();

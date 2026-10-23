@@ -26,25 +26,25 @@ const OW=(()=>{
   // local: extra for the level of this region; aura: extra for the levels of neighbouring regions
   // gen: terrain parameters for the level generator (see makeDefaultState)
   const REGION_TYPES={
-    river_village:{ label:'Flussdorf', ai:'panic', build:['hatchery','dormitory'],        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
+    river_village:{ label:'Flussdorf', ai:'panic', alert:'call', build:['hatchery','dormitory'],        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
       desc:'Ein Dorf an vielen Flüssen. Leichte Beute.', side:'Das gesamte Dorf untergraben.', suffixes:['bach','furt','au','mühl'] },
-    village:      { label:'Handelsdorf', ai:'panic', build:['hatchery','dormitory','storage'],      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
+    village:      { label:'Handelsdorf', ai:'panic', alert:'call', build:['hatchery','dormitory','storage'],      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
       desc:'Ein Marktflecken an der Handelsstraße. Er füttert die Heere der Gegend.', side:'Die Vorratskammern plündern.', suffixes:['markt','stedt','heim','furt'] },
-    farmland:     { label:'Farmland', ai:'cautious', build:['hatchery','hatchery','dormitory','storage'],         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
+    farmland:     { label:'Farmland', ai:'cautious', alert:'call', build:['hatchery','hatchery','dormitory','storage'],         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
       desc:'Weite Felder und Scheunen. Von hier kommt der Nachschub der Heere.', side:'Die Scheunen niederbrennen.', suffixes:['feld','hof','acker','au'] },
-    camp:         { label:'Trainingslager', ai:'drilled', build:['dormitory','arena','dormitory','arena'],   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
+    camp:         { label:'Trainingslager', ai:'drilled', alert:{levelBonus:1}, build:['dormitory','arena','dormitory','arena'],   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
       desc:'Hier üben die Helden. Wer es zerschlägt, bremst ihre Ausbildung.', side:'Die Waffenmeister ausschalten.', suffixes:['lager','platz','wacht','heim'] },
-    forge:        { label:'Zwergenschmiede', ai:'cautious', build:['forge','dormitory','forge','storage'],  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
+    forge:        { label:'Zwergenschmiede', ai:'cautious', alert:{gearTier:1}, build:['forge','dormitory','forge','storage'],  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
       desc:'Tunnel und Esse im Berg. Hier wird die Rüstung der Helden geschmiedet.', side:'Die Schmiede plündern und ein Artefakt suchen.', suffixes:['fels','berg','esse','hammer'] },
-    mine:         { label:'Bergwerk', ai:'cautious', build:['storage','forge','dormitory'],         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
+    mine:         { label:'Bergwerk', ai:'cautious', alert:{waves:1}, build:['storage','forge','dormitory'],         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
       desc:'Stollen voller Erz und Gold. Es liefert das Eisen für die Schmieden.', side:'Die Erzlager leeren.', suffixes:['stollen','grube','schacht','berg'] },
-    tower:        { label:'Magierturm', ai:'cautious', build:['library','dormitory','library','hatchery'],       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
+    tower:        { label:'Magierturm', ai:'cautious', alert:{wizards:1}, build:['library','dormitory','library','hatchery'],       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
       desc:'Ein Turm, in dem Zauberer lernen. Er schickt Magier ins Feld.', side:'Die Bibliothek erobern.', suffixes:['turm','warte','spitz','licht'] },
-    elf_forest:   { label:'Elfenwald', ai:'aggressive', build:['hatchery','dormitory','library','arena'],        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
+    elf_forest:   { label:'Elfenwald', ai:'aggressive', alert:'call', build:['hatchery','dormitory','library','arena'],        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
       desc:'Ein uralter Wald, von Wurzeln durchzogen.', side:'Den Waldfürsten unterwerfen.', suffixes:['wald','hain','tann','lauf'] },
-    fortress:     { label:'Festung', ai:'fortified', build:['dormitory','arena','forge','dormitory','arena','forge','storage'],          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
+    fortress:     { label:'Festung', ai:'fortified', alert:{waves:1}, build:['dormitory','arena','forge','dormitory','arena','forge','storage'],          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
       desc:'Feste Mauern. Sie verstärkt die Gebiete ringsum und liefert Wachen.', side:'Den Burgherrn stürzen.', suffixes:['burg','stein','wacht','trutz'] },
-    bog:          { label:'Moorsiedlung', ai:'panic', build:['hatchery'],     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
+    bog:          { label:'Moorsiedlung', ai:'panic', alert:'call', build:['hatchery'],     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
       desc:'Nebel, Schlamm und argwöhnische Bewohner. Kaum Nutzen für die Heere, aber viel Wasser.', side:'Das Dorf versenken.', suffixes:['moor','sumpf','brück','nebel'] },
     // Gates: natural chokepoints, every road to the capital passes through them. Mythic places (free myths and sagas only), a boss each.
     // Two ways through: the frontal assault (beat the boss in an epic fight) or the cunning way (a special goal with a bigger reward).
@@ -118,7 +118,7 @@ const OW=(()=>{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
   function initCampaign(c){
-    c.round=c.round||0; c.bonus=c.bonus||{};
+    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0;
     c.conquered=c.conquered||[]; c.allies=c.allies||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
     return c;
   }
@@ -156,6 +156,7 @@ const OW=(()=>{
   }
   function advanceRound(world,c){
     c.round++;
+    goodTurn(world,c);
     STAT_KEYS.forEach(k=>{ if(c.bonus[k]) c.bonus[k]=Math.abs(c.bonus[k])<0.3?0:c.bonus[k]*BONUS_DECAY; });
   }
 
@@ -193,10 +194,71 @@ const OW=(()=>{
     return id===c.pos || neighbours(world,c.pos).includes(id);
   }
 
+  // ===== The good side's turn =====
+  // After every conquest the neighbours may be alarmed (dice). Villages call for help: a messenger walks to the nearest fortress, which
+  // raises an army that marches to the caller (or hunts the player once the caller has fallen). Other regions prepare on the spot.
+  const isMuster=n=>n.type==='fortress'||n.type==='capital';
+  // shortest route over the region graph; passable(id) decides which regions may be crossed
+  function route(world,from,goal,passable){
+    const prev={}, q=[from]; prev[from]=-1;
+    while(q.length){ const id=q.shift(); if(goal(id)){ const r=[]; for(let x=id;x!==-1;x=prev[x]) r.unshift(x); return r; }
+      neighbours(world,id).forEach(nb=>{ if(prev[nb]===undefined && passable(nb)){ prev[nb]=id; q.push(nb); } }); }
+    return null;
+  }
+  const FORT_TEXT={ waves:'mehr Wachen', levelBonus:'härteres Training', gearTier:'bessere Rüstung', wizards:'Magier im Anmarsch', size:'volle Vorratskammern' };
+  function alarm(world,c,conqueredId){
+    const out=c.report;
+    neighbours(world,conqueredId).forEach(nb=>{
+      const n=world.nodes[nb], rt=REGION_TYPES[n.type];
+      if(c.conquered.includes(nb) || !rt.playable || rt.gate || !rt.alert) return;
+      const roll=1+Math.floor(rngFor(c,'alarm'+c.round+'_'+nb)()*6);
+      if(roll<4){ out.push(`${n.name} hat nichts bemerkt (Wurf ${roll}).`); return; }
+      if(rt.alert==='call'){
+        const r=route(world,nb,id=>isMuster(world.nodes[id]),id=>!c.conquered.includes(id));
+        if(r && r.length>1){ c.messengers.push({ from:nb, route:r, i:0 }); out.push(`${n.name} ruft um Hilfe (Wurf ${roll}): ein Bote reitet zur Festung ${world.nodes[r[r.length-1]].name}.`); }
+        else out.push(`${n.name} ruft um Hilfe (Wurf ${roll}), doch kein Weg führt zu einer Festung.`);
+      } else {
+        const f=c.fort[nb]=c.fort[nb]||{}; Object.keys(rt.alert).forEach(k=>{ f[k]=(f[k]||0)+rt.alert[k]; });
+        out.push(`${n.name} bereitet sich vor (Wurf ${roll}): ${Object.keys(rt.alert).map(k=>FORT_TEXT[k]).join(', ')}.`);
+      }
+    });
+  }
+  function goodTurn(world,c){
+    const out=c.report, name=id=>world.nodes[id].name;
+    // messengers
+    c.messengers=c.messengers.filter(m=>{
+      m.i++; const at=m.route[Math.min(m.i,m.route.length-1)];
+      if(at===c.pos){ out.push(`Du hast den Boten aus ${name(m.from)} abgefangen!`); return false; }
+      if(m.i>=m.route.length-1){
+        const r=route(world,at,id=>id===m.from,id=>!c.conquered.includes(id)||id===m.from);
+        if(r){ c.armies.push({ at, target:m.from, route:r, i:0 }); out.push(`Der Bote erreicht ${name(at)}: eine Armee marschiert nach ${name(m.from)}.`); }
+        return false;
+      }
+      return true;
+    });
+    // armies
+    c.armies=c.armies.filter(a=>{
+      if(c.conquered.includes(a.target) && a.target!==-1){            // the caller has fallen: hunt the player
+        a.target=-1; a.route=route(world,a.at,id=>id===c.pos,()=>true)||[a.at]; a.i=0;
+        out.push(`Die Armee bei ${name(a.at)} erfährt vom Fall des Ortes und jagt jetzt dich!`);
+      }
+      if(a.target===-1 && a.at!==c.pos){ a.route=route(world,a.at,id=>id===c.pos,()=>true)||[a.at]; a.i=0; }
+      if(a.i<a.route.length-1){ a.i++; a.at=a.route[a.i]; }
+      if(a.target===-1){
+        if(a.at===c.pos){ c.ambush=(c.ambush||0)+2; out.push(`Eine Armee hat dich bei ${name(a.at)} gestellt! Die nächste Schlacht wird härter.`); return false; }
+        return true;
+      }
+      if(a.at===a.target){ const f=c.fort[a.target]=c.fort[a.target]||{}; f.waves=(f.waves||0)+2; f.levelBonus=(f.levelBonus||0)+1; out.push(`Die Armee ist in ${name(a.target)} eingetroffen: die Verteidigung dort ist stärker.`); return false; }
+      return true;
+    });
+  }
+
   // what the level of this region will look like: global stocks plus local type bonuses plus auras of neighbours
   function levelMods(world,c,node){
     const rt=REGION_TYPES[node.type], st=power(world,c).stats, notes=[];
-    const local=rt.local||{};
+    const local=Object.assign({},rt.local||{});
+    const extra=(c.fort&&c.fort[node.id])||{};
+    Object.keys(extra).forEach(k=>{ local[k]=(local[k]||0)+extra[k]; });
     let aura={ waves:0 };
     neighbours(world,node.id).forEach(nb=>{ const t=world.nodes[nb]; if(!c.conquered.includes(nb)){ const a=REGION_TYPES[t.type].aura; if(a&&a.waves) aura.waves+=a.waves; } });
     const v=k=>Math.round(st[k]*10)/10;
@@ -213,6 +275,8 @@ const OW=(()=>{
     notes.push(`Heldenstufe +${mods.levelBonus} (Ausbildung ${v('training')}${local.levelBonus?', Lager':''})`);
     notes.push(`${GEAR_NAMES[gearIdx]} Ausrüstung (Rüstung ${v('iron')}${local.gearTier?', Schmiede':''})`);
     notes.push(`${mods.wizards} zusätzliche Zauberer (Magie ${v('magic')}${local.wizards?', Turm':''})`);
+    if(extra && Object.keys(extra).length) notes.push('Die Gegner haben sich vorbereitet (Alarm in dieser Region)');
+    if(c.ambush){ mods.waves=clamp(mods.waves+c.ambush,3,12); notes.push(`Eine Armee ist euch auf den Fersen: +${c.ambush} Wellen`); }
     mods.notes=notes; mods.gearName=GEAR_NAMES[gearIdx];
     return mods;
   }
@@ -239,5 +303,5 @@ const OW=(()=>{
     return lines;
   }
 
-  return { STATS, STAT_KEYS, STAT_CAP, GEAR_NAMES, REGION_TYPES, EVENTS, initCampaign, neighbours, connected, income, power, timeFactor, advanceRound, rollEvent, roundEvent, knownTo, levelMods, explainDefeat };
+  return { STATS, STAT_KEYS, STAT_CAP, GEAR_NAMES, REGION_TYPES, EVENTS, initCampaign, neighbours, connected, income, power, timeFactor, advanceRound, rollEvent, roundEvent, knownTo, levelMods, explainDefeat, alarm, goodTurn };
 })();

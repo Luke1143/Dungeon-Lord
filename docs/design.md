@@ -379,7 +379,7 @@ Ohne Antwort gilt der Vorschlag in Klammern.
 5. **Lebenspool der Bewusstlosen:** Gilt der eigene Lebenspool im bewusstlosen Zustand nur für den Lord oder für alle Kreaturen? *(Vorschlag: für alle, damit die Regel überall gleich ist. godhand.md, Teil 25, würde dann angepasst.)*
 6. **Figurengröße im Bild:** *(Entschieden, siehe Tabelle: nur Imps werden kleiner gezeichnet, alle anderen Kreaturen behalten den jetzigen Maßstab. Wie mehrere Figuren auf einem Feld aussehen, ist offen. Vorschlag: leicht versetzt zeichnen, ohne zu verkleinern.)*
 
-## Der Zug der Guten (Entwurf, noch nicht gebaut)
+## Der Zug der Guten (Stufe 1 gebaut: Bericht, Alarm, Boten, Armeen; legendäre Helden offen)
 Die Oberwelt ist wirklich rundenbasiert: Spieler zieht und spielt das Level, danach ziehen die Guten, und der Spieler sieht auf der Karte, was passiert ist.
 - Alarm: Nachbarn einer frisch eroberten Region würfeln, ob sie alarmiert werden (Würfel, sichtbar im Bericht). Wirkung je nach Regionsart: Hilferuf, Befestigen, Vorrat anlegen, Späher ausschicken.
 - Hilferuf: ein Bote wandert pro Runde zur nächsten Festung. Dort entsteht eine Armee, die zur rufenden Region marschiert oder den Spieler jagt. Die Armee ist eine Figur auf der Karte (sichtbar, wenn bekannt), Begegnung heißt Level mit starkem Pool, Ausweichen oder Abfangen ist möglich.
