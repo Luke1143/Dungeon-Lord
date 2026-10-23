@@ -36,7 +36,7 @@ function keepRoomPlan(rt, mods){
 
 const KEEP_RECRUIT_BASE=130;      // ticks between two recruits at speed 1
 const KEEP_BUILD_BASE=260;        // ticks between two new rooms at speed 1
-const KEEP_FIRST_RECRUIT=380;     // the province needs time to react
+const KEEP_FIRST_RECRUIT=1500;    // the province needs time to react: the player gets a real opening to dig in (about 9 minutes at normal speed)
 
 function keepRoomCounts(){
   const c={};
