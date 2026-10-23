@@ -469,6 +469,12 @@ const SPECIES={
   dwarfking:{ label:'Zwergenkönig', category:'boss',  hp:90, strength:9,  defense:20, dex:6,  dexGrowth:0.02, speed:0.7, tempo:0.7,
              needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:true,  inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Hüter des Horts — jagt Diebe, bleibt sonst bei seinem Gold' },
+  elf:     { label:'Elfenkrieger', category:'hero',     hp:24, strength:4,  defense:6,  dex:24, dexGrowth:0.05, speed:1.3, tempo:1.2,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'assassin', passive:'Waldläufer — schnell und treffsicher' },
+  arthur:  { label:'Artus', category:'boss', hp:80, strength:8, defense:18, dex:8, dexGrowth:0.02, speed:0.8, tempo:0.9,
+             needsFood:false, avoidsWater:true, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
+             style:'fighter', passive:'König ohne Nachfolger — wartet auf den Würdigen' },
   oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Schützer des Hains — jagt Frevler an seinen Wurzeln' },
@@ -586,7 +592,9 @@ function creatureEmoji(c){
     case 'thief': return '🥷';
     case 'wizard': return '🧙‍♂️';
     case 'knight': return '🤺';
-    case 'dwarfking': return '👑';
+    case 'dwarfking': case 'arthur': return '👑';
+    case 'oberon': return '🧚';
+    case 'elf': return '🧝';
     default: return '❔';
   }
 }
@@ -1267,6 +1275,7 @@ function recipeFor(actor, x, y){
 
   // Boden: Bauauftrag hat Vorrang, sonst Erobern
   if(t.type==='floor'){
+    if(t.sword) return (actor.level>=5 || actor.isBoss) ? { id:'pull', cost:24, range:1 } : null;   // only the worthy can draw it
     if(t.queuedRoom && !t.room && t.owned) return { id:'build', cost:WORK_COST.build, range:1 };
     if(!t.owned && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
       return { id:'claim', cost:WORK_COST.claim, range:1 };
@@ -1323,11 +1332,18 @@ function interact(actor, x, y){
 
 function applyRecipe(actor, rec, x, y){
   const t=state.grid[y][x];
+  if(rec.id==='pull'){
+    t.sword=false; state.war.swordPulled=true;
+    const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
+    if(boss){ boss.alert=true; logEvent(`Excalibur ist gezogen! ${boss.name} jagt die Frevler.`, x, y); }
+    for(let i=0;i<3;i++) emitFx('claim', x, y);
+  }
   if(rec.id==='dig' && t.root){
     t.root=false; state.war.roots=(state.war.roots||0)+1;
     const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
     if(boss && !boss.alert){ boss.alert=true; logEvent(`${boss.name} spürt den Frevel an seinen Wurzeln und jagt eure Diener!`, boss.x, boss.y); }
     logEvent(`Eine Wurzel des Weltenbaums wurde durchtrennt (${state.war.roots}/${state.war.rootsTotal||8}).`, x, y);
+    if(state.war.spawnAt==='grove' && !state.war.over) spawnSortie(2, 'Oberon schickt Krieger, um die Wurzeln zu rächen!');
     for(let i=0;i<2;i++) emitFx('claim', x, y);
   }
   if(rec.id==='dig') emitFx('dig', x, y, { color: t.root?'#6a4426':(t.gold?'#d4af37':(t.gem?'#9a6ad0':wallBaseSpec(t).color)) });
@@ -1524,6 +1540,7 @@ function createBoss(kind,x,y,opts){
   const o=opts||{};
   const b=applySpecies({ id:creatureIdCounter++, x, y, state:'guarding', path:[], held:false, faction:o.faction||'good', name:o.name||SPECIES[kind].label, isBoss:true,
     home:{ x, y }, alert:false, level:o.level||1 }, kind);
+  if(o.guard){ b.isBoss=false; b.category='boss'; }   // a plain guard that stays at its post
   b.maxHp=statMaxHp(b)+(o.extraHp||0); b.hp=b.maxHp;
   b.inventory=(o.gear||[]).map(id=>({ id, q:1 }));
   return b;
@@ -4557,6 +4574,7 @@ function thoughtOf(c){
 // What a tile looks like: a full texture (conquered floors, room floors, room walls) or a flat colour with a speckle overlay.
 // Walls take on the look of the room they face: a library wall is a bookcase, a throne room wall carries banners.
 function wallBaseSpec(t){
+  if(t.castle && t.type==='rock') return { full:'wall:castle', color:'#8d949c', kind:'rock', resource:true };
   if(t.root) return { full:'root', color:'#3a2616', kind:'rock', resource:true };
   const gem=t.gem&&t.gemRevealed;
   return { color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), resource: !!(gem||t.gold||t.ore) };
@@ -4571,6 +4589,7 @@ function wallFaceSpec(base,nx,ny){
 }
 function floorSpec(t){
   if(t.grove && !t.owned && !t.room) return { full:'grove' };
+  if(t.castle && !t.owned && !t.room) return { full:'castle' };
   if(t.room && TILEGEN.has(t.room)) return { full:t.room };
   if(t.owned) return { full:'owned' };
   return { color:COLORS.floorNeutral, kind:'floor' };
@@ -4966,6 +4985,8 @@ function draw2d(){
       const pileIcons=tileSlotIcons(t, x, y);
       if(pileIcons.length) drawSlots(pileIcons, x, y, false);
       if(t.lairOwner!=null) drawEmoji('🛏️', x, y, false);
+      if(t.table) drawProp('roundtable', x, y);
+      if(t.sword) drawProp('excalibur', x, y);
     }
   }
 
@@ -5728,35 +5749,51 @@ function heroGear(kind, level, boss, tierIdx){
   const add=fam=>{ const id=fam+'_'+tier; if(ITEMS[id]) items.push({ id, q:1 }); };
   if(kind==='barbarian'){ add(level>=3?'axe':'sword'); add(level>=4?'mediumArmor':'lightArmor'); }
   else if(kind==='thief'){ add('sword'); add('lightArmor'); if(level>=2) add('buckler'); }
+  else if(kind==='elf'){ add('bow'); add(level>=3?'mediumArmor':'lightArmor'); }
   else if(kind==='wizard'){ add(level>=5?'wandIce':(level>=3?'wandBolt':'wandFire')); if(level>=4) add('lightArmor'); }
   else if(kind==='knight'){ add(boss?'hammer':'sword'); add('heavyArmor'); add(boss?'tower':'kite'); }
   return items;
+}
+
+function heroSpawnTiles(){ const w=state.war; return (w.spawnTiles&&w.spawnTiles.length) ? w.spawnTiles : tilesOfRoom('portal'); }
+function spawnHero(kind,lvl,boss,i,mods){
+  const tiles=heroSpawnTiles(); if(!tiles.length) return null;
+  const spot=tiles[i%tiles.length];
+  const h=createHero(kind, spot.x, spot.y);
+  h.level=lvl; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
+  h.inventory=heroGear(kind, lvl, boss, mods.gearTier);
+  if(boss) h.name='Der Ritter';
+  state.creatures.push(h);
+  return h;
+}
+function waveMods(w){ return w.mods||{ waves:waveTotal(w), size:Math.floor((w.difficulty||0)/2), levelBonus:Math.floor((w.difficulty||0)/2), gearTier:Math.min(3,Math.floor((w.difficulty||0)/2)), wizards:0 }; }
+// an extra sortie (for example when Oberon's roots are cut): a few of the level's hero kinds appear at once
+function spawnSortie(count, label){
+  const w=state.war, mods=waveMods(w), pool=w.heroPool||['barbarian','thief'];
+  const level=Math.min(MAX_LEVEL, 1+Math.floor(Math.max(0,w.wave-1)/3)+mods.levelBonus);
+  for(let i=0;i<count;i++) spawnHero(pool[randInt(0,pool.length-1)], level, false, i, mods);
+  const tiles=heroSpawnTiles(); if(tiles.length) logEvent(label||`Ein Trupp von ${count} Kriegern bricht auf!`, tiles[0].x, tiles[0].y);
 }
 
 function spawnWave(){
   const w=state.war;
   w.wave++;
   const n=w.wave;
-  const mods=w.mods||{ waves:waveTotal(w), size:Math.floor((w.difficulty||0)/2), levelBonus:Math.floor((w.difficulty||0)/2), gearTier:Math.min(3,Math.floor((w.difficulty||0)/2)), wizards:0 };
+  const mods=waveMods(w);
   const total=waveTotal(w), last=n>=total;
   const count=Math.min(WAVE_MAX_SIZE+4, 1+Math.floor(n*0.7)+mods.size);
   const level=Math.min(MAX_LEVEL, 1+Math.floor((n-1)/3)+mods.levelBonus);
-  const pool=['barbarian','thief'];
-  if(n>=3||mods.wizards>0) for(let i=0;i<1+mods.wizards;i++) pool.push('wizard');
-  if(n>=5||mods.gearTier>=2) pool.push('knight');
-  const tiles=tilesOfRoom('portal');
+  let pool;
+  if(w.heroPool) pool=w.heroPool.slice();
+  else { pool=['barbarian','thief'];
+    if(n>=3||mods.wizards>0) for(let i=0;i<1+mods.wizards;i++) pool.push('wizard');
+    if(n>=5||mods.gearTier>=2) pool.push('knight'); }
+  const tiles=heroSpawnTiles();
   if(!tiles.length) return;
-  const spawn=(kind,lvl,boss,i)=>{
-    const spot=tiles[i%tiles.length];
-    const h=createHero(kind, spot.x, spot.y);
-    h.level=lvl; h.maxHp=statMaxHp(h); h.hp=h.maxHp;
-    h.inventory=heroGear(kind, lvl, boss, mods.gearTier);
-    if(boss) h.name='Der Ritter';
-    state.creatures.push(h);
-  };
-  for(let i=0;i<count;i++) spawn(pool[randInt(0,pool.length-1)], level, false, i);
-  if(last) spawn('knight', Math.min(MAX_LEVEL, level+2), true, count);
-  logEvent(last ? `Letzte Welle (${n}/${total}): ${count} Helden und der Ritter strömen aus dem Weltportal!` : `Welle ${n}/${total}: ${count} Helden strömen aus dem Weltportal!`, tiles[0].x, tiles[0].y);
+  for(let i=0;i<count;i++) spawnHero(pool[randInt(0,pool.length-1)], level, false, i, mods);
+  if(last && !w.goals) spawnHero('knight', Math.min(MAX_LEVEL, level+2), true, count, mods);
+  const src=w.spawnAt==='grove'?'aus Oberons Hain':(w.spawnAt==='castle'?'aus Camelot':'aus dem Weltportal');
+  logEvent(last ? `Letzte Welle (${n}/${total}): ${count} Helden${w.goals?'':' und der Ritter'} strömen ${src}!` : `Welle ${n}/${total}: ${count} Helden strömen ${src}!`, tiles[0].x, tiles[0].y);
 }
 
 // A goal was reached: the cunning way corrupts the boss, who then fights for the player.
@@ -7536,7 +7573,7 @@ function drawMaterialPreview(){
 const CAMPAIGN_KEY='dungeon-lord-campaign-v1';
 const OW_COLS=80, OW_ROWS=45, OW_TILE=12;
 const OW_TURNS=11;                      // columns left to right, the last one is the capital
-const GATE_TYPES=['gate_dwarf','gate_elf','gate_hydra','gate_labyrinth'];
+const GATE_TYPES=Object.keys(OW.REGION_TYPES).filter(k=>OW.REGION_TYPES[k].gate && OW.REGION_TYPES[k].enabled!==false);   // one gate per race; new ones are table entries
 const OW_WATER_LEVEL=0.36;
 
 // Location types are table entries: terrain decides the type, the type decides flavour and side goal.
@@ -7610,7 +7647,7 @@ function buildWorld(seed){
   }
 
   // Gates: 2 or 3 natural chokepoints (a column with a single place); every road to the capital passes through them.
-  const gateCols=(rnd()<0.5 ? [3,7] : [2,5,8]).slice();
+  const gateCols=(rnd()<0.5 ? [3,7] : [2,5,8]).slice(0,GATE_TYPES.length);
   const gateOrder=GATE_TYPES.slice().sort(()=>rnd()-0.5);
   const isGateCol=c=>gateCols.includes(c);
   // Nodes: one column per turn, left to right.
@@ -7966,8 +8003,8 @@ function newCampaign(seed){
 }
 
 // The dwarf king's hoard: a walled hall far from the throne, full of gold, with the king himself inside.
-const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'] };
-const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove() };
+const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
+const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot() };
 function setupDwarfHoard(){
   const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
   for(let attempt=0;attempt<600;attempt++){
@@ -7995,38 +8032,101 @@ function setupDwarfHoard(){
   return false;
 }
 
-// Oberon's grove: a mossy clearing around the world tree, walled by reinforced rock. The tree itself cannot be touched;
-// its roots (the eight spots around it) can be dug out. Every root removed is a wound; Oberon notices and hunts the diggers.
-function setupElfGrove(){
+// ---- level setups of the gates (one function per boss; registered in LEVEL_SETUPS) ----
+// Finds a block of the map (half sizes hx, hy around a centre) for a walled structure; returns { cx, cy } or null.
+function findStructureSpot(hx,hy,minThrone,minPortal){
   const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
   for(let attempt=0;attempt<700;attempt++){
-    const cx=randInt(8,WORLD_COLS-9), cy=randInt(7,WORLD_ROWS-8);
+    const cx=randInt(hx+3,WORLD_COLS-hx-4), cy=randInt(hy+2,WORLD_ROWS-hy-3);
     const phase=attempt<350?0:(attempt<550?1:2);
     let ok=true;
-    for(let y=cy-5;y<=cy+5&&ok;y++) for(let x=cx-5;x<=cx+5;x++){
+    for(let y=cy-hy;y<=cy+hy&&ok;y++) for(let x=cx-hx;x<=cx+hx;x++){
       if(y<1||x<1||y>=WORLD_ROWS-1||x>=WORLD_COLS-1){ ok=false; break; }
       const t=g[y][x];
-      if(t.room||t.gem||t.type==='bedrock'||t.type==='water'||(t.hoard)){ ok=false; break; }
+      if(t.room||t.gem||t.type==='bedrock'||t.type==='water'||t.hoard||t.grove||t.castle){ ok=false; break; }
       if(phase<2 && (t.type!=='rock'||t.gold||t.ore||t.natural)){ ok=false; break; }
     }
     if(!ok) continue;
-    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<20 || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<8)) continue;
-    const roots=[[-2,-2],[0,-2],[2,-2],[-2,0],[2,0],[-2,2],[0,2],[2,2]];
-    for(let dy=-5;dy<=5;dy++) for(let dx=-5;dx<=5;dx++){
-      const t=g[cy+dy][cx+dx], d=Math.max(Math.abs(dx),Math.abs(dy));
-      t.gold=false; t.ore=false; t.natural=false; t.marked=false;
-      if(d===5){ t.type='rock'; t.reinforced=true; t.fixed=true; }
-      else if(d<=1){ t.type='bedrock'; t.tree=true; }
-      else if(roots.some(([rx,ry])=>rx===dx&&ry===dy)){ t.type='rock'; t.root=true; }
-      else { t.type='floor'; t.owned=false; t.grove=true; }
-    }
-    const king=createBoss('oberon', cx+3, cy, { name:'Oberon', level:4, extraHp:30, gear:BOSS_GEAR.oberon });
-    king.home={ x:cx+3, y:cy };
-    state.creatures.push(king);
-    state.war.rootsTotal=roots.length;
-    return true;
+    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<minThrone || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<minPortal)) continue;
+    return { cx, cy };
   }
-  return false;
+  return null;
+}
+// The side of a structure that faces the throne (where its gate goes): returns [dx,dy] of the outward direction.
+function gateSide(cx,cy){ const dx=2-cx, dy=2-cy; return Math.abs(dx)>Math.abs(dy) ? [dx<0?-1:1,0] : [0,dy<0?-1:1]; }
+
+// Roots of the world tree: single root tiles hidden in solid rock all over the map. Each must be dug out.
+function placeRoots(count, avoid){
+  const g=state.grid, placed=[];
+  const far=(x,y,list,d)=>list.every(p=>Math.max(Math.abs(p.x-x),Math.abs(p.y-y))>=d);
+  for(let attempt=0;attempt<2000 && placed.length<count;attempt++){
+    const x=randInt(3,WORLD_COLS-4), y=randInt(3,WORLD_ROWS-4), t=g[y][x];
+    if(t.type!=='rock'||t.gold||t.ore||t.gem||t.room||t.natural||t.reinforced||t.fixed||t.root) continue;
+    if(!neighbors(x,y).every(([nx,ny])=>g[ny][nx].type==='rock')) continue;
+    if(Math.max(Math.abs(x-2),Math.abs(y-2))<9) continue;
+    if(!far(x,y,placed,7) || !far(x,y,avoid,8)) continue;
+    t.root=true; placed.push({ x, y });
+  }
+  return placed;
+}
+
+// Oberon's grove: a walled clearing around the world tree with one gate facing the throne. Oberon holds it and sends his
+// warriors out from there. The tree's roots are scattered over the whole map (placeRoots); cutting them is the cunning way.
+function setupElfGrove(){
+  const g=state.grid, spot=findStructureSpot(5,5,20,8);
+  if(!spot) return false;
+  const { cx, cy }=spot, [ox,oy]=gateSide(cx,cy);
+  for(let dy=-5;dy<=5;dy++) for(let dx=-5;dx<=5;dx++){
+    const t=g[cy+dy][cx+dx], d=Math.max(Math.abs(dx),Math.abs(dy));
+    t.gold=false; t.ore=false; t.natural=false; t.marked=false;
+    if(d===5){ t.type='rock'; t.reinforced=true; t.fixed=true; }
+    else if(d<=1){ t.type='bedrock'; t.tree=true; }
+    else { t.type='floor'; t.owned=false; t.grove=true; }
+  }
+  // the gate: an opening in the ring facing the throne and a short path out
+  const gx=cx+ox*5, gy=cy+oy*5;
+  for(let k=0;k<=3;k++){
+    const x=gx+ox*k, y=gy+oy*k; if(x<1||y<1||x>=WORLD_COLS-1||y>=WORLD_ROWS-1) break;
+    const t=g[y][x]; if(t.type==='bedrock') break;
+    t.type='floor'; t.reinforced=false; t.fixed=false; t.owned=false; t.grove=true; t.natural=false; t.gold=false; t.ore=false;
+  }
+  const inner=[0,1,2].map(k=>({ x:gx-ox*k, y:gy-oy*k }));
+  const king=createBoss('oberon', cx-ox*3, cy-oy*3, { name:'Oberon', level:4, extraHp:30, gear:BOSS_GEAR.oberon });
+  state.creatures.push(king);
+  state.war.spawnTiles=inner;
+  const roots=placeRoots(8, [{ x:cx, y:cy }, ...tilesOfRoom('portal')]);
+  state.war.rootsTotal=roots.length;
+  return true;
+}
+
+// Camelot: a castle with a gate facing the throne, the Round Table, King Arthur, three guards and the sword in the stone at the far end.
+function setupCamelot(){
+  const g=state.grid, spot=findStructureSpot(7,5,20,8);
+  if(!spot) return false;
+  const { cx, cy }=spot, [ox,oy]=gateSide(cx,cy);
+  for(let dy=-5;dy<=5;dy++) for(let dx=-7;dx<=7;dx++){
+    const t=g[cy+dy][cx+dx], wall=Math.abs(dx)===7||Math.abs(dy)===5;
+    t.gold=false; t.ore=false; t.natural=false; t.marked=false; t.castle=true;
+    if(wall){ t.type='rock'; t.reinforced=true; t.fixed=true; }
+    else { t.type='floor'; t.owned=false; }
+  }
+  const gateX=ox?cx+ox*7:cx, gateY=oy?cy+oy*5:cy;
+  for(let k=0;k<=3;k++){
+    const x=gateX+ox*k, y=gateY+oy*k; if(x<1||y<1||x>=WORLD_COLS-1||y>=WORLD_ROWS-1) break;
+    const t=g[y][x]; if(t.type==='bedrock') break;
+    t.type='floor'; t.reinforced=false; t.fixed=false; t.owned=false; t.natural=false; t.gold=false; t.ore=false; t.castle=true;
+  }
+  g[cy][cx].table=true;
+  const sx=cx-ox*(ox?5:3), sy=cy-oy*(oy?3:3);   // the stone: opposite the gate
+  g[sy][sx].sword=true;
+  const arthur=createBoss('arthur', cx+1, cy+1, { name:'Artus', level:5, extraHp:30, gear:BOSS_GEAR.arthur });
+  state.creatures.push(arthur);
+  [[-3,-2],[3,-2],[0,3]].forEach(([dx,dy])=>{
+    const kg=createBoss('knight', cx+dx, cy+dy, { name:'Ritter der Tafelrunde', level:3, guard:true, gear:['sword_fine','heavyArmor_fine','kite_fine'] });
+    state.creatures.push(kg);
+  });
+  state.war.spawnTiles=[0,1,2].map(k=>({ x:gateX-ox*(k+1), y:gateY-oy*(k+1) }));
+  return true;
 }
 
 // Fresh level state; the single place that resets all counters.
@@ -8042,6 +8142,8 @@ function startLevel(nodeId){
   state.war.regionName=n.name;
   { const rt=LOCATION_TYPES[n.type];
     state.war.goals = rt.goals ? rt.goals.map(g=>Object.assign({}, g)) : null;
+    state.war.heroPool = rt.heroPool ? rt.heroPool.slice() : null;
+    state.war.spawnAt = rt.spawnAt || 'portal';
     if(rt.setup && LEVEL_SETUPS[rt.setup]) LEVEL_SETUPS[rt.setup]();
     if(state.war.goals && state.war.rootsTotal) state.war.goals.forEach(g=>{ if(g.id==='undermine_roots') g.total=state.war.rootsTotal; });
     (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
@@ -8228,6 +8330,7 @@ function drawMinimap(){
     let c=MM_COLORS[t.type]||MM_COLORS.rock;
     if(t.type==='floor' && t.owned) c='#6a5640';
     if(t.room) c=MM_ROOMS[t.room]||'#8a7a5c';
+    else if(t.root) c='#a0622a';
     else if(t.gold && !isHidden(x,y)) c='#d4af37';
     else if(t.type==='floor' && !t.owned && isHidden(x,y)) c=MM_COLORS.rock;
     g.fillStyle=c; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE);

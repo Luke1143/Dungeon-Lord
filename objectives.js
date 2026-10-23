@@ -35,5 +35,11 @@ const GOALS={
       const n=st.war.roots||0, boss=st.creatures.find(c=>c.isBoss&&c.faction==='good');
       return { done:n>=g.amount && !!boss && !boss.unconscious, text:`${Math.min(n,g.amount)}/${g.amount} Wurzeln` };
     }
+  },
+  pull_sword:{
+    corrupts:true,
+    corruptText:b=>`${b.name} ist nur noch ein König ohne Legende. Er folgt euch nun und wird euch in den nächsten Leveln dienen.`,
+    label:()=>'Excalibur aus dem Stein ziehen (nur ein Würdiger kann es) und Artus korrumpieren',
+    check:(st)=>{ const boss=st.creatures.find(c=>c.isBoss&&c.faction==='good'); return { done:!!st.war.swordPulled && !!boss && !boss.unconscious, text:st.war.swordPulled?'gezogen':'noch im Stein' }; }
   }
 };

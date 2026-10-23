@@ -324,6 +324,11 @@ function impFrame(state,t,facingRight){
   const fey=swap=>({ ...held, name:'Oberon', pal:{ ...held.pal, s:'#e2d4b4', S:'#f4ead0', F:'#e8e0a0', G:'#fff8c0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#2f5a2a', L:'#3f7a3a', m:'#1f3a1a', b:'#1f3a1a' },
     frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'leder', helm:3, chest:1, legs:1, weapon:'stab' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.oberon=fey(false); ZOO.oberon_ally=fey(true);
+  ZOO.elf=v({ s:'#e6d6b4', S:'#f6ead0', F:'#d8d090', G:'#f0eab0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#3a5a2a', L:'#4a7a3a', m:'#243a1c', b:'#243a1c' });
+  // King Arthur: crowned human king in steel and blue; the ally version has the player side's eyes
+  const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'stahl', helm:2, chest:2, legs:1, weapon:'schwert', shield:'kite' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+  ZOO.arthur=arthur(false); ZOO.arthur_ally=arthur(true);
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
@@ -359,6 +364,8 @@ function impFrame(state,t,facingRight){
   add('chick',t=>{ const f=mk(16,16), h=flick(t); ell(f,8,10,3,2.6,'f'); ell(f,10.4,7.6+h,1.9,1.9,'f'); put(f,12,8+h,'o'); put(f,11,7+h,'p'); put(f,7,13,'o'); put(f,9,13,'o'); return f; });
   add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
   add('flame',t=>{ const f=mk(16,16), k=flick(t); ell(f,8,10.5,2.6,3.8,'o'); ell(f,8,11.4,1.4,2.4,'f'); put(f,8,6-k,'o'); put(f,8,7,'o'); put(f,8,12,'F'); put(f,7+k,5,'o'); return f; });
+  add('excalibur',t=>{ const f=mk(16,16); ell(f,8,11,6,3.4,'s'); rect(f,4,9,8,4,'s'); shade(f,'s','S','z'); rect(f,7,1,2,9,'W'); put(f,7,1,'F'); rect(f,5,6,6,1,'y'); put(f,8,5-(flick(t)),'F'); return f; });
+  add('roundtable',()=>{ const f=mk(16,16); ell(f,8,8,7.2,5.6,'d'); ell(f,8,8,6.2,4.8,'w'); ell(f,8,8,3.4,2.4,'W'); for(let i=0;i<12;i++){ const a=i/12*6.283; put(f,Math.round(8+Math.cos(a)*6.6),Math.round(8+Math.sin(a)*5.2),'y'); } shade(f,'w','W','d'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
   add('ore',()=>{ const f=mk(16,16); ell(f,8,9,5,4,'n'); ell(f,6.5,8,2.2,2,'N'); put(f,10,8,'y'); put(f,9,11,'y'); shade(f,'n','N','k'); return f; });
   add('bloom',t=>{ const f=mk(16,16); ell(f,8,9,4.6,3.6,'o'); ell(f,7,8,2.6,2,'f'); put(f,11,7,'F'); put(f,5,10,'F'); if(flick(t)) put(f,9,6,'F'); shade(f,'o','f','t'); return f; });
@@ -469,6 +476,11 @@ const TILEGEN=(()=>{
     for(let x=0;x<16;x++){ const col=x%4===0?P.c:(x%4===2?P.b:P.a); for(let y=0;y<16;y++){ g[y][x]=(r()<0.1)?P.b:col; } }
     for(let i=0;i<5;i++) g[Math.floor(r()*16)][Math.floor(r()*16)]=P.m;
     g[7][7]=P.c; g[7][8]=P.c; g[8][7]=P.c; g[8][8]=P.c; g[6][7]=P.l; return { g, pal:P }; });
+  mk('castle',(v)=>{ const r=rng(v*103+22), P={ a:'#8d949c', A:'#a8b0b8', b:'#767d85', m:'#4a5058' }, g=grid(P.a);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const chess=((x>>3)+(y>>3))%2===0; g[y][x]=chess?(r()<0.14?P.A:P.a):(r()<0.14?P.a:P.b); if(x%8===0||y%8===0) g[y][x]=P.m; }
+    return { g, pal:P }; });
+  mk('wall:castle',(v)=>{ const r=rng(v*107+23), P={ a:'#8d949c', A:'#a8b0b8', b:'#767d85', m:'#4a5058', c:'#2a4a9a', C:'#4a6ad0', y:'#d4af37' }, g=grid(P.a); bricks(g,r,P);
+    for(let y=0;y<12;y++) for(let x=5;x<=10;x++) g[y][x]=(x===5||x===10)?P.c:P.C; for(let x=5;x<=10;x++) g[0][x]=P.y; g[12][6]=P.c; g[12][9]=P.c; g[13][7]=P.c; g[13][8]=P.c; g[14][7]=P.y; g[14][8]=P.y; return { g, pal:P }; });
   const has=kind=>!!FULL[kind];
   function full(kind,seed){ const o=FULL[kind](seed), pal={}; o.g.forEach(row=>row.forEach(c=>{ pal[c]=c; })); return { g:o.g, pal, opaque:true }; }   // cells hold colours directly
   return { gen, full, has, crack };
