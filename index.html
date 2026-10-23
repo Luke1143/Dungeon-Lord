@@ -4794,7 +4794,7 @@ function drawCreatureSprite(c,px,py,opts){
   if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; const side=capture?View3D.sideOf(dx,dy):dx; if(Math.abs(side)>0.004) c._faceRight=side>0; } }
   c._sx=px; c._sy=py;
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
-  const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?equipLook(c):undefined);
+  const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?Object.assign({},equipLook(c),{ weapon:undefined }):equipLook(c)):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
   const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:1);
   const fl=(opts&&opts.flash)||0;
@@ -4813,19 +4813,19 @@ function drawCreatureSprite(c,px,py,opts){
 
 const HIT_FLASH_MS=260;
 
-// who swings a tool or a fist: imps and the humanoids; beasts only lunge
-function hasHands(c){ const z=typeof ZOO!=='undefined'&&ZOO[c.kind||'imp']; return !!z && (!!z.humanoid || c.kind==='imp' || c.kind==='dungeonlord'); }
+// What a creature holds: its weapon sprite, if it carries one. Nobody swings anything they do not hold; every swing still leaves an arc.
 function weaponSpriteOf(c){ const e=equipLook(c); return e && e.weapon ? e.weapon : null; }
-function toolFor(c, pose){
-  const weapon=pose.anim.verb==='attack' ? weaponSpriteOf(c) : null;
-  return toolCanvas(weapon, FIST_COLORS[c.kind||'imp'], weapon?null:pose.anim.tint);
-}
-function drawHeldTool(c, px, py, pose, lift){
-  const cv=toolFor(c,pose), sign=c._faceRight?1:-1, fwd=0.3+pose.ox;
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:TOOL_S/16, rotation:-sign*pose.angle, ox:sign*fwd*32, lift:0.42+lift+pose.oy, oy:3 }); return; }
-  const k=TILE/16, pvx=(px+0.5+sign*fwd-camX)*TILE, pvy=(py+0.62-pose.oy-lift-camY)*TILE;
-  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.translate(pvx,pvy); ctx.rotate(sign*pose.angle);
-  ctx.drawImage(cv, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k); ctx.restore();
+function drawSwing(c, px, py, pose, lift){
+  const sign=c._faceRight?1:-1, fwd=0.3+pose.ox, a=pose.anim;
+  const wcv=pose.held ? toolCanvas(weaponSpriteOf(c)) : null, alpha=slashAlpha(pose);
+  const items=[]; if(wcv) items.push([wcv,1]); if(alpha>0.02) items.push([slashCanvas(a.tint),alpha*0.9]);
+  items.forEach(([cv,al])=>{
+    if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:TOOL_S/16, rotation:-sign*pose.angle, alpha:al, ox:sign*fwd*32, lift:0.42+lift+pose.oy, oy:3 }); return; }
+    const k=TILE/16, pvx=(px+0.5+sign*fwd-camX)*TILE, pvy=(py+0.62-pose.oy-lift-camY)*TILE;
+    ctx.save(); ctx.imageSmoothingEnabled=false; ctx.globalAlpha=al; ctx.translate(pvx,pvy); ctx.rotate(sign*pose.angle);
+    if(sign<0) ctx.scale(1,1);
+    ctx.drawImage(cv, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k); ctx.restore();
+  });
 }
 
 // Zeichnet Kreatur samt Schwung und Gedanke
@@ -4856,8 +4856,8 @@ function drawActor(c, baseIcon){
       if(L){ px+=a.dx/L*pose.lunge; py+=a.dy/L*pose.lunge; const sv=capture?View3D.sideOf(a.dx,a.dy):a.dx; if(Math.abs(sv)>0.01) c._faceRight=sv>0; }
       lift=pose.hop;
     }
-    if(!drawCreatureSprite(c, px, py, { flash: since<130 ? 1-since/130 : 0, lift })) drawEmoji(baseIcon, px, py, false);
-    if(pose && pose.held && hasHands(c)) drawHeldTool(c, px, py, pose, lift);
+    if(!drawCreatureSprite(c, px, py, { flash: since<130 ? 1-since/130 : 0, lift, noWeapon:!!(pose&&pose.held) })) drawEmoji(baseIcon, px, py, false);   // the weapon in hand is drawn by the swing instead
+    if(pose) drawSwing(c, px, py, pose, lift);
   }
   if(hitPhase>0){
     // Roter Schleier ueber der getroffenen Kreatur
@@ -6759,17 +6759,17 @@ function drawFpHand(c){
   const W=host.clientWidth, H=host.clientHeight;
   if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
   const g=cv.getContext('2d'); g.clearRect(0,0,W,H);
-  if(!hasHands(c)) return;
-  const pose=fpPose||Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' } });
-  if(!pose.held) return;
+  const weapon=toolCanvas(weaponSpriteOf(c));
+  const pose=fpPose||Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' }, p:0 });
   const moving=keysDown['w']||keysDown['a']||keysDown['s']||keysDown['d'];
   const bob=fpPose?0:(moving?Math.sin(Date.now()/130)*0.02:Math.sin(Date.now()/600)*0.006);
-  const weapon=(pose.anim.verb==='attack'||pose.anim.verb==='idle') ? weaponSpriteOf(c) : null;
-  const img=toolCanvas(weapon, FIST_COLORS[c.kind||'imp'], weapon?null:pose.anim.tint);
   const k=H/22;
   g.save(); g.imageSmoothingEnabled=false;
   g.translate(W*0.74+pose.ox*H*0.7, H*(1.02+bob)-pose.oy*H*0.6); g.rotate(pose.angle);
-  g.drawImage(img, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k); g.restore();
+  if(weapon && pose.held) g.drawImage(weapon, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k);
+  const al=fpPose?slashAlpha(pose):0;
+  if(al>0.02){ g.globalAlpha=al*0.55; const sk=k*1.05; g.drawImage(slashCanvas(pose.anim.tint), -TOOL_S/2*sk, -(TOOL_S-1)*sk, TOOL_S*sk, TOOL_S*sk); }
+  g.restore();
 }
 function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
 // the cardinal direction a yaw angle points to (the game moves on tiles)

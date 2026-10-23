@@ -341,17 +341,17 @@ function impFrame(state,t,facingRight){
   // The Dungeon Lord: not a man but a haunted suit of black plate, closed spiked helm, two burning eyes in the slit, a spiked mace.
   // Drawn by hand (no skin anywhere); native facing left like the other humanoids.
   const LORD_TOP=[
-    '.....M.M.M...W.W',
-    '.....mMmMmm..WWW',
-    '....mMmmmmmm.WWW',
-    '....mnEnnEnm..j.',
-    '....mmnnnnmm..j.',
-    '.M..nmmmmmnM.Mj.',
-    '.MMmMMmnnmMMmMj.',
-    '..mMmmMmmMmmmmj.',
-    '..mnmMmnnmMmn.j.',
-    '...nmmmMMmmm..j.',
-    '....nmmnnmmn..j.'];
+    '.....M.M.M......',
+    '.....mMmMmm.....',
+    '....mMmmmmmm....',
+    '....mnEnnEnm....',
+    '....mmnnnnmm....',
+    '.M..nmmmmmnM.M..',
+    '.MMmMMmnnmMMmMM.',
+    '..mMmmMmmMmmmm..',
+    '..mnmMmnnmMmn...',
+    '...nmmmMMmmm....',
+    '....nmmnnmmn....'];
   const LORD_LEGS=[
     ['.....mmn.mmn....','.....mmn.mmn....','.....nnn.nnn....'],
     ['....mmn...mmn...','....mmn...mmn...','....nnn...nnn...'],
@@ -365,11 +365,12 @@ function impFrame(state,t,facingRight){
       if(bob) rows[0]='................';
       const legs=LORD_LEGS[mv?k:0]; legs.forEach((r,i)=>{ rows[11+i+0]=r; });
       rows[14]=LORD_LEGS[mv?k:0][2]; rows[15]='....kkkkkkkkk...';
-      let g=rows.map(r=>r.split(''));
+      let g=rows.map(r=>r.split('')); const wpal={};
+      if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon); if(w) w.px.forEach(([x,y,c])=>{ const X=14-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15){ let ch=Object.keys(wpal).find(k=>wpal[k]===c); if(!ch){ ch=String(Object.keys(wpal).length); wpal[ch]=c; } g[Y][X]=ch; } }); }
       const flick=Math.floor(t/3)%2;
       g=g.map(r=>r.map(c=>c==='E'?(flick?'F':'E'):c));
       if(fr) g=g.map(r=>r.slice().reverse());
-      return { g, pal:{} };
+      return { g, pal:wpal };
     } };
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();

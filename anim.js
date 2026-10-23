@@ -73,23 +73,31 @@ function currentPose(actor){
   return Object.assign(poseOf(a.motion,Math.max(0,p)), { anim:a, p });
 }
 
-// ---- held objects as small square canvases with the grip at the bottom centre (so rotating the canvas rotates around the hand) ----
+// ---- what is drawn: only what is really held (a weapon, from TOOLGEN) swings; every swing leaves an arc of light in the verb's colour ----
+// Canvases are square with the pivot (the hand) at the bottom centre, so rotating the canvas rotates around the hand.
 const TOOL_S=24, TOOL_CACHE={};
-const FIST_COLORS={ imp:'#e0662c', dungeonlord:'#3a3a4a', worker:'#d8a878' };
-function toolCanvas(weapon, fistColor, tint){
-  const key=(weapon||'fist')+'|'+(fistColor||'')+'|'+(tint||'');
-  if(TOOL_CACHE[key]) return TOOL_CACHE[key];
+function toolCanvas(weapon){
+  if(!weapon || typeof TOOLGEN==='undefined') return null;
+  if(TOOL_CACHE[weapon]) return TOOL_CACHE[weapon];
+  const wp=TOOLGEN.weapon(weapon); if(!wp) return null;
   const cv=document.createElement('canvas'); cv.width=cv.height=TOOL_S; const g=cv.getContext('2d');
   const gx=TOOL_S/2, gy=TOOL_S-1;
-  const wp=weapon && typeof TOOLGEN!=='undefined' ? TOOLGEN.weapon(weapon) : null;
-  if(wp){
-    wp.px.forEach(([x,y,c])=>{ g.fillStyle=c; g.fillRect(gx-wp.grip[0]+x, gy-wp.grip[1]+y-1, 1, 1); });
-    g.fillStyle=fistColor||'#d8a878'; g.fillRect(gx-1,gy-2,3,3);                 // the hand around the grip
-  } else {
-    const c=fistColor||'#d8a878', d='#00000040';
-    const rows=['.ccc.','cCcCc','ccccc','cDDDc','.ccc.'];
-    rows.forEach((r,y)=>[...r].forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=ch==='C'?'#ffffff30':ch==='D'?d:c; g.fillRect(gx-2+x, gy-5+y, 1, 1); }));
+  wp.px.forEach(([x,y,c])=>{ g.fillStyle=c; g.fillRect(gx-wp.grip[0]+x, gy-wp.grip[1]+y-1, 1, 1); });
+  return TOOL_CACHE[weapon]=cv;
+}
+// a crescent that trails behind the swing direction (the swing turns clockwise, so the arc lies counter-clockwise of the tool)
+function slashCanvas(tint){
+  const key='slash|'+(tint||''); if(TOOL_CACHE[key]) return TOOL_CACHE[key];
+  const cv=document.createElement('canvas'); cv.width=cv.height=TOOL_S; const g=cv.getContext('2d');
+  const gx=TOOL_S/2, gy=TOOL_S-1, a0=-1.35, a1=-0.05;
+  for(let a=a0;a<=a1;a+=0.03){
+    const u=(a-a0)/(a1-a0), th=3.2*Math.sin(Math.PI*Math.pow(u,0.8)), ro=11.5;
+    for(let r=ro-th;r<=ro;r+=0.5){
+      const x=Math.round(gx+r*Math.sin(a)), y=Math.round(gy-r*Math.cos(a));
+      g.fillStyle=r>ro-th*0.45 ? '#ffffff' : (tint||'#e8f0ff'); g.globalAlpha=0.35+0.65*u; g.fillRect(x,y,1,1);
+    }
   }
-  if(tint){ g.globalCompositeOperation='source-atop'; g.fillStyle=tint; g.globalAlpha=0.45; g.fillRect(0,0,TOOL_S,TOOL_S); }
   return TOOL_CACHE[key]=cv;
 }
+// how visible the arc is (it flashes around the strike)
+function slashAlpha(pose){ const a=pose.anim; if(!a || a.motion==='stomp' || a.motion==='lift') return 0; const lo=a.motion==='tap'?0.25:0.3, hi=a.motion==='tap'?0.65:0.75; return pose.p>lo&&pose.p<hi ? Math.sin((pose.p-lo)/(hi-lo)*Math.PI) : 0; }
