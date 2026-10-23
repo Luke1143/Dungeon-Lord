@@ -6734,13 +6734,62 @@ function highlightRoomAt(t,x,y){
 function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
 // the cardinal direction a yaw angle points to (the game moves on tiles)
 function fpAxis(yaw){ const fx=Math.cos(yaw), fy=Math.sin(yaw); return Math.abs(fx)>Math.abs(fy) ? { x:Math.sign(fx), y:0 } : { x:0, y:Math.sign(fy) }; }
-// one step of the held primary button: hit what stands ahead or work the tile ahead
+// Smooth first-person movement: the possessed body has a float position (fx,fy = centre in tile units); the grid only sees the tile it stands on.
+const FP_RADIUS=0.28, FP_SPEED=2.4, FP_REACH=1.35;
+const FP_ACTION_LABEL={ dig:'Graben', claim:'Erobern', reinforce:'Verstärken', build:'Bauen', bridge:'Brücke bauen', pull:'Ziehen' };
+function fpSolid(x,y){
+  const tx=Math.floor(x), ty=Math.floor(y);
+  if(tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return true;
+  const t=state.grid[ty][tx]; return !(t.type==='floor'||t.type==='water');
+}
+function fpBlocked(c,x,y){
+  if(fpSolid(x-FP_RADIUS,y-FP_RADIUS)||fpSolid(x+FP_RADIUS,y-FP_RADIUS)||fpSolid(x-FP_RADIUS,y+FP_RADIUS)||fpSolid(x+FP_RADIUS,y+FP_RADIUS)) return true;
+  // other bodies are soft obstacles: you may not walk into one, but you can always back off
+  const old=(o)=>Math.hypot(rx(o)+0.5-c.fx, ry(o)+0.5-c.fy);
+  return state.creatures.concat(state.imps).some(o=>{ if(o===c||o.held||o.unconscious) return false; const d=Math.hypot(rx(o)+0.5-x, ry(o)+0.5-y); return d<0.55 && d<old(o); });
+}
+function fpMove(dt){
+  const c=possessed; if(!fpActive()||!state||gameSpeed===0) return;
+  if(c.fx===undefined || Math.floor(c.fx)!==c.x || Math.floor(c.fy)!==c.y){ c.fx=c.x+0.5; c.fy=c.y+0.5; }
+  const f={ x:Math.cos(c.fpYaw), y:Math.sin(c.fpYaw) }, r={ x:-f.y, y:f.x };
+  let mx=0, my=0;
+  if(keysDown['w']){ mx+=f.x; my+=f.y; } if(keysDown['s']){ mx-=f.x; my-=f.y; }
+  if(keysDown['d']){ mx+=r.x; my+=r.y; } if(keysDown['a']){ mx-=r.x; my-=r.y; }
+  const len=Math.hypot(mx,my);
+  if(len>0.001){
+    const sp=FP_SPEED*Math.max(0.6,Math.min(2,statSpeed(c)))*(c.hasteTicks>0?1.6:1)*Math.min(gameSpeed,2)*dt/len;
+    const nx=c.fx+mx*sp; if(!fpBlocked(c,nx,c.fy)) c.fx=nx;
+    const ny=c.fy+my*sp; if(!fpBlocked(c,c.fx,ny)) c.fy=ny;
+    c.x=Math.floor(c.fx); c.y=Math.floor(c.fy); c.path=[]; c.possessTarget=null;
+  }
+  c.renderX=c.fx-0.5; c.renderY=c.fy-0.5;
+}
+// what the crosshair is on: a hostile in a narrow cone in front, otherwise a workable tile within arm's length
+function fpPickTarget(c){
+  if(c.fx===undefined) return null;
+  const dx=Math.cos(c.fpYaw), dy=Math.sin(c.fpYaw);
+  let foe=null, best=0.35;
+  for(const o of state.creatures.concat(state.imps)){
+    if(o===c||o.held||o.unconscious||!areHostile(c,o)) continue;
+    const ox=rx(o)+0.5-c.fx, oy=ry(o)+0.5-c.fy, d=Math.hypot(ox,oy);
+    if(d>FP_REACH||d<0.01) continue;
+    const cos=(ox*dx+oy*dy)/d; if(cos>best){ best=cos; foe=o; }
+  }
+  if(foe) return { foe };
+  let tile=null; best=0.3;
+  for(const [nx,ny] of [[c.x,c.y]].concat(neighbors(c.x,c.y))){
+    const rec=recipeFor(c,nx,ny); if(!rec) continue;
+    const ox=nx+0.5-c.fx, oy=ny+0.5-c.fy, d=Math.hypot(ox,oy);
+    if(d>FP_REACH) continue;
+    const cos=d<0.2?1:(ox*dx+oy*dy)/d; if(cos>best){ best=cos; tile={ x:nx, y:ny, rec }; }
+  }
+  return tile?{ tile }:null;
+}
+// one step of the held primary button: hit the target or work the tile
 function fpActStep(c){
-  const f=fpAxis(c.fpYaw), nx=c.x+f.x, ny=c.y+f.y;
-  const foe=state.creatures.concat(state.imps).find(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && o.x===nx && o.y===ny);
-  if(foe){ c.state='fighting'; if(!swing(c)) return; const r=resolveAttack(c, foe, c.combatContext); addGrudge(foe, c); return; }
-  const rec=recipeFor(c, nx, ny);
-  if(rec) interact(c, nx, ny);
+  const tg=fpPickTarget(c); if(!tg) return;
+  if(tg.foe){ c.state='fighting'; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
+  interact(c, tg.tile.x, tg.tile.y);
 }
 function updateFpHud(){
   const c=possessed, hud=document.getElementById('fpHud'); if(!hud) return;
@@ -6754,8 +6803,8 @@ function updateFpHud(){
   const en=Number.isFinite(c.energy)?c.energy:100; set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
   const s2=document.getElementById('fpSlot2'); s2.classList.toggle('locked', lv<HASTE_LEVEL);
   document.getElementById('fpCd2').style.height=(c.hasteCooldown>0?100*c.hasteCooldown/HASTE_COOLDOWN:0)+'%';
-  const f=fpAxis(c.fpYaw), foe=state.creatures.concat(state.imps).find(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && Math.abs(o.x-(c.x+f.x))+Math.abs(o.y-(c.y+f.y))<=1);
-  document.getElementById('fpTarget').textContent = foe ? `${actorLabel(foe)} · ${Math.ceil(foe.hp)}/${foe.maxHp}` : '';
+  const tg=fpPickTarget(c);
+  document.getElementById('fpTarget').textContent = !tg ? '' : tg.foe ? `${actorLabel(tg.foe)} · ${Math.ceil(tg.foe.hp)}/${tg.foe.maxHp}` : (FP_ACTION_LABEL[tg.tile.rec.id]||'');
 }
 function startPossession(c){
   possessed=c;
@@ -7627,6 +7676,7 @@ window.addEventListener('keydown', e=>{
   if(e.key==='Escape' && (possessed||possessMode)){ endPossession(); e.preventDefault(); return; }
   // Besessen: WASD bewegt die Kreatur selbst, nicht die Kamera
   if(fpActive() && k==='2'){ const c=possessed; if((c.level||1)>=HASTE_LEVEL && !(c.hasteCooldown>0)){ c.hasteTicks=HASTE_DURATION; c.hasteCooldown=HASTE_COOLDOWN; } e.preventDefault(); return; }
+  if(fpActive() && (k==='w'||k==='a'||k==='s'||k==='d')){ keysDown[k]=true; e.preventDefault(); return; }   // first person: smooth movement, see fpMove
   if(possessed && (k==='w'||k==='a'||k==='s'||k==='d')){
     const fa=fpActive()?fpAxis(possessed.fpYaw):null;
     const d=fa ? { w:[fa.x,fa.y], s:[-fa.x,-fa.y], a:[fa.y,-fa.x], d:[-fa.y,fa.x] }[k] : {w:[0,-1],a:[-1,0],s:[0,1],d:[1,0]}[k];
@@ -7677,6 +7727,7 @@ const MOVE_TILES_PER_SEC=1000/TICK_MS; // genau eine Kachel je Spieltick
 function updateRenderPositions(dt){
   if(!state) return;
   const ease=(e)=>{
+    if(e===possessed && fpActive() && e.fx!==undefined) return;     // first person: fpMove drives the render position
     if(e.renderX===undefined || e.renderY===undefined){ e.renderX=e.x; e.renderY=e.y; return; }
     const dx=e.x-e.renderX, dy=e.y-e.renderY;
     const dist=Math.hypot(dx,dy);
@@ -7701,6 +7752,7 @@ function renderLoop(now){
   const dt=Math.min(0.1, (now-lastFrameTime)/1000);
   lastFrameTime=now;
   updateCamera(dt);
+  fpMove(dt);
   updateRenderPositions(dt);
   if(typeof FX!=='undefined') FX.update(gameSpeed===0?0:dt);
   if(state && screen==='level'){ refreshInspect(); renderCombatBar(); draw(); if(now-lastMinimap>200){ lastMinimap=now; drawMinimap(); } }
