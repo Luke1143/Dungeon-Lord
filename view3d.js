@@ -83,8 +83,8 @@ const View3D=(()=>{
     let mesh;
     if(info.wall){
       const cr=info.crack||0, wc=s=>cr?Object.assign({},s,{ crack:cr }):s;   // dig progress shows as cracks on every face
-      const base={ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
-      const top=material(wc({ color:info.top||shadeHex(info.color,38), kind:info.kind }),v);
+      const base=info.fullWall?{ full:info.fullWall }:{ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
+      const top=material(wc(info.fullWall?{ full:info.fullWall }:{ color:info.top||shadeHex(info.color,38), kind:info.kind }),v);
       const m=i=>material(wc(f[i]||base),v);
       mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
@@ -95,7 +95,7 @@ const View3D=(()=>{
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
+      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       if(cur) tileGroup.remove(cur.mesh);

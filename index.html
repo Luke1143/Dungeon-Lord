@@ -469,6 +469,9 @@ const SPECIES={
   dwarfking:{ label:'Zwergenkönig', category:'boss',  hp:90, strength:9,  defense:20, dex:6,  dexGrowth:0.02, speed:0.7, tempo:0.7,
              needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:true,  inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Hüter des Horts — jagt Diebe, bleibt sonst bei seinem Gold' },
+  oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
+             needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
+             style:'fighter', passive:'Schützer des Hains — jagt Frevler an seinen Wurzeln' },
   knight:  { label:'Ritter',      category:'hero',     hp:44, strength:6,  defense:40, dex:5,  dexGrowth:0.02, speed:0.6, tempo:0.6,
              needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', passive:'Plattenpanzer — hohe Verteidigung, meidet Wasser' }
@@ -1286,8 +1289,8 @@ function recipeFor(actor, x, y){
       if(t.reinforced && !wallNeutralized(x,y)) return null;
       return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };
     }
-    if(t.marked) return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1), range:1 };
-    if(!t.reinforced && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
+    if(t.marked) return { id:'dig', cost:WORK_COST.rock*(t.reinforced?2:1)*(t.root?2:1), range:1 };
+    if(!t.reinforced && !t.root && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
       return { id:'reinforce', cost:WORK_COST.reinforce, range:1 };
     }
     return null;
@@ -1320,7 +1323,14 @@ function interact(actor, x, y){
 
 function applyRecipe(actor, rec, x, y){
   const t=state.grid[y][x];
-  if(rec.id==='dig') emitFx('dig', x, y, { color: t.gold?'#d4af37':(t.gem?'#9a6ad0':wallBaseSpec(t).color) });
+  if(rec.id==='dig' && t.root){
+    t.root=false; state.war.roots=(state.war.roots||0)+1;
+    const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
+    if(boss && !boss.alert){ boss.alert=true; logEvent(`${boss.name} spürt den Frevel an seinen Wurzeln und jagt eure Diener!`, boss.x, boss.y); }
+    logEvent(`Eine Wurzel des Weltenbaums wurde durchtrennt (${state.war.roots}/${state.war.rootsTotal||8}).`, x, y);
+    for(let i=0;i<2;i++) emitFx('claim', x, y);
+  }
+  if(rec.id==='dig') emitFx('dig', x, y, { color: t.root?'#6a4426':(t.gold?'#d4af37':(t.gem?'#9a6ad0':wallBaseSpec(t).color)) });
   else if(rec.id==='claim') emitFx('claim', x, y);
   else if(rec.id==='build'||rec.id==='bridge') emitFx('build', x, y);
   if(rec.id==='dig'){
@@ -4547,6 +4557,7 @@ function thoughtOf(c){
 // What a tile looks like: a full texture (conquered floors, room floors, room walls) or a flat colour with a speckle overlay.
 // Walls take on the look of the room they face: a library wall is a bookcase, a throne room wall carries banners.
 function wallBaseSpec(t){
+  if(t.root) return { full:'root', color:'#3a2616', kind:'rock', resource:true };
   const gem=t.gem&&t.gemRevealed;
   return { color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), resource: !!(gem||t.gold||t.ore) };
 }
@@ -4559,6 +4570,7 @@ function wallFaceSpec(base,nx,ny){
   return base;
 }
 function floorSpec(t){
+  if(t.grove && !t.owned && !t.room) return { full:'grove' };
   if(t.room && TILEGEN.has(t.room)) return { full:t.room };
   if(t.owned) return { full:'owned' };
   return { color:COLORS.floorNeutral, kind:'floor' };
@@ -4567,7 +4579,7 @@ function floorSpec(t){
 function tileLook2d(x,y,t){
   if(t.type==='floor') return floorSpec(t);
   if(t.type==='water') return t.room==='bridge'&&TILEGEN.has('bridge') ? { full:'bridge' } : null;
-  if(t.type==='bedrock') return null;
+  if(t.type==='bedrock') return t.tree ? { full:'tree' } : null;
   const base=wallBaseSpec(t);
   for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){ const f=wallFaceSpec(base,x+dx,y+dy); if(f.full) return f; }
   return base;
@@ -4769,9 +4781,9 @@ function tileInfo3d(x,y){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
     return { wall:false, water:true, color:COLORS.water, kind:null };
   }
-  if(t.type==='bedrock') return { wall:true, color:COLORS.bedrock, kind:null };
+  if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
   const base=wallBaseSpec(t);
-  return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, top: t.reinforced?'#7f94a8':undefined,
+  return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, fullWall:base.full, top: t.reinforced?'#7f94a8':undefined,
     faces:[wallFaceSpec(base,x+1,y), wallFaceSpec(base,x-1,y), wallFaceSpec(base,x,y+1), wallFaceSpec(base,x,y-1)] };
 }
 // decorative torches on the walls next to conquered floor (3D only): a fixed pattern by tile position, each one a light source
@@ -4890,7 +4902,7 @@ function draw2d(){
         }
         ctx.stroke();
       }
-      if(t.type==='bedrock'){
+      if(t.type==='bedrock' && !t.tree){
         ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=1;
         ctx.beginPath();
         ctx.moveTo(px+6,py+TILE-6); ctx.lineTo(px+TILE-6,py+6);
@@ -5749,12 +5761,12 @@ function spawnWave(){
 
 // A goal was reached: the cunning way corrupts the boss, who then fights for the player.
 function winByGoal(g){
-  const w=state.war, boss=state.creatures.find(c=>c.isBoss);
-  if(g.id==='steal_gold' && boss){
+  const w=state.war, boss=state.creatures.find(c=>c.isBoss), def=GOALS[g.id];
+  if(def.corrupts && boss){
     boss.faction='evil'; boss.alert=false; boss.fightTarget=null; boss.path=[]; boss.state='guarding'; boss.grudges={};
     boss.home={ x:2, y:2 };
     w.ally={ kind:boss.kind, name:boss.name, level:boss.level };
-    w.wonText=`${boss.name} wurde um sein Gold gebracht und gehört nun euch. Er wird euch in den nächsten Leveln dienen.`;
+    w.wonText=def.corruptText(boss);
     logEvent(`${boss.name} ist korrumpiert und kämpft jetzt für euch!`, boss.x, boss.y);
   } else if(g.id==='defeat_boss'){
     w.wonText=`${g.bossName||'Der Boss'} ist im epischen Kampf gefallen.`;
@@ -7954,7 +7966,8 @@ function newCampaign(seed){
 }
 
 // The dwarf king's hoard: a walled hall far from the throne, full of gold, with the king himself inside.
-const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'] };
+const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'] };
+const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove() };
 function setupDwarfHoard(){
   const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
   for(let attempt=0;attempt<600;attempt++){
@@ -7982,6 +7995,40 @@ function setupDwarfHoard(){
   return false;
 }
 
+// Oberon's grove: a mossy clearing around the world tree, walled by reinforced rock. The tree itself cannot be touched;
+// its roots (the eight spots around it) can be dug out. Every root removed is a wound; Oberon notices and hunts the diggers.
+function setupElfGrove(){
+  const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
+  for(let attempt=0;attempt<700;attempt++){
+    const cx=randInt(8,WORLD_COLS-9), cy=randInt(7,WORLD_ROWS-8);
+    const phase=attempt<350?0:(attempt<550?1:2);
+    let ok=true;
+    for(let y=cy-5;y<=cy+5&&ok;y++) for(let x=cx-5;x<=cx+5;x++){
+      if(y<1||x<1||y>=WORLD_ROWS-1||x>=WORLD_COLS-1){ ok=false; break; }
+      const t=g[y][x];
+      if(t.room||t.gem||t.type==='bedrock'||t.type==='water'||(t.hoard)){ ok=false; break; }
+      if(phase<2 && (t.type!=='rock'||t.gold||t.ore||t.natural)){ ok=false; break; }
+    }
+    if(!ok) continue;
+    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<20 || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<8)) continue;
+    const roots=[[-2,-2],[0,-2],[2,-2],[-2,0],[2,0],[-2,2],[0,2],[2,2]];
+    for(let dy=-5;dy<=5;dy++) for(let dx=-5;dx<=5;dx++){
+      const t=g[cy+dy][cx+dx], d=Math.max(Math.abs(dx),Math.abs(dy));
+      t.gold=false; t.ore=false; t.natural=false; t.marked=false;
+      if(d===5){ t.type='rock'; t.reinforced=true; t.fixed=true; }
+      else if(d<=1){ t.type='bedrock'; t.tree=true; }
+      else if(roots.some(([rx,ry])=>rx===dx&&ry===dy)){ t.type='rock'; t.root=true; }
+      else { t.type='floor'; t.owned=false; t.grove=true; }
+    }
+    const king=createBoss('oberon', cx+3, cy, { name:'Oberon', level:4, extraHp:30, gear:BOSS_GEAR.oberon });
+    king.home={ x:cx+3, y:cy };
+    state.creatures.push(king);
+    state.war.rootsTotal=roots.length;
+    return true;
+  }
+  return false;
+}
+
 // Fresh level state; the single place that resets all counters.
 function startLevel(nodeId){
   if(typeof FX!=='undefined') FX.reset();
@@ -7995,8 +8042,9 @@ function startLevel(nodeId){
   state.war.regionName=n.name;
   { const rt=LOCATION_TYPES[n.type];
     state.war.goals = rt.goals ? rt.goals.map(g=>Object.assign({}, g)) : null;
-    if(rt.setup==='dwarf_hoard') setupDwarfHoard();
-    (campaign.allies||[]).forEach(a=>{ const b=createBoss(a.kind, 2, 2, { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
+    if(rt.setup && LEVEL_SETUPS[rt.setup]) LEVEL_SETUPS[rt.setup]();
+    if(state.war.goals && state.war.rootsTotal) state.war.goals.forEach(g=>{ if(g.id==='undermine_roots') g.total=state.war.rootsTotal; });
+    (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;

@@ -320,6 +320,10 @@ function impFrame(state,t,facingRight){
   const dwarf=swap=>({ ...held, name:'Zwergenkönig', pal:{ ...held.pal, F:'#b8561e', G:'#d8782e', t:'#5a2c14', T:'#7a4a2a', u:'#3a1c0c' },
     frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'bronze', helm:1, chest:3, legs:2, weapon:'hacke', shield:'tower' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.dwarfking=dwarf(false); ZOO.dwarfking_ally=dwarf(true);
+  // Oberon, lord of the sacred grove: pale fey king, silver-gold hair, green robes, a feathered crown (helm tier 3) and a staff
+  const fey=swap=>({ ...held, name:'Oberon', pal:{ ...held.pal, s:'#e2d4b4', S:'#f4ead0', F:'#e8e0a0', G:'#fff8c0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#2f5a2a', L:'#3f7a3a', m:'#1f3a1a', b:'#1f3a1a' },
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'leder', helm:3, chest:1, legs:1, weapon:'stab' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+  ZOO.oberon=fey(false); ZOO.oberon_ally=fey(true);
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
@@ -452,6 +456,19 @@ const TILEGEN=(()=>{
     }
     return { g, pal:{ k:'rgba(0,0,0,0.6)', l:'rgba(255,255,255,0.14)' } };
   }
+  // the grove of the world tree: moss floor, twisted roots, bark
+  mk('grove',(v)=>{ const r=rng(v*89+19), P={ g:'#2f5a2a', G:'#3f7a38', d:'#244a20', w:'#f0f0e0', y:'#f4d03f', p:'#e88ab0' }, g=grid(P.g);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.2) g[y][x]=P.G; else if(q<0.34) g[y][x]=P.d; }
+    for(let i=0;i<2;i++){ g[Math.floor(r()*15)][Math.floor(r()*15)]=pickFlower(r,P); } return { g, pal:P }; });
+  const pickFlower=(r,P)=>[P.w,P.y,P.p][Math.floor(r()*3)];
+  mk('root',(v)=>{ const r=rng(v*97+20), P={ b:'#3a2616', B:'#6a4426', m:'#2f5a2a', k:'#1f140a' }, g=grid(P.b);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.15) g[y][x]=P.k; else if(q<0.22) g[y][x]=P.m; }
+    for(let i=0;i<3;i++){ let x=Math.floor(r()*16), y=0, dx=r()<0.5?-1:1; for(let j=0;j<16;j++){ g[y][Math.max(0,Math.min(15,x))]=P.B; if(x>=0&&x<15) g[y][Math.max(0,Math.min(15,x+1))]=P.B; y++; if(y>15) break; if(r()<0.4) x+=dx; } }
+    return { g, pal:P }; });
+  mk('tree',(v)=>{ const r=rng(v*101+21), P={ a:'#4a3320', b:'#5e432b', c:'#3a2616', m:'#2f5a2a', l:'#4fa05a' }, g=grid(P.a);
+    for(let x=0;x<16;x++){ const col=x%4===0?P.c:(x%4===2?P.b:P.a); for(let y=0;y<16;y++){ g[y][x]=(r()<0.1)?P.b:col; } }
+    for(let i=0;i<5;i++) g[Math.floor(r()*16)][Math.floor(r()*16)]=P.m;
+    g[7][7]=P.c; g[7][8]=P.c; g[8][7]=P.c; g[8][8]=P.c; g[6][7]=P.l; return { g, pal:P }; });
   const has=kind=>!!FULL[kind];
   function full(kind,seed){ const o=FULL[kind](seed), pal={}; o.g.forEach(row=>row.forEach(c=>{ pal[c]=c; })); return { g:o.g, pal, opaque:true }; }   // cells hold colours directly
   return { gen, full, has, crack };

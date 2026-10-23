@@ -118,3 +118,9 @@ Prototype from the lost original project plus `docs/godhand.md`.
 - New category `boss` (`SPECIES.dwarfking`), `tickBoss` (guards home, hunts when alerted, boss aggro 7 tiles).
 - Checked by script: hall placement 25/25, frontal win, cunning win with ally carried into the next level, hoard counting. Not played by hand. Not built yet: the other three gates' goals (roots, hydra spring, labyrinth thread), boss-specific fight mechanics, optional levels with effects on a gate, ally use in the UI (inspector, wages, food).
 
+## 1.6 Oberon's grove (gate 2)
+- `setupElfGrove()` (LEVEL_SETUPS table next to `dwarf_hoard`): an 11x11 block far from throne and portal: reinforced fixed ring (distance 5), moss clearing (`t.grove`), the world tree as a 3x3 of untouchable bedrock (`t.tree`), eight root tiles (`t.root`, rock, diggable at double cost; imps never reinforce them), Oberon (`SPECIES.oberon`, level 4, +30 hp, light armour and a bolt staff) standing in the clearing.
+- Goals: `defeat_boss` (frontal) and `undermine_roots` (cunning, 6 of 8). A root dug through counts in `state.war.roots`, logs the cut, bursts as magic dust and alerts Oberon, who then hunts the diggers (same `tickBoss` as Alberich). At 6 roots and a living Oberon the level is won and he is corrupted (`GOALS[...].corrupts` / `corruptText`; `winByGoal` is generic now) and joins the next levels as an ally at the throne (allies spread over throne tiles).
+- New textures: `grove`, `root`, `tree` (TILEGEN.full), special tile specs in 2D and 3D (`fullWall` for blocks that carry their own texture on every face). Sprites `ZOO.oberon` / `oberon_ally` (pale fey king, silver-gold hair, green robes, feathered crown, staff).
+- Checked by script on one seed: layout (9 tree tiles, 8 roots, 64 moss tiles), six roots win the level with Oberon corrupted and recorded as ally; the 3D view of the grove looks as intended. Not played by hand. Oberon does not heal roots or cast spells yet.
+
