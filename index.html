@@ -192,6 +192,27 @@
   .owInfo{ font-size:13px; line-height:1.5; color:var(--text); min-height:120px; }
   .owInfo b{ color:var(--gold); font-family:'Cinzel',serif; }
   #status{ font-size:12px; color:var(--text-dim); min-height:32px; line-height:1.5;}
+  /* The whole level UI lives inside the game window: the world fills the screen, bars and panels float over it */
+  body.inLevel{ padding:0; gap:0; height:100vh; overflow:hidden; }
+  body.inLevel #levelScreen{ position:fixed; inset:0; height:auto; display:block; }
+  body.inLevel #levelScreen .layout{ position:absolute; inset:0; display:block; gap:0; }
+  body.inLevel .boardWrap{ position:absolute; inset:0; display:block; }
+  body.inLevel #viewport{ position:absolute; inset:0; height:auto; border:none; border-radius:0; }
+  body.inLevel .topbar{ position:absolute; left:0; right:0; top:0; width:auto; z-index:20; padding:6px 14px; background:linear-gradient(rgba(15,11,9,.9),rgba(15,11,9,.5)); }
+  body.inLevel #levelScreen .panel{ position:absolute; right:10px; top:58px; bottom:10px; width:290px; z-index:15; background:rgba(25,18,12,.84); backdrop-filter:blur(3px); overflow-y:auto; }
+  body.inLevel .boardWrap .hint{ position:absolute; left:50%; transform:translateX(-50%); bottom:6px; z-index:12; background:rgba(15,11,9,.7); padding:3px 10px; border-radius:4px; max-width:55%; text-align:center; }
+  body.inLevel #combatBar{ position:absolute; left:50%; transform:translateX(-50%); bottom:38px; z-index:12; }
+  body.inLevel #levelScreen.panelHidden .panel{ display:none; }
+  body.inLevel #minimap{ bottom:34px; z-index:12; }
+  body.fp #levelScreen .panel, body.fp .boardWrap .hint{ display:none; }
+  body.fp .fpTop{ top:56px; }
+  #endOverlay{ z-index:30; }
+  @media (max-width:900px){
+    body.inLevel{ height:100vh; overflow:hidden; }
+    body.inLevel #levelScreen{ height:auto; }
+    body.inLevel #levelScreen .panel{ left:8px; right:8px; top:auto; width:auto; max-height:42vh; }
+    body.inLevel .boardWrap .hint{ display:none; }
+  }
 </style>
 </head>
 <body>
@@ -241,6 +262,7 @@
       <button id="mapToggle" title="Minimap (M)">🗺</button>
       <button id="view3dBtn" title="3D-Ansicht (V) — Q/E dreht die Kamera">3D</button>
       <span class="sep"></span>
+      <button id="panelToggle" title="Seitenleiste ein/aus (Tab)">🗂</button>
       <button id="levelMenuBtn" title="Zurück zum Hauptmenü">☰</button>
     </div>
   </div>
@@ -4786,6 +4808,7 @@ const HIT_FLASH_MS=260;
 
 // Zeichnet Kreatur samt Schwung und Gedanke
 function drawActor(c, baseIcon){
+  if(capture && c===possessed && fpActive()) return;      // first person: nothing of the body (gear icons, thoughts) in front of the camera
   let px=rx(c), py=ry(c);
 
   // Treffer-Feedback: kurzes Zittern und rotes Aufblitzen
@@ -5246,7 +5269,7 @@ function draw2d(){
   });
 
   // Besessene Kreatur bekommt einen deutlich sichtbaren Ring
-  if(possessed && !possessed.held){
+  if(possessed && !possessed.held && !(capture && fpActive())){
     const px=(rx(possessed)-camX)*TILE, py=(ry(possessed)-camY)*TILE;
     ctx.save();
     ctx.strokeStyle=blinkOn(400) ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.8)';
@@ -8496,6 +8519,8 @@ document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
 document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
 document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
 document.getElementById('view3dBtn').addEventListener('click', ()=> setView3d(!view3dOn));
+function togglePanel(){ document.getElementById('levelScreen').classList.toggle('panelHidden'); }
+document.getElementById('panelToggle').addEventListener('click', togglePanel);
 document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ await save(); showScreen('menu'); });
 
 // Minimap: one pixel block per tile; click or drag to jump
@@ -8557,6 +8582,7 @@ window.addEventListener('keydown', e=>{
   else if(k==='0'){ setZoom(1); }
   else if(k==='m'){ setMinimap(!minimapOn); }
   else if(k==='v'){ setView3d(!view3dOn); }
+  else if(e.key==='Tab'){ togglePanel(); e.preventDefault(); }
   else if(k==='home'){ jumpToThrone(); }
 });
 

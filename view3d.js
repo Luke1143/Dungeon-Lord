@@ -98,6 +98,7 @@ const View3D=(()=>{
       const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
+      ceilDirty=true;
       if(cur) tileGroup.remove(cur.mesh);
       const mesh=buildTile(x,y,info); tileGroup.add(mesh); tiles[i]={ mesh, sig };
     }
@@ -243,16 +244,41 @@ const View3D=(()=>{
   // first person: { x, y (tile units, centre = +0.5), yaw (angle of the view direction in the floor plane) } or null
   let fp=null;
   function setFirstPerson(o){ const was=!!fp; fp=o; if(ready && was!==!!o){ camera.fov=o?72:FOV; camera.near=o?0.05:0.1; camera.updateProjectionMatrix(); } }
-  let ceiling=null;
-  function ceilingMesh(){
-    if(ceiling) return ceiling;
-    const tex=pixTex(16,16,(g)=>{ g.fillStyle='#2e251e'; g.fillRect(0,0,16,16); for(let i=0;i<60;i++){ g.fillStyle=i%2?'#3a2f26':'#241c16'; g.fillRect((i*7)%16,(i*11)%16,2,1); } });
-    tex.wrapS=tex.wrapT=T.RepeatWrapping; tex.repeat.set(cols*2,rows*2);
-    ceiling=new T.Mesh(new T.PlaneGeometry(cols,rows), new T.MeshBasicMaterial({ map:tex, color:0x8a7a6a, side:T.DoubleSide }));
-    ceiling.rotation.x=Math.PI/2; ceiling.position.set(cols/2,WALL,rows/2); scene.add(ceiling); return ceiling;
+  // The cave ceiling (first person only): a height field over the tile corners. At the walls it meets the wall tops (WALL);
+  // the further a corner is from any wall, the higher it rises, so big caves get a dome and corridors a low vault.
+  let ceiling=null, ceilDirty=true, lastInfo=null, ceilTex=null;
+  function buildCeiling(){
+    const W=cols+1, H=rows+1, solid=(x,y)=>x<0||y<0||x>=cols||y>=rows||!!lastInfo(x,y).wall;
+    const dist=new Int16Array(W*H).fill(-1), q=[];
+    for(let j=0;j<H;j++) for(let i=0;i<W;i++){
+      if(solid(i-1,j-1)||solid(i,j-1)||solid(i-1,j)||solid(i,j)){ dist[j*W+i]=0; q.push(j*W+i); }
+    }
+    for(let qi=0;qi<q.length;qi++){
+      const k=q[qi], i=k%W, j=(k/W)|0;
+      for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){
+        const ni=i+di, nj=j+dj; if((!di&&!dj)||ni<0||nj<0||ni>=W||nj>=H) continue;
+        const nk=nj*W+ni; if(dist[nk]<0){ dist[nk]=dist[k]+1; q.push(nk); }
+      }
+    }
+    const pos=new Float32Array(W*H*3), uv=new Float32Array(W*H*2), idx=[];
+    for(let j=0;j<H;j++) for(let i=0;i<W;i++){
+      const k=j*W+i, d=Math.max(0,dist[k]);
+      pos[k*3]=i; pos[k*3+1]=WALL+1.8*Math.sin(Math.min(d,4)/4*Math.PI/2); pos[k*3+2]=j; uv[k*2]=i*0.5; uv[k*2+1]=j*0.5;
+    }
+    for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){ const a=j*W+i; idx.push(a,a+W,a+1, a+1,a+W,a+W+1); }
+    const geo=new T.BufferGeometry();
+    geo.setAttribute('position',new T.BufferAttribute(pos,3)); geo.setAttribute('uv',new T.BufferAttribute(uv,2)); geo.setIndex(idx); geo.computeVertexNormals();
+    if(!ceiling){
+      ceilTex=pixTex(16,16,(g)=>{ g.fillStyle='#4a3c30'; g.fillRect(0,0,16,16); for(let i=0;i<70;i++){ g.fillStyle=i%3===0?'#5a4a3c':(i%3===1?'#382c22':'#463828'); g.fillRect((i*7)%16,(i*11)%16,2,1+(i%2)); } });
+      ceilTex.wrapS=ceilTex.wrapT=T.RepeatWrapping;
+      ceiling=new T.Mesh(geo,new T.MeshLambertMaterial({ map:ceilTex, side:T.DoubleSide }));
+      scene.add(ceiling);
+    } else { ceiling.geometry.dispose(); ceiling.geometry=geo; }
+    ceilDirty=false;
   }
   function setCamera(cx,cy,viewRows){
-    if(ceiling||fp) ceilingMesh().visible=!!fp;
+    if(fp && (ceilDirty||!ceiling) && lastInfo) buildCeiling();
+    if(ceiling) ceiling.visible=!!fp;
     if(fp){
       camera.position.set(fp.x+0.5, 0.55, fp.y+0.5);
       camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), 0.55, fp.y+0.5+Math.sin(fp.yaw));
@@ -279,7 +305,7 @@ const View3D=(()=>{
   }
   function render(tileInfo, items, cx, cy, viewRows){
     if(!ready||!active) return;
-    syncTiles(tileInfo);
+    lastInfo=tileInfo; syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now());
     poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
