@@ -195,3 +195,6 @@ Der Besessene hat in der Ego-Perspektive eine Kommazahl-Position (`c.fx`, `c.fy`
 
 ## 1.20 Weitere 3D-Modelle
 `MODELS` in `view3d.js` kennt jetzt Thron, Amboss, Esse, Brennofen, Werkbank, Blasebalg, Futtertrog, Kerze und Rundtisch (zusätzlich zu Bett und Regal). Dinge mit Rückseite drehen sich über `FACING_PROPS` von Wänden weg, glühende Öffnungen von Esse und Ofen sind unbeleuchtete Flächen (leuchten also immer). Kleine Haufen (Münzen, Erz, Barren, Hühner) bleiben Sprites.
+
+## 1.21 Ton (`audio.js`)
+Alles wird live mit der Web-Audio-API erzeugt (gefilterte Rauschstöße und Töne), keine Klangdateien. `SFX.play(name,{x,y,delay})` ist räumlich: Lautstärke fällt mit der Entfernung zum Hörer (Kamera oder Besessener), links/rechts über Panning, ab 20 Kacheln still. Neuer Klang = neuer Eintrag in `RECIPES`. Eingehängt: Schwünge (`startAnim`, Ton fällt auf den Treffermoment: Hieb, Klopfen, Stampfen, Bauen), Treffer/Krit/Tod (`hitFx`), Wand bricht, Erobern, Bauen (`applyRecipe`), Schritte in der Ego-Ansicht, Horn bei jedem Rekruten am Portal; dazu Dauerbrummen und gelegentliches Tropfen. Stumm schalten mit N oder 🔊 (wird gemerkt). Der Ton startet erst nach der ersten Eingabe (Browserregel). Gehört wurde er bisher nur von Menschen: Tests laufen ohne Lautsprecher.

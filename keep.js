@@ -192,6 +192,7 @@ function keepRecruit(){
   const h=spawnHero(kind, level, last, k.recruited, Object.assign({}, mods, { gearTier:tier }));
   if(!h) return false;
   k.recruited++; w.wave=k.recruited;
+  if(typeof SFX!=='undefined') SFX.play('horn',{ x:tiles[0].x, y:tiles[0].y });
   // champions sent by a legend join once about 60% of the pool is out: stronger, better armed, named
   if(w.champions && w.champions.length && k.recruited>=Math.ceil(k.total*0.6)){
     w.champions.splice(0).forEach((ch,i)=>{

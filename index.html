@@ -263,6 +263,7 @@
       <button id="mapToggle" title="Minimap (M)">🗺</button>
       <button id="view3dBtn" title="3D-Ansicht (V) — Q/E dreht die Kamera">3D</button>
       <span class="sep"></span>
+      <button id="muteBtn" title="Ton ein/aus (N)">🔊</button>
       <button id="panelToggle" title="Seitenleiste ein/aus (Tab)">🗂</button>
       <button id="levelMenuBtn" title="Zurück zum Hauptmenü">☰</button>
     </div>
@@ -376,6 +377,7 @@
 <script src="sprites.js"></script>
 <script src="fx.js"></script>
 <script src="anim.js"></script>
+<script src="audio.js"></script>
 <script src="overworld.js"></script>
 <script src="objectives.js"></script>
 <script src="keep.js"></script>
@@ -1427,6 +1429,7 @@ function applyRecipe(actor, rec, x, y){
     else if(state.war.spawnAt==='grove' && !state.war.over) spawnSortie(2, 'Oberon schickt Krieger, um die Wurzeln zu rächen!');
     for(let i=0;i<2;i++) emitFx('claim', x, y);
   }
+  if(typeof SFX!=='undefined') SFX.play(rec.id==='dig'?'break':rec.id==='claim'?'claim':(rec.id==='build'||rec.id==='bridge')?'build':'tap',{ x, y });
   if(rec.id==='dig') emitFx('dig', x, y, { color: t.root?'#6a4426':(t.gold?'#d4af37':(t.gem?'#9a6ad0':wallBaseSpec(t).color)) });
   else if(rec.id==='claim') emitFx('claim', x, y);
   else if(rec.id==='build'||rec.id==='bridge') emitFx('build', x, y);
@@ -4913,6 +4916,7 @@ function hitFx(attacker, defender, dmg, crit, killed){
   const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
   defender.kbx=dx/L; defender.kby=dy/L;                    // visual knockback, away from the attacker
   const col=bloodOf(defender), px=rx(defender), py=ry(defender);
+  if(typeof SFX!=='undefined') SFX.play(killed?'kill':(crit?'crit':'hit'),{ x:defender.x, y:defender.y });
   if(typeof FX==='undefined') return;
   if(col){ FX.blood(px, py, dx, dy, Math.min(24, 6+Math.round(dmg*1.3)+(crit?6:0)), col, { big:crit, power:crit?5:3.8 }); }
   else { for(let i=0;i<4;i++) FX.emit('chip', px, py, { color:'#e8dcc8' }); }
@@ -4978,6 +4982,7 @@ function draw(){
   try{ draw2d(); } finally { ctx=realCtx; ({ camX, camY, VIEW_COLS, VIEW_ROWS }=saved); }
   const items=capture; capture=null;
   wallTorchItems().forEach(it=>items.push(it));
+  if(typeof SFX!=='undefined') SFX.listener(fpActive()?possessed.fx||possessed.x:camX+VIEW_COLS/2, fpActive()?possessed.fy||possessed.y:camY+VIEW_ROWS/2);
   fpPose=fpActive()?currentPose(possessed):null;
   View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw, kick:fpPose?fpPose.kick:0, hop:fpPose?fpPose.hop*0.6:0 }:null);
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
@@ -6796,12 +6801,14 @@ function fpMove(dt){
   let mx=0, my=0;
   if(keysDown['w']){ mx+=f.x; my+=f.y; } if(keysDown['s']){ mx-=f.x; my-=f.y; }
   if(keysDown['d']){ mx+=r.x; my+=r.y; } if(keysDown['a']){ mx-=r.x; my-=r.y; }
-  const len=Math.hypot(mx,my);
+  const len=Math.hypot(mx,my), ox0=c.fx, oy0=c.fy;
   if(len>0.001){
     const sp=FP_SPEED*Math.max(0.6,Math.min(2,statSpeed(c)))*(c.hasteTicks>0?1.6:1)*Math.min(gameSpeed,2)*dt/len;
     const nx=c.fx+mx*sp; if(!fpBlocked(c,nx,c.fy)) c.fx=nx;
     const ny=c.fy+my*sp; if(!fpBlocked(c,c.fx,ny)) c.fy=ny;
     c.x=Math.floor(c.fx); c.y=Math.floor(c.fy); c.path=[]; c.possessTarget=null;
+    c.stepDist=(c.stepDist||0)+Math.hypot(c.fx-ox0,c.fy-oy0);
+    if(c.stepDist>0.62){ c.stepDist=0; if(typeof SFX!=='undefined') SFX.play('step'); }
   }
   c.renderX=c.fx-0.5; c.renderY=c.fy-0.5;
 }
@@ -8619,6 +8626,10 @@ document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
 document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
 document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
 document.getElementById('view3dBtn').addEventListener('click', ()=> setView3d(!view3dOn));
+function toggleMute(){ SFX.ensure(); SFX.setMuted(!SFX.muted); document.getElementById('muteBtn').textContent=SFX.muted?'🔇':'🔊'; }
+document.getElementById('muteBtn').addEventListener('click', toggleMute);
+document.getElementById('muteBtn').textContent=SFX.muted?'🔇':'🔊';
+['pointerdown','keydown'].forEach(ev=>window.addEventListener(ev, ()=>SFX.ensure(), { once:false, passive:true }));
 function togglePanel(){ document.getElementById('levelScreen').classList.toggle('panelHidden'); }
 document.getElementById('panelToggle').addEventListener('click', togglePanel);
 document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ await save(); showScreen('menu'); });
@@ -8683,6 +8694,7 @@ window.addEventListener('keydown', e=>{
   else if(k==='m'){ setMinimap(!minimapOn); }
   else if(k==='v'){ setView3d(!view3dOn); }
   else if(e.key==='Tab'){ togglePanel(); e.preventDefault(); }
+  else if(k==='n'){ toggleMute(); }
   else if(k==='home'){ jumpToThrone(); }
 });
 
