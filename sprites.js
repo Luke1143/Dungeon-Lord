@@ -332,15 +332,39 @@ function impFrame(state,t,facingRight){
   const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
     frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'stahl', helm:2, chest:2, legs:1, weapon:'schwert', shield:'kite' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.arthur=arthur(false); ZOO.arthur_ally=arthur(true);
-  // The Dungeon Lord: black plate armour, a crown of spikes, a spiked mace. He is on the player's side, so he always has the player side's eyes.
-  ZOO.dungeonlord={ ...held, name:'Dungeon Lord', pal:{ ...held.pal, F:'#1a1a22', G:'#2a2a36', t:'#15151c', T:'#2a2a36', u:'#08080c', s:'#6a4a3a', S:'#7a5a48' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'schwarz', helm:3, chest:3, legs:2, weapon:'keule' });
-      f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c)));
-      let y0=99,xs=[]; for(let y=0;y<f.tag.length;y++) for(let x=0;x<f.tag[y].length;x++) if(f.tag[y][x]==='H'&&y<y0){ y0=y; }
-      for(let x=0;x<f.tag[0].length;x++) if(f.tag[y0]&&f.tag[y0][x]==='H') xs.push(x);
-      xs.forEach((x,i)=>{ if(i%2===0&&y0>0&&f.g[y0-1][x]==='.') f.g[y0-1][x]='M'; });                       // crown spikes
-      if(f.pal) f.pal={ ...f.pal, R:'#c02818' };
-      return f; } };
+  // The Dungeon Lord: not a man but a haunted suit of black plate, closed spiked helm, two burning eyes in the slit, a spiked mace.
+  // Drawn by hand (no skin anywhere); native facing left like the other humanoids.
+  const LORD_TOP=[
+    '.....M.M.M...W.W',
+    '.....mMmMmm..WWW',
+    '....mMmmmmmm.WWW',
+    '....mnEnnEnm..j.',
+    '....mmnnnnmm..j.',
+    '.M..nmmmmmnM.Mj.',
+    '.MMmMMmnnmMMmMj.',
+    '..mMmmMmmMmmmmj.',
+    '..mnmMmnnmMmn.j.',
+    '...nmmmMMmmm..j.',
+    '....nmmnnmmn..j.'];
+  const LORD_LEGS=[
+    ['.....mmn.mmn....','.....mmn.mmn....','.....nnn.nnn....'],
+    ['....mmn...mmn...','....mmn...mmn...','....nnn...nnn...'],
+    ['.....mmn.mmn....','.....mmn.mmn....','.....nnn.nnn....'],
+    ['.....mmn...mmn..','.....mmn...mmn..','.....nnn...nnn..']];
+  ZOO.dungeonlord={ name:'Dungeon Lord', pal:{ m:'#25252f',M:'#454556',n:'#0e0e14',W:'#6a6a7c',j:'#4a3624',E:'#ff4a1c',F:'#ffc040',k:'rgba(0,0,0,0.30)' },
+    frame:(t,fr,mv,eq)=>{
+      const k=t%4, bob=mv?[0,1,0,1][k]:(Math.floor(t/2)%2?1:0), rows=[];
+      for(let y=0;y<16;y++) rows.push('................');
+      LORD_TOP.forEach((r,y)=>{ if(y+bob<15) rows[y+bob+1-1]=r; });
+      if(bob) rows[0]='................';
+      const legs=LORD_LEGS[mv?k:0]; legs.forEach((r,i)=>{ rows[11+i+0]=r; });
+      rows[14]=LORD_LEGS[mv?k:0][2]; rows[15]='....kkkkkkkkk...';
+      let g=rows.map(r=>r.split(''));
+      const flick=Math.floor(t/3)%2;
+      g=g.map(r=>r.map(c=>c==='E'?(flick?'F':'E'):c));
+      if(fr) g=g.map(r=>r.slice().reverse());
+      return { g, pal:{} };
+    } };
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
