@@ -192,3 +192,6 @@ Der Besessene hat in der Ego-Perspektive eine Kommazahl-Position (`c.fx`, `c.fy`
 ## 1.19 Legenden und Armeen als Begegnung
 - Ruhm = eroberte Regionen + 2 pro Verbündetem (`legendsTurn`, `LEGEND_FAME` = 4 und 8). Bei 4 hören die Legenden (Tor-Bosse) vom Dunkel: ihre Pforte rüstet auf (+1 Welle, +1 Stufe). Bei 8 zieht der Boss selbst als Armee (👑) los und jagt den Spieler; erreicht sie ihn, gibt es +3 Wellen für die nächste Schlacht und er schickt einen benannten Streiter (`campaign.champions`), der in `keepRecruit` ab etwa 60 % des Pools erscheint (1,5-fache Lebenspunkte, bessere Ausrüstung).
 - Eine Armee auf dem Zielfeld wird in der Schlacht getroffen (`campaign.encounter`): +3 Wellen, +1 Heldenstufe; bei Sieg verschwindet sie und gibt 1 Fertigkeitspunkt (Legende 2). Die Info einer Region nennt, wenn dort ein Heer steht.
+
+## 1.20 Weitere 3D-Modelle
+`MODELS` in `view3d.js` kennt jetzt Thron, Amboss, Esse, Brennofen, Werkbank, Blasebalg, Futtertrog, Kerze und Rundtisch (zusätzlich zu Bett und Regal). Dinge mit Rückseite drehen sich über `FACING_PROPS` von Wänden weg, glühende Öffnungen von Esse und Ofen sind unbeleuchtete Flächen (leuchten also immer). Kleine Haufen (Münzen, Erz, Barren, Hühner) bleiben Sprites.

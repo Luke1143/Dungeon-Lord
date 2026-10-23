@@ -180,6 +180,53 @@ const View3D=(()=>{
     g.add(box(0.5,0.08,0.22,lam(null,0xf4f0e6),0,0.38,-0.3));
     g.add(box(0.8,0.5,0.07,wood,0,0.25,-0.43));
     return g; };
+  const stoneTex=(base,dark)=>pixTex(16,16,(g)=>{ g.fillStyle=base; g.fillRect(0,0,16,16); g.fillStyle=dark; for(let y=0;y<16;y+=4){ g.fillRect(0,y,16,1); for(let x=(y/4%2)*4;x<16;x+=8) g.fillRect(x,y,1,4); } });
+  const glow=(c)=>new T.MeshBasicMaterial({ color:c });
+  MODELS.throne=()=>{
+    const g=new T.Group(), stone=lam(stoneTex('#6a6670','#4a4650')), wood=lam(woodTex('#3a2418','#2a1810')), velvet=lam(null,0x6a2a8a), gold=glow(0xd4af37);
+    g.add(box(0.74,0.14,0.7,stone,0,0.07,0));
+    g.add(box(0.5,0.26,0.46,[velvet,velvet,velvet,velvet,velvet,velvet],0,0.27,0.04));
+    g.add(box(0.54,0.92,0.12,wood,0,0.6,-0.3)); g.add(box(0.42,0.1,0.14,gold,0,1.08,-0.3));
+    g.add(box(0.07,0.26,0.4,wood,-0.3,0.34,0.04)); g.add(box(0.07,0.26,0.4,wood,0.3,0.34,0.04));
+    g.add(box(0.5,0.05,0.06,gold,0,0.9,-0.23));
+    return g; };
+  MODELS.anvil=()=>{
+    const g=new T.Group(), iron=lam(null,0x4a4e56), wood=lam(woodTex('#6a4426','#4a2e18'));
+    g.add(box(0.32,0.28,0.32,wood,0,0.14,0)); g.add(box(0.22,0.1,0.2,iron,0,0.33,0)); g.add(box(0.6,0.16,0.26,iron,0,0.46,0)); g.add(box(0.22,0.1,0.16,iron,0.38,0.46,0));
+    return g; };
+  MODELS.furnace=()=>{
+    const g=new T.Group(), brick=lam(stoneTex('#7a5a48','#4a3428')), mouth=glow(0xff7a20), dark=glow(0x120a06);
+    g.add(box(0.82,0.72,0.7,brick,0,0.36,-0.04)); g.add(box(0.26,0.5,0.26,brick,0.2,0.95,-0.18));
+    g.add(box(0.44,0.32,0.04,dark,0,0.3,0.32)); g.add(box(0.34,0.22,0.05,mouth,0,0.27,0.33));
+    return g; };
+  MODELS.kiln=()=>{
+    const g=new T.Group(), clay=lam(stoneTex('#a0543a','#703624')), mouth=glow(0xff6a20), dark=glow(0x120a06);
+    g.add(box(0.8,0.5,0.8,clay,0,0.25,0)); g.add(box(0.6,0.4,0.6,clay,0,0.7,0)); g.add(box(0.3,0.5,0.3,clay,0,1.15,0));
+    g.add(box(0.34,0.26,0.04,dark,0,0.22,0.41)); g.add(box(0.26,0.18,0.05,mouth,0,0.2,0.42));
+    return g; };
+  MODELS.bench=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a5230','#5a3a20'));
+    g.add(box(0.9,0.1,0.44,wood,0,0.46,0)); [[-0.38,-0.16],[0.38,-0.16],[-0.38,0.16],[0.38,0.16]].forEach(([x,z])=>g.add(box(0.08,0.42,0.08,wood,x,0.21,z)));
+    return g; };
+  MODELS.bellows=()=>{
+    const g=new T.Group(), leather=lam(null,0x6a4426), iron=lam(null,0x575e66), wood=lam(woodTex('#6a4426','#4a2e18'));
+    g.add(box(0.6,0.08,0.5,wood,0,0.04,0)); g.add(box(0.46,0.2,0.4,leather,0,0.2,0.02)); g.add(box(0.46,0.1,0.4,wood,0,0.38,0.02)); g.add(box(0.1,0.1,0.34,iron,0,0.2,-0.38));
+    return g; };
+  MODELS.trough=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a5230','#5a3a20')), grain=lam(null,0xc8a84a);
+    g.add(box(0.84,0.06,0.46,wood,0,0.03,0)); g.add(box(0.76,0.1,0.38,grain,0,0.1,0));
+    g.add(box(0.84,0.22,0.06,wood,0,0.11,0.2)); g.add(box(0.84,0.22,0.06,wood,0,0.11,-0.2)); g.add(box(0.06,0.22,0.46,wood,0.4,0.11,0)); g.add(box(0.06,0.22,0.46,wood,-0.4,0.11,0));
+    return g; };
+  MODELS.candle=()=>{
+    const g=new T.Group();
+    g.add(box(0.14,0.04,0.14,glow(0xd4af37),0,0.02,0)); g.add(box(0.07,0.2,0.07,lam(null,0xf0e6c8),0,0.14,0)); g.add(box(0.05,0.07,0.05,glow(0xffd060),0,0.27,0));
+    return g; };
+  MODELS.roundtable=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a5230','#5a3a20'));
+    const top=new T.Mesh(new T.CylinderGeometry(0.46,0.46,0.12,16), wood); top.position.y=0.4; g.add(top);
+    const leg=new T.Mesh(new T.CylinderGeometry(0.12,0.16,0.36,10), wood); leg.position.y=0.18; g.add(leg);
+    const ring=new T.Mesh(new T.CylinderGeometry(0.47,0.47,0.04,16), glow(0xd4af37)); ring.position.y=0.36; g.add(ring);
+    return g; };
   function takeModel(key){
     const pool=modelPool[key]||(modelPool[key]=[]); const i=modelUsed[key]||0;
     let m=pool[i]; if(!m){ m=MODELS[key](); spriteGroup.add(m); pool.push(m); }
