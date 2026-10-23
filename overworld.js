@@ -26,42 +26,42 @@ const OW=(()=>{
   // local: extra for the level of this region; aura: extra for the levels of neighbouring regions
   // gen: terrain parameters for the level generator (see makeDefaultState)
   const REGION_TYPES={
-    river_village:{ label:'Flussdorf',        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
+    river_village:{ label:'Flussdorf', ai:'panic',        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
       desc:'Ein Dorf an vielen Flüssen. Leichte Beute.', side:'Das gesamte Dorf untergraben.', suffixes:['bach','furt','au','mühl'] },
-    village:      { label:'Handelsdorf',      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
+    village:      { label:'Handelsdorf', ai:'panic',      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
       desc:'Ein Marktflecken an der Handelsstraße. Er füttert die Heere der Gegend.', side:'Die Vorratskammern plündern.', suffixes:['markt','stedt','heim','furt'] },
-    farmland:     { label:'Farmland',         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
+    farmland:     { label:'Farmland', ai:'cautious',         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
       desc:'Weite Felder und Scheunen. Von hier kommt der Nachschub der Heere.', side:'Die Scheunen niederbrennen.', suffixes:['feld','hof','acker','au'] },
-    camp:         { label:'Trainingslager',   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
+    camp:         { label:'Trainingslager', ai:'drilled',   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
       desc:'Hier üben die Helden. Wer es zerschlägt, bremst ihre Ausbildung.', side:'Die Waffenmeister ausschalten.', suffixes:['lager','platz','wacht','heim'] },
-    forge:        { label:'Zwergenschmiede',  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
+    forge:        { label:'Zwergenschmiede', ai:'cautious',  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
       desc:'Tunnel und Esse im Berg. Hier wird die Rüstung der Helden geschmiedet.', side:'Die Schmiede plündern und ein Artefakt suchen.', suffixes:['fels','berg','esse','hammer'] },
-    mine:         { label:'Bergwerk',         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
+    mine:         { label:'Bergwerk', ai:'cautious',         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
       desc:'Stollen voller Erz und Gold. Es liefert das Eisen für die Schmieden.', side:'Die Erzlager leeren.', suffixes:['stollen','grube','schacht','berg'] },
-    tower:        { label:'Magierturm',       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
+    tower:        { label:'Magierturm', ai:'cautious',       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
       desc:'Ein Turm, in dem Zauberer lernen. Er schickt Magier ins Feld.', side:'Die Bibliothek erobern.', suffixes:['turm','warte','spitz','licht'] },
-    elf_forest:   { label:'Elfenwald',        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
+    elf_forest:   { label:'Elfenwald', ai:'aggressive',        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
       desc:'Ein uralter Wald, von Wurzeln durchzogen.', side:'Den Waldfürsten unterwerfen.', suffixes:['wald','hain','tann','lauf'] },
-    fortress:     { label:'Festung',          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
+    fortress:     { label:'Festung', ai:'fortified',          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
       desc:'Feste Mauern. Sie verstärkt die Gebiete ringsum und liefert Wachen.', side:'Den Burgherrn stürzen.', suffixes:['burg','stein','wacht','trutz'] },
-    bog:          { label:'Moorsiedlung',     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
+    bog:          { label:'Moorsiedlung', ai:'panic',     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
       desc:'Nebel, Schlamm und argwöhnische Bewohner. Kaum Nutzen für die Heere, aber viel Wasser.', side:'Das Dorf versenken.', suffixes:['moor','sumpf','brück','nebel'] },
     // Gates: natural chokepoints, every road to the capital passes through them. Mythic places (free myths and sagas only), a boss each.
     // Two ways through: the frontal assault (beat the boss in an epic fight) or the cunning way (a special goal with a bigger reward).
-    gate_dwarf:   { label:'Pforte: Alberichs Hallen', playable:true, gate:true, race:'dwarf', fixedName:'Alberichs Hallen', terrain:'mountain', prod:{ iron:3 }, local:{ waves:2, gearTier:1 },
+    gate_dwarf:   { label:'Pforte: Alberichs Hallen', ai:'greedy', playable:true, gate:true, race:'dwarf', fixedName:'Alberichs Hallen', terrain:'mountain', prod:{ iron:3 }, local:{ waves:2, gearTier:1 },
       gen:{ caveDensity:0.46, oreVeins:5, goldVeins:4, bedrock:2 },
       boss:{ name:'Alberich, der Zwergenkönig' }, setup:'dwarf_hoard',
       goals:[ { id:'defeat_boss', way:'frontal', bossName:'Alberich' }, { id:'steal_gold', way:'cunning', amount:15 } ],
       paths:{ frontal:'Alberich im Kampf besiegen und die Halle erobern.', cunning:'Ihm das geliebte Gold stehlen und ihn korrumpieren: er dient dir dann als mächtige Einheit.' },
       desc:'Tief im Berg liegt der Hort des Zwergenkönigs. Der einzige Weg nach Osten führt durch seine Hallen.', side:'Das Gold des Königs rauben.', suffixes:[] },
-    gate_elf:     { label:'Pforte: Hain des Weltenbaums', playable:true, gate:true, race:'elf', fixedName:'Hain des Weltenbaums', terrain:'forest', prod:{ magic:3 }, local:{ waves:2, wizards:2 },
+    gate_elf:     { label:'Pforte: Hain des Weltenbaums', ai:'hyper', playable:true, gate:true, race:'elf', fixedName:'Hain des Weltenbaums', terrain:'forest', prod:{ magic:3 }, local:{ waves:2, wizards:2 },
       gen:{ caveDensity:0.43, rivers:[1,2], lakes:[1,2] },
       boss:{ name:'Oberon, Schützer des heiligen Hains' }, setup:'elf_grove', spawnAt:'grove', heroPool:['elf','elf','elf','wizard'],
       goals:[ { id:'defeat_boss', way:'frontal', bossName:'Oberon' }, { id:'undermine_roots', way:'cunning', amount:6 } ],
       paths:{ frontal:'Oberon im Hain stellen und besiegen. Er schickt seine Krieger, bis er fällt.', cunning:'Die Wurzeln des Weltenbaums überall im Land untergraben, während Oberon seine Krieger auf dich hetzt. Dann wird er korrumpiert und dient dir.' },
       desc:'Ein heiliger Hain um einen uralten Weltenbaum. Oberon wacht über ihn und seine Wurzeln, die sich durchs ganze Land ziehen.', side:'Die Wurzeln des Weltenbaums untergraben.', suffixes:[] },
     // Humans: King Arthur of Camelot (legend). The sword in the stone can only be drawn by someone worthy.
-    gate_human:   { label:'Pforte: Camelot', playable:true, gate:true, race:'human', fixedName:'Camelot', terrain:'grass', prod:{ training:3 }, local:{ waves:2, levelBonus:1 },
+    gate_human:   { label:'Pforte: Camelot', ai:'drilled', playable:true, gate:true, race:'human', fixedName:'Camelot', terrain:'grass', prod:{ training:3 }, local:{ waves:2, levelBonus:1 },
       gen:{ rivers:[1,2], caveDensity:0.38 },
       boss:{ name:'Artus, König von Camelot' }, setup:'camelot', spawnAt:'castle', heroPool:['knight','knight','barbarian','wizard'],
       goals:[ { id:'defeat_boss', way:'frontal', bossName:'Artus' }, { id:'pull_sword', way:'cunning' } ],
@@ -79,7 +79,7 @@ const OW=(()=>{
       desc:'Ein Irrgarten aus Stein. Wer hinein will, muss dem Wesen im Zentrum begegnen.', side:'Den Faden durchtrennen.', suffixes:[] },
     event:        { label:'Verlassener Ort',  playable:false, prod:{},                 local:{},                   gen:{},
       desc:'Hier gibt es nichts zu erobern, nur ein Ereignis.', side:'', suffixes:['rast','pfad','kreuz','stein'] },
-    capital:      { label:'Hauptstadt des Guten', playable:true, prod:{ food:1, iron:1, magic:1, training:1, fort:1 }, local:{ waves:2 }, gen:{ bedrock:2 },
+    capital:      { label:'Hauptstadt des Guten', ai:'drilled', playable:true, prod:{ food:1, iron:1, magic:1, training:1, fort:1 }, local:{ waves:2 }, gen:{ bedrock:2 },
       desc:'Der Sitz des Heldenkönigs. Hier endet jede Kampagne.', side:'Den Boss der Welt besiegen oder unterwerfen.', suffixes:[] }
   };
 
@@ -222,7 +222,7 @@ const OW=(()=>{
     const pw=power(world,c), lines=[];
     const mods=war&&war.mods;
     if(mods){
-      lines.push(`Die Helden kamen in ${war.wave}/${mods.waves} Wellen:`);
+      lines.push(`Die Gegner hatten ${war.wave}/${war.poolTotal||mods.waves} Rekruten angeworben:`);
       mods.notes.forEach(t=>lines.push('· '+t));
     }
     // the stat that weighed most for this level, and which producers were still running

@@ -317,6 +317,7 @@
 <script src="fx.js"></script>
 <script src="overworld.js"></script>
 <script src="objectives.js"></script>
+<script src="keep.js"></script>
 <script src="view3d.js"></script>
 <script>
 const WORLD_COLS=48, WORLD_ROWS=32, TILE=32;
@@ -1343,7 +1344,8 @@ function applyRecipe(actor, rec, x, y){
     const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
     if(boss && !boss.alert){ boss.alert=true; logEvent(`${boss.name} spürt den Frevel an seinen Wurzeln und jagt eure Diener!`, boss.x, boss.y); }
     logEvent(`Eine Wurzel des Weltenbaums wurde durchtrennt (${state.war.roots}/${state.war.rootsTotal||8}).`, x, y);
-    if(state.war.spawnAt==='grove' && !state.war.over) spawnSortie(2, 'Oberon schickt Krieger, um die Wurzeln zu rächen!');
+    if(state.keep) keepOnRootCut();
+    else if(state.war.spawnAt==='grove' && !state.war.over) spawnSortie(2, 'Oberon schickt Krieger, um die Wurzeln zu rächen!');
     for(let i=0;i<2;i++) emitFx('claim', x, y);
   }
   if(rec.id==='dig') emitFx('dig', x, y, { color: t.root?'#6a4426':(t.gold?'#d4af37':(t.gem?'#9a6ad0':wallBaseSpec(t).color)) });
@@ -1382,6 +1384,7 @@ function applyRecipe(actor, rec, x, y){
   if(rec.id==='claim'){
     const wasEntrance=t.room==='entrance';
     t.owned=true; t.enemy=false; t.reserved=null;
+    if(t.goodRoom){ t.room=t.goodRoom; t.goodRoom=null; logEvent('Ein Raum der Gegner gehört nun euch.', x, y); }   // conquered structures switch to the player's skin
     if(wasEntrance && entranceFullyClaimed()) logEvent('Ihr habt den Eingang erobert.', x, y);
     return;
   }
@@ -4591,6 +4594,7 @@ function floorSpec(t){
   if(t.grove && !t.owned && !t.room) return { full:'grove' };
   if(t.castle && !t.owned && !t.room) return { full:'castle' };
   if(t.room && TILEGEN.has(t.room)) return { full:t.room };
+  if(t.goodRoom && !t.owned && TILEGEN.has(t.goodRoom)) return { full:t.goodRoom };   // the enemy's rooms: same textures, blue skin
   if(t.owned) return { full:'owned' };
   return { color:COLORS.floorNeutral, kind:'floor' };
 }
@@ -4795,7 +4799,7 @@ function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
-  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined }; }
+  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
     return { wall:false, water:true, color:COLORS.water, kind:null };
@@ -4903,7 +4907,8 @@ function draw2d(){
           ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(tileOverlay(kind,x,y),px,py,TILE,TILE); ctx.restore();
         }
       }
-      if(t.type==='floor' && t.enemy && !t.owned){ ctx.fillStyle='rgba(150,25,25,0.28)'; ctx.fillRect(px,py,TILE,TILE); }
+      if(t.type==='floor' && t.goodRoom && !t.owned){ ctx.fillStyle='rgba(60,110,220,0.3)'; ctx.fillRect(px,py,TILE,TILE); }
+      else if(t.type==='floor' && t.enemy && !t.owned){ ctx.fillStyle='rgba(150,25,25,0.28)'; ctx.fillRect(px,py,TILE,TILE); }
       const cs=crackStage(t);
       if(cs>0){ ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(crackCanvas(cs,x,y),px,py,TILE,TILE); ctx.restore(); }
       ctx.strokeStyle='rgba(0,0,0,0.28)';
@@ -5603,6 +5608,8 @@ function createHero(kind, x, y, id){
 function tickHero(c){
   { const ft=state.grid[c.y][c.x]; if(ft.type==='floor' && !ft.owned && !ft.enemy && !ft.room) ft.enemy=true; }   // heroes take the ground they stand on
   if(c.path && c.path.length){ stepAlong(c); return; }
+  if(c.guardRoot){ if(keepGuardRoot(c)) return; }
+  if(c.post){ if(keepGarrison(c)) return; }
   if(state.grid[c.y][c.x].room==='throne'){ c.state='besieging'; return; }
   const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne');
   if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); return; }
@@ -5640,7 +5647,8 @@ function decayReinforcedWalls(){
 
 // No open way to the throne: dig. The route runs through rock but prefers weak walls
 // (reinforced rock costs double), so scouts end up probing the dungeon for its weak spots.
-function digRouteToThrone(c, allowReinforced){
+function digRouteToThrone(c, allowReinforced, goal){
+  goal = goal || ((x,y)=> state.grid[y][x].room==='throne');
   const cost=(x,y)=>{
     const t=state.grid[y][x];
     if(t.type==='floor') return 1;
@@ -5655,7 +5663,7 @@ function digRouteToThrone(c, allowReinforced){
   while(heap.length){
     const [d,x,y]=pop();
     if(d>(dist.get(key(x,y))??Infinity)) continue;
-    if(state.grid[y][x].room==='throne'){
+    if(goal(x,y)){
       const route=[]; let k=key(x,y);
       while(prev.has(k)){ route.push({ x:k%WORLD_COLS, y:Math.floor(k/WORLD_COLS) }); k=prev.get(k); }
       return route.reverse();
@@ -5739,7 +5747,7 @@ function portalConnected(){
 }
 
 // Every level has a fixed pool of enemies: a set number of waves, the last one led by the knight. No endless waves.
-function waveTotal(w){ return w.mods ? w.mods.waves : Math.max(3, Math.min(8, 3+Math.floor((w.difficulty||0)/2))); }
+function waveTotal(w){ return w.poolTotal ? w.poolTotal : w.mods ? w.mods.waves : Math.max(3, Math.min(8, 3+Math.floor((w.difficulty||0)/2))); }
 const TIER_IDS=['crude','plain','fine','epic'];
 // What a hero brings along. The gear tier comes from the enemy economy (Rüstung stock and the region), the boss always carries at least fine gear.
 function heroGear(kind, level, boss, tierIdx){
@@ -5832,9 +5840,9 @@ function tickWar(){
     }
   }
 
-  // The heroes do not wait for the player to open the portal: scouts spawn on a timer from the start of the level
-  // and dig their way to the throne themselves.
-  if(w.wave<waveTotal(w)){
+  // The good side recruits on its own from the start of the level (keep.js); its heroes dig their way to the throne themselves.
+  if(state.keep) tickKeep();
+  else if(w.wave<waveTotal(w)){
     w.timer--;
     if(w.timer<=0){
       spawnWave();
@@ -5872,21 +5880,23 @@ function updateWarUI(){
   waveEl.textContent=w.wave>0 ? `${w.wave}/${waveTotal(w)}` : '–';
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
-  const secs=Math.max(0,Math.ceil(w.timer*0.35/Math.max(1,gameSpeed)));
+  const secs=Math.max(0,Math.ceil((state.keep?state.keep.timer:w.timer)*0.35/Math.max(1,gameSpeed)));
   { const box=document.getElementById('goalsBox');
     if(w.goals){
       box.hidden=false;
       box.innerHTML='<b>Wege durch die Pforte</b><br>'+w.goals.map(g=>{ const r=GOALS[g.id].check(state,g); return `<span class="${r.done?'goalDone':''}">${g.way==='cunning'?'Listig':'Direkt'}: ${GOALS[g.id].label(g)} <i>(${r.text})</i></span>`; }).join('<br>');
     } else box.hidden=true; }
   const total=waveTotal(w), alive=state.creatures.filter(h=>h.category==='hero'&&!h.unconscious).length;
-  hintEl.textContent = w.wave>=total ? (alive>0 ? `🔥 Alle ${total} Wellen sind unterwegs, noch ${alive} Helden im Dungeon.` : '🔥 Alle Wellen sind besiegt. Erobert jetzt das Weltportal!')
-    : (w.wave===0 ? `🔥 Das Weltportal ist abgeriegelt. Späher kommen in ${secs} s und graben sich selbst zu euch durch.` : `🔥 Nächste Welle (${w.wave+1}/${total}) in ${secs} s`);
+  const k=state.keep, gathering=state.creatures.filter(h=>h.category==='hero'&&h.post&&!h.unconscious).length;
+  hintEl.textContent = w.wave>=total ? (alive>0 ? `🔥 Alle ${total} Rekruten sind angeworben, noch ${alive} Helden im Dungeon.` : '🔥 Der Nachschub der Gegner ist erschöpft. Erobert jetzt das Weltportal!')
+    : (w.wave===0 ? `🔥 Die Provinz reagiert auf euch: erste Rekruten in ${secs} s.` : `🔥 Rekrut ${w.wave+1}/${total} in ${secs} s`)
+      + (k ? ` · ${keepSummary()}${gathering?` · ${gathering} sammeln sich`:''}` : '');
   const overlay=document.getElementById('endOverlay');
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
     document.getElementById('endText').textContent = w.over==='won'
-      ? (w.wonText || `Das Weltportal gehört euch. Eure Horde hat ${w.wave} Welle(n) überstanden.`)
-      : `Die Helden haben euren Thronsaal eingenommen. Ihr habt ${w.wave} Welle(n) überlebt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):'');
+      ? (w.wonText || `Das Weltportal gehört euch. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`)
+      : `Die Helden haben euren Thronsaal eingenommen. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):'');
     overlay.hidden=false;
   } else overlay.hidden=true;
 }
@@ -7901,6 +7911,7 @@ function owShowInfo(){
       html+=`<br><br><b>Pforte</b>: Jeder Weg zur Hauptstadt führt hier durch.<br>Boss: ${rt.boss.name}`;
       html+=`<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`+(rt.goals?'':'<br><i>(Sonderziel und Boss folgen noch, bis dahin gilt: Portal erobern.)</i>');
     }
+    if(rt.ai && !conquered && AI_PROFILES[rt.ai]) html+=`<br><br><b>So kämpfen die Gegner hier:</b> ${AI_PROFILES[rt.ai].label}`;
     if(rt.aura && !conquered) html+=`<br>Verstärkt die Nachbarregionen (+${rt.aura.waves} Welle).`;
     if(rt.playable && !conquered){
       const m=OW.levelMods(world,campaign,n);
@@ -8146,6 +8157,7 @@ function startLevel(nodeId){
     state.war.spawnAt = rt.spawnAt || 'portal';
     if(rt.setup && LEVEL_SETUPS[rt.setup]) LEVEL_SETUPS[rt.setup]();
     if(state.war.goals && state.war.rootsTotal) state.war.goals.forEach(g=>{ if(g.id==='undermine_roots') g.total=state.war.rootsTotal; });
+    initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
     (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;

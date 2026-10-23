@@ -26,6 +26,7 @@ const DEFENDERS = {
         document.getElementById('menuNew').click(); startLevel(0);
         state.war.difficulty = diff;
         { const h = diff >> 1; state.war.mods = { waves: 3 + h, size: h, levelBonus: h, gearTier: Math.min(3, h), wizards: 0, notes: [] }; }   // stand-in for the world economy
+        initKeep({ ai: window.__ai || 'cautious' }, state.war.mods, true);
         // sealed portal: the heroes have to dig their own way (unless window.__corridor is set)
         const portal = tilesOfRoom('portal')[0], throne = tilesOfRoom('throne');
         const tx = throne[0].x, ty = throne[0].y;
@@ -45,10 +46,10 @@ const DEFENDERS = {
         for (; t < MAX_TICKS && !state.war.over; t++) { gameTick(); minHp = Math.min(minHp, state.war.throneHp); }
         const heroes = state.creatures.filter(c => c.category === 'hero').length;
         const mine = state.creatures.filter(c => c.faction !== 'good').length;
-        return { over: state.war.over, tick: t, wave: state.war.wave, minHp: Math.round(minHp), heroesAlive: heroes, defendersLeft: mine };
+        return { over: state.war.over, tick: t, wave: state.war.wave, rooms: state.keep ? state.keep.roomsBuilt : 0, minHp: Math.round(minHp), heroesAlive: heroes, defendersLeft: mine };
       }, { diff, list, MAX_TICKS, IMPS, RING });
       rows.push({ diff, defenders: dname, ...res });
-      console.log(`diff ${diff} · ${dname.padEnd(6)} -> ${res.over || 'survived'} at tick ${res.tick}, wave ${res.wave}, min throne hp ${res.minHp}, heroes alive ${res.heroesAlive}, defenders left ${res.defendersLeft}`);
+      console.log(`diff ${diff} · ${dname.padEnd(6)} -> ${res.over || 'survived'} at tick ${res.tick}, wave ${res.wave}, enemy rooms ${res.rooms}, min throne hp ${res.minHp}, heroes alive ${res.heroesAlive}, defenders left ${res.defendersLeft}`);
       await p.close();
     }
   }
