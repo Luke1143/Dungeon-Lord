@@ -35,6 +35,7 @@
   body.fp #minimap{ display:none; }
   #fpHud{ position:absolute; inset:0; pointer-events:none; font-family:'Cinzel',serif; color:#f0e2c0; z-index:5; }
   #fpHud[hidden]{ display:none; }
+  #fpHand{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
   .fpCross{ position:absolute; left:50%; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; }
   .fpCross::before,.fpCross::after{ content:''; position:absolute; background:rgba(255,240,200,.75); }
   .fpCross::before{ left:6px; top:0; width:2px; height:14px; } .fpCross::after{ top:6px; left:0; height:2px; width:14px; }
@@ -272,6 +273,7 @@
       <canvas id="board"></canvas>
       <canvas id="minimap" width="192" height="128" title="Klick zum Springen"></canvas>
       <div id="fpHud" hidden>
+        <canvas id="fpHand"></canvas>
         <div class="fpCross"></div>
         <div class="fpTarget" id="fpTarget"></div>
         <div class="fpTop"><div class="fpName"><span id="fpName"></span> <small id="fpLevel"></small></div><div class="fpXp"><i id="fpXpFill"></i></div></div>
@@ -373,6 +375,7 @@
 
 <script src="sprites.js"></script>
 <script src="fx.js"></script>
+<script src="anim.js"></script>
 <script src="overworld.js"></script>
 <script src="objectives.js"></script>
 <script src="keep.js"></script>
@@ -777,6 +780,7 @@ function tickCombat(c){
   }
 
   c.state='fighting';
+  c.verb='attack'; c.actTarget={ x:t.x, y:t.y };
   if(!swing(c)) return true;                 // Ausholen oder danebengehauen
   const r=resolveAttack(c, t, c.combatContext);
   addGrudge(t, c);                           // wer geschlagen wird, traegt Groll
@@ -1389,6 +1393,7 @@ function interact(actor, x, y){
   const dist=Math.abs(actor.x-x)+Math.abs(actor.y-y);
   if(dist>rec.range) return null;
 
+  actor.verb=rec.id; actor.actTarget={ x, y };
   if(!swing(actor)) return 'miss';   // Fehlschlag bewirkt exakt nichts
 
   const t=state.grid[y][x];
@@ -1487,6 +1492,7 @@ function swing(actor, roomType){
   actor.swingBudget=(actor.swingBudget||0)+1;
   if(actor.swingBudget < SWING_COST) return false;
   actor.swingBudget-=SWING_COST;
+  startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
 
   if(Math.random() > hitChance(actor)){
     applyWorkOpinion(actor, roomType, false);   // schlechter Tag
@@ -4606,11 +4612,11 @@ function heldSlotIcons(c, skipGear){
     const idx = d.type==='weapon' ? 0 : d.type==='shield' ? 1 : d.type==='armor' ? 2 : -1;
     if(idx>=0 && !slots[idx]) slots[idx]=d.icon;
   });
-  // Fracht belegt freie Plaetze der Reihe nach
-  const cargo=[];
-  if(c.carrying)       for(let i=0;i<(c.carryAmount||1);i++) cargo.push('🪙');
-  if(c.carryOre)       for(let i=0;i<c.carryOre;i++)         cargo.push(ORE_EMOJI);
-  if(c.carryIron)      for(let i=0;i<c.carryIron;i++)        cargo.push(INGOT_EMOJI);
+  // Fracht belegt freie Plaetze der Reihe nach. Imps zeigen Gold und Erz nur im Sack auf dem Sprite (keine zweite Darstellung).
+  const cargo=[], sack=c.kind==='imp';
+  if(c.carrying && !sack)       for(let i=0;i<(c.carryAmount||1);i++) cargo.push('🪙');
+  if(c.carryOre && !sack)       for(let i=0;i<c.carryOre;i++)         cargo.push(ORE_EMOJI);
+  if(c.carryIron && !sack)      for(let i=0;i<c.carryIron;i++)        cargo.push(INGOT_EMOJI);
   if(c.carryingCorpse) cargo.push(CORPSE_ICON);
   if(c.carryingBook)   cargo.push('📕');
   cargo.forEach(ic=>{
@@ -4792,8 +4798,9 @@ function drawCreatureSprite(c,px,py,opts){
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
   const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:1);
   const fl=(opts&&opts.flash)||0;
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
-  const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size), o=opts||{};
+  const lift=(opts&&opts.lift)||0;
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
+  const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size)-lift*TILE, o=opts||{};
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
@@ -4805,6 +4812,21 @@ function drawCreatureSprite(c,px,py,opts){
 }
 
 const HIT_FLASH_MS=260;
+
+// who swings a tool or a fist: imps and the humanoids; beasts only lunge
+function hasHands(c){ const z=typeof ZOO!=='undefined'&&ZOO[c.kind||'imp']; return !!z && (!!z.humanoid || c.kind==='imp' || c.kind==='dungeonlord'); }
+function weaponSpriteOf(c){ const e=equipLook(c); return e && e.weapon ? e.weapon : null; }
+function toolFor(c, pose){
+  const weapon=pose.anim.verb==='attack' ? weaponSpriteOf(c) : null;
+  return toolCanvas(weapon, FIST_COLORS[c.kind||'imp'], weapon?null:pose.anim.tint);
+}
+function drawHeldTool(c, px, py, pose, lift){
+  const cv=toolFor(c,pose), sign=c._faceRight?1:-1, fwd=0.3+pose.ox;
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, scale:TOOL_S/16, rotation:-sign*pose.angle, ox:sign*fwd*32, lift:0.42+lift+pose.oy, oy:3 }); return; }
+  const k=TILE/16, pvx=(px+0.5+sign*fwd-camX)*TILE, pvy=(py+0.62-pose.oy-lift-camY)*TILE;
+  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.translate(pvx,pvy); ctx.rotate(sign*pose.angle);
+  ctx.drawImage(cv, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k); ctx.restore();
+}
 
 // Zeichnet Kreatur samt Schwung und Gedanke
 function drawActor(c, baseIcon){
@@ -4826,18 +4848,16 @@ function drawActor(c, baseIcon){
   if(c.unconscious){
     if(!drawCreatureSprite(c, px, py, { rotation:Math.PI/2, alpha:0.75 })) drawEmojiFx(baseIcon, px, py, { rotation:Math.PI/2, alpha:0.75 });
   } else {
-    if(!drawCreatureSprite(c, px, py, { flash: since<130 ? 1-since/130 : 0 })) drawEmoji(baseIcon, px, py, false);
-    const tool=swingIconOf(c);
-    if(tool){
-      // Ausholen und zuschlagen: die Phase steuert Winkel und Versatz
-      const ph=swingPhase(c);
-      const angle=-0.9 + ph*1.6;
-      drawEmojiFx(tool, px, py, {
-        scale:0.7, rotation:angle,
-        offsetX:TILE*0.26*Math.cos(angle-0.4),
-        offsetY:TILE*0.10 - TILE*0.18*ph
-      });
+    // action animation (anim.js): the body lunges or hops, the held tool (weapon, otherwise a fist) swings
+    const pose=currentPose(c);
+    let lift=0;
+    if(pose){
+      const a=pose.anim, L=Math.hypot(a.dx,a.dy);
+      if(L){ px+=a.dx/L*pose.lunge; py+=a.dy/L*pose.lunge; const sv=capture?View3D.sideOf(a.dx,a.dy):a.dx; if(Math.abs(sv)>0.01) c._faceRight=sv>0; }
+      lift=pose.hop;
     }
+    if(!drawCreatureSprite(c, px, py, { flash: since<130 ? 1-since/130 : 0, lift })) drawEmoji(baseIcon, px, py, false);
+    if(pose && pose.held && hasHands(c)) drawHeldTool(c, px, py, pose, lift);
   }
   if(hitPhase>0){
     // Roter Schleier ueber der getroffenen Kreatur
@@ -4958,7 +4978,8 @@ function draw(){
   try{ draw2d(); } finally { ctx=realCtx; ({ camX, camY, VIEW_COLS, VIEW_ROWS }=saved); }
   const items=capture; capture=null;
   wallTorchItems().forEach(it=>items.push(it));
-  View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw }:null);
+  fpPose=fpActive()?currentPose(possessed):null;
+  View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw, kick:fpPose?fpPose.kick:0, hop:fpPose?fpPose.hop*0.6:0 }:null);
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
   updateFpHud();
   drawOverlay3d();
@@ -6731,6 +6752,25 @@ function highlightRoomAt(t,x,y){
 // ===== Besessenheit =====
 // Der Spieler steuert eine Kreatur direkt. Er benutzt exakt dieselben Mittel
 // wie die KI: Bewegung ist Interact, Arbeit ist Interact.
+let fpPose=null;
+// the viewmodel: what the possessed body holds (weapon, otherwise a fist), drawn big at the lower right and swung by the same poses as in the world
+function drawFpHand(c){
+  const cv=document.getElementById('fpHand'), host=document.getElementById('viewport');
+  const W=host.clientWidth, H=host.clientHeight;
+  if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+  const g=cv.getContext('2d'); g.clearRect(0,0,W,H);
+  if(!hasHands(c)) return;
+  const pose=fpPose||Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' } });
+  if(!pose.held) return;
+  const moving=keysDown['w']||keysDown['a']||keysDown['s']||keysDown['d'];
+  const bob=fpPose?0:(moving?Math.sin(Date.now()/130)*0.02:Math.sin(Date.now()/600)*0.006);
+  const weapon=(pose.anim.verb==='attack'||pose.anim.verb==='idle') ? weaponSpriteOf(c) : null;
+  const img=toolCanvas(weapon, FIST_COLORS[c.kind||'imp'], weapon?null:pose.anim.tint);
+  const k=H/22;
+  g.save(); g.imageSmoothingEnabled=false;
+  g.translate(W*0.74+pose.ox*H*0.7, H*(1.02+bob)-pose.oy*H*0.6); g.rotate(pose.angle);
+  g.drawImage(img, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k); g.restore();
+}
 function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
 // the cardinal direction a yaw angle points to (the game moves on tiles)
 function fpAxis(yaw){ const fx=Math.cos(yaw), fy=Math.sin(yaw); return Math.abs(fx)>Math.abs(fy) ? { x:Math.sign(fx), y:0 } : { x:0, y:Math.sign(fy) }; }
@@ -6788,7 +6828,7 @@ function fpPickTarget(c){
 // one step of the held primary button: hit the target or work the tile
 function fpActStep(c){
   const tg=fpPickTarget(c); if(!tg) return;
-  if(tg.foe){ c.state='fighting'; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
+  if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
   interact(c, tg.tile.x, tg.tile.y);
 }
 function updateFpHud(){
@@ -6803,6 +6843,7 @@ function updateFpHud(){
   const en=Number.isFinite(c.energy)?c.energy:100; set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
   const s2=document.getElementById('fpSlot2'); s2.classList.toggle('locked', lv<HASTE_LEVEL);
   document.getElementById('fpCd2').style.height=(c.hasteCooldown>0?100*c.hasteCooldown/HASTE_COOLDOWN:0)+'%';
+  drawFpHand(c);
   const tg=fpPickTarget(c);
   document.getElementById('fpTarget').textContent = !tg ? '' : tg.foe ? `${actorLabel(tg.foe)} · ${Math.ceil(tg.foe.hp)}/${tg.foe.maxHp}` : (FP_ACTION_LABEL[tg.tile.rec.id]||'');
 }

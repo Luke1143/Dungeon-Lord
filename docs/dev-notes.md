@@ -177,3 +177,10 @@ Wartende Rekruten (Besatzung am Portal, `keepGarrison`) leben wie die Kreaturen 
 
 ## 1.16 Flüssige Bewegung in der Ego-Perspektive
 Der Besessene hat in der Ego-Perspektive eine Kommazahl-Position (`c.fx`, `c.fy`, Mittelpunkt in Kacheleinheiten). `fpMove(dt)` läuft pro Bild in `renderLoop` (WASD relativ zur Blickrichtung, Tempo aus `statSpeed`, Eile, Spieltempo; Pause friert ein), kollidiert mit Kacheln (`fpSolid`, Radius `FP_RADIUS`, getrennt in x und y, also Gleiten an Wänden) und weicht anderen Körpern aus. Für die Spiellogik gilt weiter die Kachel `c.x=floor(fx)`, `c.y=floor(fy)`. Zielen: `fpPickTarget` nimmt einen Feind im Kegel vor dir (Reichweite `FP_REACH`), sonst die bearbeitbare Kachel (eigene oder Nachbarkachel) am besten in Blickrichtung; die Zielanzeige nennt Namen oder Aktion. Graben bleibt wie überall an Markierungen gebunden (gleiche Rezepte für alle).
+
+## 1.17 Aktionsanimationen mit festen Regeln (`anim.js`)
+- Eine Tabelle `ACT_ANIM` ordnet jedem Verb eine Bewegung zu: Angriff wechselt zwischen `over` (Schlag von oben) und `side` (Schlag von der Seite), Graben ist `over` (Faust grau getönt), Verstärken und Bauen sind kurze `tap`-Schläge (stahlblau, holzbraun), Erobern ist `stomp` (Sprung mit Stampfen, lila), Ziehen ist `lift`. Neues Verb = neue Zeile.
+- `swing()` ruft bei jedem tatsächlich ausgeführten Schwung `startAnim` (auch bei Fehlschlag); das Verb kommt aus `interact` (`rec.id`), dem Kampf (`attack`) oder dem Zustand des Wesens (`STATE_VERB`, so auch für Imps). `poseOf(motion,p)` liefert Winkel, Handversatz, Vorstoß, Sprung und Kamerastoß; `currentPose` liest sie aus `actor.anim`.
+- Gehalten wird die Waffe (nur beim Angriff), sonst eine Faust (`toolCanvas`, Farbe je Art, Tönung je Verb). Tiere ohne Hände (`hasHands`) stoßen nur vor.
+- Darstellung: Welt (2D und 3D, `drawHeldTool`, Körper stößt vor oder hüpft über `lift`) und Ego-Perspektive (`drawFpHand`, Viewmodel unten rechts, dazu `kick`/`hop` an der Kamera als Treffergefühl). Das alte Werkzeug-Emoji ist weg.
+- Tragen ist keine Aktion: Imps zeigen Gold und Erz nur noch im Sack auf dem Sprite, das zweite Symbol darüber entfällt.

@@ -140,6 +140,12 @@ const CREATURES={
     if(e.weapon&&WEAPONS[e.weapon]){ const wp=WEAPONS[e.weapon], ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
       wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }
   }
+  // held tools as standalone pixel art (for the swing animations): the weapon alone, with its grip point
+  globalThis.TOOLGEN={ weapon(name){
+    const wp=WEAPONS[name]; if(!wp) return null;
+    const pal={ j:'#6b4a2f', Q:'#9a6aff', q:'#e8d8ff', ...MATS.eisen };
+    return { grip:wp.grip, px:wp.px.map(([x,y,c])=>[x,y,pal[c]||'#c4cad1']) };
+  } };
   function frame(key,t,facingRight,moving,equip){
     const f=mk(N,N), P=CREATURES[key].parts(), k=t%4;
     f.tag=Array.from({length:N},()=>Array(N).fill(''));
@@ -351,7 +357,7 @@ function impFrame(state,t,facingRight){
     ['....mmn...mmn...','....mmn...mmn...','....nnn...nnn...'],
     ['.....mmn.mmn....','.....mmn.mmn....','.....nnn.nnn....'],
     ['.....mmn...mmn..','.....mmn...mmn..','.....nnn...nnn..']];
-  ZOO.dungeonlord={ name:'Dungeon Lord', pal:{ m:'#25252f',M:'#454556',n:'#0e0e14',W:'#6a6a7c',j:'#4a3624',E:'#ff4a1c',F:'#ffc040',k:'rgba(0,0,0,0.30)' },
+  ZOO.dungeonlord={ name:'Dungeon Lord', humanoid:true, pal:{ m:'#25252f',M:'#454556',n:'#0e0e14',W:'#6a6a7c',j:'#4a3624',E:'#ff4a1c',F:'#ffc040',k:'rgba(0,0,0,0.30)' },
     frame:(t,fr,mv,eq)=>{
       const k=t%4, bob=mv?[0,1,0,1][k]:(Math.floor(t/2)%2?1:0), rows=[];
       for(let y=0;y<16;y++) rows.push('................');

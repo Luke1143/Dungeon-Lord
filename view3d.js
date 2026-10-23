@@ -216,7 +216,7 @@ const View3D=(()=>{
     if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; pendingFlash.push({ f, s }); }
     s.scale.set(size,size,1);
     if(it.kind==='emoji') s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5-ox*Math.sin(yaw));
-    else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py, it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer
+    else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py+(it.lift||0), it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer
   }
 
   // blood stains: flat decals on the floor, small vertical decals on wall faces
@@ -280,8 +280,9 @@ const View3D=(()=>{
     if(fp && (ceilDirty||!ceiling) && lastInfo) buildCeiling();
     if(ceiling) ceiling.visible=!!fp;
     if(fp){
-      camera.position.set(fp.x+0.5, 0.55, fp.y+0.5);
-      camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), 0.55, fp.y+0.5+Math.sin(fp.yaw));
+      const hy=0.55+(fp.hop||0);
+      camera.position.set(fp.x+0.5, hy, fp.y+0.5);
+      camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), hy-(fp.kick||0)*0.16, fp.y+0.5+Math.sin(fp.yaw));
       camera.updateMatrixWorld(); return;
     }
     const d=Math.max(4,viewRows*Math.sin(PITCH)/(2*Math.tan(FOV*Math.PI/360)));
