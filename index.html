@@ -1457,7 +1457,7 @@ let dragStart=null, dragCurrent=null, dragMode=null;
 let lastInspectTile=null, inspectIndex=0;
 let selectedRoomTiles=null;
 
-function emptyTile(){ return { type:'rock', gold:false, gem:false, gemRevealed:false, ore:false, goldPile:0, orePile:0, marked:false, fakeMarked:false, room:null, queuedRoom:null, owned:false, reinforced:false, natural:false, discovered:false, reserved:null, lairOwner:null }; }
+function emptyTile(){ return { type:'rock', gold:false, gem:false, gemRevealed:false, ore:false, goldPile:0, orePile:0, marked:false, fakeMarked:false, room:null, queuedRoom:null, owned:false, reinforced:false, natural:false, discovered:false, seen:false, reserved:null, lairOwner:null }; }
 
 function createImp(x,y){
   return applySpecies({ id: impIdCounter++, x, y, state:'idle', task:null, path:[], digTile:null, wallTile:null, claimTile:null, buildTile:null, feedTile:null, corpseTile:null, itemTile:null, shelfTile:null, carryingBook:null, carryingCorpse:false, carryAmount:0, carryOre:0, carryIron:0, smelterKey:null, cargoKind:null, cargoTile:null, loiterCooldown:0, digRequired:null, digProgress:0, carrying:false, targetPile:null, targetStorage:null, waterStep:0, held:false,
@@ -1842,6 +1842,29 @@ function neighbors(x,y){
 }
 function isWalkable(x,y){ const type=state.grid[y][x].type; return type==='floor' || type==='water'; }
 function isDiggable(t){ return t.type==='rock'; }
+// ===== Fog of war =====
+// Everything starts black. Conquered ground (radius 2) and the player's own units (radius 3) light up what is around them;
+// what was seen stays drawn, but the enemy is only shown while it stands in light right now.
+const FOG_TILE_RADIUS=2, FOG_UNIT_RADIUS=3;
+function updateFog(){
+  if(!state) return;
+  const g=state.grid, N=WORLD_COLS*WORLD_ROWS;
+  if(!state.vis || state.vis.length!==N) state.vis=new Uint8Array(N);
+  const vis=state.vis; vis.fill(0);
+  const see=(cx,cy,r)=>{ for(let y=Math.max(0,cy-r);y<=Math.min(WORLD_ROWS-1,cy+r);y++) for(let x=Math.max(0,cx-r);x<=Math.min(WORLD_COLS-1,cx+r);x++){ vis[y*WORLD_COLS+x]=1; g[y][x].seen=true; } };
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'&&t.owned) see(x,y,FOG_TILE_RADIUS); }
+  state.imps.forEach(i=>see(Math.round(i.x),Math.round(i.y),FOG_UNIT_RADIUS));
+  state.creatures.forEach(c=>{ if(c.faction!=='good') see(Math.round(c.x),Math.round(c.y),FOG_UNIT_RADIUS); });
+}
+// true while something at tile position (x,y) must not be drawn; centered: x,y already point at a tile centre (particles, stains)
+function fogHidden(x,y,centered,enemy){
+  if(!state) return false;
+  const tx=centered?Math.floor(x):Math.round(x), ty=centered?Math.floor(y):Math.round(y);
+  if(tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return false;
+  if(!state.grid[ty][tx].seen) return true;
+  return !!enemy && !!state.vis && !state.vis[ty*WORLD_COLS+tx];
+}
+
 function isHidden(x,y){
   // Gestein und Golderz sind kein Geheimnis - sie sind von Anfang an sichtbar und markierbar.
   // Nur unentdeckte natürliche Höhlen (bereits offener Boden) bleiben getarnt, bis man angrenzend hingräbt.
@@ -4582,10 +4605,11 @@ function wallBaseSpec(t){
   const gem=t.gem&&t.gemRevealed;
   return { color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), resource: !!(gem||t.gold||t.ore) };
 }
-function wallFaceSpec(base,nx,ny){
+function wallFaceSpec(base,nx,ny,reinforced){
   if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS||base.resource) return base;
   const n=state.grid[ny][nx];
   if(n.type!=='floor' || isHidden(nx,ny)){ return (n.room==='bridge'&&TILEGEN.has('wall:bridge'))?{full:'wall:bridge'}:base; }
+  if(!reinforced) return base;      // a plain wall keeps its rock look; only reinforcing dresses it
   if(n.room && TILEGEN.has('wall:'+n.room)) return { full:'wall:'+n.room };
   if(n.owned) return { full:'brick' };
   return base;
@@ -4604,7 +4628,7 @@ function tileLook2d(x,y,t){
   if(t.type==='water') return t.room==='bridge'&&TILEGEN.has('bridge') ? { full:'bridge' } : null;
   if(t.type==='bedrock') return t.tree ? { full:'tree' } : null;
   const base=wallBaseSpec(t);
-  for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){ const f=wallFaceSpec(base,x+dx,y+dy); if(f.full) return f; }
+  for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){ const f=wallFaceSpec(base,x+dx,y+dy,t.reinforced); if(f.full) return f; }
   return base;
 }
 // how far a wall is dug through: 0 (untouched) to 4 (about to break)
@@ -4679,6 +4703,7 @@ function silhouetteOf(cv){
 }
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
+  if(fogHidden(px,py,false,c.faction==='good')) return true;
   const baseKey=c.kind||'imp', key=(typeof ZOO!=='undefined' && c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=typeof ZOO!=='undefined'&&ZOO[key];
   if(!z) return false;
   const now=Date.now();
@@ -4756,9 +4781,10 @@ function drawActor(c, baseIcon){
 // Blood stains that stay on floors and walls for a while (fx.js)
 function drawStains(){
   if(typeof FX==='undefined') return;
-  if(capture){ FX.stains.forEach(st=> capture.push(Object.assign({ kind:'stain' }, FX.stainView(st)))); return; }
+  if(capture){ FX.stains.forEach(st=>{ if(!fogHidden(st.x,st.y,true)) capture.push(Object.assign({ kind:'stain' }, FX.stainView(st))); }); return; }
   ctx.save();
   FX.stains.forEach(st=>{
+    if(fogHidden(st.x,st.y,true)) return;
     const v=FX.stainView(st), sx=(v.x-camX)*TILE, sy=(v.y-camY)*TILE, r=Math.max(1.5, v.size*TILE*0.6);
     ctx.globalAlpha=Math.max(0,Math.min(1,v.alpha)); ctx.fillStyle=v.color;
     ctx.beginPath(); ctx.ellipse(sx, sy, r, r*(v.where==='wall'?0.8:0.7), 0, 0, Math.PI*2); ctx.fill();
@@ -4768,9 +4794,10 @@ function drawStains(){
 // Particles (fx.js): drawn in 2D here, collected for the 3D view while capturing
 function drawParticles(){
   if(typeof FX==='undefined') return;
-  if(capture){ FX.particles.forEach(p=> capture.push(Object.assign({ kind:'particle' }, FX.view(p)))); return; }
+  if(capture){ FX.particles.forEach(p=>{ if(!fogHidden(p.x,p.y,true)) capture.push(Object.assign({ kind:'particle' }, FX.view(p))); }); return; }
   ctx.save();
   FX.particles.forEach(p=>{
+    if(fogHidden(p.x,p.y,true)) return;
     const v=FX.view(p), sx=(v.x-camX)*TILE, sy=(v.y-camY)*TILE - v.z*TILE*0.7, s=Math.max(1.5, v.size*TILE);
     ctx.globalAlpha=Math.max(0, Math.min(1, v.alpha)); ctx.fillStyle=v.color;
     if(v.shape==='puff'){ ctx.beginPath(); ctx.arc(sx, sy, s/2, 0, Math.PI*2); ctx.fill(); }
@@ -4798,6 +4825,7 @@ function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 // ---- 3D view: terrain info, capture of the 2D draw calls, screen overlay ----
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
+  if(!t.seen) return { wall:true, color:'#050403', kind:null };
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
   if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
@@ -4807,7 +4835,7 @@ function tileInfo3d(x,y){
   if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
   const base=wallBaseSpec(t);
   return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, fullWall:base.full, top: t.reinforced?'#7f94a8':undefined,
-    faces:[wallFaceSpec(base,x+1,y), wallFaceSpec(base,x-1,y), wallFaceSpec(base,x,y+1), wallFaceSpec(base,x,y-1)] };
+    faces:[wallFaceSpec(base,x+1,y,t.reinforced), wallFaceSpec(base,x-1,y,t.reinforced), wallFaceSpec(base,x,y+1,t.reinforced), wallFaceSpec(base,x,y-1,t.reinforced)] };
 }
 // decorative torches on the walls next to conquered floor (3D only): a fixed pattern by tile position, each one a light source
 function wallTorchItems(){
@@ -4818,7 +4846,7 @@ function wallTorchItems(){
     if((((x*73856093)^(y*19349663))>>>0)%4 !== 0) continue;
     for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
       const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) continue;
-      const n=state.grid[ny][nx]; if(n.type==='floor'||n.type==='water') continue;
+      const n=state.grid[ny][nx]; if(n.type!=='rock'||!n.reinforced) continue;      // torches hang only on reinforced walls
       out.push({ kind:'wallTorch', key:'torch', canvas:spriteCanvas('prop_flame',now,false,false), x, y, dx, dy, wx:x+0.5+dx*0.5, wz:y+0.5+dy*0.5, wy:0.7 });   // fixed to the wall face, leaning away from it
       break;
     }
@@ -4834,6 +4862,7 @@ function drawOverlay3d(){
   const WALLH=View3D.WALL;
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
+    if(!t.seen) continue;
     if(t.marked){ trace(quad(x+0.1,y+0.1,0.8,0.8,WALLH)); g.strokeStyle=COLORS.mark; g.lineWidth=2; g.stroke(); g.fillStyle='rgba(212,175,55,0.25)'; g.fill(); }
     if(t.queuedRoom && ROOM_TYPES[t.queuedRoom]){ trace(quad(x+0.1,y+0.1,0.8,0.8,0.02)); g.setLineDash([4,3]); g.strokeStyle=ROOM_TYPES[t.queuedRoom].color; g.lineWidth=2; g.stroke(); g.setLineDash([]); g.fillStyle='rgba(255,255,255,0.12)'; g.fill(); }
   }
@@ -4872,6 +4901,7 @@ function draw2d(){
       const t=state.grid[y][x];
       const px=(x-camX)*TILE, py=(y-camY)*TILE;
 
+      if(!t.seen){ ctx.fillStyle='#050403'; ctx.fillRect(px,py,TILE,TILE); continue; }
       if(isHidden(x,y)){
         ctx.fillStyle=COLORS.fog;
         ctx.fillRect(px,py,TILE,TILE);
@@ -5202,6 +5232,7 @@ function draw2d(){
 // Emojis that have a generated prop sprite (sprites.js). drawEmoji and drawSlots use the sprite instead; thoughts and effects stay emoji.
 const PROP_OF={ '🛏️':'bed', '👑':'throne', '🕯️':'candle', '📚':'shelf', '📕':'book', '🔥':'fire', '🜂':'furnace', '🗼':'kiln', '💨':'bellows', '🪵':'anvil', '🪑':'bench', '🥣':'trough', '🌾':'grain', '🐔':'chicken', '🐣':'chick', '🪙':'coin', '🪨':'ore', '🧱':'ingot', '☠️':'corpse' };
 function drawProp(key,x,y,o){
+  if(fogHidden(x,y)) return true;
   if(typeof ZOO==='undefined' || !ZOO['prop_'+key]) return false;
   const cv=spriteCanvas('prop_'+key, Math.floor(Date.now()/280), false, false), op=o||{};
   if(capture){ capture.push({ kind:'prop', key, canvas:cv, x, y, ox:op.offsetX, oy:op.offsetY, scale:op.scale||1 }); return true; }
@@ -5210,6 +5241,7 @@ function drawProp(key,x,y,o){
   return true;
 }
 function drawEmoji(char,x,y,isImp){
+  if(fogHidden(x,y)) return;
   if(PROP_OF[char] && drawProp(PROP_OF[char], x, y)) return;
   if(capture){ capture.push({ kind:'emoji', emoji:char, x, y, scale:1 }); return; }
   const px=(x-camX)*TILE, py=(y-camY)*TILE;
@@ -5225,6 +5257,7 @@ const CLUSTER_LAYOUTS={
   3: [[0.32,0.36,0.68],[0.66,0.42,0.68],[0.48,0.68,0.68]]
 };
 function drawEmojiCluster(char, x, y, count, tint){
+  if(fogHidden(x,y)) return;
   if(char==='🔴'||char==='🌑'){
     const key=char==='🔴'?'bloom':'bloomcool';
     const lay=CLUSTER_LAYOUTS[Math.min(3,Math.max(1,count))];
@@ -5271,6 +5304,7 @@ function drawEmojiSeamTint(char, x, y, color, preFilter){
 
 // Variante mit Drehung/Groesse/Transparenz - fuer Effekte wie Teleport und Stufenaufstieg
 function drawEmojiFx(char,x,y,{rotation=0, scale=1, alpha=1, offsetY=0, offsetX=0}={}){
+  if(fogHidden(x,y)) return;
   if(capture){ capture.push({ kind:'emoji', emoji:char, x, y, ox:offsetX, oy:offsetY, scale, alpha, rotation }); return; }
   const px=(x-camX)*TILE, py=(y-camY)*TILE;
   ctx.save();
@@ -5921,6 +5955,7 @@ function gameTick(){
   pruneEventLog();
   tickPayday();
   tickWar();
+  if(state.tickCount%2===0 || !state.vis) updateFog();
   draw(); updateUI(); markDirty();
 }
 
@@ -6006,7 +6041,7 @@ async function save(){
     const payload={
       grid: state.grid.map(row=>row.map(t=>({
         type:t.type, gold:t.gold, gem:t.gem, gemRevealed:t.gemRevealed, ore:t.ore, goldPile:t.goldPile, orePile:t.orePile, marked:t.marked, room:t.room, queuedRoom:t.queuedRoom,
-        owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
+        owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, seen:t.seen, goodRoom:t.goodRoom, enemy:t.enemy, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
       }))),
       imps: state.imps.map(i=>({id:i.id,x:i.x,y:i.y,carrying:i.carrying,name:i.name,flavor:i.flavor,hp:i.hp,maxHp:i.maxHp,level:i.level,xp:i.xp,baseHp:i.baseHp,baseStrength:i.baseStrength,baseDefense:i.baseDefense,baseDex:i.baseDex,baseSpeed:i.baseSpeed,baseTempo:i.baseTempo,luck:i.luck,loyalty:i.loyalty,kills:i.kills,goldEarned:i.goldEarned,inventory:i.inventory})),
       creatures: state.creatures.map(c=>({id:c.id,kind:c.kind,x:c.x,y:c.y,hp:c.hp,maxHp:c.maxHp,level:c.level,hunger:c.hunger,energy:c.energy,name:c.name,faction:c.faction,happiness:c.happiness,earnedWage:c.earnedWage,owedWages:c.owedWages,xp:c.xp,workLog:c.workLog,lastPayslip:c.lastPayslip,baseHp:c.baseHp,baseStrength:c.baseStrength,baseDefense:c.baseDefense,baseDex:c.baseDex,baseSpeed:c.baseSpeed,baseTempo:c.baseTempo,luck:c.luck,loyalty:c.loyalty,kills:c.kills,goldEarned:c.goldEarned,inventory:c.inventory})),
@@ -6055,6 +6090,7 @@ async function load(){
         queuedRoom: t.queuedRoom || null,
         natural: !!t.natural,
         discovered: !!t.discovered,
+        seen: !!t.seen,
         lairOwner: t.lairOwner!==undefined ? t.lairOwner : null,
         reserved:null
       })));
@@ -7001,6 +7037,7 @@ function handleInspectClick(x,y){
   if(chosen.kind!=='tile'){ selectCreature(chosen); draw(); return; }
 
   const t=state.grid[y][x];
+  if(!t.seen){ setInspect('Unerforscht.', null); selectedRoomTiles=null; return; }
   if(isHidden(x,y)){
     setInspect('Gestein — bisher unerforscht.', null);
     selectedRoomTiles=null; draw(); return;
@@ -7138,7 +7175,7 @@ canvas.addEventListener('mousedown', e=>{
   } else {
     // Die Startkachel darf nicht ueber den ganzen Zug entscheiden: beginnt man auf Wasser,
     // Bedrock oder einer getarnten Hoehle, soll der Rest des Bereichs trotzdem markierbar sein.
-    if(isDiggable(t) && !isHidden(x,y)) dragMode = t.marked ? 'unmark' : 'mark';
+    if(isDiggable(t) && t.seen && !isHidden(x,y)) dragMode = t.marked ? 'unmark' : 'mark';
     else dragMode = 'mark';
   }
 });
@@ -7194,6 +7231,7 @@ window.addEventListener('mouseup', e=>{
     for(let yy=y0; yy<=y1; yy++){
       for(let xx=x0; xx<=x1; xx++){
         const t=state.grid[yy][xx];
+        if(!t.seen) continue;
         if(isHidden(xx,yy)){
           // Getarnte Höhle: kosmetisch mitmarkieren, damit die Auswahl keine verräterischen Lücken zeigt
           t.fakeMarked=wantMark;
@@ -8160,6 +8198,7 @@ function startLevel(nodeId){
     initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
     (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
+  updateFog();
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
   document.querySelectorAll('.roomBtn[data-room]').forEach(b=>{ if(RESEARCH_TOPICS.some(t=>t.unlocksRoom===b.dataset.room)) b.hidden=true; });
@@ -8339,6 +8378,7 @@ function drawMinimap(){
   g.fillStyle='#0f0b09'; g.fillRect(0,0,minimap.width,minimap.height);
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
+    if(!t.seen){ g.fillStyle='#000'; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE); continue; }
     let c=MM_COLORS[t.type]||MM_COLORS.rock;
     if(t.type==='floor' && t.owned) c='#6a5640';
     if(t.room) c=MM_ROOMS[t.room]||'#8a7a5c';
@@ -8349,6 +8389,7 @@ function drawMinimap(){
   }
   state.imps.forEach(i=>{ g.fillStyle='#ff9a3c'; g.fillRect(i.x*MM_SCALE,i.y*MM_SCALE,MM_SCALE,MM_SCALE); });
   state.creatures.forEach(c=>{
+    if(fogHidden(c.x,c.y,false,c.faction==='good')) return;
     g.fillStyle = c.faction==='good' ? '#ff4a4a' : '#7fe0ff';
     g.fillRect(c.x*MM_SCALE-1,c.y*MM_SCALE-1,MM_SCALE+2,MM_SCALE+2);
   });
