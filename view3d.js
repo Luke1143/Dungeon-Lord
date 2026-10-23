@@ -242,8 +242,17 @@ const View3D=(()=>{
   function camRight(){ return { x:Math.cos(yaw), z:-Math.sin(yaw) }; }
   // first person: { x, y (tile units, centre = +0.5), yaw (angle of the view direction in the floor plane) } or null
   let fp=null;
-  function setFirstPerson(o){ fp=o; if(ready){ camera.fov=o?72:FOV; camera.near=o?0.05:0.1; camera.updateProjectionMatrix(); } }
+  function setFirstPerson(o){ const was=!!fp; fp=o; if(ready && was!==!!o){ camera.fov=o?72:FOV; camera.near=o?0.05:0.1; camera.updateProjectionMatrix(); } }
+  let ceiling=null;
+  function ceilingMesh(){
+    if(ceiling) return ceiling;
+    const tex=pixTex(16,16,(g)=>{ g.fillStyle='#2e251e'; g.fillRect(0,0,16,16); for(let i=0;i<60;i++){ g.fillStyle=i%2?'#3a2f26':'#241c16'; g.fillRect((i*7)%16,(i*11)%16,2,1); } });
+    tex.wrapS=tex.wrapT=T.RepeatWrapping; tex.repeat.set(cols*2,rows*2);
+    ceiling=new T.Mesh(new T.PlaneGeometry(cols,rows), new T.MeshBasicMaterial({ map:tex, color:0x8a7a6a, side:T.DoubleSide }));
+    ceiling.rotation.x=Math.PI/2; ceiling.position.set(cols/2,WALL,rows/2); scene.add(ceiling); return ceiling;
+  }
   function setCamera(cx,cy,viewRows){
+    if(ceiling||fp) ceilingMesh().visible=!!fp;
     if(fp){
       camera.position.set(fp.x+0.5, 0.55, fp.y+0.5);
       camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), 0.55, fp.y+0.5+Math.sin(fp.yaw));

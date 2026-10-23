@@ -32,6 +32,27 @@
   #board{ display:block; background:#2a201a; cursor:pointer; }
   .boardWrap{ position:relative; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; min-height:0; }
   #viewport{ position:relative; flex:1; min-height:0; border:3px solid var(--panel-border); border-radius:6px; overflow:hidden; background:#2a201a; }
+  body.fp #minimap{ display:none; }
+  #fpHud{ position:absolute; inset:0; pointer-events:none; font-family:'Cinzel',serif; color:#f0e2c0; z-index:5; }
+  #fpHud[hidden]{ display:none; }
+  .fpCross{ position:absolute; left:50%; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; }
+  .fpCross::before,.fpCross::after{ content:''; position:absolute; background:rgba(255,240,200,.75); }
+  .fpCross::before{ left:6px; top:0; width:2px; height:14px; } .fpCross::after{ top:6px; left:0; height:2px; width:14px; }
+  .fpTarget{ position:absolute; left:50%; top:38%; transform:translateX(-50%); font-size:13px; text-shadow:0 1px 3px #000; text-align:center; }
+  .fpTop{ position:absolute; left:12px; top:10px; width:230px; text-shadow:0 1px 3px #000; }
+  .fpName{ font-size:15px; } .fpName small{ color:#d4af37; }
+  .fpXp{ margin-top:4px; height:6px; border:1px solid #6a5233; background:rgba(15,11,9,.8); } .fpXp i{ display:block; height:100%; width:0; background:#d4af37; }
+  .fpBottom{ position:absolute; left:0; right:0; bottom:8px; display:flex; justify-content:center; align-items:flex-end; gap:18px; }
+  .fpOrb{ position:relative; width:84px; height:84px; border-radius:50%; border:3px solid #6a5233; background:rgba(10,6,4,.85); overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,.7), inset 0 0 12px rgba(0,0,0,.8); }
+  .fpOrb i{ position:absolute; left:0; right:0; bottom:0; height:100%; }
+  .fpOrb.hp i{ background:radial-gradient(circle at 35% 25%, #ff7a6a, #b01818 55%, #5a0808); }
+  .fpOrb.en i{ background:radial-gradient(circle at 35% 25%, #8ad0ff, #2a64c0 55%, #10285a); }
+  .fpOrb b{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; text-shadow:0 1px 3px #000; }
+  .fpSlots{ display:flex; gap:8px; padding:8px 10px; background:rgba(25,18,12,.88); border:2px solid #6a5233; border-radius:6px; }
+  .fpSlot{ position:relative; width:64px; height:64px; border:2px solid #4a3a28; background:rgba(15,11,9,.9); display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
+  .fpSlot .k{ position:absolute; left:3px; top:2px; font-size:10px; color:#d4af37; } .fpSlot .ic{ font-size:24px; } .fpSlot .n{ font-size:9px; opacity:.85; }
+  .fpSlot.locked{ opacity:.4; } .fpSlot .cd{ position:absolute; left:0; right:0; bottom:0; height:0; background:rgba(0,0,0,.6); }
+  .fpKeys{ position:absolute; left:0; right:0; bottom:100px; text-align:center; font-size:11px; opacity:.6; text-shadow:0 1px 3px #000; }
   #minimap{ position:absolute; left:8px; bottom:8px; border:2px solid var(--panel-border); border-radius:4px; background:rgba(15,11,9,.85); cursor:crosshair; image-rendering:pixelated; }
   #minimap[hidden]{ display:none; }
   #pauseLabel{ position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(15,11,9,.85); color:var(--gold); font-family:'Cinzel',serif; padding:4px 14px; border:1px solid var(--gold); border-radius:4px; letter-spacing:2px; pointer-events:none; }
@@ -228,6 +249,21 @@
       <div id="viewport">
       <canvas id="board"></canvas>
       <canvas id="minimap" width="192" height="128" title="Klick zum Springen"></canvas>
+      <div id="fpHud" hidden>
+        <div class="fpCross"></div>
+        <div class="fpTarget" id="fpTarget"></div>
+        <div class="fpTop"><div class="fpName"><span id="fpName"></span> <small id="fpLevel"></small></div><div class="fpXp"><i id="fpXpFill"></i></div></div>
+        <div class="fpBottom">
+          <div class="fpOrb hp"><i id="fpHpFill"></i><b id="fpHpText"></b></div>
+          <div class="fpSlots">
+            <div class="fpSlot" id="fpSlot1"><span class="k">LMB</span><span class="ic">⚔️</span><span class="n">Zuschlagen</span></div>
+            <div class="fpSlot" id="fpSlot2"><span class="k">2</span><span class="ic">💨</span><span class="n">Eile</span><i class="cd" id="fpCd2"></i></div>
+            <div class="fpSlot" id="fpSlot3"><span class="k">Esc</span><span class="ic">🚪</span><span class="n">Verlassen</span></div>
+          </div>
+          <div class="fpOrb en"><i id="fpEnFill"></i><b id="fpEnText"></b></div>
+        </div>
+        <div class="fpKeys">W/S vor/zurück · A/D seitwärts · Q/E oder Maus drehen · gedrückte Maustaste: zuschlagen/graben</div>
+      </div>
       <div id="pauseLabel" hidden>PAUSE</div>
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       </div>
@@ -1464,6 +1500,7 @@ let buildMode=null;
 let pickMode=false;
 let inspectMode=false; // Linksklick untersucht statt zu graben (wichtig fuer Touch-Geraete)
 let possessMode=false;   // Zauber ausgewaehlt, wartet auf Ziel
+let fpRestore2d=false, fpHeld=false;   // first person: switch back to the 2D view afterwards; primary button held (digs/attacks every tick)
 let possessed=null;      // die gerade gesteuerte Kreatur
 let demolishMode=false;
 let heldEntity=null;
@@ -4721,6 +4758,7 @@ function silhouetteOf(cv){
 }
 // Draws the sprite of creature c at tile position (px,py); facing and walking are derived from its render movement.
 function drawCreatureSprite(c,px,py,opts){
+  if(capture && c===possessed && fpActive()) return true;      // the camera sits inside
   if(fogHidden(px,py,false,c.faction==='good')) return true;
   const baseKey=c.kind||'imp', key=(typeof ZOO!=='undefined' && c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=typeof ZOO!=='undefined'&&ZOO[key];
   if(!z) return false;
@@ -4897,7 +4935,9 @@ function draw(){
   try{ draw2d(); } finally { ctx=realCtx; ({ camX, camY, VIEW_COLS, VIEW_ROWS }=saved); }
   const items=capture; capture=null;
   wallTorchItems().forEach(it=>items.push(it));
+  View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw }:null);
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
+  updateFpHud();
   drawOverlay3d();
 }
 function draw2d(){
@@ -6668,8 +6708,36 @@ function highlightRoomAt(t,x,y){
 // ===== Besessenheit =====
 // Der Spieler steuert eine Kreatur direkt. Er benutzt exakt dieselben Mittel
 // wie die KI: Bewegung ist Interact, Arbeit ist Interact.
+function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
+// the cardinal direction a yaw angle points to (the game moves on tiles)
+function fpAxis(yaw){ const fx=Math.cos(yaw), fy=Math.sin(yaw); return Math.abs(fx)>Math.abs(fy) ? { x:Math.sign(fx), y:0 } : { x:0, y:Math.sign(fy) }; }
+// one step of the held primary button: hit what stands ahead or work the tile ahead
+function fpActStep(c){
+  const f=fpAxis(c.fpYaw), nx=c.x+f.x, ny=c.y+f.y;
+  const foe=state.creatures.concat(state.imps).find(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && o.x===nx && o.y===ny);
+  if(foe){ c.state='fighting'; if(!swing(c)) return; const r=resolveAttack(c, foe, c.combatContext); addGrudge(foe, c); return; }
+  const rec=recipeFor(c, nx, ny);
+  if(rec) interact(c, nx, ny);
+}
+function updateFpHud(){
+  const c=possessed, hud=document.getElementById('fpHud'); if(!hud) return;
+  const on=fpActive(); hud.hidden=!on; document.body.classList.toggle('fp', on);
+  if(!on) return;
+  const set=(id,v)=>{ document.getElementById(id).style.height=v+'%'; };
+  document.getElementById('fpName').textContent=actorLabel(c); document.getElementById('fpLevel').textContent='Stufe '+(c.level||1);
+  const lv=c.level||1, lo=xpForLevel(lv), hi=lv>=MAX_LEVEL?lo+1:xpForLevel(lv+1);
+  document.getElementById('fpXpFill').style.width=Math.max(0,Math.min(100,100*((c.xp||0)-lo)/Math.max(1,hi-lo)))+'%';
+  set('fpHpFill', Math.max(0,100*c.hp/c.maxHp)); document.getElementById('fpHpText').textContent=Math.ceil(c.hp)+'/'+c.maxHp;
+  const en=Number.isFinite(c.energy)?c.energy:100; set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
+  const s2=document.getElementById('fpSlot2'); s2.classList.toggle('locked', lv<HASTE_LEVEL);
+  document.getElementById('fpCd2').style.height=(c.hasteCooldown>0?100*c.hasteCooldown/HASTE_COOLDOWN:0)+'%';
+  const f=fpAxis(c.fpYaw), foe=state.creatures.concat(state.imps).find(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && Math.abs(o.x-(c.x+f.x))+Math.abs(o.y-(c.y+f.y))<=1);
+  document.getElementById('fpTarget').textContent = foe ? `${actorLabel(foe)} · ${Math.ceil(foe.hp)}/${foe.maxHp}` : '';
+}
 function startPossession(c){
   possessed=c;
+  c.fpYaw=c.fpYaw===undefined?-Math.PI/2:c.fpYaw;
+  if(!view3dOn){ fpRestore2d=true; setView3d(true); }
   possessMode=false;
   document.getElementById('possessBtn').classList.add('active');
   c.possessed=true;
@@ -6680,6 +6748,8 @@ function startPossession(c){
 }
 
 function endPossession(){
+  fpHeld=false;
+  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
   if(possessed){
     possessed.possessed=false;
     logEvent(`Ihr verlasst ${actorLabel(possessed)}.`, possessed.x, possessed.y);
@@ -6688,6 +6758,8 @@ function endPossession(){
   possessMode=false;
   const btn=document.getElementById('possessBtn');
   if(btn) btn.classList.remove('active');
+  View3D.setFirstPerson(null); updateFpHud();
+  if(fpRestore2d){ fpRestore2d=false; setView3d(false); }
   setInspect('Besessenheit beendet.');
   updateUI();
 }
@@ -6736,9 +6808,13 @@ function tickPossessed(c){
   }
   c.energyTick=(c.energyTick||0)+1;
   if(c.energyTick>=ENERGY_DECAY_INTERVAL){ c.energyTick=0; c.energy=Math.max(0,c.energy-1); }
+  if(c.hasteCooldown>0) c.hasteCooldown--;
+  if(c.hasteTicks>0) c.hasteTicks--;
+  if(fpHeld && fpActive() && !(c.path&&c.path.length)) fpActStep(c);
 
   if(c.path && c.path.length){
     stepAlong(c);
+    if(c.hasteTicks>0 && c.path.length) stepAlong(c);
     // Am Ziel angekommen? Dann ausfuehren, was dort zu tun ist.
     if(!c.path.length && c.possessTarget){
       const t=c.possessTarget;
@@ -7189,6 +7265,7 @@ canvas.addEventListener('contextmenu', e=>{
 });
 
 canvas.addEventListener('mousedown', e=>{
+  if(fpActive()){ if(e.button===0){ fpHeld=true; try{ if(!document.pointerLockElement) canvas.requestPointerLock(); }catch(_){} } return; }   // first person: hold to hit or dig ahead
   if(e.button!==0) return; // nur linke Maustaste loest Aktionen aus
   const {x,y}=tileFromEvent(e);
   if(!inBounds(x,y)) return;
@@ -7216,6 +7293,7 @@ canvas.addEventListener('mousemove', e=>{
 });
 
 window.addEventListener('mouseup', e=>{
+  if(e.button===0) fpHeld=false;
   if(e.button!==0) return;
   if(!dragStart) return;
   const {x,y}=tileFromEvent(e);
@@ -7525,8 +7603,10 @@ window.addEventListener('keydown', e=>{
   const k=ARROW_ALIAS[e.key.toLowerCase()]||e.key.toLowerCase();
   if(e.key==='Escape' && (possessed||possessMode)){ endPossession(); e.preventDefault(); return; }
   // Besessen: WASD bewegt die Kreatur selbst, nicht die Kamera
+  if(fpActive() && k==='2'){ const c=possessed; if((c.level||1)>=HASTE_LEVEL && !(c.hasteCooldown>0)){ c.hasteTicks=HASTE_DURATION; c.hasteCooldown=HASTE_COOLDOWN; } e.preventDefault(); return; }
   if(possessed && (k==='w'||k==='a'||k==='s'||k==='d')){
-    const d={w:[0,-1],a:[-1,0],s:[0,1],d:[1,0]}[k];
+    const fa=fpActive()?fpAxis(possessed.fpYaw):null;
+    const d=fa ? { w:[fa.x,fa.y], s:[-fa.x,-fa.y], a:[fa.y,-fa.x], d:[-fa.y,fa.x] }[k] : {w:[0,-1],a:[-1,0],s:[0,1],d:[1,0]}[k];
     const nx=possessed.x+d[0], ny=possessed.y+d[1];
     if(nx>=0&&nx<WORLD_COLS&&ny>=0&&ny<WORLD_ROWS){
       possessed.possessTarget=null;
@@ -7550,6 +7630,7 @@ window.addEventListener('keyup', e=>{
 });
 
 function updateCamera(dt){
+  if(fpActive()){ possessed.fpYaw+=((keysDown['e']?1:0)-(keysDown['q']?1:0))*2.2*dt; return; }
   let dx=0, dy=0;
   if(keysDown['w']) dy-=1;
   if(keysDown['s']) dy+=1;
@@ -8399,6 +8480,7 @@ canvas.addEventListener('mousedown', e=>{
   canvas.style.cursor='grabbing';
 });
 window.addEventListener('mousemove', e=>{
+  if(fpActive() && document.pointerLockElement===canvas){ possessed.fpYaw+=e.movementX*0.003; return; }
   if(!panDrag) return;
   let ddx=(e.clientX-panDrag.x)/(TILE*zoom), ddy=(e.clientY-panDrag.y)/(TILE*zoom);
   if(view3dOn){ const c=Math.cos(View3D.yaw), s=Math.sin(View3D.yaw); const rx2=ddx*c+ddy*s*1.2, ry2=-ddx*s+ddy*c*1.2; ddx=rx2; ddy=ry2; }
