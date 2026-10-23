@@ -93,13 +93,15 @@ const CREATURES={
     leder:{m:'#8a5a34',M:'#b07a4a',n:'#5a3820',W:'#8a5a34',K:'#5a3820'},
     bronze:{m:'#b87a2e',M:'#e0a64e',n:'#7a4c18',W:'#d4a04a',K:'#7a4c18'},
     eisen:{m:'#8d949c',M:'#c4cad1',n:'#575e66',W:'#c4cad1',K:'#575e66'},
-    stahl:{m:'#b4c4d6',M:'#e6f0fb',n:'#6b7e92',W:'#e6f0fb',K:'#6b7e92'}
+    stahl:{m:'#b4c4d6',M:'#e6f0fb',n:'#6b7e92',W:'#e6f0fb',K:'#6b7e92'},
+    schwarz:{m:'#25252f',M:'#41414f',n:'#0e0e14',W:'#5a5a6c',K:'#0e0e14'}      // blackened plate of the Dungeon Lord
   };
   const WEAPONS={   // grip = pixel held at the anchor behind the back; 'j' = wood
     schwert:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[0,6,'K'],[1,6,'K'],[2,6,'K'],[1,7,'j'],[1,8,'j']], grip:[1,7] },
     axt:{ px:[[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[2,0,'W'],[3,0,'W'],[2,1,'W'],[3,1,'W'],[2,2,'W'],[3,2,'W'],[2,3,'W']], grip:[1,7] },
     hacke:{ px:[[0,0,'W'],[1,0,'W'],[2,0,'W'],[3,0,'W'],[0,1,'W'],[3,1,'W'],[1,1,'j'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,7] },
     stab:{ px:[[0,0,'Q'],[1,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,6] },
+    keule:{ px:[[0,0,'W'],[2,0,'W'],[1,0,'K'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,7] },   // spiked mace
     speer:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[1,9,'j']], grip:[1,6] },
     bogen:{ px:[[1,0,'j'],[0,1,'j'],[0,2,'j'],[0,3,'j'],[0,4,'j'],[0,5,'j'],[0,6,'j'],[1,7,'j'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[1,6,'W']], grip:[0,3] }
   };
@@ -330,6 +332,15 @@ function impFrame(state,t,facingRight){
   const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
     frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'stahl', helm:2, chest:2, legs:1, weapon:'schwert', shield:'kite' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.arthur=arthur(false); ZOO.arthur_ally=arthur(true);
+  // The Dungeon Lord: black plate armour, a crown of spikes, a spiked mace. He is on the player's side, so he always has the player side's eyes.
+  ZOO.dungeonlord={ ...held, name:'Dungeon Lord', pal:{ ...held.pal, F:'#1a1a22', G:'#2a2a36', t:'#15151c', T:'#2a2a36', u:'#08080c', s:'#6a4a3a', S:'#7a5a48' },
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'schwarz', helm:3, chest:3, legs:2, weapon:'keule' });
+      f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c)));
+      let y0=99,xs=[]; for(let y=0;y<f.tag.length;y++) for(let x=0;x<f.tag[y].length;x++) if(f.tag[y][x]==='H'&&y<y0){ y0=y; }
+      for(let x=0;x<f.tag[0].length;x++) if(f.tag[y0]&&f.tag[y0][x]==='H') xs.push(x);
+      xs.forEach((x,i)=>{ if(i%2===0&&y0>0&&f.g[y0-1][x]==='.') f.g[y0-1][x]='M'; });                       // crown spikes
+      if(f.pal) f.pal={ ...f.pal, R:'#c02818' };
+      return f; } };
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 

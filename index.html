@@ -480,6 +480,10 @@ const SPECIES={
   arthur:  { label:'Artus', category:'boss', hp:80, strength:8, defense:18, dex:8, dexGrowth:0.02, speed:0.8, tempo:0.9,
              needsFood:false, avoidsWater:true, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'König ohne Nachfolger — wartet auf den Würdigen' },
+  // The player's own figure (see docs/design.md): guards the throne, can be possessed, never dies for good: he regroups at the throne.
+  dungeonlord:{ label:'Dungeon Lord', category:'boss', hp:90, strength:8, defense:25, dex:16, dexGrowth:0.03, speed:1.0, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
+             style:'fighter', passive:'Euer Gesicht in der Welt — fällt er, sammelt er sich im Thronsaal' },
   oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Schützer des Hains — jagt Frevler an seinen Wurzeln' },
@@ -599,6 +603,7 @@ function creatureEmoji(c){
     case 'knight': return '🤺';
     case 'dwarfking': case 'arthur': return '👑';
     case 'oberon': return '🧚';
+    case 'dungeonlord': return '👿';
     case 'elf': return '🧝';
     default: return '❔';
   }
@@ -614,6 +619,13 @@ function faintCreature(c){
 }
 
 function killCreature(c, killer){
+  if(c.kind==='dungeonlord'){
+    if(possessed===c) endPossession();
+    state.creatures=state.creatures.filter(o=>o!==c);
+    state.war.lordTimer=LORD_RESPAWN_TICKS;
+    logEvent('Der Dungeon Lord wurde niedergestreckt. Er sammelt sich im Thronsaal neu.', c.x, c.y);
+    return;
+  }
   if(c.isBoss && c.faction==='good') state.war.bossDead=true;
   if(killer){ killer.kills=(killer.kills||0)+1; grantXp(killer, 3); }
   if(c.category==='hero'){
@@ -5881,6 +5893,7 @@ function tickWar(){
   }
 
   // The good side recruits on its own from the start of the level (keep.js); its heroes dig their way to the throne themselves.
+  if(w.lordTimer>0 && --w.lordTimer===0){ spawnDungeonLord(); logEvent('Der Dungeon Lord kehrt zurück.', 2, 2); }
   if(state.keep) tickKeep();
   else if(w.wave<waveTotal(w)){
     w.timer--;
@@ -8059,6 +8072,13 @@ function newCampaign(seed){
 }
 
 // The dwarf king's hoard: a walled hall far from the throne, full of gold, with the king himself inside.
+const LORD_RESPAWN_TICKS=500;
+function spawnDungeonLord(){
+  const th=tilesOfRoom('throne')[0]; if(!th) return;
+  const lvl=Math.min(MAX_LEVEL, 2+Math.floor(((campaign&&campaign.skillPoints)||0)/2));
+  const lord=createBoss('dungeonlord', th.x, th.y, { faction:'evil', name:'Der Dungeon Lord', level:lvl, extraHp:20, gear:['hammer_plain','heavyArmor_plain'], guard:true });
+  state.creatures.push(lord);
+}
 const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
 const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot() };
 function setupDwarfHoard(){
@@ -8205,6 +8225,7 @@ function startLevel(nodeId){
     initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
     (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
+  spawnDungeonLord();
   updateFog();
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
