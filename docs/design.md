@@ -82,6 +82,17 @@ Eine Kampagnenkarte im Stil von Dwarf Fortress, erzeugt beim Start eines neuen S
 - **Niederlage erklärt sich.** Der Endbildschirm zeigt, wie die Heldenmacht entstanden ist (Werte, liefernde Regionen) und gibt Hinweise, was beim nächsten Mal anders laufen könnte.
 - Neue Regionstypen, Ereignisse und Modifikatoren sind **Tabelleneinträge**, kein neuer Code.
 
+### Die Wirtschaft der Guten im Level *(Richtung, vom Spieler vorgegeben; Umsetzung in Stufen)*
+
+Die Kräfte des Guten bekommen eine **spielergleiche Wirtschaft**, plus die **Kartenboni** der Region. Sie bauen ein eigenes Dungeon auf (die Guten nennen es Burg, Lager oder Hain), mit **denselben Räumen** wie der Spieler, nur mit anderem Aussehen, und mit **Kreaturen, die die des Spielers spiegeln** (Barbar ~ Ork, Zauberer ~ Warlock). Das ersetzt die starren Wellen aus dem Portal: Heldentrupps sind das, was die Wirtschaft der Guten hervorbringt.
+
+- **Das Portal ist ihr Herz.** Es entspricht dem Thronsaal des Spielers. Das Portal zu erobern bleibt der Sieg, und wer den Bau der Guten stört, sabotiert ihre Truppen schon im Level.
+- **Spiegel statt Sonderregeln.** Gleiche Räume (Lager, Schlafsaal, Bibliothek, Hühnerfarm, Arena, Schmelze, Schmiede) mit gleicher Wirkung, gleiche Bedürfnisse der Kreaturen. Die Guten bauen mit eigenen Arbeitern (Spiegel der Imps), graben, bauen Räume und stellen Wachen auf.
+- **Kartenboni statt Kampagnen-Zahlen.** Die Heldenmacht der Overworld (Nachschub, Rüstung, Ausbildung, Magie, Befestigung) bestimmt Startvorrat, Baugeschwindigkeit, Raumstufen und freigeschaltete Technik: Eine Zwergenschmiede liefert Plattenrüstung früh, Farmland mehr Rekruten, ein Magierturm mehr Zauberer.
+- **Lernbar:** Der Spieler sieht, was die Guten gebaut haben (Schmiede steht, Lager läuft) und kann gezielt dort angreifen. „Greife ich die Schmiede an, damit die Helden keine Plattenrüstung tragen?“ gilt dann innerhalb des Levels wie auf der Karte.
+- **Bosse** wohnen in diesem Bau und führen ihn: Alberichs Hallen sind ein Zwergen-Dungeon, Oberons Hain ein Elfen-Dungeon, Camelot eine Menschenburg.
+- **Stufen der Umsetzung:** (1) der Bau der Guten ist sichtbar und angreifbar, mit abstrakter Produktion, und speist die Trupps; (2) Besitz von Boden und Räumen wird verallgemeinert (Spieler und Gute), Arbeiter der Guten bauen selbst; (3) Kreaturen und Bedürfnisse der Guten spiegeln die des Spielers; (4) Kartenboni steuern Startvorrat, Raumstufen und Technik.
+
 ### Pforten, Bosse und der Kompromiss *(Entwurf, mit dem Spieler abgestimmt)*
 
 - **Pforten** sind **natürliche Engstellen** der Karte: 2 bis 3 pro Welt, jeder Weg zur Hauptstadt führt durch sie. Sie sind feste, mythische Orte mit eigener Kartenform, einem **Boss** und zwei Wegen hindurch.
