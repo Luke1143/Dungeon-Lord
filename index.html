@@ -1857,6 +1857,7 @@ function updateFog(){
   const vis=state.vis; vis.fill(0);
   const see=(cx,cy,r)=>{ for(let y=Math.max(0,cy-r);y<=Math.min(WORLD_ROWS-1,cy+r);y++) for(let x=Math.max(0,cx-r);x<=Math.min(WORLD_COLS-1,cx+r);x++){ vis[y*WORLD_COLS+x]=1; g[y][x].seen=true; } };
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'&&t.owned) see(x,y,FOG_TILE_RADIUS); }
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.room==='portal'||t.room==='entrance'){ t.seen=true; vis[y*WORLD_COLS+x]=1; } }   // the way in is always in plain sight
   state.imps.forEach(i=>see(Math.round(i.x),Math.round(i.y),FOG_UNIT_RADIUS));
   state.creatures.forEach(c=>{ if(c.faction!=='good') see(Math.round(c.x),Math.round(c.y),FOG_UNIT_RADIUS); });
 }
@@ -7954,6 +7955,7 @@ function owShowInfo(){
       html+=`<br><br><b>Pforte</b>: Jeder Weg zur Hauptstadt führt hier durch.<br>Boss: ${rt.boss.name}`;
       html+=`<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`+(rt.goals?'':'<br><i>(Sonderziel und Boss folgen noch, bis dahin gilt: Portal erobern.)</i>');
     }
+    if(rt.build && !conquered && rt.playable){ const m=OW.levelMods(world,campaign,n); const plan=keepRoomPlan(rt,m); if(plan.length) html+=`<br><br><b>Die Gegner bauen dort:</b> `+plan.map(t=>KEEP_ROOM_NAMES[t]).join(', '); }
     if(rt.ai && !conquered && AI_PROFILES[rt.ai]) html+=`<br><br><b>So kämpfen die Gegner hier:</b> ${AI_PROFILES[rt.ai].label}`;
     if(rt.aura && !conquered) html+=`<br>Verstärkt die Nachbarregionen (+${rt.aura.waves} Welle).`;
     if(rt.playable && !conquered){

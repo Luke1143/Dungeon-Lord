@@ -20,6 +20,20 @@ const AI_PROFILES={
                rooms:['storage','forge','dormitory','hatchery','storage'] }
 };
 
+const KEEP_ROOM_NAMES={ dormitory:'Kaserne', hatchery:'Vorratskammer', library:'Zauberschule', arena:'Übungsplatz', forge:'Schmiede', storage:'Lager' };
+
+// What a region builds follows from what it is (REGION_TYPES[...].build: a village a farm and some beds, a fortress drill grounds and forges)
+// and from the world's progress: the good side's stats (mods) unlock the matching rooms everywhere.
+function keepRoomPlan(rt, mods){
+  const plan=(rt.build||['dormitory','hatchery']).slice(), prof=AI_PROFILES[rt.ai||'cautious'];
+  if(!plan.length) return [];
+  if(mods.gearTier>=2 && !plan.includes('forge')) plan.push('forge');
+  if(mods.levelBonus>=2 && !plan.includes('arena')) plan.push('arena');
+  if(mods.wizards>=1 && !plan.includes('library')) plan.push('library');
+  if(mods.size>=2) plan.push('hatchery');
+  return plan.slice(0, prof.maxRooms + (mods.waves>=5?1:0));
+}
+
 const KEEP_RECRUIT_BASE=130;      // ticks between two recruits at speed 1
 const KEEP_BUILD_BASE=260;        // ticks between two new rooms at speed 1
 const KEEP_FIRST_RECRUIT=380;     // the province needs time to react
@@ -44,15 +58,18 @@ function keepPoolTotal(mods){
 function initKeep(rt, mods, builder){
   const id=rt.ai||'cautious', prof=AI_PROFILES[id];
   state.war.poolTotal=keepPoolTotal(mods);
+  const plan=keepRoomPlan(rt, mods);
   state.keep={ profileId:id, profile:prof, recruited:0, total:keepPoolTotal(mods), food:2+mods.size, timer:Math.round(KEEP_FIRST_RECRUIT/prof.speed),
-    buildTimer:Math.round(KEEP_BUILD_BASE/(prof.speed*1.5)), builder:!!builder && prof.maxRooms>0, roomsBuilt:0, rootGuards:0, boost:1, log:[] };
+    buildTimer:Math.round(KEEP_BUILD_BASE/(prof.speed*1.5)), builder:!!builder && plan.length>0, plan, roomsBuilt:0, rootGuards:0, boost:1, log:[] };
+  // a developed region starts with part of its keep already standing
+  if(state.keep.builder) for(let i=0;i<Math.min(plan.length,Math.max(0,mods.waves-3));i++){ if(keepPlanRoom()) keepFinishJob(state.keep.job); }
 }
 
 // choose a site for the next room next to the keep (rock only, never against the player's dungeon); the workers carve and build it
 function keepPlanRoom(){
   const k=state.keep, prof=k.profile;
-  if(k.roomsBuilt>=prof.maxRooms) return false;
-  const type=prof.rooms[k.roomsBuilt%prof.rooms.length];
+  if(k.roomsBuilt>=k.plan.length) return false;
+  const type=k.plan[k.roomsBuilt];
   const [w,h]= (type==='storage'||type==='dormitory') ? [3,2] : [2,2];
   const seeds=keepTiles(); if(!seeds.length) return false;
   const g=state.grid;
@@ -130,11 +147,13 @@ function keepTickWorker(c){
     return;
   }
   c.state='building'; job.progress++;
-  if(job.progress>=KEEP_BUILD_WORK){
-    sites.forEach(p=>{ const t=g[p.y][p.x]; t.type='floor'; t.owned=false; t.gold=false; t.ore=false; t.marked=false; t.goodRoom=job.type; t.wasGood=job.type; t.enemy=false; emitFx('build', p.x, p.y); });
-    k.roomsBuilt++; k.job=null;
-    logEvent(`Die Gegner bauen: ${ROOM_TYPES[job.type]?ROOM_TYPES[job.type].label:job.type}.`, job.x0, job.y0);
-  }
+  if(job.progress>=KEEP_BUILD_WORK) keepFinishJob(job);
+}
+function keepFinishJob(job){
+  const k=state.keep, g=state.grid;
+  keepSiteTiles(job).forEach(p=>{ const t=g[p.y][p.x]; t.type='floor'; t.owned=false; t.gold=false; t.ore=false; t.marked=false; t.goodRoom=job.type; t.wasGood=job.type; t.enemy=false; emitFx('build', p.x, p.y); });
+  k.roomsBuilt++; k.job=null;
+  logEvent(`Die Gegner bauen: ${KEEP_ROOM_NAMES[job.type]||job.type}.`, job.x0, job.y0);
 }
 function keepWorkers(){ return state.creatures.filter(c=>c.kind==='worker'&&!c.unconscious); }
 function keepSpawnWorker(){
@@ -149,9 +168,10 @@ function keepPickKind(rooms,mods){
   const w=state.war, k=state.keep;
   if(w.heroPool) return w.heroPool[randInt(0,w.heroPool.length-1)];       // gates: the province's own pool
   const bag=['barbarian','barbarian','thief'];
+  // technology: wizards need a school, knights need a forge (and the iron to arm them)
   if((rooms.arena||0)>=2) bag.push('barbarian','barbarian');
-  if((rooms.library||0)>=2||mods.wizards>0) for(let i=0;i<2+mods.wizards;i++) bag.push('wizard');
-  if((rooms.forge||0)>=2||mods.gearTier>=2) bag.push('knight','knight');
+  if((rooms.library||0)>=1) for(let i=0;i<1+mods.wizards;i++) bag.push('wizard');
+  if((rooms.forge||0)>=1 && mods.gearTier>=1) bag.push('knight','knight');
   if((rooms.dormitory||0)>=3) bag.push('thief');
   return bag[randInt(0,bag.length-1)];
 }
@@ -272,7 +292,7 @@ function tickKeep(){
 function keepSummary(){
   const k=state.keep; if(!k) return '';
   const r=keepRoomCounts();
-  const names={ dormitory:'Kaserne', hatchery:'Vorratskammer', library:'Zauberschule', arena:'Übungsplatz', forge:'Schmiede', storage:'Lager' };
+  const names=KEEP_ROOM_NAMES;
   const parts=Object.keys(r).map(t=>`${names[t]||t} ${r[t]}`);
   const wk=keepWorkers().length, food=Math.floor(k.food);
   return `${k.recruited}/${k.total} Rekruten${wk?' · Handwerker '+wk:''} · Nahrung ${food}${parts.length?' · '+parts.join(' · '):''}`;

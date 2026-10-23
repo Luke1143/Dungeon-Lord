@@ -150,3 +150,9 @@ Stufe 1 der Wirtschaft der Guten (siehe `docs/design.md`). Das Weltportal ist Ei
 
 ## 1.10 Gespiegelte Bedürfnisse (Stufe 3)
 Wartende Rekruten (Besatzung am Portal, `keepGarrison`) leben wie die Kreaturen des Spielers: sie essen aus dem Vorrat der Burg (`KEEP_UPKEEP`, Vorratskammern füllen ihn), erholen sich in der Kaserne und trainieren im Übungsplatz (Erfahrung, Stufenaufstieg ohne Logmeldung). Ist der Vorrat leer, werden sie hungrig und marschieren nach `KEEP_STARVE_TICKS` ungeduldig los. Wer also Vorratskammer oder Übungsplatz erobert, schwächt die Wartenden. Geduldige Profile (Dorf, Verschanzt) bekommen stärkere Helden, zahlen aber mit Nahrung.
+
+## 1.11 Was die Gegner bauen und können (Stufe 4)
+- Jede Regionsart hat `build:[...]` (Dorf: Vorratskammer, Kaserne, Lager; Festung: Kaserne, Übungsplatz, Schmiede ...). `keepRoomPlan(rt,mods)` hängt Räume an, die der Weltfortschritt freischaltet (Rüstung ≥2 → Schmiede, Ausbildung ≥2 → Übungsplatz, Magie ≥1 → Zauberschule, Nahrung ≥2 → zweite Vorratskammer) und kürzt auf `maxRooms` des KI-Profils (+1 ab 5 Wellen). Das Infofenster der Region zeigt den Bauplan.
+- Eine entwickelte Region (`mods.waves-3`) startet mit schon gebauten Räumen.
+- Technik hängt an Räumen: Zauberer gibt es nur mit Zauberschule, Ritter nur mit Schmiede und `gearTier≥1`; Ausrüstungsstufe wie bisher aus Schmiede und `mods`.
+- Das Portal und der Eingang sind nie im Nebel (`updateFog`).
