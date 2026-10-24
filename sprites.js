@@ -105,6 +105,52 @@ const CREATURES={
     speer:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[1,9,'j']], grip:[1,6] },
     bogen:{ px:[[1,0,'j'],[0,1,'j'],[0,2,'j'],[0,3,'j'],[0,4,'j'],[0,5,'j'],[0,6,'j'],[1,7,'j'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[1,6,'W']], grip:[0,3] }
   };
+  // Procedural weapons: head + shaft + pommel (design: "Ausrüstung ist prozedural"). A weapon is a recipe; the parts are chosen per item.
+  // heads: pixel list relative to the shaft column x=1 ('W' blade/head, 'K' guard/spike), hs = first shaft row, str/pen = stat factors (strength, tempo penalty).
+  // lens: shaft lengths (rows), grip: where the carrier holds it (0 = top of the shaft, 1 = bottom).
+  const H=(n,str,pen,hs,px)=>({ n,str,pen,hs,px });
+  const WEAPON_PARTS={
+    schwert:{ lens:[1,2,3], grip:0, heads:[
+      H('Langklinge',1,1,7,[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[0,6,'K'],[1,6,'K'],[2,6,'K']]),
+      H('Breitklinge',1.08,1.1,6,[[1,0,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W'],[2,2,'W'],[1,3,'W'],[2,3,'W'],[1,4,'W'],[2,4,'W'],[0,5,'K'],[1,5,'K'],[2,5,'K'],[3,5,'K']]),
+      H('Kurzklinge',0.92,0.85,5,[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[0,4,'K'],[1,4,'K'],[2,4,'K']]) ] },
+    axt:{ lens:[5,7,9], grip:0.85, heads:[
+      H('Beilkopf',1,1,0,[[2,0,'W'],[3,0,'W'],[2,1,'W'],[3,1,'W'],[2,2,'W'],[3,2,'W'],[2,3,'W']]),
+      H('Doppelbeil',1.1,1.15,0,[[0,0,'W'],[0,1,'W'],[0,2,'W'],[2,0,'W'],[3,0,'W'],[2,1,'W'],[3,1,'W'],[2,2,'W'],[3,2,'W']]),
+      H('Bartaxt',0.95,0.9,0,[[2,0,'W'],[2,1,'W'],[3,1,'W'],[2,2,'W'],[3,2,'W']]) ] },
+    hammer:{ lens:[5,7,9], grip:0.85, heads:[
+      H('Blockkopf',1,1,2,[[0,0,'W'],[1,0,'W'],[2,0,'W'],[3,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[3,1,'W']]),
+      H('Maulkopf',1.12,1.2,3,[[0,0,'W'],[1,0,'W'],[2,0,'W'],[3,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[3,1,'W'],[0,2,'W'],[1,2,'W'],[2,2,'W'],[3,2,'W']]),
+      H('Stachelkopf',1.06,1.05,3,[[1,0,'K'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[3,1,'W'],[0,2,'W'],[1,2,'W'],[2,2,'W'],[3,2,'W']]) ] },
+    keule:{ lens:[4,6,8], grip:0.85, heads:[
+      H('Stachelkugel',1,1,3,[[0,0,'W'],[2,0,'W'],[1,0,'K'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W']]),
+      H('Flügelkopf',1.05,1.05,3,[[1,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W']]) ] },
+    speer:{ lens:[5,7,9], grip:0.6, heads:[
+      H('Blattspitze',1,1,2,[[1,0,'W'],[1,1,'W']]),
+      H('Breitspitze',1.06,1.08,2,[[1,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W']]),
+      H('Hakenspitze',1.03,1.04,3,[[1,0,'W'],[1,1,'W'],[0,2,'W'],[2,2,'W']]) ] },
+    stab:{ lens:[4,6,8], grip:0.5, heads:[
+      H('Kristall',1,1,3,[[0,0,'Q'],[1,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q']]),
+      H('Kugel',1.04,1,3,[[1,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q']]),
+      H('Hörner',0.96,0.9,3,[[0,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q']]) ] }
+  };
+  const SHAFTS={ wood:{ ch:'j', n:'Holzschaft', str:1, pen:1 }, bone:{ ch:'b', n:'Knochenschaft', str:0.95, pen:0.85 }, iron:{ ch:'i', n:'Eisenschaft', str:1.05, pen:1.15 } };
+  // parts = { head:index, len:index, shaft:'wood'|'bone'|'iron', pommel:0|1, mat }; returns { px:[[x,y,ch]], grip:[x,y] } or null when the weapon has no parts
+  function weaponParts(name,parts){
+    const rec=WEAPON_PARTS[name]; if(!rec||!parts) return null;
+    const h=rec.heads[(parts.head||0)%rec.heads.length], len=rec.lens[(parts.len||0)%rec.lens.length], sh=SHAFTS[parts.shaft]||SHAFTS.wood;
+    const px=h.px.map(([x,y,c])=>[x,y,c==='W'?'V':(c==='K'?'v':c)]);
+    for(let i=0;i<len;i++) px.push([1,h.hs+i,sh.ch]);
+    if(parts.pommel) px.push([1,h.hs+len,'v']);
+    return { px, grip:[1,h.hs+Math.round(rec.grip*(len-1))] };
+  }
+  const WEAPON_MAT={ crude:'bronze', plain:'eisen', fine:'stahl', epic:'stahl' };
+  const weaponPal=mat=>{ const m=MATS[mat]||MATS.eisen; return { V:m.W, v:m.K, j:'#6b4a2f', b:'#d8cdb4', i:'#4a4e56', Q:'#9a6aff', q:'#e8d8ff' }; };
+  // the weapon pixels for a wielder: procedural when parts are given, the fixed shape otherwise; letters resolve through weaponPal (+ MATS for fixed ones)
+  function weaponShape(name,parts){
+    const w=weaponParts(name,parts); if(w) return w;
+    const wp=WEAPONS[name]; return wp?{ px:wp.px.map(([x,y,c])=>[x,y,c==='W'?'V':(c==='K'?'v':c)]), grip:wp.grip }:null;
+  }
   const SHIELDS={   // drawn in front of the chest (left side), no arm needed
     buckler:[[0,0,'m'],[1,0,'M'],[0,1,'M'],[1,1,'M'],[0,2,'n'],[1,2,'m']],
     kite:[[0,0,'M'],[1,0,'M'],[2,0,'m'],[0,1,'m'],[1,1,'M'],[2,1,'m'],[0,2,'m'],[1,2,'m'],[2,2,'n'],[1,3,'n'],[2,3,'n'],[1,4,'n']],
@@ -121,6 +167,8 @@ const CREATURES={
         const rel=y-H.y0, back=x>=H.x0+5;
         if(rel<=Math.min(t,3) || (t>=2&&back&&rel<=4)) f.g[y][x]=(rel===0||(x<=H.x0+3&&rel<=1))?'M':'m';
       }
+      if(t>=2 && e.hstyle===1) [H.x0+2,H.x0+3].forEach(x=>set(x,H.y0-1,'R'));                                    // crest
+      if(t>=2 && e.hstyle===2){ set(H.x0,H.y0-1,'M'); set(H.x1-1,H.y0-1,'M'); }                                    // horns
       if(t>=2) for(let r=4;r<=5;r++) if(f.tag[H.y0+r]&&f.tag[H.y0+r][H.x0+4]==='H') set(H.x0+4,H.y0+r,'n');   // cheek plate
       if(t===3){ for(let x=H.x0;x<=H.x0+3;x++) if(f.tag[H.y1]&&f.tag[H.y1][x]==='H') set(x,H.y1,'n');           // jaw guard
         [[H.x1+1,H.y0],[H.x1+1,H.y0+1],[H.x1+2,H.y0+1]].forEach(([x,y])=>set(x,y,'R')); }                        // plume trails behind the helm
@@ -137,15 +185,19 @@ const CREATURES={
     }
     if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
     if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-3+x,sy+y,c)); }
-    if(e.weapon&&WEAPONS[e.weapon]){ const wp=WEAPONS[e.weapon], ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
+    const wp=e.weapon&&weaponShape(e.weapon,e.wparts);
+    if(wp){ const ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
       wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }
   }
   // held tools as standalone pixel art (for the swing animations): the weapon alone, with its grip point
-  globalThis.TOOLGEN={ weapon(name){
-    const wp=WEAPONS[name]; if(!wp) return null;
-    const pal={ j:'#6b4a2f', Q:'#9a6aff', q:'#e8d8ff', ...MATS.eisen };
+  globalThis.TOOLGEN={ weapon(name,parts){
+    const wp=weaponShape(name,parts); if(!wp) return null;
+    const pal=weaponPal(parts&&parts.mat);
     return { grip:wp.grip, px:wp.px.map(([x,y,c])=>[x,y,pal[c]||'#c4cad1']) };
-  } };
+  },
+  // what the item roller needs: head variants and shaft lengths per weapon sprite, shaft materials
+  parts(name){ const r=WEAPON_PARTS[name]; return r?{ heads:r.heads.map(h=>({ n:h.n, str:h.str, pen:h.pen })), lens:r.lens.length }:null; },
+  shafts:SHAFTS, matOfTier:t=>WEAPON_MAT[t]||'eisen' };
   function frame(key,t,facingRight,moving,equip){
     const f=mk(N,N), P=CREATURES[key].parts(), k=t%4;
     f.tag=Array.from({length:N},()=>Array(N).fill(''));
@@ -155,7 +207,7 @@ const CREATURES={
     if(key==='warlock'){ blit(f,P.robe,P.rx,P.ry+bob); put(f,P.rx+2+ff,14,'R'); put(f,P.rx+5+fb,14,'R'); blit(f,P.hood,P.hx,P.hy+bob+nod); }
     else {
       tb(P.leg,P.lxBack+fb,P.lyBack,'L'); tb(P.torso,P.tx,P.ty+bob,'T'); tb(P.leg,P.lxFront+ff,P.ly,'L'); tb(P.head,P.hx,P.hy+bob+nod,'H');
-      if(equip){ armour(f,equip); f.pal={ j:'#6b4a2f', R:'#b02a2a', Q:'#9a6aff', q:'#e8d8ff', ...(MATS[equip.mat||'eisen']) }; }
+      if(equip){ armour(f,equip); f.pal={ R:'#b02a2a', ...weaponPal(equip.wmat), ...(MATS[equip.mat||'eisen']) }; }
     }
     if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
     return f;
@@ -372,7 +424,7 @@ function impFrame(state,t,facingRight){
       const legs=LORD_LEGS[mv?k:0]; legs.forEach((r,i)=>{ rows[11+i+0]=r; });
       rows[14]=LORD_LEGS[mv?k:0][2]; rows[15]='....kkkkkkkkk...';
       let g=rows.map(r=>r.split('')); const wpal={};
-      if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon); if(w) w.px.forEach(([x,y,c])=>{ const X=14-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15){ let ch=Object.keys(wpal).find(k=>wpal[k]===c); if(!ch){ ch=String(Object.keys(wpal).length); wpal[ch]=c; } g[Y][X]=ch; } }); }
+      if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon,eq.wparts); if(w) w.px.forEach(([x,y,c])=>{ const X=14-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15){ let ch=Object.keys(wpal).find(k=>wpal[k]===c); if(!ch){ ch=String(Object.keys(wpal).length); wpal[ch]=c; } g[Y][X]=ch; } }); }
       const flick=Math.floor(t/3)%2;
       g=g.map(r=>r.map(c=>c==='E'?(flick?'F':'E'):c));
       if(fr) g=g.map(r=>r.slice().reverse());
@@ -593,7 +645,7 @@ const TILEGEN=(()=>{
     leg(6+fb,12); leg(9+ff,12);
     const blit=(p,ox,oy)=>{ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]!=='.') put(f,ox+x,oy+y,p.g[y][x]); };
     blit(ribs,4,6+bob); blit(skull,4,0+bob+nod);
-    if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon); if(w){ const wp={}; w.px.forEach(([x,y,c])=>{ let ch=Object.keys(wp).find(q=>wp[q]===c); if(!ch){ ch=String(Object.keys(wp).length); wp[ch]=c; } const X=13-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15) f.g[Y][X]=ch; }); f.pal=wp; } }
+    if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon,eq.wparts); if(w){ const wp={}; w.px.forEach(([x,y,c])=>{ let ch=Object.keys(wp).find(q=>wp[q]===c); if(!ch){ ch=String(Object.keys(wp).length); wp[ch]=c; } const X=13-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15) f.g[Y][X]=ch; }); f.pal=wp; } }
     if(fr) f.g=f.g.map(r=>r.slice().reverse());
     return f; } };
 })();

@@ -296,6 +296,14 @@ Manche Spielelemente sollen sich **ohne Obergrenze** skalieren lassen, sodass ei
 3. **Perks stapeln sich als Multiplikatoren**, damit die Spielerstärke geometrisch wachsen kann.
 4. **Verteidigung ohne Deckel**, etwa Schaden × K ÷ (K + Rüstung). Dann bringt jede Rüstung etwas, und nichts erreicht 100 %.
 
+### Ausrüstung *(entschieden mit dem Spieler, umgesetzt bis auf Schmiede)*
+
+- **Drei Plätze:** Rüstung, rechte Hand, linke Hand. Waffe in die rechte, Schild in die linke Hand, Rüstung an den Körper. Eine **Zweihandwaffe** (Kriegshammer, Bögen, schwere Stäbe) belegt beide Hände. Ein Streitkolben ist die einhändige Alternative für Kämpfer mit Schild. Pro Platz zählt das beste Stück; alles andere ist Gepäck. Imps behalten ihr altes Trageverhalten.
+- **Prozedural:** Eine Waffe besteht aus **Kopf, Schaft und Knauf**, jeder Teil ist gewürfelt (`partsOf` in `index.html`, Formen in `sprites.js`). Pro Waffenart gibt es feste Rezepte mit zufälligen Teilen: ein Hammer bleibt ein Hammer, aber keiner sieht gleich aus. Der Kopf gibt Stärke, der Schaft und seine Länge das Tempo, der Knauf gleicht aus. Das Material folgt der Güteklasse (krude Bronze, normal Eisen, fein und episch Stahl). Bei Rüstungen würfelt der Helm seine Form (schlicht, Kamm, Hörner); Rüstungsteile mit eigenen Werten kommen später.
+- **Rassen haben Vorlieben:** Jede Art mag bestimmte Waffenkategorien und Gewichte (`WEAPON_AFFINITY`, `GEAR_PREFS`). Ein Ork nimmt schwere Nahkampfwaffen, ein Goblin leichte und Fernkampf, ein Troll Hämmer, ein Dunkelelf Bögen, ein Priester Stäbe. Was eine Art nicht mag, hebt sie nicht auf. Die Horde bringt eine einfache Startwaffe mit.
+- **Beute:** Stirbt eine Kreatur, hat jedes getragene Stück eine Chance, auf den Boden zu fallen (krude 60 %, normal 50 %, fein 35 %, episch 20 %). Der Rest ist verloren. Bewusstlose behalten ihre Ausrüstung. Gefallene Stücke tragen Imps ein oder Kreaturen heben sie auf.
+- **Offen:** Die Schmiede soll Teile herstellen und zusammensetzen, die Rüstkammer als Lager, Zuteilung durch den Spieler, Abnutzung.
+
 ## 7. Umfang in Stufen *(Vorschlag)*
 
 Ziel: Jede Stufe ist **in sich spielbar**. Man kann nach jeder Stufe aufhören und hat ein Spiel.

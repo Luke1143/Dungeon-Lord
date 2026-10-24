@@ -795,6 +795,18 @@ function faintCreature(c){
   logEvent(`${actorLabel(c)} sinkt bewusstlos zu Boden.`, c.x, c.y);
 }
 
+// A fallen creature may drop what it wore; the rest is lost. Common pieces fall more often than rare ones.
+const LOOT_CHANCE={ crude:0.6, plain:0.5, fine:0.35, epic:0.2 };
+function dropLoot(c){
+  if(c.kind==='imp' || !c.inventory || !c.inventory.length) return;
+  const kept=[];
+  c.inventory.forEach(inst=>{
+    const d=instDef(inst); if(!d) return;
+    if(Math.random()<(LOOT_CHANCE[d.tier]||0.4)){ state.looseItems.push(looseOf(asInstance(inst), c.x, c.y)); kept.push(instLabel(inst)); }
+  });
+  c.inventory=[];
+  if(kept.length) logEvent(`${actorLabel(c)} lässt ${kept.join(', ')} fallen.`, c.x, c.y);
+}
 function killCreature(c, killer){
   if(c.kind==='dungeonlord'){ if(!c.unconscious) faintLord(c); return; }
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
@@ -817,6 +829,7 @@ function killCreature(c, killer){
     state.gold+=bounty;
     logEvent(`Kopfgeld: ${bounty} Gold für ${actorLabel(c)}.`, c.x, c.y);
   }
+  dropLoot(c);
   state.creatures=state.creatures.filter(o=>o!==c);
   state.imps=state.imps.filter(o=>o!==c);
   state.corpses.push({ id: corpseIdCounter++, x:c.x, y:c.y, decayTimer:CORPSE_DECAY_TICKS, reservedBy:null });
@@ -1091,6 +1104,8 @@ const GEAR_TIERS=[
 const WEAPON_FAMILIES={
   sword:    { cat:'melee',  weight:'fast',   label:'Schwert',      icon:'🗡️', hands:1, strength:4,  tempo:-0.10,
               names:['Falchion','Bastardschwert','Claymore','Ork-Spalter'] },
+  mace:     { cat:'melee',  weight:'medium', label:'Streitkolben', icon:'⚒️', hands:1, strength:8,  tempo:-0.30,
+              names:['Schädelknacker','Morgenstern','Dornenkeule','Knochenbrecher'] },
   axe:      { cat:'melee',  weight:'medium', label:'Axt',          icon:'🪓', hands:1, strength:6,  tempo:-0.25,
               names:['Streitaxt','Kriegsbeil','Schädelspalter','Doppelaxt'] },
   hammer:   { cat:'melee',  weight:'heavy',  label:'Kriegshammer', icon:'🔨', hands:2, strength:10, tempo:-0.45,
@@ -1165,13 +1180,23 @@ const ITEMS=buildItems();
 // Welche Waffenkategorien mag welche Art? Leer = gar keine Waffen.
 const WEAPON_AFFINITY={
   warlock: ['magic'],           // interessiert sich ausschliesslich fuer Zauberstaebe
+  ork: ['melee'], goblin: ['melee','ranged'], troll: ['melee'], skeleton: ['melee','ranged'], ghoul: ['melee'],
+  priest: ['magic','melee'], darkelf: ['ranged','melee','magic'], vampire: ['melee','magic'],
   // ork:   ['melee'],          // keine Geduld fuer Zauberei oder Fernkampf
   // shadowElf: ['melee','ranged','magic']
 };
 
 // Tag-Vorlieben: bestimmt, welches Gewicht/welche Bauart eine Art bevorzugt
 const GEAR_PREFS={
-  warlock: { magic:12, light:8, balanced:4, heavy:0, guard:2 }
+  warlock: { magic:12, light:8, balanced:4, heavy:0, guard:2 },
+  ork:      { heavy:10, balanced:8, light:4, melee:6, guard:5 },
+  goblin:   { light:10, balanced:4, ranged:8, melee:5, guard:2 },
+  troll:    { heavy:12, balanced:6, melee:8, guard:3 },
+  skeleton: { light:6, balanced:6, heavy:3, melee:5, ranged:4, guard:3 },
+  ghoul:    { balanced:5, melee:5, light:3 },
+  priest:   { magic:12, light:8, balanced:4, guard:1 },
+  darkelf:  { ranged:12, light:10, magic:3, melee:3, balanced:3 },
+  vampire:  { light:8, balanced:6, melee:6, magic:6, guard:2 }
 };
 
 function itemDef(id){ return ITEMS[id]; }
@@ -1186,11 +1211,38 @@ function asInstance(v){
 function instDef(v){ return ITEMS[asInstance(v).id]; }
 function instQuality(v){ return asInstance(v).q || 1; }
 
+// ----- Procedural gear: a weapon is head + shaft + pommel, rolled from the item's seed `s` (design.md, "Ausrüstung") -----
+function seededRng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function looseInst(it){ return { id:it.itemId, q:it.q||1, s:it.s }; }
+function looseOf(inst, x, y){
+  if(inst.s===undefined) inst.s=Math.floor(Math.random()*1e9);
+  return { kind:'equipment', itemId:inst.id, q:inst.q, s:inst.s, x, y, reservedBy:null };
+}
+const PARTS_CACHE=new Map();
+// parts = { head, len, shaft, pommel, mat } and the stat factors they give; null for items without parts (bows, shields, armour)
+function partsOf(v){
+  const inst=asInstance(v), d=instDef(inst);
+  if(!d || d.type!=='weapon' || typeof TOOLGEN==='undefined') return null;
+  const name=WEAPON_SPRITE[d.family], info=TOOLGEN.parts(name); if(!info) return null;
+  if(inst.s===undefined) inst.s=Math.floor(Math.random()*1e9);
+  const key=inst.id+'|'+inst.s;
+  if(PARTS_CACHE.has(key)) return PARTS_CACHE.get(key);
+  const r=seededRng(inst.s), pick=a=>a[Math.floor(r()*a.length)];
+  const p={ head:Math.floor(r()*info.heads.length), len:Math.floor(r()*info.lens), shaft:pick(['wood','wood','bone','iron']), pommel:r()<0.5?1:0, mat:TOOLGEN.matOfTier(d.tier) };
+  const h=info.heads[p.head], sh=TOOLGEN.shafts[p.shaft];
+  p.headName=h.n; p.shaftName=sh.n; p.lenName=['kurz','mittel','lang'][Math.min(2,Math.round(p.len*2/Math.max(1,info.lens-1)))];
+  p.str=h.str*sh.str*(p.len===info.lens-1&&info.lens>1?1.04:1);
+  p.pen=h.pen*sh.pen*(p.len===0&&info.lens>1?0.9:(p.len===info.lens-1&&info.lens>1?1.1:1))*(p.pommel?0.92:1);
+  PARTS_CACHE.set(key,p); return p;
+}
 function instStat(v, key){
   const d=instDef(v);
   if(!d || !d[key]) return 0;
-  return d[key]*instQuality(v);
+  let m=1;
+  if(d.type==='weapon' && (key==='strength'||key==='tempo')){ const p=partsOf(v); if(p) m=key==='strength'?p.str:p.pen; }
+  return d[key]*instQuality(v)*m;
 }
+function instParts(v){ const p=partsOf(v); return p?`${p.headName}, ${p.lenName}er ${p.shaftName}${p.pommel?', Knauf':''}`:''; }
 
 // Gesamtwert eines Stuecks - danach vergleichen Kreaturen, was "besser" ist
 function instScore(v){
@@ -1219,7 +1271,7 @@ function forgeItem(itemId, smith){
     q += ((Math.min(smith.level||1,TABLE_LEVELS)-1)/(TABLE_LEVELS-1))*0.05;
   }
   q += Math.random()*0.04;
-  return { id:itemId, q:+Math.min(1.15, q).toFixed(3) };
+  return { id:itemId, q:+Math.min(1.15, q).toFixed(3), s:Math.floor(Math.random()*1e9) };
 }
 
 function gearAppeal(c, item){
@@ -1242,18 +1294,35 @@ function worstCarried(c, forItem){
   const def=instDef(forItem);
   if(!def || !c.inventory || !c.inventory.length) return -1;
   let worstIdx=-1, worstAppeal=Infinity;
+  const want=new Set(slotsOfItem(forItem));
   c.inventory.forEach((inst,i)=>{
     const d=instDef(inst);
     if(!d) return;
-    // Nur gegen ein Stueck derselben Bauart tauschen
-    if(d.type!==def.type) return;
-    if(d.type==='weapon' && d.cat!==def.cat) return;
+    // only a piece that sits in the way (same slot) is traded
+    if(!slotsOfItem(inst).some(s=>want.has(s))) return;
     const a=gearAppeal(c, inst);
     if(a<worstAppeal){ worstAppeal=a; worstIdx=i; }
   });
   return worstIdx;
 }
 
+// Three slots: body (armour), right hand (weapon), left hand (shield). A two-handed weapon takes both hands.
+function slotsOfItem(v){
+  const d=instDef(v); if(!d) return [];
+  if(d.type==='armor') return ['body'];
+  if(d.type==='shield') return ['lh'];
+  return d.hands===2 ? ['rh','lh'] : ['rh'];
+}
+// what a creature really wields: per slot the best piece wins, whatever else it carries is baggage
+function wornItems(c){
+  const taken=new Set(), out=[];
+  (c.inventory||[]).slice().sort((a,b)=>instScore(b)-instScore(a)).forEach(inst=>{
+    const sl=slotsOfItem(inst);
+    if(!sl.length || sl.some(s=>taken.has(s))) return;
+    sl.forEach(s=>taken.add(s)); out.push(inst);
+  });
+  return out;
+}
 // Zweihandwaffen belegen zwei Inventarplaetze
 function itemSlotCost(v){
   const d=instDef(v);
@@ -1342,7 +1411,7 @@ function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 function equipmentBonus(c){
   const total={ strength:0, defense:0, dex:0, speed:0, tempo:0 };
   if(!usesEquipment(c) || !c.inventory) return total;
-  c.inventory.forEach(inst=>{
+  wornItems(c).forEach(inst=>{
     const def=instDef(inst);
     if(!def) return;
     ['strength','defense','dex','speed','tempo'].forEach(k=>{
@@ -1354,6 +1423,10 @@ function equipmentBonus(c){
 
 // --- Inventar-Werkzeuge ---
 function hasFreeSlot(c, itemId){
+  if(itemId && c.kind!=='imp' && inventorySlots(c)>0){
+    const busy=new Set(); (c.inventory||[]).forEach(inst=>slotsOfItem(inst).forEach(s=>busy.add(s)));
+    return slotsOfItem(itemId).every(s=>!busy.has(s));
+  }
   const need = itemId ? itemSlotCost(itemId) : 1;
   return usedSlots(c)+need <= inventorySlots(c);
 }
@@ -1369,14 +1442,14 @@ function giveItem(c, item){
 function dropItemAt(c, index, x, y){
   if(!c.inventory || index<0 || index>=c.inventory.length) return null;
   const inst=asInstance(c.inventory.splice(index,1)[0]);
-  state.looseItems.push({ kind:'equipment', itemId:inst.id, q:inst.q, x, y, reservedBy:null });
+  state.looseItems.push(looseOf(inst, x, y));
   return inst;
 }
 
 function inventoryLine(c){
   const slots=inventorySlots(c);
   if(slots<=0) return 'Kein Inventar (Bestie).';
-  const items=(c.inventory||[]).map(inst=> instLabel(inst));
+  const items=(c.inventory||[]).map(inst=> instLabel(inst)+(instParts(inst)?` (${instParts(inst)})`:''));
   const label=`Inventar ${usedSlots(c)}/${slots}`;
   if(!items.length) return label+': leer';
   const note = usesEquipment(c) ? '' : ' (wird nur transportiert)';
@@ -1767,6 +1840,7 @@ function applySpecies(obj, kind){
 // Wie viele Inventarplaetze hat die Kreatur auf ihrer Stufe?
 function inventorySlots(c){
   const base=(SPECIES[c.kind]||{inventoryBase:0}).inventoryBase;
+  if(c.kind!=='imp' && base>0) return 3;       // armour, right hand, left hand
   if(c.kind==='imp'){
     // Imps schalten Platz 2 und 3 mit Stufe 5 und 10 frei
     return base + ((c.level>=HASTE_LEVEL)?1:0) + ((c.level>=TELEPORT_LEVEL)?1:0);
@@ -1811,13 +1885,14 @@ function createBoss(kind,x,y,opts){
 // the other humanoids of the horde: the same body of needs as the warlock (lair, food, wages, free time), their own kind and taste
 const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'], darkelf:['Syl','Vael','Nyx','Thalia','Orrin'], vampire:['Graf Vlad','Lilith','Morbus','Sanguin','Carmilla'] };
 const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire']);
+const HORDE_START_GEAR={ ork:['axe_crude'], goblin:['sword_crude'], troll:['hammer_crude'], skeleton:['sword_crude'], priest:['wandBolt_crude'], darkelf:['bow_plain'], vampire:['sword_plain'] };
 function createHorde(kind,x,y){
   const names=HORDE_NAMES[kind];
   const c=applySpecies({ id: creatureIdCounter++, x, y, state:(kind==='skeleton'||kind==='ghoul'||kind==='vampire')?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
     hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null, energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0,
     earnedWage:false, owedWages:0, wageTile:null, workLog:{}, lastPayslip:null, name:names[randInt(0,names.length-1)] }, kind);
   if(kind==='skeleton'||kind==='ghoul'||kind==='vampire'){ delete c.happiness; }
-  if(kind==='darkelf') c.inventory=[{ id:'bow_plain', q:1 }];
+  const sg=HORDE_START_GEAR[kind]; if(sg) c.inventory=sg.map(id=>({ id, q:+(0.92+Math.random()*0.12).toFixed(3), s:Math.floor(Math.random()*1e9) }));
   return c;
 }
 function createWarlockAt(id,x,y){ const w=createWarlock(x,y); w.id=id; return w; }
@@ -2550,7 +2625,7 @@ function storeForgedItem(room, inst, atX, atY){
       return {x:s.x, y:s.y, shelved:true};
     }
   }
-  state.looseItems.push({ kind:'equipment', itemId:inst.id, q:inst.q, x:atX, y:atY, reservedBy:null });
+  state.looseItems.push(looseOf(inst, atX, atY));
   return {x:atX, y:atY, shelved:false};
 }
 
@@ -2858,7 +2933,7 @@ function findGearPickup(c){
   if(!usesEquipment(c)) return null;
   const candidates=(state.looseItems||[]).filter(it=>{
     if(it.kind!=='equipment' || it.reservedBy) return false;
-    const inst={id:it.itemId, q:it.q||1};
+    const inst=looseInst(it);
     const appeal=gearAppeal(c, inst);
     if(appeal<=0) return false;
     if(hasFreeSlot(c, inst)) return true;
@@ -2869,7 +2944,7 @@ function findGearPickup(c){
   });
   if(!candidates.length) return null;
   // Immer das beste erreichbare Stueck zuerst
-  candidates.sort((a,b)=> gearAppeal(c,{id:b.itemId,q:b.q||1}) - gearAppeal(c,{id:a.itemId,q:a.q||1}));
+  candidates.sort((a,b)=> gearAppeal(c,looseInst(b)) - gearAppeal(c,looseInst(a)));
   const spots=new Set(candidates.map(it=> it.x+','+it.y));
   const res=bfsFind(c.x, c.y, (x,y)=> spots.has(x+','+y));
   if(!res) return null;
@@ -4122,7 +4197,7 @@ function tickWarlock(w){
     const idx=(state.looseItems||[]).findIndex(i=> i.kind==='equipment' && i.x===w.gearTile.x && i.y===w.gearTile.y && i.reservedBy===w.id);
     if(idx>=0){
       const it=state.looseItems[idx];
-      const inst={id:it.itemId, q:it.q||1};
+      const inst=looseInst(it);
       if(!hasFreeSlot(w, inst)){
         // Platz schaffen: das schwaechere Stueck wandert zu Boden
         const swapIdx=worstCarried(w, inst);
@@ -4586,7 +4661,7 @@ const CARGO={
       const idx=state.looseItems.findIndex(it=> it.kind==='equipment' && it.x===x && it.y===y && it.reservedBy===imp.id);
       if(idx<0) return false;
       const it=state.looseItems[idx];
-      if(!giveItem(imp, {id:it.itemId, q:it.q||1})) return false;
+      if(!giveItem(imp, looseInst(it))) return false;
       state.looseItems.splice(idx,1);
       return true;
     },
@@ -5259,16 +5334,18 @@ function spriteCanvas(key,t,facingRight,moving,extra){
   return SPRITE_CACHE[id]=cv;
 }
 // What a humanoid wears, as sprite rules: material and tier follow the armour weight and quality, weapons and shields map to one shared sprite each.
-const WEAPON_SPRITE={ sword:'schwert', axe:'axt', hammer:'hacke', javelin:'speer', bow:'bogen', crossbow:'bogen', wandFire:'stab', wandBolt:'stab', wandIce:'stab' };
+const WEAPON_SPRITE={ sword:'schwert', axe:'axt', hammer:'hammer', mace:'keule', javelin:'speer', bow:'bogen', crossbow:'bogen', wandFire:'stab', wandBolt:'stab', wandIce:'stab' };
 function equipLook(c){
   const e={}; let any=false;
-  (c.inventory||[]).forEach(inst=>{
+  wornItems(c).forEach(inst=>{
     const d=instDef(inst); if(!d) return;
-    if(d.type==='weapon' && !e.weapon){ e.weapon=WEAPON_SPRITE[d.family]; any=any||!!e.weapon; }
+    if(d.type==='weapon' && !e.weapon){ e.weapon=WEAPON_SPRITE[d.family]; const p=partsOf(inst); if(p){ e.wparts={ head:p.head, len:p.len, shaft:p.shaft, pommel:p.pommel, mat:p.mat }; e.wmat=p.mat; } else e.wmat=TOOLGEN.matOfTier(d.tier); any=any||!!e.weapon; }
     else if(d.type==='shield' && !e.shield){ e.shield=d.family; any=true; }
     else if(d.type==='armor' && !e.chest){
       const w=d.family==='heavyArmor'?3:(d.family==='mediumArmor'?2:1), step=d.tier==='epic'?2:(d.tier==='fine'?1:(d.tier==='crude'?-1:0));
       e.chest=w; e.helm=w; e.legs=w>=3?2:1;
+      if(inst.s===undefined) inst.s=Math.floor(Math.random()*1e9);
+      e.hstyle=Math.floor(seededRng(inst.s)()*3);      // procedural armour: the helm's style is rolled per piece (plain, crested, horned)
       e.mat=['leder','bronze','eisen','stahl'][Math.max(0,Math.min(3,w-1+step))];   // fine pieces are one material better, crude ones one worse
       any=true;
     }
@@ -6421,10 +6498,10 @@ function heroGear(kind, level, boss, tierIdx){
   else if(kind==='thief'){ add('sword'); add('lightArmor'); if(level>=2) add('buckler'); }
   else if(kind==='elf'){ add('bow'); add(level>=3?'mediumArmor':'lightArmor'); }
   else if(kind==='wizard'){ add(level>=5?'wandIce':(level>=3?'wandBolt':'wandFire')); if(level>=4) add('lightArmor'); }
-  else if(kind==='knight'){ add(boss?'hammer':'sword'); add('heavyArmor'); add(boss?'tower':'kite'); }
+  else if(kind==='knight'){ add(boss?'mace':'sword'); add('heavyArmor'); add(boss?'tower':'kite'); }
   else if(kind==='archer'){ add(level>=5?'crossbow':'bow'); add('lightArmor'); }
   else if(kind==='monk'){ add('javelin'); add('lightArmor'); }
-  else if(kind==='paladin'){ add('hammer'); add('heavyArmor'); add('kite'); }
+  else if(kind==='paladin'){ add('mace'); add('heavyArmor'); add('kite'); }
   else if(kind==='dwarf'){ add('axe'); add(level>=4?'heavyArmor':'mediumArmor'); add('buckler'); }
   else if(kind==='giant'){ add('hammer'); }
   else if(kind==='dryad'){ add('wandBolt'); }
@@ -7016,7 +7093,7 @@ function selectCreature(sel){
   } else if(sel.kind==='looseItem'){
     const it=sel.obj;
     if(it.kind==='equipment'){
-      const inst={id:it.itemId, q:it.q||1};
+      const inst=looseInst(it);
       const d=instDef(inst);
       const mods=[];
       const fmt=(v,suffix)=> `${v>0?'+':''}${(+v.toFixed(1))}${suffix||''}`;
@@ -7529,7 +7606,7 @@ function cancelHeldEntity(){
 
 function looseHeldMessage(item){
   if(item.kind==='equipment'){
-    return `Ihr haltet ${instLabel({id:item.itemId,q:item.q||1})} in der Hand — lasst sie auf einer Kreatur fallen, um sie auszurüsten.`;
+    return `Ihr haltet ${instLabel(looseInst(item))} in der Hand — lasst sie auf einer Kreatur fallen, um sie auszurüsten.`;
   }
   if(item.kind==='book') return `Ihr haltet das Buch „${item.label}" in der Hand — nur in einer Bibliothek verwahrtes Wissen ist nutzbar!`;
   if(item.kind==='chicken') return 'Ihr haltet ein Huhn in der Hand — werft es einer Kreatur zu, um sie zu sättigen oder zu heilen.';
@@ -7657,8 +7734,8 @@ function handlePickClick(x,y){
       if(!usesEquipment(creature)){
         item.x=x; item.y=y; item.reservedBy=null; state.looseItems.push(item);
         setInspect(`${actorLabel(creature)} kann keine Ausrüstung verwenden — sie liegt jetzt am Boden.`);
-      } else if(giveItem(creature, {id:item.itemId, q:item.q||1})){
-        setInspect(`${actorLabel(creature)} trägt jetzt ${instLabel({id:item.itemId,q:item.q||1})}.`);
+      } else if(giveItem(creature, looseInst(item))){
+        setInspect(`${actorLabel(creature)} trägt jetzt ${instLabel(looseInst(item))}.`);
       } else {
         item.x=x; item.y=y; item.reservedBy=null; state.looseItems.push(item);
         setInspect(`${actorLabel(creature)} hat keinen freien Inventarplatz.`);
@@ -8205,7 +8282,7 @@ document.getElementById('cheatGear').addEventListener('click', ()=>{
         // Ein fiktiver Schmied wuerfelt die Guete aus
         const smith=state.creatures.find(cc=>cc.category==='humanoid') || state.imps[0];
         const forged=forgeItem(sample[placed], smith);
-        state.looseItems.push({kind:'equipment', itemId:forged.id, q:forged.q, x, y, reservedBy:null});
+        state.looseItems.push(looseOf(forged, x, y));
         placed++;
       }
     }
@@ -8907,7 +8984,7 @@ function spawnDungeonLord(){
   state.creatures.push(lord);
   state.war.lordPool=Math.round(statMaxHp(lord)*skillMult('lordReserve'));
 }
-const BOSS_GEAR={ herakles:['hammer_epic','mediumArmor_epic'], dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
+const BOSS_GEAR={ herakles:['hammer_epic','mediumArmor_epic'], dwarfking:['mace_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
 const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot(), capital_hall:()=>setupCapitalHall() };
 function setupDwarfHoard(){
   const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
@@ -9027,7 +9104,7 @@ function setupCapitalHall(){
   const hero=createBoss('herakles', cx, cy, { name:'Herakles', level:7, extraHp:60, gear:BOSS_GEAR.herakles });
   state.creatures.push(hero);
   [[-4,-3],[4,-3],[-4,3],[4,3]].forEach(([dx,dy])=>{
-    state.creatures.push(createBoss('paladin', cx+dx, cy+dy, { name:'Wächter der Halle', level:5, guard:true, gear:['hammer_fine','heavyArmor_fine','kite_fine'] }));
+    state.creatures.push(createBoss('paladin', cx+dx, cy+dy, { name:'Wächter der Halle', level:5, guard:true, gear:['mace_fine','heavyArmor_fine','kite_fine'] }));
   });
   state.war.spawnTiles=[0,1,2].map(k=>({ x:gateX-ox*(k+1), y:gateY-oy*(k+1) }));
   return true;

@@ -246,3 +246,9 @@ Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange 
 - New evil creatures: **Ghul** (undead, from graves, max 3) and **Dunkler Priester** (lured by temples, heals evil allies within 3 tiles). Both are ork-body palette variants (`HORDE_KINDS`).
 - **Dunkelelf** (lured by training rooms, starts with a bow), **Vampir** (lured by graveyards of 12+ tiles, a second at 24+; heals half of the damage it deals in `resolveAttack`). Good side: **Dryade** (heals allies within 4, wand) and **Golem** (tank, size 1.5, speed 0.5), in the keep recruit bag (library 2 / forge 3 + gear tier 2) and in the elf and dwarf gate pools.
 - Balance: `tools/balance-campaign.js` (village/forge/gate_elf, one seed) runs without errors; it builds none of the new rooms, so it says little about them. Not retuned.
+
+## 1.33 - Equipment: slots, procedural weapons, preferences, loot
+- Three slots (`slotsOfItem`, `wornItems`): body, right hand, left hand; two-handers take both hands. `equipmentBonus` and `equipLook` use only the worn pieces. New `mace` family (one-handed, strength 8) replaces hammers in the shield kits (paladin, boss knight, dwarf king, hall wardens).
+- Procedural weapons: `partsOf(inst)` rolls head, shaft length/material and pommel from the item seed `inst.s` (copied through loose items by `looseInst`/`looseOf`); `sprites.js` builds the pixels (`WEAPON_PARTS`, `TOOLGEN.weapon(name, parts)`) and the parts change strength and tempo (`instStat`). Armour: helm style rolled per piece (cosmetic).
+- Preferences: `WEAPON_AFFINITY` and `GEAR_PREFS` for all horde kinds; `HORDE_START_GEAR` gives each a simple weapon.
+- Loot: `dropLoot` on death only (`LOOT_CHANCE` by tier), the rest is lost.
