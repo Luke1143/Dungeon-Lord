@@ -764,6 +764,7 @@ function killCreature(c, killer){
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
   c.removed=true;
   if(c.carryingPrisoner) CARGO.prisoner.abandon(c);
+  state.creatures.forEach(o=>{ if(o!==c && !o.removed && bondOf(o,c)>=BOND_FRIEND){ if(o.state!=='fighting'){ startAntic(o,'grief','😢',26); } if(o.happiness!==undefined) o.happiness=Math.max(0,o.happiness-20); if(killer) addGrudge(o, killer); logEvent(`${o.name} trauert um ${c.name}.`, o.x, o.y); } });
   dbg('kill', `${actorLabel(c)} stirbt${killer?' durch '+actorLabel(killer):''} bei ${c.x},${c.y}`);
   if(c.kind==='dungeonlord'){
     if(possessed===c) endPossession();
@@ -891,7 +892,7 @@ function noticesFoe(c,o){
   if(state.war && state.war.siege && o.category==='hero') return true;
   const t=state.grid[o.y]&&state.grid[o.y][o.x];
   if(t && t.owned && d<=NOTICE_INTRUDER_RADIUS) return true;
-  if(o.fightTarget && o.fightTarget!==c && factionOf(o.fightTarget)===factionOf(c) && d<=NOTICE_RADIUS*2) return true;
+  if(o.fightTarget && o.fightTarget!==c && factionOf(o.fightTarget)===factionOf(c) && d<=(bondOf(c,o.fightTarget)>=BOND_FRIEND?NOTICE_RADIUS*3:NOTICE_RADIUS*2)) return true;   // a friend's cry carries further
   return false;
 }
 function pickFightTarget(c){
@@ -3470,19 +3471,43 @@ const ANTICS=[
   { id:'scuttle', icon:'💨', ticks:6,  weight:4, kinds:['beetle'] },
   { id:'polish',  icon:'✨', ticks:10, weight:3, kinds:['beetle'] },
   { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton'] },
+  { id:'quarrel', icon:'💢', ticks:12, weight:2, social:true, quarrel:true, happiness:-4, kinds:['warlock','ork','goblin','troll'] },
+  { id:'follow',  icon:'🐾', ticks:16, weight:3, follow:true, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton'] },
   { id:'flex',    icon:'💪', ticks:8,  weight:3, kinds:['ork','troll'] },
   { id:'snicker', icon:'😈', ticks:7,  weight:4, kinds:['goblin'], happiness:2 },
   { id:'rattle',  icon:'🦴', ticks:7,  weight:4, kinds:['skeleton'] }
 ];
 const ANTIC_CHANCE=0.025;
+// ----- bonds: creatures who spend time together become friends, creatures who quarrel become rivals -----
+const BOND_FRIEND=30, BOND_RIVAL=-30;
+// who rubs whom the wrong way (godhand: warlocks cannot stand hounds, skeletons loathe warlocks ...); the kind decides, not the individual
+const DISLIKES={ ork:['warlock','goblin'], goblin:['troll','ork'], troll:['goblin'], skeleton:['warlock'], warlock:['skeleton','ork','hound'], hound:['warlock'] };
+const dislikes=(a,b)=>(DISLIKES[a.kind]||[]).includes(b.kind)||(DISLIKES[b.kind]||[]).includes(a.kind);
+function bondOf(a,b){ return (a.bonds&&a.bonds[b.id])||0; }
+function addBond(a,b,d){
+  [[a,b],[b,a]].forEach(([x,y])=>{
+    x.bonds=x.bonds||{}; const before=x.bonds[y.id]||0, after=Math.max(-100,Math.min(100,before+d)); x.bonds[y.id]=after;
+    if(x===a){
+      if(before<BOND_FRIEND && after>=BOND_FRIEND) logEvent(`${a.name} und ${b.name} sind jetzt Freunde.`, a.x, a.y);
+      if(before>BOND_RIVAL && after<=BOND_RIVAL) logEvent(`${a.name} und ${b.name} sind Rivalen geworden.`, a.x, a.y);
+    }
+  });
+}
+function friendsOf(c){ return state.creatures.filter(o=>o!==c && !o.removed && bondOf(c,o)>=BOND_FRIEND); }
+function rivalsOf(c){ return state.creatures.filter(o=>o!==c && !o.removed && bondOf(c,o)<=BOND_RIVAL); }
+function startAntic(o,id,icon,ticks){ o.state='antic'; o.anticId=id; o.anticIcon=icon; o.anticTimer=ticks; o.path=[]; }
 function tickAntics(c){
-  if(c.state==='goingToChat'){
+  if(c.bonds && state.tickCount%150===(c.id%150)){ Object.keys(c.bonds).forEach(k=>{ const v=c.bonds[k]; c.bonds[k]=v>0?v-1:(v<0?v+1:0); }); }      // bonds fade without company
+  if(c.state==='goingToChat' || c.state==='following'){
     stepAlong(c);
     if(!c.path.length){
-      const p=c.chatPartner;
-      if(p && !p.removed && !p.held && !p.unconscious && Math.abs(p.x-c.x)+Math.abs(p.y-c.y)<=1 && (p.state==='wandering'||p.state==='antic')){
-        [c,p].forEach(o=>{ o.state='antic'; o.anticId='chat'; o.anticIcon='💬'; o.anticTimer=14; o.path=[]; if(o.happiness!==undefined) o.happiness=Math.min(100,o.happiness+5); });
-      } else c.state='wandering';
+      const p=c.chatPartner, q=c.chatMode||'chat';
+      const ok=p && !p.removed && !p.held && !p.unconscious && Math.abs(p.x-c.x)+Math.abs(p.y-c.y)<=1 && (p.state==='wandering'||p.state==='antic');
+      if(!ok){ c.state='wandering'; return true; }
+      if(c.state==='following'){ startAntic(c,'follow','🐾',16); c.chatPartner=null; return true; }
+      const icon=q==='quarrel'?'💢':'💬';
+      [c,p].forEach(o=>{ startAntic(o,q,icon,q==='quarrel'?12:14); if(o.happiness!==undefined) o.happiness=Math.max(0,Math.min(100,o.happiness+(q==='quarrel'?-4:5))); });
+      addBond(c,p, q==='quarrel' ? -12 : (dislikes(c,p) ? -6 : (c.kind===p.kind ? 11 : 8)));
     }
     return true;
   }
@@ -3494,18 +3519,35 @@ function tickAntics(c){
   const opts=ANTICS.filter(a=>!a.kinds||a.kinds.includes(c.kind));
   let sum=0; opts.forEach(a=>sum+=a.weight); let r=Math.random()*sum, pick=opts[0];
   for(const a of opts){ r-=a.weight; if(r<=0){ pick=a; break; } }
+  if(pick.follow){
+    const fr=friendsOf(c).filter(o=>!o.held&&!o.unconscious&&Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=14&&(o.state==='wandering'||o.state==='antic'));
+    if(!fr.length) return false;
+    const mate=fr[Math.floor(Math.random()*fr.length)], res=bfsFindBeside(c,(x,y)=>x===mate.x&&y===mate.y);
+    if(!res||!res.path.length) return false;
+    c.chatPartner=mate; c.chatMode='follow'; c.path=res.path; c.state='following'; return true;
+  }
   if(pick.social){
-    const mates=state.creatures.filter(o=>o!==c && !o.held && !o.unconscious && o.faction===c.faction && o.state==='wandering' && !(o.path&&o.path.length) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=7);
+    const near=state.creatures.filter(o=>o!==c && !o.held && !o.unconscious && o.faction===c.faction && o.state==='wandering' && !(o.path&&o.path.length) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=7);
+    let mates=near;
+    if(pick.quarrel){ mates=near.filter(o=>bondOf(c,o)<=10 && (dislikes(c,o) || bondOf(c,o)<0 || (c.happiness!==undefined && c.happiness<45))); }
+    else { mates=near.filter(o=>bondOf(c,o)>BOND_RIVAL); }
     if(!mates.length) return false;
-    const mate=mates[Math.floor(Math.random()*mates.length)], res=bfsFindBeside(c,(x,y)=>x===mate.x&&y===mate.y);
+    // friends are preferred company
+    let tw=0; const ws=mates.map(o=>{ const w=pick.quarrel?(dislikes(c,o)?4:1)+Math.max(0,-bondOf(c,o))/10:(dislikes(c,o)?0.3:1)+Math.max(0,bondOf(c,o))/15; tw+=w; return w; });
+    let pr=Math.random()*tw, mate=mates[0]; for(let i=0;i<mates.length;i++){ pr-=ws[i]; if(pr<=0){ mate=mates[i]; break; } }
+    const res=bfsFindBeside(c,(x,y)=>x===mate.x&&y===mate.y);
     if(!res) return false;
-    c.chatPartner=mate; c.path=res.path; c.state=res.path.length?'goingToChat':'wandering';
-    if(!res.path.length){ [c,mate].forEach(o=>{ o.state='antic'; o.anticIcon='💬'; o.anticTimer=14; o.path=[]; }); }
+    c.chatPartner=mate; c.chatMode=pick.quarrel?'quarrel':'chat'; c.path=res.path; c.state=res.path.length?'goingToChat':'wandering';
+    if(!res.path.length){
+      const icon=pick.quarrel?'💢':'💬';
+      [c,mate].forEach(o=>{ startAntic(o,c.chatMode,icon,14); if(o.happiness!==undefined) o.happiness=Math.max(0,Math.min(100,o.happiness+pick.happiness)); });
+      addBond(c,mate, pick.quarrel?-12:(dislikes(c,mate)?-6:8));
+    }
     return true;
   }
-  c.state='antic'; c.anticId=pick.id; c.anticIcon=pick.icon; c.anticTimer=pick.ticks; c.path=[];
+  startAntic(c,pick.id,pick.icon,pick.ticks);
   if(pick.happiness && c.happiness!==undefined) c.happiness=Math.min(100,c.happiness+pick.happiness);
-  if(pick.join) state.creatures.forEach(o=>{ if(o!==c && pick.join.includes(o.kind) && o.state==='wandering' && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=9){ o.state='antic'; o.anticId=pick.id; o.anticIcon=pick.icon; o.anticTimer=pick.ticks+4; o.path=[]; } });
+  if(pick.join) state.creatures.forEach(o=>{ if(o!==c && pick.join.includes(o.kind) && o.state==='wandering' && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=9){ startAntic(o,pick.id,pick.icon,pick.ticks+4); } });
   if(pick.sound && typeof SFX!=='undefined') SFX.play('howl',{ x:c.x, y:c.y });
   return true;
 }
@@ -4984,6 +5026,7 @@ function thoughtOf(c){
   }
   switch(c.state){
     case 'antic': case 'goingToChat': return c.anticIcon||'💬';
+    case 'following': return '🐾';
     case 'writing': return '📖';
     case 'seekingInspiration':
     case 'examining': return '🔍';
@@ -6780,6 +6823,7 @@ function statBlock(c){
   }
   lines.push(inventoryLine(c));
   const sp=SPECIES[c.kind];
+  { const fr=friendsOf(c).map(o=>o.name), rv=rivalsOf(c).map(o=>o.name); if(fr.length) lines.push('Freunde: '+fr.join(', ')); if(rv.length) lines.push('Rivalen: '+rv.join(', ')); }
   if(sp && sp.passive) lines.push('Passiv: '+sp.passive);
   if(sp && sp.canFight) lines.push(`Moral ${moraleOf(c)}/100 (${moraleLabel(c)})`);
   if(c.kills) lines.push(`Erledigte Gegner: ${c.kills}`);
