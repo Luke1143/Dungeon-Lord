@@ -400,6 +400,7 @@
 <script src="objectives.js"></script>
 <script src="artifacts.js"></script>
 <script src="bosses.js"></script>
+<script src="creatures.js"></script>
 <script src="terrain.js"></script>
 <script src="keep.js"></script>
 <script src="view3d.js"></script>
@@ -634,6 +635,66 @@ const SPECIES={
   golem:   { label:'Golem',        category:'hero',    hp:80, strength:7,  defense:35, dex:1,  dexGrowth:0.01, speed:0.5, tempo:0.5, size:1.5,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', icon:'🪨', passive:'Fast unverwundbar, aber sehr langsam' },
+  lizard:  { label:'Echse',        category:'beast',    hp:28, strength:4, defense:12, dex:12, dexGrowth:0.04, speed:1.2, tempo:1.1, size:0.95, plural:'Echsen',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'fighter', icon:'🦎',
+             passive:'Liebt feuchte Gänge, frisst Hühner, kommt wo Wasser im Dungeon ist' },
+  brood:   { label:'Dämonenbrut',  category:'beast',    hp:14, strength:3, defense:3,  dex:20, dexGrowth:0.05, speed:1.6, tempo:1.5, size:0.7, plural:'Dämonenbrut',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'👿',
+             passive:'Kommt im Rudel, vom Feuer der Lava gerufen' },
+  darkknight:{ label:'Dunkler Ritter', category:'humanoid', hp:70, strength:8, defense:28, dex:6, dexGrowth:0.02, speed:0.8, tempo:0.8, size:1.1, plural:'Dunkle Ritter',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:75, style:'fighter', icon:'🛡️',
+             passive:'Schwer gepanzert, folgt dem Ruf von Wachposten und Schmiede' },
+  succubus:{ label:'Succubus',     category:'humanoid', hp:30, strength:4, defense:4, dex:24, dexGrowth:0.05, speed:1.1, tempo:1.1, plural:'Succubi',
+             needsFood:true,  avoidsWater:false, intellectual:true, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:50, style:'support', icon:'💋',
+             passive:'Verzaubert Helden für kurze Zeit; Taverne und Tempel locken sie' },
+  demon:   { label:'Dämon',        category:'humanoid', hp:90, strength:10, defense:16, dex:8, dexGrowth:0.03, speed:0.9, tempo:0.9, size:1.35, plural:'Dämonen', noWork:true,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:60, style:'fighter', icon:'😈',
+             passive:'Speit Feuer, kommt zu Lava und Tempel, arbeitet nie' },
+  banshee: { label:'Banshee',      category:'undead',   hp:24, strength:3, defense:0, dex:30, dexGrowth:0.04, speed:1.1, tempo:1.1, plural:'Banshees', noWork:true,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'support', icon:'😱',
+             passive:'Ihr Schrei lähmt Eindringlinge; Friedhof und Tempel rufen sie' },
+  zombie:  { label:'Zombie',       category:'undead',   hp:55, strength:5, defense:6, dex:2, dexGrowth:0.01, speed:0.5, tempo:0.5, plural:'Zombies',
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:1, loyalty:100, style:'fighter', icon:'🧟‍♂️',
+             passive:'Steht aus alten Leichen auf, langsam und zäh' },
+  ghost:   { label:'Geist',        category:'undead',   hp:20, strength:3, defense:0, dex:40, dexGrowth:0.02, speed:1.4, tempo:1.3, plural:'Geister', noWork:true,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'👻',
+             passive:'Schwer zu treffen, schwächt Gegner mit kalter Hand' },
+  werewolf:{ label:'Werwolf',      category:'undead',   hp:60, strength:8, defense:6, dex:18, dexGrowth:0.04, speed:1.6, tempo:1.5, size:1.15, plural:'Werwölfe',
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'🐺',
+             passive:'Heilt sich langsam, vom Geruch vieler Hühner gelockt' },
+  lich:    { label:'Lich',         category:'undead',   hp:80, strength:7, defense:12, dex:14, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Lichs', noWork:true,
+             needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100, style:'support', icon:'🧙‍♂️',
+             passive:'Beschwört Skelette; Bibliothek, Friedhof und Tempel locken ihn' },
+  dragon:  { label:'Drache',       category:'humanoid', hp:220, strength:14, defense:30, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.8, plural:'Drachen', noWork:true,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:70, style:'fighter', icon:'🐉',
+             passive:'Atmet Feuer; ein großer Goldhort lockt ihn an' },
+  yule:    { label:'Yule',         category:'hero',    hp:18, strength:3, defense:2, dex:34, dexGrowth:0.05, speed:1.6, tempo:1.4, size:0.85,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'assassin', icon:'🐈‍⬛', passive:'Stiehlt Gold aus eurer Schatzkammer, gibt es her, wenn er fällt' },
+  fairy:   { label:'Fee',          category:'hero',    hp:14, strength:2, defense:0, dex:38, dexGrowth:0.05, speed:1.5, tempo:1.4, size:0.7,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'🧚', passive:'Heilt Verbündete in der Nähe' },
+  griffin: { label:'Greif',        category:'hero',    hp:60, strength:8, defense:8, dex:20, dexGrowth:0.04, speed:1.7, tempo:1.5, size:1.4,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'assassin', icon:'🦅', passive:'Stürzt sich aus der Ferne auf einen Gegner' },
+  unicorn: { label:'Einhorn',      category:'hero',    hp:55, strength:6, defense:10, dex:28, dexGrowth:0.04, speed:1.4, tempo:1.3, size:1.2,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'🦄', passive:'Heilt und weckt Gefallene' },
+  kitsune: { label:'Kitsune',      category:'hero',    hp:28, strength:4, defense:3, dex:40, dexGrowth:0.03, speed:1.4, tempo:1.3, size:0.95,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'assassin', icon:'🦊', passive:'Verhext Gegner, sie schlagen schwächer zu' },
+  wisp:    { label:'Irrlicht',     category:'hero',    hp:10, strength:2, defense:0, dex:40, dexGrowth:0.03, speed:1.8, tempo:1.5, size:0.7,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'🔮', passive:'Treibt Verbündete in der Nähe an' },
+  angel:   { label:'Engel',        category:'hero',    hp:100, strength:10, defense:20, dex:16, dexGrowth:0.03, speed:1.2, tempo:1.2, size:1.4,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'👼', passive:'Heilt Verbündete und richtet mit heiligem Licht' },
+  phoenix: { label:'Phönix',       category:'hero',    hp:50, strength:7, defense:5, dex:24, dexGrowth:0.04, speed:1.6, tempo:1.4, size:1.1,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'🔥', passive:'Steigt einmal aus der Asche wieder auf' },
+  guardian:{ label:'Schutzengel',  category:'hero',    hp:40, strength:3, defense:10, dex:22, dexGrowth:0.03, speed:1.1, tempo:1.1, size:1.1,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'😇', passive:'Rettet einmal einen Verbündeten vor dem Tod' },
   herakles:{ label:'Herakles', category:'boss', hp:140, strength:11, defense:22, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.3,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', icon:'🦁', passive:'Im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung' },
@@ -736,6 +797,10 @@ function resolveAttack(attacker, defender, context){
   // Verteidigung mindert prozentual, Deckel liegt bei DEFENSE_CAP
   dmg = dmg * (1 - defenseReduction(defender));
   dmg = Math.max(MIN_DAMAGE, Math.round(dmg));
+  if(dmg>=defender.hp && factionOf(defender)==='good'){          // a guardian angel catches one deadly blow
+    const ga=state.creatures.find(o=>o.kind==='guardian' && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
+    if(ga){ ga.wardUsed=true; dmg=Math.max(0,defender.hp-1); logEvent(`${actorLabel(ga)} fängt den tödlichen Schlag für ${actorLabel(defender)} ab!`, defender.x, defender.y); }
+  }
   if(defender.kind==='herakles' && !state.war.peltTaken) dmg=Math.max(1,Math.round(dmg*0.25));      // the lion pelt
 
   const overkill = Math.max(0, dmg - defender.hp);
@@ -789,7 +854,7 @@ function creatureEmoji(c){
     case 'archer': case 'monk': case 'paladin': case 'dwarf': case 'giant': case 'ork': case 'goblin': case 'troll': case 'skeleton': case 'ghoul': case 'priest': case 'darkelf': case 'vampire': case 'dryad': case 'golem': return SPECIES[c.kind].icon;
     case 'dungeonlord': return '👿';
     case 'elf': return '🧝';
-    default: return '❔';
+    default: return (SPECIES[c.kind]&&SPECIES[c.kind].icon)||'❔';
   }
 }
 
@@ -805,6 +870,7 @@ function faintCreature(c){
 // A fallen creature may drop what it wore; the rest is lost. Common pieces fall more often than rare ones.
 const LOOT_CHANCE={ crude:0.6, plain:0.5, fine:0.35, epic:0.2 };
 function dropLoot(c){
+  if(c.loot){ state.gold+=c.loot; logEvent(`${actorLabel(c)} lässt ${c.loot} gestohlenes Gold fallen.`, c.x, c.y); c.loot=0; }
   if(c.kind==='imp' || !c.inventory || !c.inventory.length) return;
   const kept=[];
   c.inventory.forEach(inst=>{
@@ -817,6 +883,7 @@ function dropLoot(c){
 function killCreature(c, killer){
   if(c.kind==='dungeonlord'){ if(!c.unconscious) faintLord(c); return; }
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
+  if(c.kind==='phoenix' && !c.reborn){ c.reborn=true; c.hp=Math.round(c.maxHp*0.6); c.unconscious=false; logEvent(`${actorLabel(c)} verbrennt und steigt aus der Asche wieder auf!`, c.x, c.y); emitFx('claim', c.x, c.y); return; }
   c.removed=true;
   if(c.carryingPrisoner) CARGO.prisoner.abandon(c);
   state.creatures.forEach(o=>{ if(o!==c && !o.removed && bondOf(o,c)>=BOND_FRIEND){ if(o.state!=='fighting'){ startAntic(o,'grief','😢',26); } if(o.happiness!==undefined) o.happiness=Math.max(0,o.happiness-20); if(killer) addGrudge(o, killer); logEvent(`${o.name} trauert um ${c.name}.`, o.x, o.y); } });
@@ -997,6 +1064,8 @@ const JOB_PREFS={
   ork:     { geist:'hasst', sozial:'neutral', hand:'neutral', kampf:'liebt' },
   goblin:  { geist:'neutral', sozial:'liebt', hand:'liebt', kampf:'hasst' },
   troll:   { geist:'hasst', sozial:'neutral', hand:'liebt', kampf:'liebt' },
+  darkknight:{ geist:'hasst', sozial:'neutral', hand:'neutral', kampf:'liebt' },
+  succubus:{ geist:'liebt', sozial:'liebt', hand:'hasst', kampf:'neutral' },
   skeleton:{ geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
   ghoul:   { geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
   vampire: { geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
@@ -1025,6 +1094,7 @@ function jobOpinion(c, roomType){
 
 // Nimmt die Kreatur diese Arbeit freiwillig an?
 function willWorkVoluntarily(c, roomType){
+  if((SPECIES[c.kind]||{}).noWork) return false;      // a dragon does not sweep floors
   return jobOpinion(c, roomType)!=='hasst';
 }
 
@@ -1403,7 +1473,7 @@ function skillMult(id){ const s=SKILLS.find(x=>x.id===id); return s&&s.step ? Ma
 function statStrength(c){
   const eq=equipmentBonus(c);
   const m = c.kind==='dungeonlord' ? skillMult('lordStr') : (factionOf(c)==='evil' ? skillMult('creatureStr') : 1);
-  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m));
+  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m*(c.weakTicks>0?0.7:1)));
 }
 function statMaxHp(c){
   const m = c.kind==='dungeonlord' ? skillMult('lordHp') : (factionOf(c)==='evil' ? skillMult('creatureHp') : 1);
@@ -1909,15 +1979,17 @@ function createBoss(kind,x,y,opts){
 }
 
 // the other humanoids of the horde: the same body of needs as the warlock (lair, food, wages, free time), their own kind and taste
-const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'], darkelf:['Syl','Vael','Nyx','Thalia','Orrin'], vampire:['Graf Vlad','Lilith','Morbus','Sanguin','Carmilla'] };
-const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire']);
-const HORDE_START_GEAR={ ork:['axe_crude'], goblin:['sword_crude'], troll:['hammer_crude'], skeleton:['sword_crude'], priest:['wandBolt_crude'], darkelf:['bow_plain'], vampire:['sword_plain'] };
+const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'], darkelf:['Syl','Vael','Nyx','Thalia','Orrin'], vampire:['Graf Vlad','Lilith','Morbus','Sanguin','Carmilla'],
+  lizard:['Schuppe','Zisch','Moorfuß','Glibber','Kriech'], brood:['Funke','Brandt','Zünd','Glut','Ruß'], darkknight:['Ser Mortain','Ser Grimm','Ser Vael','Ser Ostrik'], succubus:['Lilitha','Nyssa','Sorrel','Velvet'], demon:['Azrakul','Baal-Dor','Morzug','Ignaros'], banshee:['Klage','Wehe','Moira','Keen'], zombie:['Modrig','Fauler','Schlurfi','Matsch','Brocken'], ghost:['Hauch','Nebel','Irrlicht-Nick','Flüster'], werewolf:['Fenrir','Graufell','Lykos','Zahn'], lich:['Vorlag der Alte','Mortigan','Kel-Thuzad Nein','Ossuar'], dragon:['Smaragdor','Glutschwinge','Vyrnax','Sengrath'] };
+const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire','darkknight','succubus','demon','banshee','zombie','ghost','werewolf','lich','dragon']);
+const BEAST_KINDS=new Set(['lizard','brood']);       // beasts of the horde: they roam like hounds and take no work
+const HORDE_START_GEAR={ darkknight:['sword_plain','heavyArmor_plain','kite_plain'], lich:['wandIce_plain'], zombie:['sword_crude'], ork:['axe_crude'], goblin:['sword_crude'], troll:['hammer_crude'], skeleton:['sword_crude'], priest:['wandBolt_crude'], darkelf:['bow_plain'], vampire:['sword_plain'] };
 function createHorde(kind,x,y){
   const names=HORDE_NAMES[kind];
-  const c=applySpecies({ id: creatureIdCounter++, x, y, state:(kind==='skeleton'||kind==='ghoul'||kind==='vampire')?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
+  const c=applySpecies({ id: creatureIdCounter++, x, y, state:(SPECIES[kind].category==='undead')?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
     hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null, energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0,
     earnedWage:false, owedWages:0, wageTile:null, workLog:{}, lastPayslip:null, name:names[randInt(0,names.length-1)] }, kind);
-  if(kind==='skeleton'||kind==='ghoul'||kind==='vampire'){ delete c.happiness; }
+  if(SPECIES[kind].category==='undead' || BEAST_KINDS.has(kind)){ delete c.happiness; }
   const sg=HORDE_START_GEAR[kind]; if(sg) c.inventory=sg.map(id=>({ id, q:+(0.92+Math.random()*0.12).toFixed(3), s:Math.floor(Math.random()*1e9) }));
   return c;
 }
@@ -3421,8 +3493,10 @@ function tickCreature(c){
   if(c.held) return;
   if(c.rootedTicks>0) c.rootedTicks--;
   if(c.rallyTicks>0) c.rallyTicks--;
+  if(c.weakTicks>0) c.weakTicks--;
+  if(c.charmedTicks>0 && --c.charmedTicks===0){ c.faction=c.charmedFrom||'good'; c.fightTarget=null; c.path=[]; }
   if(c.tempDefenseTicks>0 && --c.tempDefenseTicks===0) c.tempDefense=0;
-  if(BOSS_ABILITIES[c.kind]) runBossAbilities(c);     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
+  if(BOSS_ABILITIES[c.kind] || CREATURE_ABILITIES[c.kind]) runBossAbilities(c);     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
   if(isPossessed(c)){ tickPossessed(c); return; }
   const actions=actionCount(c);
   for(let i=0;i<actions;i++){
@@ -3434,6 +3508,7 @@ function tickCreature(c){
 function tickCreatureOnce(c){
   if(tickCombat(c)) return;
   if(c.kind==='fly') tickFly(c);
+  else if(BEAST_KINDS.has(c.kind)) tickHound(c);
   else if(c.kind==='warlock' || HORDE_KINDS.has(c.kind) || c.corrupted) tickWarlock(c);
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
@@ -3623,9 +3698,9 @@ const ANTICS=[
   { id:'sniff',   icon:'🐾', ticks:9,  weight:5, kinds:['hound'] },
   { id:'scuttle', icon:'💨', ticks:6,  weight:4, kinds:['beetle'] },
   { id:'polish',  icon:'✨', ticks:10, weight:3, kinds:['beetle'] },
-  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire'] },
+  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire','darkknight','succubus','demon','banshee','zombie','ghost','werewolf','lich','dragon','lizard','brood'] },
   { id:'quarrel', icon:'💢', ticks:12, weight:2, social:true, quarrel:true, happiness:-4, kinds:['warlock','ork','goblin','troll'] },
-  { id:'follow',  icon:'🐾', ticks:16, weight:3, follow:true, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire'] },
+  { id:'follow',  icon:'🐾', ticks:16, weight:3, follow:true, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire','darkknight','succubus','demon','banshee','zombie','ghost','werewolf','lich','dragon','lizard','brood'] },
   { id:'flex',    icon:'💪', ticks:8,  weight:3, kinds:['ork','troll'] },
   { id:'snicker', icon:'😈', ticks:7,  weight:4, kinds:['goblin'], happiness:2 },
   { id:'rattle',  icon:'🦴', ticks:7,  weight:4, kinds:['skeleton'] }
@@ -3634,7 +3709,7 @@ const ANTIC_CHANCE=0.025;
 // ----- bonds: creatures who spend time together become friends, creatures who quarrel become rivals -----
 const BOND_FRIEND=30, BOND_RIVAL=-30;
 // who rubs whom the wrong way (godhand: warlocks cannot stand hounds, skeletons loathe warlocks ...); the kind decides, not the individual
-const DISLIKES={ ork:['warlock','goblin'], goblin:['troll','ork'], troll:['goblin'], skeleton:['warlock'], ghoul:['priest'], priest:['ghoul','ork'], darkelf:['ork','troll'], vampire:['ork','priest'], warlock:['skeleton','ork','hound'], hound:['warlock'] };
+const DISLIKES={ ork:['warlock','goblin'], goblin:['troll','ork'], troll:['goblin'], skeleton:['warlock'], ghoul:['priest'], priest:['ghoul','ork'], succubus:['priest','darkknight'], darkknight:['succubus','goblin'], lizard:['hound'], werewolf:['hound','vampire'], darkelf:['ork','troll'], vampire:['ork','priest'], warlock:['skeleton','ork','hound'], hound:['warlock'] };
 const dislikes=(a,b)=>(DISLIKES[a.kind]||[]).includes(b.kind)||(DISLIKES[b.kind]||[]).includes(a.kind);
 function bondOf(a,b){ return (a.bonds&&a.bonds[b.id])||0; }
 function addBond(a,b,d){
@@ -3914,6 +3989,8 @@ const LEISURE_PREFS={
   goblin:  { watchWork:14, watchChickens:12, petHound:3, watchFight:2, drink:22, pray:6 },
   troll:   { watchFight:12, watchWork:8, petHound:4, drink:18, pray:4 },
   priest:  { read:14, pray:30, watchWork:4, drink:4 },
+  darkknight:{ watchFight:16, drink:16, pray:2 },
+  succubus:{ read:8, drink:24, pray:10, watchWork:2 },
   darkelf: { read:10, drink:12, watchFight:10, pray:4 }
 };
 
@@ -4426,8 +4503,21 @@ const LURES=[
   { kind:'priest', interval:[200,300], msg:'ist dem Ruf des Tempels gefolgt.', cap:()=>{ const n=computeRooms().filter(r=>r.type==='temple'&&r.tiles.length>=ROOM_MIN2).length; return Math.min(2,n); } },
   { kind:'darkelf', interval:[150,220], msg:'tritt aus dem Schatten, die Trainingskammer hat ihn angelockt.', cap:()=>Math.min(3, roomsOfType('training').length*2) },
   { kind:'vampire', interval:[300,420], msg:'ist der Gruft gefolgt und schwebt herein.', cap:()=>{ const n=roomsOfType('graveyard').reduce((s,r)=>s+r.tiles.length,0); return n>=24?2:(n>=12?1:0); } },
+  { kind:'lizard',   interval:[120,200], msg:'kriecht aus der Feuchte herein.',                  cap:()=>Math.min(2,Math.floor(ownedEdgeCount(t=>t.type==='water'&&!t.lava)/6)) },
+  { kind:'brood',    interval:[70,120],  batch:2, msg:'quillt aus dem Feuer der Lava hervor.',     cap:()=>ownedEdgeCount(t=>t.type==='water'&&t.lava)>=3 ? 4 : 0 },
+  { kind:'darkknight', interval:[220,320], msg:'schreitet in den Dienst, Wachposten und Schmiede haben ihn gerufen.', cap:()=>{ const g=roomTiles('guardpost'); return (roomTiles('forge')>=4 && g>=2) ? Math.min(2,Math.floor(g/2)) : 0; } },
+  { kind:'succubus', interval:[250,350], msg:'ist dem Duft von Bier und Weihrauch gefolgt.',       cap:()=> (roomTiles('tavern')>=6 && roomTiles('temple')>=6) ? ((roomTiles('tavern')>=18&&roomTiles('temple')>=18)?2:1) : 0 },
+  { kind:'demon',    interval:[400,520], msg:'steigt aus der Glut, Lava und Tempel haben ihn gerufen.', cap:()=> (ownedEdgeCount(t=>t.type==='water'&&t.lava)>=1 && roomTiles('temple')>=6) ? 1 : 0 },
+  { kind:'banshee',  interval:[260,380], msg:'ist dem Ruf von Friedhof und Tempel gefolgt.',       cap:()=> (roomTiles('graveyard')>=12 && roomTiles('temple')>=6) ? 1 : 0 },
+  { kind:'ghost',    interval:[200,300], msg:'schwebt aus dem Friedhof herein.',                   cap:()=> roomTiles('graveyard')>=36 ? 2 : (roomTiles('graveyard')>=18 ? 1 : 0) },
+  { kind:'werewolf', interval:[280,380], msg:'hat den Geruch der vielen Hühner aufgenommen.',      cap:()=> totalChickens()>=16 ? 1 : 0 },
+  { kind:'lich',     interval:[600,800], msg:'erwacht, Bibliothek, Friedhof und Tempel sind sein Ruf.', cap:()=> (roomTiles('library')>=18 && roomTiles('graveyard')>=12 && roomTiles('temple')>=6) ? 1 : 0 },
+  { kind:'dragon',   interval:[700,900], msg:'senkt sich auf euren Goldhort herab.',               cap:()=> (state.gold||0)>=1500 ? 1 : 0 },
   { kind:'troll',  interval:[160,240], msg:'ist angelockt worden, Esse und Schmelze verströmen Hitze.',       cap:()=>{ const r=computeRooms().filter(r=>r.type==='forge'||r.type==='smelter'); return r.length&&((state.ore||0)+(state.iron||0))>0 ? Math.min(2,r.length) : 0; } }
 ];
+// helpers for the lure rules: tiles of a room type, and owned tiles that touch some kind of terrain
+function roomTiles(type){ let n=0; for(const r of computeRooms()) if(r.type===type) n+=r.tiles.length; return n; }
+function ownedEdgeCount(test){ let n=0; for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=state.grid[y][x]; if(t.type==='floor' && t.owned && neighbors(x,y).some(([nx,ny])=>test(state.grid[ny][nx]))) n++; } return n; }
 function tickLures(){
   state.lureTimers=state.lureTimers||{};
   LURES.forEach(l=>{
@@ -4436,7 +4526,7 @@ function tickLures(){
     state.lureTimers[l.kind]=(state.lureTimers[l.kind]===undefined?randInt(l.interval[0],l.interval[1]):state.lureTimers[l.kind])-1;
     if(state.lureTimers[l.kind]<=0){
       const spot=getEntranceSpawnTile(); if(!spot) return;
-      const c=createHorde(l.kind,spot.x,spot.y); state.creatures.push(c);
+      let c=null; for(let b=0;b<(l.batch||1);b++){ c=createHorde(l.kind,spot.x,spot.y); state.creatures.push(c); }
       state.lureTimers[l.kind]=randInt(l.interval[0],l.interval[1]);
       logEvent(`${c.name} (${SPECIES[l.kind].label}) ${l.msg}`, spot.x, spot.y);
     }
@@ -4446,8 +4536,9 @@ function tickLures(){
     const old=state.corpses.find(c=>c.decayTimer<CORPSE_DECAY_TICKS-60 && !c.reservedBy);
     if(old && Math.random()<0.1){
       state.corpses=state.corpses.filter(c=>c!==old);
-      const sk=createHorde('skeleton',old.x,old.y); state.creatures.push(sk);
-      logEvent(`${sk.name} erhebt sich als Skelett aus einer Leiche.`, old.x, old.y);
+      if(Math.random()<0.4 && state.creatures.filter(c=>c.kind==='zombie').length<3){ const z=createHorde('zombie',old.x,old.y); state.creatures.push(z); logEvent(`${z.name} wankt als Zombie aus einer Leiche.`, old.x, old.y); }
+      else { const sk=createHorde('skeleton',old.x,old.y); state.creatures.push(sk);
+      logEvent(`${sk.name} erhebt sich als Skelett aus einer Leiche.`, old.x, old.y); }
     }
   }
   // graves: an old grave lets a ghoul climb out (at most one per two graves, three at most)
@@ -4464,9 +4555,9 @@ function tickLures(){
   const tb=hasPerk('troll_blood');
   if(state.tickCount%(tb?3:6)===0) state.creatures.forEach(c=>{
     if(c.kind==='troll' && !c.unconscious && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+(tb?2:1));
-    if(c.kind==='priest' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='evil' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
-    if(c.kind==='dryad' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=4) o.hp=Math.min(o.maxHp,o.hp+2); });
-    if(c.kind==='paladin' && !c.unconscious) state.creatures.forEach(o=>{ if(o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
+    const hl=HEALERS[c.kind];
+    if(hl && !c.unconscious && !c.removed) state.creatures.forEach(o=>{ if(o!==c && o.faction===c.faction && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=hl.radius) o.hp=Math.min(o.maxHp,o.hp+hl.amount); });
+    if(c.kind==='werewolf' && !c.unconscious && c.hp<c.maxHp && state.tickCount%12===0) c.hp=Math.min(c.maxHp,c.hp+1);
   });
 }
 function tickFlySpawning(){
@@ -4576,10 +4667,12 @@ function findPrisonerJob(imp){
   return res?{ path:res.path, target:res.target }:null;
 }
 function convertPrisoner(c){
+  const fallen=c.category==='hero' && (c.level||1)>=5 && !c.isBoss;
   Object.assign(c,{ imprisoned:null, unconscious:false, corrupted:true, faction:'evil', category:'humanoid', needsFood:true, hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null,
     energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0, earnedWage:false, owedWages:0, workLog:{}, happiness:50, loyalty:60, state:'seekingLair',
     lairTile:null, lairTargetTile:null, claimProgress:0, path:[], fightTarget:null, grudges:{}, post:null, guardRoot:null, hp:statMaxHp(c) });
-  logEvent(`${c.name} (${(SPECIES[c.kind]||{}).label||c.kind}) wurde bekehrt und dient nun dem Dunkel.`, c.x, c.y);
+  if(fallen){ c.fallen=true; c.baseHp*=1.3; c.baseStrength*=1.2; c.name='Gefallener '+c.name; c.maxHp=statMaxHp(c); c.hp=c.maxHp; }
+  logEvent(`${c.name} (${(SPECIES[c.kind]||{}).label||c.kind}) wurde bekehrt und dient nun dem Dunkel${fallen?' — ein Gefallener Held!':'.'}`, c.x, c.y);
 }
 function tickPrisoner(c){
   const keepers=state.creatures.filter(o=>o!==c && factionOf(o)==='evil' && !o.unconscious && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3).length;
@@ -5558,7 +5651,7 @@ function drawParticles(){
 function emitFx(type,x,y,opts){ if(typeof FX!=='undefined') FX.emit(type,x,y,opts); }
 if(typeof FX!=='undefined') FX.solidAt=(tx,ty)=>{ if(!state||tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return true; const ty_=state.grid[ty][tx].type; return ty_!=='floor' && ty_!=='water'; };
 // what comes out of a creature when it is hit: blood colour per kind (null = bone chips)
-const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, ghoul:'#4a6a2a', darkelf:'#7a1a1a', vampire:'#5a0a0a', dryad:'#8ab030', golem:null, priest:'#7a1a1a', barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
+const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, ghoul:'#4a6a2a', zombie:'#4a6a2a', banshee:null, ghost:null, lich:null, lizard:'#4a7a2a', brood:'#8a2a4a', demon:'#c43a1c', dragon:'#8a2a24', unicorn:'#e8e0f0', angel:'#f0e8c0', fairy:'#ffe27a', wisp:null, phoenix:'#ff8a30', griffin:'#a02828', kitsune:'#a02828', yule:'#a02828', guardian:'#f0e8c0', darkelf:'#7a1a1a', vampire:'#5a0a0a', dryad:'#8ab030', golem:null, priest:'#7a1a1a', barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
 function bloodOf(c){ const k=c.kind||'imp'; return k in BLOOD ? BLOOD[k] : '#b01818'; }
 function hitFx(attacker, defender, dmg, crit, killed){
   const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
@@ -9274,7 +9367,7 @@ function offerVault(then){
 function restoreFromVault(e,x,y){
   const k=e.species; let c;
   if(k==='imp') c=createImp(x,y); else if(k==='warlock') c=createWarlock(x,y); else if(k==='hound') c=createHound(x,y);
-  else if(k==='beetle') c=createBeetle(x,y); else if(k==='fly') c=createFly(x,y); else if(HORDE_KINDS.has(k)) c=createHorde(k,x,y);
+  else if(k==='beetle') c=createBeetle(x,y); else if(k==='fly') c=createFly(x,y); else if(HORDE_KINDS.has(k)||BEAST_KINDS.has(k)) c=createHorde(k,x,y);
   else { c=createHero(k,x,y); convertPrisoner(c); }
   Object.assign(c, e.stats); c.name=e.name; c.level=e.level; c.xp=e.xp;
   c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=e.inventory.slice();

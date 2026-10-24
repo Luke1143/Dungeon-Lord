@@ -176,6 +176,14 @@ function keepPickKind(rooms,mods){
   if((rooms.library||0)>=1) bag.push('monk');
   if((rooms.forge||0)>=1) bag.push('dwarf');
   if((rooms.library||0)>=2) bag.push('dryad');
+  if((rooms.library||0)>=1) bag.push('fairy','wisp');
+  if((rooms.dormitory||0)>=4) bag.push('kitsune');
+  if((rooms.storage||0)>=1) bag.push('yule');
+  if((rooms.library||0)>=2 && mods.levelBonus>=2) bag.push('unicorn');
+  if((rooms.arena||0)>=3 && mods.gearTier>=2) bag.push('griffin');
+  if((rooms.forge||0)>=2 && mods.gearTier>=2 && (rooms.dormitory||0)>=3) bag.push('guardian');
+  if(mods.levelBonus>=4 && (rooms.library||0)>=2) bag.push('angel');
+  if(mods.levelBonus>=5 && k.recruited>=8) bag.push('phoenix');
   if((rooms.forge||0)>=3 && mods.gearTier>=2) bag.push('golem');
   if((rooms.forge||0)>=1 && mods.gearTier>=1) bag.push('knight','knight');
   if((rooms.forge||0)>=2 && mods.gearTier>=2 && (rooms.dormitory||0)>=3) bag.push('paladin');

@@ -70,3 +70,5 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 4. ~~Gefängnis und Bekehren~~ (gebaut).
 5. ~~Eigenleben vertiefen~~ (Freundschaft, Streit, Trauer gebaut).
 6. ~~Deckel entfernen, NG+~~ (gebaut). Offen: Vault, Perks, Boss-Fähigkeiten für die übrigen Bosse, weitere Räume und Kreaturen.
+
+- Teil 16 (Kreaturen): fast komplett im Spiel. Offen: Lord des Landes, Held, Avatar (legendäre Helden des Zugs der Guten), Fliegen als Fähigkeit.

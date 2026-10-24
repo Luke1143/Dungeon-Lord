@@ -659,3 +659,147 @@ const TILEGEN=(()=>{
     ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,fr,mv,eq); f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } };
   });
 })();
+
+// ---- the rest of the roster (godhand Teil 16): bodies built from a few archetypes: four-legged, bird, ghost, orb, and recoloured humanoids ----
+(()=>{
+  const N=16, mk=()=>({w:N,h:N,g:Array.from({length:N},()=>Array(N).fill('.'))});
+  const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<N&&y<N) p.g[y][x]=c; };
+  const mirror=(f,fr)=>{ if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; };
+  const EYES={ evil:{ e:'#14100c', p:'#ffffff' }, good:{ e:'#ffffff', p:'#14100c' } };
+  const shadow=(f,x0,x1)=>{ for(let x=x0;x<=x1;x++) put(f,x,15,'k'); };
+  // four-legged body facing left. o: { b,B,d (body mid/light/dark), n (snout), c (accent), head:'horse'|'fox'|'lizard'|'eagle'|'dragon'|'cat', horn, ears, tails, wings, long, big }
+  function quad(name,side,o){
+    const pal={ k:'rgba(0,0,0,0.30)', b:o.b, B:o.B||o.b, d:o.d||o.b, n:o.n||o.b, c:o.c||o.B||o.b, w:o.w||o.B||o.b, W:o.W||o.w||o.b, ...EYES[side] };
+    return { name, humanoid:false, pal, frame:(t,fr,mv)=>{
+      const f=mk(), k=t%4, bob=mv?[0,-1,0,-1][k]:0, ff=mv?[-1,0,1,0][k]:0, fb=-ff, big=o.big?1:0, x0=4-(o.long?1:0), x1=12+(o.long?1:0);
+      shadow(f,x0,x1);
+      // legs
+      const ly=11+bob; [[x0+1,ff],[x0+3,fb],[x1-3,fb],[x1-1,ff]].forEach(([lx,d],i)=>{ for(let y=ly;y<14;y++) put(f,lx+d,y,i%2?'d':'b'); put(f,lx+d-(i<2?1:0),14,'d'); });
+      // body
+      for(let y=6;y<=10+big;y++) for(let x=x0;x<=x1;x++){ const dx=(x-(x0+x1)/2)/((x1-x0)/2+0.4), dy=(y-(8+big/2))/(2.8+big); if(dx*dx+dy*dy<=1) put(f,x,y+bob,y<=6?'B':(y>=10+big?'d':'b')); }
+      // tail(s)
+      const tails=o.tails||1;
+      for(let i=0;i<tails;i++){ const ty=7+bob+(i-(tails-1)/2)*2; const L=o.head==='lizard'||o.head==='dragon'?4:2; for(let j=0;j<L;j++) put(f,x1+1+j,Math.round(ty)+(o.head==='lizard'&&j>1?1:0)-(o.head==='dragon'&&j>1?1:0),j===L-1?(o.tipC||'c'):'b'); }
+      // head
+      const hy=4+bob, hx=x0-2;
+      if(o.head==='horse'||o.head==='cat'||o.head==='fox'){
+        for(let y=hy;y<=hy+2;y++) for(let x=hx;x<=hx+2;x++) put(f,x+1,y,'b');
+        const sn=o.head==='fox'?2:(o.head==='cat'?0:3); for(let j=0;j<sn;j++){ put(f,hx+1-j,hy+2,'n'); if(o.head==='horse') put(f,hx+1-j,hy+1,'n'); }
+        put(f,hx+3,hy+2,'b'); put(f,hx+3,hy+3,'b');   // neck
+        put(f,hx+2,hy+1,'e'); put(f,hx+1,hy+1,'p');
+        if(o.head==='fox'||o.head==='cat'){ put(f,hx+2,hy-1,'b'); put(f,hx+3,hy-1,'b'); put(f,hx+2,hy-2,'c'); put(f,hx+3,hy-2,'c'); }
+        if(o.head==='horse'){ put(f,hx+3,hy,'d'); put(f,hx+3,hy-1,'d'); }
+      } else if(o.head==='lizard'){
+        for(let x=hx-1;x<=hx+3;x++) put(f,x,hy+2,'b'); for(let x=hx;x<=hx+3;x++) put(f,x,hy+1,'B');
+        put(f,hx+2,hy+1,'e'); put(f,hx+1,hy+1,'p'); put(f,hx-1,hy+2,'n');
+      } else if(o.head==='eagle'){
+        for(let y=hy-1;y<=hy+2;y++) for(let x=hx+1;x<=hx+3;x++) put(f,x,y,'B');
+        put(f,hx,hy+1,'n'); put(f,hx-1,hy+2,'n'); put(f,hx,hy+2,'n'); put(f,hx+2,hy,'e'); put(f,hx+1,hy,'p'); put(f,hx+3,hy+3,'b'); put(f,hx+3,hy+4,'b');
+      } else if(o.head==='dragon'){
+        for(let y=hy-1;y<=hy+2;y++) for(let x=hx;x<=hx+3;x++) put(f,x,y,'b');
+        for(let x=hx-2;x<=hx;x++) put(f,x,hy+1,'b'); put(f,hx-2,hy+2,'n'); put(f,hx-1,hy+2,'n');
+        put(f,hx+1,hy,'e'); put(f,hx,hy,'p'); put(f,hx+2,hy-2,'c'); put(f,hx+3,hy-2,'c'); put(f,hx+3,hy+3,'b'); put(f,hx+3,hy+4,'b');
+      }
+      if(o.horn){ put(f,hx+1,hy-1,'W'); put(f,hx,hy-2,'W'); put(f,hx-1,hy-3<0?0:hy-3,'W'); }
+      // wings (behind the shoulders, flapping)
+      if(o.wings){ const up=Math.floor(t/2)%2; for(let j=0;j<5;j++){ put(f,x0+3+j,5+bob-(up?j>>1:0)-(j>=2?1:0),'w'); put(f,x0+3+j,6+bob-(up?j>>1:0)-(j>=2?1:0),j%2?'w':'W'); } if(o.wings>1) for(let j=0;j<4;j++) put(f,x0+4+j,7+bob+(up?-1:0),'W'); }
+      return mirror(f,fr);
+    } };
+  }
+  // upright bird / flame bird: body, head, big flapping wings, long tail
+  function bird(name,side,o){
+    const pal={ k:'rgba(0,0,0,0.30)', b:o.b, B:o.B, d:o.d||o.b, n:o.n||'#e8a830', c:o.c||o.B, w:o.w||o.B, W:o.W||o.w||o.B, ...EYES[side] };
+    return { name, humanoid:false, pal, frame:(t,fr,mv)=>{
+      const f=mk(), k=t%4, bob=Math.floor(t/2)%2?-1:0, up=Math.floor(t/2)%2;
+      shadow(f,5,11);
+      for(let y=7;y<=11;y++) for(let x=5;x<=10;x++){ const dx=(x-7.5)/3, dy=(y-9)/2.6; if(dx*dx+dy*dy<=1) put(f,x,y+bob,y<=8?'B':(y>=11?'d':'b')); }
+      for(let y=4;y<=7;y++) for(let x=3;x<=6;x++) if(!(x===3&&y===4)&&!(x===6&&y===4)) put(f,x,y+bob,'B');
+      put(f,2,6+bob,'n'); put(f,1,7+bob,'n'); put(f,4,5+bob,'e'); put(f,3,5+bob,'p');
+      for(let j=0;j<4;j++){ put(f,11+j,10+bob+(j>>1),j%2?'c':'B'); put(f,11+j,9+bob+(j>>1),'c'); }
+      for(let j=0;j<6;j++){ put(f,5+j,(up?3:6)+bob-(j>2?(up?0:1):0)+(up?(j>>1):0)*0,'w'); put(f,6+j,(up?4:7)+bob,j%2?'W':'w'); }
+      put(f,6,12+bob,'n'); put(f,8,12+bob,'n');
+      if(o.crest) { put(f,4,3+bob,'c'); put(f,5,3+bob,'c'); }
+      return mirror(f,fr);
+    } };
+  }
+  // floating spirit: translucent sheet with a tail that sways; banshee wails (open mouth), ghost is plain
+  function ghost(name,side,o){
+    const pal={ k:'rgba(0,0,0,0.18)', b:o.b, B:o.B, d:o.d, ...EYES[side], m:'#10101a' };
+    return { name, humanoid:false, pal, frame:(t,fr,mv)=>{
+      const f=mk(), s=Math.floor(t/2)%2, bob=s?-1:0; shadow(f,5,10);
+      for(let y=2;y<=7;y++) for(let x=4;x<=10;x++){ const dx=(x-7)/3.6, dy=(y-4.6)/3; if(dx*dx+dy*dy<=1) put(f,x,y+bob,y<=3?'B':'b'); }
+      for(let y=8;y<=13;y++){ const w=Math.max(1,(14-y)); for(let x=7-Math.min(4,w);x<=7+Math.min(3,w);x++) put(f,x+(((y+s)%2)?1:0)*(y>10?1:0)-(y>11?1:0),y+bob,(y>11)?'d':'b'); }
+      put(f,5,4+bob,'e'); put(f,4,4+bob,'p'); put(f,8,4+bob,'e'); put(f,7,4+bob,'p');
+      if(o.mouth){ put(f,6,6+bob,'m'); put(f,7,6+bob,'m'); put(f,6,7+bob,'m'); }
+      if(o.hair){ for(let y=3;y<=10;y++) put(f,10+(y>6?1:0),y+bob,'d'); }
+      return mirror(f,fr);
+    } };
+  }
+  // a glowing orb with a flickering flame (wisp) or small body with wings (fairy)
+  const wisp={ name:'Irrlicht', humanoid:false, pal:{ k:'rgba(0,0,0,0.20)', o:'#fff4b0', O:'#ffd84a', f:'#ff9a30', a:'#8ad0ff', ...EYES.good }, frame:(t,fr,mv)=>{
+    const f=mk(), s=Math.floor(t/2)%2, bob=s?-1:0; shadow(f,6,9);
+    for(let y=6;y<=11;y++) for(let x=5;x<=10;x++){ const dx=(x-7.5)/2.8, dy=(y-8.5)/2.8; if(dx*dx+dy*dy<=1) put(f,x,y+bob,(dx*dx+dy*dy>0.55)?'O':'o'); }
+    [[7,4],[8,5],[7,5],[8,3+(s?1:0)]].forEach(([x,y])=>put(f,x,y+bob,'f')); put(f,6,8+bob,'e'); put(f,5,8+bob,'p'); put(f,9,8+bob,'e'); put(f,8,8+bob,'p');
+    put(f,3,7+bob,'a'); put(f,12,9+bob,'a');
+    return mirror(f,fr); } };
+  const fairy={ name:'Fee', humanoid:false, pal:{ k:'rgba(0,0,0,0.20)', s:'#f0d0b0', h:'#e86ad0', d:'#c8a0f0', w:'#bfe8ff', W:'#ffffff', g:'#ffe27a', ...EYES.good }, frame:(t,fr,mv)=>{
+    const f=mk(), s=Math.floor(t/2)%2, bob=s?-1:0; shadow(f,6,9);
+    const wing=s?[[5,6],[4,5],[4,6],[3,6],[3,7],[4,7]]:[[5,7],[4,7],[4,8],[3,8],[3,9],[4,9]];
+    wing.forEach(([x,y])=>put(f,x,y+bob,'w')); wing.forEach(([x,y])=>put(f,16-1-x,y+bob,'W'));
+    for(let y=7;y<=10;y++) for(let x=7;x<=8;x++) put(f,x,y+bob,y<10?'d':'s');
+    put(f,7,11+bob,'s'); put(f,8,11+bob,'s');
+    for(let y=3;y<=5;y++) for(let x=6;x<=9;x++) if(!((y===3)&&(x===6||x===9))) put(f,x,y+bob,'s');
+    for(let x=6;x<=9;x++) put(f,x,3+bob,'h'); put(f,6,4+bob,'h'); put(f,9,4+bob,'h');
+    put(f,7,5+bob,'e'); put(f,6,5+bob,'p'); put(f,5,2+bob,'g'); put(f,10,2+bob,'g');
+    return mirror(f,fr); } };
+
+  const Z={};
+  // evil
+  Z.lizard=quad('Echse','evil',{ b:'#4f8a3a', B:'#7ab84e', d:'#2e5a24', n:'#a8d070', c:'#e8c040', head:'lizard', long:true });
+  Z.dragon=quad('Drache','evil',{ b:'#8a2a24', B:'#c44a30', d:'#541410', n:'#e8a840', c:'#f0c050', w:'#6a1a1c', W:'#9a2a28', head:'dragon', wings:2, tails:1, long:true, big:true, tipC:'c' });
+  Z.banshee=ghost('Banshee','evil',{ b:'#b8c8e0', B:'#e8f0ff', d:'#7088b0', mouth:true, hair:true });
+  Z.ghost=ghost('Geist','evil',{ b:'#a8b8c8', B:'#d8e4f0', d:'#6a7a8c' });
+  // good
+  Z.unicorn=quad('Einhorn','good',{ b:'#f4f0f8', B:'#ffffff', d:'#c8c0d8', n:'#f0e0f0', c:'#e87ad0', head:'horse', horn:true, tipC:'c' });
+  Z.kitsune=quad('Kitsune','good',{ b:'#e08a3a', B:'#f4b060', d:'#9a5a24', n:'#fff4e0', c:'#fff4e0', head:'fox', tails:3, tipC:'c', ears:true });
+  Z.yule=quad('Yule','good',{ b:'#3a3e54', B:'#5a6088', d:'#22243a', n:'#d8d0c0', c:'#c43a3a', head:'cat', tails:1 });
+  Z.griffin=quad('Greif','good',{ b:'#a8803c', B:'#f0e8d0', d:'#6a4a20', n:'#e8a830', c:'#d8c8a0', w:'#c8a860', W:'#e8d8a0', head:'eagle', wings:1, big:true });
+  Z.phoenix=bird('Phönix','good',{ b:'#e8501c', B:'#ff8a30', d:'#a82810', c:'#ffd040', w:'#ff6a20', W:'#ffc040', n:'#ffe080', crest:true });
+  Z.wisp=wisp; Z.fairy=fairy;
+  Object.keys(Z).forEach(k=>{ ZOO[k]=Z[k]; });
+
+  // humanoids: recoloured bodies of the ork (evil) and the hero (good), with a few pixels of extra shape
+  const ork=ZOO.ork, held=ZOO.held;
+  if(ork){
+    const v=(name,pal,tweak)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal}, frame:(t,fr,mv,eq)=>{ const f=ork.frame(t,false,mv,eq); if(tweak) tweak(f,t,mv); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } });
+    const tag=(f,c)=>{ let x0=99,x1=-1,y0=99,y1=-1; f.tag.forEach((r,y)=>r.forEach((q,x)=>{ if(q===c){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } })); return {x0,x1,y0,y1}; };
+    const setIf=(f,x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16&&(f.g[y][x]==='.')) f.g[y][x]=c; };
+    const horns=col=>f=>{ const H=tag(f,'H'); setIf(f,H.x0,H.y0-1,col); setIf(f,H.x0+1,H.y0-2,col); setIf(f,H.x1-1,H.y0-1,col); setIf(f,H.x1,H.y0-2,col); };
+    const wingsBehind=(col,col2)=>(f,t)=>{ const T=tag(f,'T'), up=Math.floor(t/2)%2; for(let j=0;j<4;j++){ setIf(f,T.x1+1+(j>>1),T.y0-1+j+(up?-1:0),col); setIf(f,T.x1+2+(j>>1),T.y0+j+(up?-1:0),col2); } };
+    ZOO.darkknight=v('Dunkler Ritter',{ s:'#6a6a7a', S:'#8a8a9a', z:'#44444e', t:'#25252f', T:'#41414f', u:'#0e0e14', c:'#25252f', C:'#41414f', l:'#1c1c24', L:'#2e2e3a', y:'#0a0a10' },(f)=>{ const H=tag(f,'H'); setIf(f,H.x0+2,H.y0-1,'R'); });
+    ZOO.succubus=v('Succubus',{ s:'#c88aa0', S:'#e8a8c0', z:'#8a5068', t:'#5a1a4a', T:'#8a2a70', u:'#34102c', c:'#5a1a4a', C:'#8a2a70', l:'#44163a', L:'#6a2058', y:'#2a0c24', g:'#34102c', A:'#5a1a4a', a:'#8a2a70' },(f,t)=>{ horns('g')(f); wingsBehind('A','a')(f,t); });
+    ZOO.demon=v('Dämon',{ s:'#c43a1c', S:'#e85a30', z:'#8a2410', t:'#6a1610', T:'#8a2418', u:'#3a0a08', c:'#4a0e0c', C:'#6a1812', l:'#4a0e0c', L:'#6a1812', y:'#2a0605', g:'#f0e0c0', A:'#5a0e0c', a:'#7a1a14' },(f,t)=>{ horns('g')(f); wingsBehind('A','a')(f,t); });
+    ZOO.zombie=v('Zombie',{ s:'#7a9a6a', S:'#9ab88a', z:'#506a44', t:'#5a5a46', T:'#74745a', u:'#34342a', c:'#4a4a38', C:'#5e5e48', l:'#3a3a2c', L:'#4c4c3a', y:'#22221a' },(f)=>{ const T=tag(f,'T'); setIf(f,T.x0,T.y0+2,'z'); setIf(f,T.x1-1,T.y0+4,'z'); });
+    ZOO.werewolf=v('Werwolf',{ s:'#6a4a34', S:'#8a6448', z:'#44301f', t:'#5a3e2a', T:'#765238', u:'#321f12', c:'#5a3e2a', C:'#765238', l:'#4a3220', L:'#6a4a32', y:'#241608' },(f)=>{ const H=tag(f,'H'); setIf(f,H.x0+1,H.y0-1,'u'); setIf(f,H.x1-1,H.y0-1,'u'); setIf(f,H.x0-1,H.y0+3,'S'); setIf(f,H.x0-1,H.y0+4,'S'); });
+    ZOO.lich=v('Lich',{ s:'#e8e0d0', S:'#faf4e8', z:'#b0a894', t:'#3a1a5a', T:'#5a2a8a', u:'#1c0c30', c:'#3a1a5a', C:'#5a2a8a', l:'#2a1244', L:'#401e66', y:'#120820' },(f)=>{ const H=tag(f,'H'); [H.x0,H.x0+1,H.x0+2,H.x0+3].forEach((x,i)=>setIf(f,x,H.y0-1-(i%2),'g')); });
+    ZOO.lich.pal.g='#f0c040';
+    ZOO.brood=null; delete ZOO.brood;
+  }
+  if(ZOO.imp){
+    const imp=ZOO.imp, rc=(m)=>{ const pal={}; Object.keys(imp.pal).forEach(c=>{ pal[c]=m(imp.pal[c],c); }); return pal; };
+    const tint=(hex,r,g,b)=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16), f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k))); return '#'+[f((n>>16)&255,r),f((n>>8)&255,g),f(n&255,b)].map(v=>v.toString(16).padStart(2,'0')).join(''); };
+    ZOO.brood={ ...imp, name:'Dämonenbrut', pal:rc((c,k)=>(k==='k'||k==='e'||k==='p'||/rgba/.test(c))?c:tint(c,0.75,0.55,1.35)) };
+  }
+  if(held){
+    const base=name=>ZOO[name];
+    const v=(name,pal,tweak,eqBase)=>{ const z=ZOO.knight||held; return { ...z, name, humanoid:true, pal:{...z.pal,...pal}, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,false,mv,eqBase?Object.assign({},eqBase,eq?{weapon:eq.weapon,shield:eq.shield,wparts:eq.wparts,wmat:eq.wmat}:{}):eq); if(tweak) tweak(f,t); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } }; };
+    const tag=(f,c)=>{ let x0=99,x1=-1,y0=99,y1=-1; f.tag.forEach((r,y)=>r.forEach((q,x)=>{ if(q===c){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } })); return {x0,x1,y0,y1}; };
+    const setIf=(f,x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16&&(f.g[y][x]==='.')) f.g[y][x]=c; };
+    const wings=(a,b)=>(f,t)=>{ const T=tag(f,'T'), up=Math.floor(t/2)%2; for(let j=0;j<5;j++){ setIf(f,T.x1+1+(j>>1),T.y0-2+j+(up?-1:0),a); setIf(f,T.x1+2+(j>>1),T.y0-1+j+(up?-1:0),b); } };
+    ZOO.angel=v('Engel',{ t:'#f4f0e4', T:'#ffffff', u:'#c8c0a8', F:'#f0d8b8', G:'#ffe8cc', A:'#ffffff', a:'#d8d0c0', Hh:'#ffe27a' },(f,t)=>{ wings('A','a')(f,t); const H=tag(f,'H'); [H.x0+1,H.x0+2,H.x0+3].forEach(x=>setIf(f,x,H.y0-1,'y')); },{ mat:'stahl', helm:0, chest:2, legs:1 });
+    ZOO.angel.pal.y='#ffe27a';
+    ZOO.guardian=v('Schutzengel',{ t:'#cfe4f4', T:'#eaf6ff', u:'#8aa8c0', F:'#f0d8b8', G:'#ffe8cc', A:'#eaf6ff', a:'#a8c4dc' },(f,t)=>{ wings('A','a')(f,t); const H=tag(f,'H'); [H.x0+1,H.x0+2].forEach(x=>setIf(f,x,H.y0-1,'y')); },{ mat:'stahl', helm:0, chest:1, legs:0 });
+    ZOO.guardian.pal.y='#bfe8ff';
+    ['angel','guardian','unicorn','kitsune','yule','griffin','phoenix','wisp','fairy'].forEach(k=>{ const z=ZOO[k]; if(z&&!ZOO[k+'_ally']) ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal:{...z.pal, e:z.pal.p, p:z.pal.e} }; });
+  }
+})();
