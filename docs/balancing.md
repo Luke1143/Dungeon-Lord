@@ -21,3 +21,6 @@ Gewinnrate in „fair"-Kämpfen 0,5 bis 0,7 (Schätzung 0,5), vier von acht übe
 - Die Messung der Artenstärke ist grob (zwei Probekämpfe pro Gegner und Stufe, Rauschen etwa ±0,07). Die Tabelle sollte bei größeren Änderungen an Arten oder Waffen neu gemessen werden.
 - Tag-Team-Kämpfe und Rudel wurden nur über den Bot getestet, nicht einzeln.
 - Der Drache ist mit dem Abzug (×0,29) noch immer die stärkste Wahl.
+
+## Nachtrag: Budget statt Artenstärke (siehe budget.md)
+Die Tabelle `LUDUS_POWER` und der Abzug für starke Arten sind weg: Starke Arten werden nicht mehr abgeschwächt, Kämpfe werden aus dem Budget gebaut. Turnierkämpfe gehen auf Leben und Tod (kein Aufgeben, keine Flucht, keine Bewusstlosigkeit), die Rivalen sind in der ersten Runde leicht (Gewinnrate 0,92) und werden bis 0,45 schwerer. Beim Bot-Test (acht Arten, 45 Tage, richtig ausgeruht) überlebten fünf.

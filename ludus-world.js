@@ -2,18 +2,17 @@
 // ({id, name, kind, level, tier, seed, status, ...}): they keep their look, level and gear, remember how they met the fighter, can die, beg, join, or come back for revenge.
 // The world is renewed after every tournament round (some leave, the rest grow, new ones arrive), so it never dies out. Concept: docs/ludus.md.
 const LUDUS_WORLD_SIZE=10;
-// how strong a kind is, in levels (measured by duels against a mixed field with starter gear, see docs/balancing.md): a kind with +4 at level 3 fights like the field at level 7.
-// Opponents are levelled with it, and the fighter's own kind is boosted or held back, so every kind starts with a fair chance.
-const LUDUS_POWER={ angel:8, archer:-1.0, banshee:-0.5, barbarian:0.5, beetle:1.0, brood:-1.0, darkelf:0.0, darkknight:4, demon:7, dragon:15, dryad:-1.0, dwarf:1.0, elf:1.0, fairy:-5.5, ghost:-0.5, ghoul:1.0, giant:5, goblin:-6.5, golem:5, griffin:6, guardian:1.5, hound:-4.0, kitsune:4.0, knight:1.5, lich:5, lizard:-0.5, monk:1.0, ork:-1.5, paladin:3, phoenix:5.5, priest:-5.0, skeleton:-2.5, succubus:0.0, thief:-6.5, troll:3, unicorn:7, vampire:4.5, warlock:-3.5, werewolf:4.5, wisp:-6.0, wizard:-3.0, yule:-1.5, zombie:-0.5 };
-const ludusPower=k=>LUDUS_POWER[k]||0;
-// every kind is brought to the same strength: a weak one gets more life and strength (as many levels as it lacks, measured at level 3), a strong one less
-const ludusKindBoost=k=>{ const P=Math.max(-8,Math.min(20,ludusPower(k))); if(!P) return 1; const base=1+LEVEL_SCALE_PER_LEVEL*3; return +(P<0?(1+LEVEL_SCALE_PER_LEVEL*(3-P))/base:base/(1+LEVEL_SCALE_PER_LEVEL*(3+P))).toFixed(2); };
-// the kinds that can show up as opponents: the strong ones only once the fighter is high enough to meet them at a fair level
-const ludusFoeKinds=()=>{ const l=ludusKinds().filter(k=>ludusPower(k)<=ludusLevel()+1); return l.length?l:ludusKinds(); };
-// the level an opponent of kind `k` needs to be a match for the fighter (the fighter's own kind is already levelled by ludusKindBoost) once `edge` levels are added;
-// a kind's strength is a factor, not a number of levels, so the weak ones are raised more at high levels
-const ludusKindFactor=k=>{ const P=ludusPower(k), base=levelScale(3); return P>=0?levelScale(3+P)/base:base/levelScale(3-P); };
-const ludusMatchLevel=(k,edge)=>Math.max(1,Math.min(40,Math.round((levelScale(ludusLevel())/ludusKindFactor(k)-1)/LEVEL_SCALE_PER_LEVEL+1+(edge||0))));
+// Encounters are made from the creature budget (budget.js): the team is worth W orks, the opponents together are worth about as much, as many and as strong as that takes.
+// Nobody is weakened for it: a dragon meets a swarm of orks, a goblin meets another goblin.
+// a very weak kind is lifted a little (never the other way round): life and strength grow so that it is worth at least 0.7 orks
+const ludusKindBoost=k=>+Math.max(1,Math.sqrt(0.7/creatureWorth(k))).toFixed(2);
+const ludusMemberWorth=m=>creatureWorthAt(m.kind,m.level)*Math.pow(ludusKindBoost(m.kind),2);
+const ludusTeamWorth=()=>ludus.team.reduce((a,m)=>a+ludusMemberWorth(m),0);
+const ludusUnitWorth=()=>ludusTeamWorth()/Math.max(1,ludus.team.length);
+// the kinds that can show up as single opponents: not far above what one member of the team is worth
+const ludusFoeKinds=()=>{ const u=ludusUnitWorth(), l=ludusKinds().filter(k=>creatureWorth(k)<=u*1.3); return l.length?l:ludusKinds().slice().sort((a,b)=>creatureWorth(a)-creatureWorth(b)).slice(0,6); };
+// the level at which a kind is a match for one member of the team, `edge` levels more
+const ludusMatchLevel=(k,edge)=>Math.max(1,Math.min(40,creatureLevelFor(k,ludusUnitWorth())+Math.round(edge||0)));
 const ludusNpc=id=>(ludus&&ludus.world||[]).find(n=>n.id===id)||null;
 const ludusNpcPool=()=>(ludus.world||[]).filter(n=>n.status==='active' && !n.maimed);
 // what a character looks like to the arena and to the 3D view: the same fields as an anonymous opponent, plus the id

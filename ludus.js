@@ -122,20 +122,27 @@ function ludusBoutLabel(o){
 const LUDUS_LAYOUT_ODDS=[['pit',30],['caverns',12],['choke',12],['bridge',10],['ring',10],['island',8],['pillars',10],['lanes',8]];
 function ludusLayoutPick(r){ let x=r()*LUDUS_LAYOUT_ODDS.reduce((a,b)=>a+b[1],0); for(const [l,w] of LUDUS_LAYOUT_ODDS){ x-=w; if(x<=0) return l; } return 'pit'; }
 const ludusLayoutLabel=l=>(ARENA_LAYOUTS.find(x=>x[0]===l)||[0,'Offene Grube'])[1];
-// one candidate bout; `r` is a seeded random function
-function ludusCandidate(r,kinds,level,tier,variantRoll){
-  const name=()=>{ let n; for(let i=0;i<6;i++){ n=LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]; if(n!==ludus.fighter.name) break; } return n; };
-  // duels and tag teams are fought against the characters of the world (a pack of lesser beasts is anonymous)
+// one candidate bout, built from the budget: `scale` makes it easier (below 1) or harder (above); `r` is a seeded random function
+function ludusCandidate(r,kinds,level,tier,variantRoll,scale){
+  const name=()=>{ let n; for(let i=0;i<6;i++){ n=LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]; if(!ludus.team.some(m=>m.name===n)) break; } return n; };
+  const nT=ludus.team.length, roll=variantRoll===undefined?r():variantRoll, W=ludusTeamWorth()*(scale||1);
   const pool=ludusNpcPool(), used=new Set();
-  const npcFoe=()=>{ const near=pool.filter(n=>!used.has(n.id)&&Math.abs(ludusMatchLevel(n.kind,0)-n.level)<=2), l=near.length?near:pool.filter(n=>!used.has(n.id)); if(!l.length) return null; const n=l[Math.floor(r()*l.length)]; used.add(n.id); return ludusNpcFoe(n); };
-  const foe=(lv,kind)=>(!kind&&npcFoe())||(()=>{ const k=kind||kinds[Math.floor(r()*kinds.length)]; return { kind:k, level:Math.max(1,kind?lv:ludusMatchLevel(k,0)), tier, seed:Math.floor(r()*1e9), name:name() }; })();
-  // alone, the fighter sometimes gets a random mate for a tag-team bout; with a team of its own there are no mates to borrow, the bouts just bring more foes
-  const nT=ludus.team.length, roll=variantRoll===undefined?r():variantRoll;
+  const pickKind=(lo,hi)=>{ const mid=(lo+hi)/2; let l=kinds.filter(k=>creatureWorth(k)>=lo&&creatureWorth(k)<=hi); if(!l.length) l=kinds.slice().sort((a,b)=>Math.abs(Math.log(creatureWorth(a)/mid))-Math.abs(Math.log(creatureWorth(b)/mid))).slice(0,3); return l[Math.floor(r()*l.length)]; };
+  // one opponent worth about `w`: a character of the world of about that worth, else a stranger of the kind (a random fitting one) at the level that makes the worth
+  const slot=(w,kind)=>{
+    if(!kind){ const near=pool.filter(n=>!used.has(n.id) && Math.abs(Math.log(creatureWorthAt(n.kind,n.level)/w))<0.4); if(near.length){ const n=near[Math.floor(r()*near.length)]; used.add(n.id); return ludusNpcFoe(n); } }
+    const k=kind||pickKind(w*0.4,w*1.6);
+    return { kind:k, level:creatureLevelFor(k,w), tier, seed:Math.floor(r()*1e9), name:name() };
+  };
   let o;
-  if(nT===1 && roll>0.82) o={ variant:'tag', ally:foe(level), foes:[foe(level),foe(level)] };
-  else if(roll>0.55){ const k=kinds[Math.floor(r()*kinds.length)], n=nT===1?2+(r()<0.4?1:0):nT+1+(r()<0.5?1:0); o={ variant:'swarm', foes:Array.from({length:n},()=>foe(Math.round(ludusMatchLevel(k,0)*0.55),k)) }; }
-  else if(nT>1) o={ variant:'group', foes:Array.from({length:nT},()=>foe(level)) };
-  else o={ variant:'duel', foes:[foe(level)] };
+  if(nT===1 && roll>0.82 && W>=1){ const w=W/2; o={ variant:'tag', ally:slot(ludusTeamWorth()), foes:[slot(w),slot(w)] }; }
+  else if(roll>0.55 && creatureWorth(kinds.slice().sort((a,b)=>creatureWorth(a)-creatureWorth(b))[0])*3<=W){
+    const k=pickKind(0.05,W/3), n=3+Math.floor(r()*4);
+    o={ variant:'swarm', foes:Array.from({length:n},()=>slot(W/n,k)) };
+  } else {
+    const n=nT>1?Math.min(nT,6):1;
+    o={ variant:n>1?'group':'duel', foes:Array.from({length:n},()=>slot(W/n)) };
+  }
   o.kind=o.foes[0].kind; o.level=Math.max(...o.foes.map(x=>x.level)); o.name=o.foes[0].name; o.title=ludusBoutLabel(o); o.layout=ludusLayoutPick(r);
   if(r()<0.1){ const ids=Object.keys(ITEMS).filter(id=>['weapon','armor','shield'].includes(ITEMS[id].type)&&ITEMS[id].tier==='plain'&&ludusCatOwned(ITEMS[id].type,ITEMS[id].family)); if(ids.length) o.items=[ids[Math.floor(r()*ids.length)]]; }
   return o;
@@ -147,7 +154,8 @@ function ludusScoutOpponent(){
   ludusBusy=true; ludusRender();
   // one candidate per timer tick, so the page stays alive and can paint between the test fights
   const r=ludusRng('opp'+ludus.day), tier=ludusAverageTier(), kinds=ludusFoeKinds(), cands=[], level=ludusLevel();
-  for(let i=0;i<8;i++) cands.push(ludusCandidate(r,kinds,level,tier,i<3?0:(i<5?0.6:(i<7?0.9:undefined))));
+  const scales=[0.55,0.7,1,1,1,1.3,1.6,2];
+  for(let i=0;i<8;i++) cands.push(ludusCandidate(r,kinds,level,tier,i<3?0:(i<5?0.6:(i<7?0.9:undefined)),scales[i]));
   const run=ludus, want=['fair','easy'].concat(ludusRoomTier('pit')>=2?['hard']:[]), rated=[];
   const step=i=>{
     if(ludus!==run){ ludusBusy=false; return; }
@@ -167,11 +175,11 @@ function ludusScoutOpponent(){
 }
 // a bout is made fitting: the opponent's level is searched (a few test fights) until the fighter's win rate comes near `target`
 function ludusFitLevel(o,target){
-  const f=o.foes[0], RUNS=6; let lo=1, hi=40, l=f.level, best=l, bestErr=9;
-  for(let i=0;i<6;i++){
+  const f=o.foes[0], RUNS=10; let lo=1, hi=40, l=f.level, best=l, bestErr=9;
+  for(let i=0;i<7;i++){
     f.level=l; o.level=Math.max(...o.foes.map(x=>x.level));
     let rate=0.5; try{ rate=arenaSimulate(ludusMatchSetup(o,'fit'+i),RUNS,null).wins[0]/RUNS; }catch(e){ break; }
-    const err=Math.abs(rate-target); if(err<bestErr){ bestErr=err; best=l; } if(err<0.1) break;
+    const err=Math.abs(rate-target); if(err<bestErr){ bestErr=err; best=l; } if(err<=0.06) break;
     if(rate>target) lo=Math.max(lo,l+1); else hi=Math.min(hi,l-1);
     if(lo>hi) break; l=Math.round(Math.sqrt(lo*hi));
   }
@@ -196,7 +204,8 @@ function ludusAdvanceDay(){
 }
 function ludusForcedBout(){
   const fo=ludus.forced; if(!fo.opp){
-    if(fo.type==='tour'){ const t=ludusTour(), lad=ludusLadder(t.week), rival=lad[Math.max(0,9-t.beaten)]; const rv=Object.assign({},rival,{ level:ludusMatchLevel(rival.kind,0) }), esc=Array.from({ length:ludus.team.length-1 },(_,k)=>{ const r=ludusRng('esc'+t.beaten+':'+k), ks=ludusFoeKinds(), kk=ks[Math.floor(r()*ks.length)]; return { kind:kk, level:Math.max(1,ludusMatchLevel(kk,-2)), tier:rival.tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] }; }); fo.opp=Object.assign({},rv,{ variant:'duel', foes:[rv].concat(esc), title:`${rival.name} (${SPECIES[rival.kind].label})`, reward:Math.round((20+12*(Math.min(t.beaten,9)+1)+(rival.rank===1?100:0))*ludusHallMult()), tour:true, diff:'hard' }); ludusFitLevel(fo.opp,Math.max(0.4,0.8-0.05*t.beaten)); }
+    if(fo.type==='tour'){ const t=ludusTour(), lad=ludusLadder(t.week), rival=lad[Math.max(0,9-t.beaten)]; let rk=rival.kind; if(creatureWorth(rk)>ludusUnitWorth()*2){ const rr=ludusRng('rk'+t.week+':'+t.beaten), ks=ludusFoeKinds(); rk=ks[Math.floor(rr()*ks.length)]; }       // a rival too mighty for this team is replaced by a lesser kind of the same name
+      const rv=Object.assign({},rival,{ kind:rk, level:ludusMatchLevel(rk,0) }), esc=Array.from({ length:ludus.team.length-1 },(_,k)=>{ const r=ludusRng('esc'+t.beaten+':'+k), ks=ludusFoeKinds(), kk=ks[Math.floor(r()*ks.length)]; return { kind:kk, level:Math.max(1,ludusMatchLevel(kk,-2)), tier:rival.tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] }; }); fo.opp=Object.assign({},rv,{ variant:'duel', foes:[rv].concat(esc), title:`${rival.name} (${SPECIES[rk].label})`, reward:Math.round((20+12*(Math.min(t.beaten,9)+1)+(rival.rank===1?100:0))*ludusHallMult()), tour:true, diff:'hard' }); ludusFitLevel(fo.opp,Math.max(0.45,0.92-0.05*t.beaten)); }
     else fo.opp=ludusQuickBout('fair',0.5);
   }
   return fo.opp;
@@ -273,7 +282,7 @@ function ludusWeekId(d){
 function ludusLadder(week){
   const r=seededRng(arenaHash('ladder:'+week)), pool=arenaKinds().slice(), out=[];
   for(let i=0;i<10;i++){      // i = 0 is the champion, i = 9 the weakest
-    const strength=9-i, fit=pool.filter(k=>ludusPower(k)<=1+strength*1.2), from=fit.length?fit:pool, kind=from[Math.floor(r()*from.length)]; pool.splice(pool.indexOf(kind),1);       // the lower ranks are weaker kinds
+    const strength=9-i, fit=pool.filter(k=>strength>=9||creatureWorth(k)<=0.6+0.5*strength), from=fit.length?fit:pool, kind=from[Math.floor(r()*from.length)]; pool.splice(pool.indexOf(kind),1);       // the lower ranks are weaker kinds
     out.push({ kind, level:1+Math.round(strength*1.8), tier:Math.max(0,Math.min(3,Math.floor(strength/3))), seed:Math.floor(r()*1e9),
       name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], rank:i+1, layout:ludusLayoutPick(r) });
   }
