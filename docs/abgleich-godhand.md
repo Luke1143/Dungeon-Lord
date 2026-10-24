@@ -54,6 +54,8 @@ Stand: nach dem Roster-Ausbau (Teil 16), Ausrüstung, Terrain, Vault und Perks. 
 - ❌ **Taverne als Arbeitsraum** (kochen).
 - ❌ **Wachposten "Kreaturen behalten"**: die Kreatur verlässt den Posten bei Hunger oder Müdigkeit.
 - ❌ **Stammarbeiter bevorzugt** bei der Rückkehr in einen Raum.
+
+*Nachtrag (erledigt):* Wachposten-Schalter "Kreaturen behalten" ✅, Opfern im Tempel ✅ (Wehrlose Feinde und Ausrüstung auf den Altar), Wahrnehmungswürfe ✅ (Geschick-abhängig, für Freizeit, Ausrüstung und Heureka), bewusstlose Eigene ins Bett tragen ✅, Passive für Troll, Golem, Geist und Flieger ✅ (Flieger überqueren Wasser und Lava), Untote verweigern Geistes- und Sozialarbeit ✅, Lockregeln gecacht (5 ms auf 0,9 ms) ✅.
 - ❌ **Bekehren als Job**: Gefangene werden passiv bekehrt, wenn Kreaturen in der Nähe stehen.
 - ❌ **Generische Job-Tabelle** (`JOBS`: holen, bringen, bedienen, suchen, üben, bewachen, bekehren, opfern, kämpfen, verwahren, entlassen): die Zustände sind weiterhin im Code verteilt.
 - ❌ **`NEEDS`- und `WISHES`-Tabellen** (Teil 13): Bedürfnisse laufen in `tickCreatureNeeds`, Wünsche in `LEISURE_ACTIVITIES`.

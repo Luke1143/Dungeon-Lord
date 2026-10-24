@@ -279,3 +279,11 @@ Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange 
 - **Gefallener Held:** a hero of level 5+ converted in the prison keeps its kind but becomes `fallen` (+30% life, +20% strength, name prefix).
 - Sprites: archetype generators in `sprites.js` (four-legged, bird, ghost, orb, recoloured ork/hero bodies); converted good kinds have `_ally` sprites with swapped eyes.
 - Not done: flying (griffin, angel, fairy, phoenix, wisp still walk and are blocked by lava), a balance run with the new mix.
+
+## 1.38 - Cleanup against the godhand audit
+- Passives as flags on `SPECIES` (`flies`, `ignoresWater`, `ignoresClutter`, `ignoresCrowding`, `immuneToSlow`); `bfsFind(..., {fly:true})` lets flying heroes march over water and lava. BFS uses a queue index instead of `shift()`.
+- `tickLures` computes its caps every tenth tick on one pass over the map (`roomsMemo`).
+- Perception (`overlooks`, `missChance`): leisure targets, loose gear and research ideas can be overlooked per creature and object for 25-60 ticks; chance falls with dexterity (about 20 % for an ork, 10 % for a dark elf).
+- Guard post switch `state.guardKeep` ("Kreaturen behalten"): the guard stays despite hunger and tiredness, mood suffers. Panel in the inspector.
+- Our own unconscious creatures are carried to a dormitory (`carriable`, CARGO.prisoner for both sides) and wake sooner there.
+- Altar sacrifices (`tryOffer`): an enemy at the mercy of the player or a piece of gear dropped on an altar raises mood and loyalty of the dark side; a great offering (value 10+) heals and spurs everyone on.

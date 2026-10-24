@@ -3060,12 +3060,14 @@ function findGearPickup(c){
     if(idx<0) return false;
     return gearAppeal(c, c.inventory[idx]) < appeal;
   });
-  if(!candidates.length) return null;
+  const seen=candidates.filter(it=> !((c.missed||{})['G'+it.x+','+it.y]>state.tickCount));
+  if(!seen.length) return null;
   // Immer das beste erreichbare Stueck zuerst
-  candidates.sort((a,b)=> gearAppeal(c,looseInst(b)) - gearAppeal(c,looseInst(a)));
-  const spots=new Set(candidates.map(it=> it.x+','+it.y));
+  seen.sort((a,b)=> gearAppeal(c,looseInst(b)) - gearAppeal(c,looseInst(a)));
+  const spots=new Set(seen.map(it=> it.x+','+it.y));
   const res=bfsFind(c.x, c.y, (x,y)=> spots.has(x+','+y));
   if(!res) return null;
+  if(overlooks(c,'G'+res.target.x+','+res.target.y)) return null;        // it lay there and the creature had other things on its mind
   return { path:res.path, target:res.target };
 }
 
@@ -3689,7 +3691,8 @@ function tickCreatureNeeds(c, speed){
     return true;
   }
 
-  // Frei/wach: Bedürfnisse haben Vorrang vor der eigenen Beschäftigung
+  // Frei/wach: Bedürfnisse haben Vorrang vor der eigenen Beschäftigung (ausser am Wachposten mit dem Schalter "behalten")
+  if(c.state==='guarding' && c.keptAtPost) return false;
   if(c.needsFood && c.hunger<=HUNGER_SEEK_THRESHOLD){
     if(nudgeEat(c)) return true;
   }
@@ -3842,11 +3845,20 @@ function findAnyLibraryTile(entity){
   return bfsFind(entity.x, entity.y, (x,y)=> state.grid[y][x].room==='library');
 }
 
+// ----- Perception (godhand Teil 7): a creature sees everything in reach, but an unprompted opportunity can slip past it.
+// The roll falls at the moment the opportunity would trigger; a miss marks this one object as overlooked for this one creature for a while.
+// What a creature chases on purpose (hunger, a target it walks to) is never rolled. The chance depends on dexterity.
+function missChance(c){ return Math.max(3, 24-statDex(c)*0.6); }
+function overlooks(c,key){
+  c.missed=c.missed||{};
+  if(c.missed[key]>state.tickCount) return true;
+  if(Math.random()*100<missChance(c)){ c.missed[key]=state.tickCount+randInt(25,60); return true; }
+  return false;
+}
 function checkInspirationHere(w){
   for(const topic of RESEARCH_TOPICS){
     if(isTopicClaimed(topic.id)) continue;
-    if(topic.trigger(w.x,w.y)) return topic;
-    if(neighbors(w.x,w.y).some(([nx,ny])=> topic.trigger(nx,ny))) return topic;
+    if((topic.trigger(w.x,w.y) || neighbors(w.x,w.y).some(([nx,ny])=> topic.trigger(nx,ny))) && !overlooks(w,'T'+topic.id)) return topic;
   }
   return null;
 }
@@ -4042,6 +4054,7 @@ function tryLeisure(c, speed){
   for(const opt of options){
     const found=opt.activity.locate(c);
     if(!found) continue;
+    if(overlooks(c,'L'+opt.activity.id+':'+found.target.x+','+found.target.y)) continue;      // walked past it
     c.leisureId=opt.activity.id;
     c.leisureTimer=opt.activity.duration;
     c.leisureTarget={x:found.target.x, y:found.target.y}; // belegt das Objekt
@@ -4078,11 +4091,23 @@ function tryDrill(c){
   }
   return false;
 }
+// The guard post's switch "keep creatures": the room does not dismiss its guard when a need calls; the guard stays at the post with every consequence.
+function guardKeepOn(room){ return !!(state.guardKeep && state.guardKeep[storageKey(room)]); }
+function refreshKeep(c){ const room=computeRooms().find(r=>r.type==='guardpost' && r.tiles.some(t=>t.x===c.postTile.x&&t.y===c.postTile.y)); c.keptAtPost=!!(room && guardKeepOn(room)); }
+function renderGuardPanel(room){
+  const el=document.getElementById('storagePanel'); if(!el) return;
+  el.hidden=false; el.innerHTML='';
+  const title=document.createElement('div'); title.className='section-title'; title.textContent='Wachposten'; el.appendChild(title);
+  const row=document.createElement('label'); row.className='goodRow';
+  const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=guardKeepOn(room);
+  cb.addEventListener('change', ()=>{ state.guardKeep=state.guardKeep||{}; state.guardKeep[storageKey(room)]=cb.checked; markDirty(); });
+  row.appendChild(cb); row.appendChild(document.createTextNode('Kreaturen behalten (auch wenn sie hungrig oder müde sind)')); el.appendChild(row);
+}
 // Rueckgabe true = Tick verbraucht.
 function tickDrill(c){
   if(c.state==='goingToTraining' || c.state==='goingToPost'){
     stepAlong(c);
-    if(!c.path.length){ c.state=c.state==='goingToTraining'?'training':'guarding'; c.drillTimer=c.state==='training'?randInt(40,70):GUARD_TICKS; }
+    if(!c.path.length){ c.state=c.state==='goingToTraining'?'training':'guarding'; c.drillTimer=c.state==='training'?randInt(40,70):GUARD_TICKS; if(c.state==='guarding') refreshKeep(c); }
     return true;
   }
   if(c.state==='training'){
@@ -4093,6 +4118,8 @@ function tickDrill(c){
     return true;
   }
   if(c.state==='guarding'){
+    if(state.tickCount%10===0) refreshKeep(c);
+    if(c.keptAtPost){ c.drillTimer=Math.max(c.drillTimer,5); if(state.tickCount%10===0 && c.happiness!==undefined && ((c.needsFood&&c.hunger<=HUNGER_SEEK_THRESHOLD)||c.energy<=ENERGY_SEEK_THRESHOLD)) c.happiness=Math.max(0,c.happiness-2); }
     if(--c.drillTimer<=0){ leaveDrill(c); c.state='wandering'; }
     return true;
   }
@@ -4679,9 +4706,16 @@ function freePrisonSpots(){
   prisonRoomsReady().forEach(r=>r.tiles.forEach(t=>{ if((t.x+t.y)%2===0 && !taken.has(t.x+','+t.y)) spots.add(t.x+','+t.y); }));
   return spots;
 }
+// who a carrier fetches: a fallen hero for a cell (when one is free), or one of our own fallen for a bed (godhand Teil 25: unconscious creatures are cargo)
+function carriable(c,cells,beds){
+  if(!c.unconscious || c.imprisoned || c.reservedBy || c.isBoss || c.kind==='dungeonlord') return false;
+  if(c.faction==='good') return cells && c.category==='hero';
+  return beds && factionOf(c)==='evil' && state.grid[Math.round(c.y)][Math.round(c.x)].room!=='dormitory';
+}
 function findPrisonerJob(imp){
-  if(!freePrisonSpots().size) return null;
-  const res=bfsFind(imp.x,imp.y,(x,y)=>state.creatures.some(c=>c.unconscious && c.faction==='good' && c.category==='hero' && !c.isBoss && !c.imprisoned && !c.reservedBy && Math.round(c.x)===x && Math.round(c.y)===y));
+  const cells=freePrisonSpots().size>0, beds=roomTiles('dormitory')>0;
+  if(!cells && !beds) return null;
+  const res=bfsFind(imp.x,imp.y,(x,y)=>state.creatures.some(c=>carriable(c,cells,beds) && Math.round(c.x)===x && Math.round(c.y)===y));
   return res?{ path:res.path, target:res.target }:null;
 }
 function convertPrisoner(c){
@@ -4707,9 +4741,13 @@ const CARGO={
       imp.carryingPrisoner=state.creatures.splice(idx,1)[0];
       return true;
     },
-    findDest(imp){ const spots=freePrisonSpots(); return spots.size ? bfsFind(imp.x,imp.y,(x,y)=>spots.has(x+','+y)) : null; },
+    findDest(imp){
+      const c=imp.carryingPrisoner;
+      if(c && factionOf(c)==='evil') return bfsFind(imp.x,imp.y,(x,y)=>state.grid[y][x].room==='dormitory');     // our own go to bed
+      const spots=freePrisonSpots(); return spots.size ? bfsFind(imp.x,imp.y,(x,y)=>spots.has(x+','+y)) : null; },
     drop(imp,x,y){
       const c=imp.carryingPrisoner; if(!c) return;
+      if(factionOf(c)==='evil'){ imp.carryingPrisoner=null; Object.assign(c,{ x, y, renderX:x, renderY:y, reservedBy:null, unconsciousTimer:Math.ceil(UNCONSCIOUS_TICKS*0.4) }); state.creatures.push(c); logEvent(`${c.name} wird ins Bett gebracht.`, x, y); return; }
       imp.carryingPrisoner=null;
       Object.assign(c,{ x, y, renderX:x, renderY:y, reservedBy:null, imprisoned:{ progress:0 }, unconscious:true });
       state.creatures.push(c);
@@ -5172,7 +5210,7 @@ function tickImpOnce(imp){
     }
     job=findPrisonerJob(imp);      // a fallen hero must reach a cell before he wakes: ahead of reinforcing and feeding
     if(job){
-      const pr=state.creatures.find(c=>c.unconscious && c.faction==='good' && !c.imprisoned && !c.reservedBy && Math.round(c.x)===job.target.x && Math.round(c.y)===job.target.y);
+      const pr=state.creatures.find(c=>carriable(c,true,true) && Math.round(c.x)===job.target.x && Math.round(c.y)===job.target.y);
       if(pr){ pr.reservedBy=imp.id; beginHaul(imp,'prisoner',job.target,job.path); return; }
     }
     job=findReinforceJob(imp);
@@ -7556,6 +7594,7 @@ function highlightRoomAt(t,x,y){
     else if(room && room.type==='smelter' && room.tiles.length>=SMELTER_MIN_SIZE){ renderSmelterPanel(room); }
     else if(room && room.type==='forge'){ renderForgePanel(room); }
     else if(room && room.type==='armory'){ renderArmoryPanel(room); }
+    else if(room && room.type==='guardpost'){ renderGuardPanel(room); }
     else { renderStoragePanel(null); }
   } else {
     selectedRoomTiles=null;
@@ -7895,6 +7934,7 @@ function handlePickClick(x,y){
     return;
   }
 
+  if(tryOffer(x,y)) return;
   if(tryStasis(x,y)) return;
 
   if(heldEntity.kind==='book'){
@@ -9351,6 +9391,32 @@ function vaultEntryOf(c){
   return e;
 }
 // the held thing is dropped on a seal: it leaves the world. Returns true when the drop was used up.
+// ----- Opfern (godhand Teil 15 and 18): the temple asks "what is your offering value?" and everything answers.
+// An enemy creature's value is its level (heroes count double), gear is worth its grade times its quality. The altar's reward: the dark side's mood and loyalty
+// rise, and a great offering heals and spurs on every creature of ours for a while.
+const OFFER_TIER={ crude:1, plain:2, fine:4, epic:8 };
+function offeringValue(kind,o){
+  if(kind==='equipment'){ const d=itemDef(o.itemId); return d&&d.type!=='seal' ? Math.round((OFFER_TIER[d.tier]||1)*(o.q||1)*10)/10 : 0; }
+  if(o.kind==='dungeonlord' || o.isBoss || factionOf(o)==='evil') return 0;                 // only enemies go on the altar
+  if(!o.unconscious && !o.imprisoned) return 0;                                              // and only the helpless
+  return (o.level||1)*(o.category==='hero'?2:1)*(o.fallen?2:1);
+}
+function tryOffer(x,y){
+  if(!heldEntity || state.grid[y][x].room!=='temple' || !altarSpots().some(s=>s.x===x&&s.y===y)) return false;
+  const h=heldEntity, o=h.obj, v=h.kind==='equipment'?offeringValue('equipment',o):offeringValue('creature',o);
+  if(v<=0){ setInspect('Der Altar verlangt ein Opfer von Wert: einen wehrlosen Feind oder ein Stück Ausrüstung.'); return true; }
+  const what=h.kind==='equipment'?instLabel(looseInst(o)):actorLabel(o);
+  if(h.kind!=='equipment'){ state.creatures=state.creatures.filter(c=>c!==o); }
+  const mood=Math.min(30,Math.round(v*2)), loyal=Math.max(1,Math.round(v/2));
+  state.creatures.forEach(c=>{ if(factionOf(c)!=='evil' || c.category==='beast' || c.kind==='imp') return;
+    if(c.happiness!==undefined) c.happiness=Math.min(100,c.happiness+mood); if(c.loyalty!==undefined) c.loyalty=Math.min(100,c.loyalty+loyal);
+    if(v>=10 && !c.unconscious){ c.hp=c.maxHp; c.rallyTicks=60; } });
+  spawnEffect('teleportOut', x, y); emitFx('claim', x, y);
+  logEvent(`${what} wird auf dem Altar dargebracht (Wert ${v}). ${v>=10?'Ein Beben geht durch den Dungeon: alle stehen gestärkt auf.':'Die Dunkelheit ist zufrieden.'}`, x, y);
+  setInspect(`Opfer dargebracht: ${what} (Wert ${v}).`);
+  heldEntity=null; exitPickMode(); draw(); updateUI(); markDirty();
+  return true;
+}
 function tryStasis(x,y){
   const seal=sealAt(x,y); if(!seal || !heldEntity) return false;
   const h=heldEntity, o=h.obj;
