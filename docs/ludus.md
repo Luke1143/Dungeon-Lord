@@ -54,3 +54,10 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
   - **Taverne** (3 Stufen): besseres Huhn und stärkerer Schlaf. **Grube** (3): größere Preise. **Schmiede** (4): die Qualität der Ware (Stufe 1 nur grobe Ware aus dem schlechtesten von sechs Teile-Würfen, Stufe 4 episch aus dem besten) und die **Sorten** (Waffenarten, Rüstungsgewichte, Schilde) werden einzeln gekauft (`LUDUS_CATS`). **Bücherei** (3): Stärke der angebotenen Fähigkeiten. **Turnierhalle** (2): Wochenturnier, höhere Preise.
 - Debug: "alle Kreaturen freigeschaltet" und "alle Räume voll ausgebaut" im Startbildschirm.
 - Offen: weitere Räume (Küche, Schlafsaal als Heilung, Markt), Kreaturen-Freischaltung aus der Kampagne, Darstellung von Waffen- und Rüstungsständern in der Schmiede nach Sorten.
+
+## Hof überarbeitet (neu)
+- **Die Kamera gehört dem gewählten Raum.** Jedes Gebäude ist eine eigene Bühne (`hub3d.js`); beim Wechsel schwingt die Kamera schnell hinüber, die anderen Räume sind danach nicht mehr zu sehen. Der Kämpfer steht vor der Tür und geht kurz nach dem Schwenk hinein. Die Orbit-Kamera ist eng begrenzt (leichtes Drehen und Zoomen).
+- **Bauplätze statt Ausbau-Reiter**: Jedes Gebäude hat seinen Reiter. Ein noch nicht gebauter Raum zeigt einen leeren Bauplatz mit Pflöcken und Seil, die einzige Möglichkeit ist, ihn zu bauen. Gebaute Räume haben unten den Knopf für die nächste Stufe, die Schmiede dort auch das Sortiment.
+- **Die Grube gibt es von Anfang an** (Stufe 1 kostenlos), damit niemand festsitzt. Ausbau Stufe 2 und 3 kostet Ansehen.
+- **Bücher** aus der Bücherei liegen im Inventar und müssen dort gelernt werden (mit den Regeln des Hauptspiels).
+- **Trainingsraum** (neu, 3 Stufen): eine Runde am Dummy gibt Erfahrung ohne Schaden, kostet Gold und einen Tag.
