@@ -51,6 +51,7 @@ const SFX=(()=>{
     step:(d,t)=>{ noise(d,t,0.07,{ type:'lowpass', f0:between(350,600), gain:0.55 }); },
     horn:(d,t)=>{ tone(d,t,0.7,{ type:'sawtooth', f0:146, f1:150, gain:0.2, attack:0.12 }); tone(d,t,0.7,{ type:'sawtooth', f0:220, f1:224, gain:0.12, attack:0.12 }); },
     levelup:(d,t)=>{ [392,494,587,784].forEach((f,i)=>tone(d,t+i*0.09,0.3,{ type:'triangle', f0:f, f1:f, gain:0.25 })); },
+    howl:(d,t)=>{ tone(d,t,0.9,{ type:'sawtooth', f0:300, f1:520, gain:0.12, attack:0.25 }); tone(d,t+0.5,0.8,{ type:'sawtooth', f0:520, f1:240, gain:0.1, attack:0.05 }); },
     drip:(d,t)=>{ tone(d,t,0.22,{ f0:between(1100,1500), f1:500, gain:0.18 }); },
     click:(d,t)=>{ tone(d,t,0.04,{ type:'square', f0:700, f1:500, gain:0.12 }); }
   };
