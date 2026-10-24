@@ -1079,7 +1079,7 @@ function tickCombat(c){
 // A blow is a short strike over a few tiles in front of the wielder, a shot is a strike that flies on, tile by tile, over several ticks.
 // Both are aimed at a tile, not at a creature: whoever stands on a tile the strike crosses is rolled for. Allies are never hit.
 const PROJECTILES={ bow:{ speed:2, drop:0.03 }, crossbow:{ speed:3, drop:0.02 }, javelin:{ speed:1.5, drop:0.05 }, wandFire:{ speed:1.5, drop:0.04 }, wandBolt:{ speed:3, drop:0 }, wandIce:{ speed:1, drop:0.05 } };
-function weaponInstOf(c){ return wornItems(c).find(i=>(instDef(i)||{}).type==='weapon')||null; }
+function weaponInstOf(c){ return activeWeapon(c)||null; }
 // what the creature strikes with right now: a blow (reach, breadth, mode) or a shot (range, speed, drop-off)
 function strikeSpec(c){
   const inst=weaponInstOf(c), w=inst&&instDef(inst), reach=reachOf(c);
@@ -1137,6 +1137,11 @@ function strikeFoe(c,o,res){
   return true;
 }
 function doStrike(c,spec,aim){
+  const res=doStrikeOnce(c,spec,aim);
+  if(dualWielding(c)) c.handTurn=c.handTurn?0:1;       // the other hand strikes next
+  return res;
+}
+function doStrikeOnce(c,spec,aim){
   const res={ hit:false, killedTarget:false };
   if(spec.kind==='melee'){
     blowTiles(c,spec,aim).forEach(t=>strikeFoesAt(c,t.x,t.y).forEach(o=>strikeFoe(c,o,res)));
@@ -1182,7 +1187,7 @@ function kiteBack(c,t){
 const NOTICE_RADIUS=8, NOTICE_INTRUDER_RADIUS=16;
 // How far a creature can strike: by the weapon it holds (a bow shoots, a wand casts), otherwise next to the foe.
 function reachOf(c){
-  const inst=wornItems(c).find(i=>(instDef(i)||{}).type==='weapon'), w=inst&&instDef(inst);
+  const inst=activeWeapon(c), w=inst&&instDef(inst);
   if(!w) return 1;
   const pp=w.cat==='melee'?partsOf(inst):null;
   const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : (pp?weaponReachTiles(pp.model.R,creatureScale(c),WEAPON_MODE[w.family]):(w.reach||1)));
@@ -1600,16 +1605,31 @@ function slotsOfItem(v){
   if(d.type==='shield') return ['lh'];
   return d.hands===2 ? ['rh','lh'] : ['rh'];
 }
-// what a creature really wields: per slot the best piece wins, whatever else it carries is baggage
-function wornItems(c){
-  const taken=new Set(), out=[];
-  (c.inventory||[]).filter(inst=>!inst.off).sort((a,b)=>instScore(b)-instScore(a)).forEach(inst=>{
-    const sl=slotsOfItem(inst);
-    if(!sl.length || sl.some(s=>taken.has(s))) return;
-    sl.forEach(s=>taken.add(s)); out.push(inst);
+// Two hands: one-handed melee weapons may fill both (a second weapon instead of a shield, the thief's way); `pin` marks what the player put on last
+const DUAL_KINDS=new Set(['thief','darkelf','goblin','kitsune']);   // two-blade artists: no penalty for the off hand, and they prefer a second weapon to a shield
+const OFFHAND_FACTOR=0.8;
+const isDualWeapon=d=>!!d && d.type==='weapon' && d.hands===1 && d.cat==='melee';
+function wornSlots(c){
+  const s={ rh:null, lh:null, body:null }, dual=DUAL_KINDS.has(c.kind);
+  const key=i=>instScore(i)+(dual&&(instDef(i)||{}).type==='weapon'?500:0);
+  (c.inventory||[]).filter(inst=>!inst.off).sort((a,b)=>((b.pin||0)-(a.pin||0))||(key(b)-key(a))).forEach(inst=>{
+    const d=instDef(inst); if(!d||d.type==='seal') return;
+    if(d.type==='armor'){ if(!s.body) s.body=inst; }
+    else if(d.type==='shield'){ if(!s.lh) s.lh=inst; }
+    else if(d.hands===2){ if(!s.rh && !s.lh){ s.rh=inst; s.lh=inst; } }
+    else if(!s.rh) s.rh=inst;
+    else if(!s.lh && isDualWeapon(d) && isDualWeapon(instDef(s.rh))) s.lh=inst;
   });
-  return out;
+  return s;
 }
+// what a creature really wields: per slot the best piece wins, whatever else it carries is baggage
+function wornItems(c){ const s=wornSlots(c), out=[]; [s.rh,s.lh,s.body].forEach(i=>{ if(i && !out.includes(i)) out.push(i); }); return out; }
+// the weapon of the hand that strikes next (the hands alternate when both hold one)
+function activeWeapon(c){
+  const s=wornSlots(c), w=i=>i&&(instDef(i)||{}).type==='weapon'?i:null, a=w(s.rh), b=s.lh!==s.rh?w(s.lh):null;
+  return (a&&b)?(c.handTurn?b:a):(a||b);
+}
+const dualWielding=c=>{ const s=wornSlots(c); return !!(s.rh&&s.lh&&s.rh!==s.lh&&(instDef(s.rh)||{}).type==='weapon'&&(instDef(s.lh)||{}).type==='weapon'); };
 // Zweihandwaffen belegen zwei Inventarplaetze
 function itemSlotCost(v){
   const d=instDef(v);
@@ -1700,11 +1720,14 @@ function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 function equipmentBonus(c){
   const total={ strength:0, defense:0, dex:0, speed:0, tempo:0 };
   if(!usesEquipment(c) || !c.inventory) return total;
+  const sl=wornSlots(c), act=activeWeapon(c);
   wornItems(c).forEach(inst=>{
     const def=instDef(inst);
     if(!def) return;
+    if(def.type==='weapon' && inst!==act) return;          // only the weapon of the striking hand counts
+    const off=def.type==='weapon' && sl.lh===inst && sl.rh!==inst && !DUAL_KINDS.has(c.kind);
     ['strength','defense','dex','speed','tempo'].forEach(k=>{
-      total[k]+=instStat(inst,k);
+      total[k]+=instStat(inst,k)*((off&&k==='strength')?OFFHAND_FACTOR:1);
     });
   });
   return total;
@@ -1713,7 +1736,9 @@ function equipmentBonus(c){
 // --- Inventar-Werkzeuge ---
 function hasFreeSlot(c, itemId){
   if(itemId && c.kind!=='imp' && inventorySlots(c)>0){
-    const busy=new Set(); (c.inventory||[]).forEach(inst=>slotsOfItem(inst).forEach(s=>busy.add(s)));
+    const w=wornSlots(c), busy=new Set(); ['rh','lh','body'].forEach(k=>{ if(w[k]) busy.add(k); });
+    const dd=instDef(itemId);
+    if(isDualWeapon(dd) && w.rh && isDualWeapon(instDef(w.rh)) && !w.lh) return true;          // a second blade fits the free hand
     return slotsOfItem(itemId).every(s=>!busy.has(s));
   }
   const need = (itemId && c.kind!=='imp') ? itemSlotCost(itemId) : 1;       // an imp drags even a war hammer in one go
@@ -1864,7 +1889,7 @@ function grantXp(actor, amount){
 const SWING_COST=3;
 // a blow with a dagger comes quick, one with a war hammer slow: the weapon in hand scales the wind-up (work with tools keeps the plain cost)
 function swingFactorOf(c){
-  const inst=wornItems(c).find(i=>(instDef(i)||{}).type==='weapon'); if(!inst) return 1;
+  const inst=activeWeapon(c); if(!inst) return 1;
   const w=instDef(inst), p=partsOf(inst), strongF=Math.max(0.6,Math.min(1.8,Math.pow(WIELDER_STR_REF/Math.max(1,wielderStrength(c)),WEAPON_WIELD_EXP)));
   return (w.swing||1)*(p?p.swingF:1)*(w.cat==='melee'?strongF:1);     // the wielder's strength: a strong arm swings the same weapon quicker
 }
@@ -2039,6 +2064,7 @@ function windup(actor){
   if(actor.swingBudget < cost) return false;
   actor.swingBudget-=cost;
   startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
+  actor.lastHand=actor.handTurn?1:0;
   return true;
 }
 function swing(actor, roomType){
@@ -5791,7 +5817,8 @@ function equipLook(c){
   const e={}; let any=false;
   wornItems(c).forEach(inst=>{
     const d=instDef(inst); if(!d) return;
-    if(d.type==='weapon' && !e.weapon){ e.weapon=WEAPON_SPRITE[d.family]; const p=partsOf(inst); if(p){ e.wparts={ head:p.head, len:p.len, shaft:p.shaft, pommel:p.pommel, mat:p.mat }; e.wmat=p.mat; } else e.wmat=TOOLGEN.matOfTier(d.tier); any=any||!!e.weapon; }
+    if(d.type==='weapon' && e.weapon && !e.weapon2 && isDualWeapon(d)){ e.weapon2=WEAPON_SPRITE[d.family]; const p=partsOf(inst); if(p) e.wparts2={ head:p.head, len:p.len, shaft:p.shaft, pommel:p.pommel, mat:p.mat }; any=true; }
+    else if(d.type==='weapon' && !e.weapon){ e.weapon=WEAPON_SPRITE[d.family]; const p=partsOf(inst); if(p){ e.wparts={ head:p.head, len:p.len, shaft:p.shaft, pommel:p.pommel, mat:p.mat }; e.wmat=p.mat; } else e.wmat=TOOLGEN.matOfTier(d.tier); any=any||!!e.weapon; }
     else if(d.type==='shield' && !e.shield){ e.shield=d.family; any=true; }
     else if(d.type==='armor' && !e.chest){
       const w=d.family==='heavyArmor'?3:(d.family==='mediumArmor'?2:1), step=d.tier==='epic'?2:(d.tier==='fine'?1:(d.tier==='crude'?-1:0));
@@ -5836,7 +5863,7 @@ function drawCreatureSprite(c,px,py,opts){
   if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; const side=capture?View3D.sideOf(dx,dy):dx; if(Math.abs(side)>0.004) c._faceRight=side>0; } }
   c._sx=px; c._sy=py;
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
-  const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?Object.assign({},equipLook(c),{ weapon:undefined }):equipLook(c)):undefined);
+  const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?(()=>{ const eq=equipLook(c); return eq&&eq.weapon2&&c.lastHand?Object.assign({},eq,{ weapon2:undefined }):Object.assign({},eq,{ weapon:undefined }); })():equipLook(c)):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
   const sc=creatureScale(c);
   const fl=(opts&&opts.flash)||0;
@@ -5857,7 +5884,7 @@ function drawCreatureSprite(c,px,py,opts){
 const HIT_FLASH_MS=260;
 
 // What a creature holds: its weapon sprite, if it carries one. Nobody swings anything they do not hold; every swing still leaves an arc.
-function weaponSpriteOf(c){ const e=equipLook(c); return e && e.weapon ? e.weapon : null; }
+function weaponSpriteOf(c){ const e=equipLook(c); return e && e.weapon ? (c.lastHand&&e.weapon2?e.weapon2:e.weapon) : null; }
 function drawSwing(c, px, py, pose, lift){
   const sign=c._faceRight?1:-1, fwd=0.3+pose.ox, a=pose.anim;
   const wcv=pose.held ? toolCanvas(weaponSpriteOf(c)) : null, alpha=slashAlpha(pose);
@@ -7886,17 +7913,22 @@ function drawFpHand(c){
   const W=host.clientWidth, H=host.clientHeight;
   if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
   const g=cv.getContext('2d'); g.clearRect(0,0,W,H);
-  const weapon=toolCanvas(weaponSpriteOf(c));
-  const pose=fpPose||Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' }, p:0 });
+  const eqf=equipLook(c), wR=toolCanvas(eqf&&eqf.weapon), wL=eqf&&eqf.weapon2?toolCanvas(eqf.weapon2):null;
+  const idle=Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' }, p:0 }), pose=fpPose||idle;
   const moving=keysDown['w']||keysDown['a']||keysDown['s']||keysDown['d'];
   const bob=fpPose?0:(moving?Math.sin(Date.now()/130)*0.02:Math.sin(Date.now()/600)*0.006);
-  const k=H/15;
-  g.save(); g.imageSmoothingEnabled=false;
-  g.translate(W*0.74+pose.ox*H*0.7, H*(1.02+bob)-pose.oy*H*0.6); g.rotate(pose.angle);
-  if(weapon && pose.held) g.drawImage(weapon, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k);
-  const al=fpPose?slashAlpha(pose):0;
-  if(al>0.02){ g.globalAlpha=al*0.55; const sk=k*1.05; g.drawImage(slashCanvas(pose.anim.tint), -TOOL_S/2*sk, -(TOOL_S-1)*sk, TOOL_S*sk, TOOL_S*sk); }
-  g.restore();
+  const k=H/15, leftStrikes=!!(wL&&c.lastHand);
+  const drawHand=(cvs,x,ps,mirror)=>{
+    if(!cvs) return;
+    g.save(); g.imageSmoothingEnabled=false;
+    g.translate(x+(mirror?-1:1)*ps.ox*H*0.7, H*(1.02+bob)-ps.oy*H*0.6); if(mirror) g.scale(-1,1); g.rotate(ps.angle);
+    if(ps.held) g.drawImage(cvs, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k);
+    const al=(ps===pose&&fpPose)?slashAlpha(ps):0;
+    if(al>0.02){ g.globalAlpha=al*0.55; const sk=k*1.05; g.drawImage(slashCanvas(ps.anim.tint), -TOOL_S/2*sk, -(TOOL_S-1)*sk, TOOL_S*sk, TOOL_S*sk); }
+    g.restore();
+  };
+  drawHand(wR, W*0.74, leftStrikes?idle:pose, false);
+  if(wL) drawHand(wL, W*0.26, leftStrikes?pose:idle, true);
   // the left hand: the shield, seen from the front, tilted a little towards the middle
   const eq=equipLook(c), sc=eq&&eq.shield?shieldCanvas(eq.shield,eq.mat):null;
   if(sc){ const ks=H/15; g.save(); g.imageSmoothingEnabled=false; g.translate(W*0.2, H*(0.95+bob*0.6)); g.rotate(0.1); g.drawImage(sc, -sc.width/2*ks, -sc.height*ks, sc.width*ks, sc.height*ks); g.restore(); }

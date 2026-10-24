@@ -171,7 +171,9 @@ function ludusRender(){
   const stockNow=el._stock;
   el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; if(ludusTab!=='gear') ludusSel=-1; ludusRender(); if(ludusTab==='pit') ludusScoutOpponent(); }));
   el.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>{ ludusSel=+b.dataset.pick; if(ludusTab!=='gear'){ ludusTab='gear'; } ludusRender(); }));
-  el.querySelectorAll('[data-equip]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.equip, inst=f.inventory[i]; if(wornIdx.has(i)) inst.off=true; else { const sl=slotsOfItem(inst); f.inventory.forEach((o,j)=>{ if(j!==i && slotsOfItem(o).some(s=>sl.includes(s))) o.off=true; }); delete inst.off; } ludusSave(); ludusRender(); }));
+  el.querySelectorAll('[data-equip]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.equip, inst=f.inventory[i];
+    if(wornIdx.has(i)){ inst.off=true; delete inst.pin; } else { delete inst.off; inst.pin=Date.now(); }       // the piece put on last takes its place first; a second one-handed blade fills the other hand
+    ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.sell, inst=f.inventory[i]; ludus.gold+=ludusSellPrice(inst); f.inventory.splice(i,1); ludusSel=-1; ludusNote=''; ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-reroll]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.reroll, inst=f.inventory[i], pr=ludusRerollPrice(inst); if(ludus.gold<pr) return; ludus.gold-=pr; inst.s=Math.floor(Math.random()*1e9); ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{ const id=stockNow[+b.dataset.buy], pr=ludusPrice(id); if(ludus.gold<pr) return; ludus.gold-=pr; f.inventory.push({ id, q:1, s:Math.floor(Math.random()*1e9) }); ludusNote=''; ludusSave(); ludusRender(); }));

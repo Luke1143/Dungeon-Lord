@@ -87,3 +87,9 @@ Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vo
 - **Schuss** = Geschoss, das nach dem Ausholen losfliegt und Feld für Feld wandert (Geschwindigkeit je Waffe); pro Feld: Treffer, wenn ein Feind darauf steht, und ein Wurf, ob es hier liegen bleibt. Verfehlte Pfeile fliegen weiter. Ein Schütze zielt auf das Feld, wo das Ziel gleich sein wird: Vorhalt und Zielgenauigkeit steigen mit der Stufe und dem Geschick, sonst driftet der Schuss ein Feld.
 - Ein Nahkämpfer mit Reichweite 2 stellt sich so, dass der Feind auf seiner Linie steht (nicht diagonal).
 - Zwei Waffen und Fernkampf nach Pfeil/Bogen/Sehne sind noch offen.
+
+## Stand: zwei Waffen sind drin
+- `wornSlots(c)` belegt die Hände: eine Einhand-Nahkampfwaffe darf in jede Hand; zwei davon ersetzen das Schild. Zweihandwaffen nehmen beide Hände, Schilde die linke. Die zuletzt im Ludus angelegte Waffe (`pin`) wird zuerst platziert.
+- Die Hände schlagen abwechselnd (`handTurn`, `activeWeapon`); Schaden, Schlagdauer, Reichweite und Muster kommen von der Waffe der schlagenden Hand. Die Nebenhand schlägt mit 80 % Stärke, außer bei Artisten (`DUAL_KINDS`: Dieb, Dunkelelf, Goblin, Kitsune), die auch eine zweite Waffe einem Schild vorziehen.
+- Sprite: zweite Waffe auf der Schildseite, Ich-Ansicht: zweite Waffe in der linken Hand, die abwechselnd schwingt. Arena-Aufstellung: Feld "Zweite Waffe".
+- Duelle mit zwei Waffen gegen Waffe und Schild liegen etwa gleichauf.

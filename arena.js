@@ -35,7 +35,7 @@ function arenaSeedGear(items,g,i){ if(g.seed!==undefined) items.forEach((it,k)=>
 function arenaGear(c,g,i){
   const inst=id=>({ id, q:1, s:Math.floor(Math.random()*1e9) });
   if(g.gear==='none') return [];
-  if(g.gear==='custom') return arenaSeedGear([g.weapon,g.armor,g.shield].filter(id=>id&&ITEMS[id]).map(inst),g,i);
+  if(g.gear==='custom') return arenaSeedGear([g.weapon,g.weapon2,g.armor,g.shield].filter(id=>id&&ITEMS[id]).map(inst),g,i);
   const geared=['barbarian','thief','elf','wizard','knight','archer','monk','paladin','dwarf','giant','dryad'];
   if(geared.includes(c.kind)) return arenaSeedGear(heroGear(c.kind,c.level||1,false,Math.max(0,Math.min(3,g.tier===undefined?1:g.tier))),g,i);
   return arenaSeedGear((HORDE_START_GEAR[c.kind]||[]).map(inst),g,i);
@@ -256,7 +256,7 @@ function arenaRenderSetup(){
       <select data-f="kind">${arenaOpts(kinds,g.kind)}</select> Stufe <input data-f="level" type="number" min="1" max="40" value="${g.level}">
       Ausrüstung <select data-f="gear">${arenaOpts(ARENA_GEARS,g.gear)}</select>
       ${g.gear==='auto'?`Güte <select data-f="tier">${arenaOpts([[0,'krude'],[1,'normal'],[2,'fein'],[3,'episch']],g.tier)}</select>`:''}
-      ${g.gear==='custom'?`<select data-f="weapon" title="Waffe">${arenaItemOpts('weapon',g.weapon)}</select><select data-f="armor" title="Rüstung">${arenaItemOpts('armor',g.armor)}</select><select data-f="shield" title="Schild">${arenaItemOpts('shield',g.shield)}</select>`:''}
+      ${g.gear==='custom'?`<select data-f="weapon" title="Waffe">${arenaItemOpts('weapon',g.weapon)}</select><select data-f="weapon2" title="Zweite Waffe">${arenaItemOpts('weapon',g.weapon2)}</select><select data-f="armor" title="Rüstung">${arenaItemOpts('armor',g.armor)}</select><select data-f="shield" title="Schild">${arenaItemOpts('shield',g.shield)}</select>`:''}
       Fähigkeit <select data-f="ability">${arenaOpts(abil,g.ability)}</select>
     </div>
     <div class="arBtns"><button data-copy="1" title="Kopie ins Team legen">Kopieren</button><button data-reroll="1" title="Aussehen der Ausrüstung neu würfeln">🎲</button><button data-del="1" title="Kämpfer entfernen">✕</button></div></div>`;
@@ -292,7 +292,7 @@ function arenaRenderSetup(){
 // the live picture of each entry: its sprite with the chosen gear, idling; the creature is rebuilt whenever the entry changes
 const ARENA_PREVIEWS=new WeakMap();
 function arenaPreviewCreature(grp){
-  const sig=JSON.stringify([grp.kind,grp.level,grp.gear,grp.tier,grp.weapon,grp.armor,grp.shield,grp.seed]);
+  const sig=JSON.stringify([grp.kind,grp.level,grp.gear,grp.tier,grp.weapon,grp.weapon2,grp.armor,grp.shield,grp.seed]);
   let p=ARENA_PREVIEWS.get(grp); if(p&&p.sig===sig) return p.c;
   const keep=Math.random; let c=null;
   try{ c=arenaMake(grp.kind,0,0); c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.inventory=arenaGear(c,grp,0); }catch(e){ c=null; } finally { Math.random=keep; }

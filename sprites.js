@@ -209,6 +209,9 @@ const CREATURES={
     }
     if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
     if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-5+x,sy+y,c)); }
+    const wp2=e.weapon2&&weaponShape(e.weapon2,e.wparts2);   // the second blade hangs on the other side, where a shield would be
+    if(wp2){ const ox=T.x0-2-wp2.grip[0]; let oy=T.y0+3-wp2.grip[1]; const top=Math.min(...wp2.px.map(q=>q[1])); if(oy+top<0) oy=-top;
+      wp2.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N) f.g[Y][X]=c; }); }
     const wp=e.weapon&&weaponShape(e.weapon,e.wparts);
     if(wp){ const ox=T.x1+2-wp.grip[0]; let oy=T.y0+3-wp.grip[1]; const top=Math.min(...wp.px.map(q=>q[1])); if(oy+top<0) oy=-top;   // a giant weapon is slid down until its head is in the picture
       wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N) f.g[Y][X]=c; }); }   // a weapon may overlap the body
