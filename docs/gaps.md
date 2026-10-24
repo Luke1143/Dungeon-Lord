@@ -52,7 +52,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Gegner-Burg mit Handwerkern, Rekruten, Profilen, Räumen, Technik | ✅ | |
-| Boss-Fähigkeiten und Phasen | 🟡 | Herakles hat Phase 2; Alberich, Oberon und Artus kämpfen noch nur normal |
+| Boss-Fähigkeiten und Phasen | ✅ | `bosses.js`, Tabelle `BOSS_ABILITIES`: Alberich (Zwergenhorn, Beben), Oberon (Ranken fesseln, Verjüngung mit Bogenschützen), Artus (Schlachtruf, Schildwall mit Rittern), Herakles (Raserei, Keulenwirbel). Verbündete Bosse nutzen sie noch nicht |
 | Die Guten spiegeln den Spieler (Teil 24) | 🟡 | Heldenarten, Bedürfnisse der Wartenden; Zauberer/Barbar als Spiegel ja, eigene Räume-Jobs der Helden nein |
 
 ## Darstellung und Technik

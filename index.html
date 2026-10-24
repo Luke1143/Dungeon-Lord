@@ -392,6 +392,7 @@
 <script src="overworld.js"></script>
 <script src="objectives.js"></script>
 <script src="artifacts.js"></script>
+<script src="bosses.js"></script>
 <script src="keep.js"></script>
 <script src="view3d.js"></script>
 <script>
@@ -1275,7 +1276,7 @@ function statMaxHp(c){
 }
 function statDefense(c){
   const eq=equipmentBonus(c);
-  return Math.max(0,(c.baseDefense||0)+eq.defense); // skaliert NICHT mit Stufe
+  return Math.max(0,(c.baseDefense||0)+eq.defense+(c.tempDefense||0)); // skaliert NICHT mit Stufe
 }
 function defenseReduction(c){ const d=statDefense(c); return d/(d+DEFENSE_K);
 }
@@ -1293,7 +1294,7 @@ function statSpeed(c){
 // Bewegung nutzt ihn direkt, Handlungen werden gedaempft - sonst schlaegt ein Imp
 // mehrmals pro Sekunde zu, was weder aussieht noch sich anfuehlt wie Arbeit.
 function statTempo(c){
-  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1);
+  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -3169,6 +3170,7 @@ function tileMoveCost(x,y,entity){
 
 // Bewegung mit Budget-Konto: erlaubt Bruchteile (0.6 Kacheln/Tick) und Werte ueber 1.
 function stepAlong(entity, speedOverride){
+  if(entity.rootedTicks>0){ entity.path=[]; return; }          // held fast by roots
   // Pro Aufruf genau 1 - die Tempo-Skalierung steckt bereits in actionCount(),
   // das diese Funktion bei schnellen Kreaturen mehrfach je Tick erreicht.
   const speed = speedOverride!==undefined ? speedOverride : 1;
@@ -3266,6 +3268,10 @@ function pickWanderTarget(entity){
 
 function tickCreature(c){
   if(c.held) return;
+  if(c.rootedTicks>0) c.rootedTicks--;
+  if(c.rallyTicks>0) c.rallyTicks--;
+  if(c.tempDefenseTicks>0 && --c.tempDefenseTicks===0) c.tempDefense=0;
+  if(BOSS_ABILITIES[c.kind]) runBossAbilities(c);     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
   if(isPossessed(c)){ tickPossessed(c); return; }
   const actions=actionCount(c);
   for(let i=0;i<actions;i++){
@@ -3287,13 +3293,6 @@ function tickCreatureOnce(c){
 
 // Bosses guard their home; the boss of a level hunts thieves once alerted, a corrupted one stays near its home and fights.
 function tickBoss(c){
-  // Herakles in a rage: at half life he roars, fights faster and calls the hall's heroes
-  if(c.kind==='herakles' && c.faction==='good' && !c.rage && c.hp<=c.maxHp*0.5){
-    c.rage=true; c.baseTempo=(c.baseTempo||1)*1.4; c.alert=true;
-    logEvent('Herakles brüllt vor Zorn und ruft seine Streiter!', c.x, c.y);
-    const tiles=heroSpawnTiles(), mods=waveMods(state.war);
-    ['paladin','knight','archer'].forEach((k,i)=>spawnHero(k, Math.min(MAX_LEVEL,(mods.levelBonus||0)+4), false, i, mods));
-  }
   if(c.path && c.path.length){ stepAlong(c); return; }
   if(c.faction==='good' && c.alert){
     const foes=state.creatures.concat(state.imps).filter(o=>!o.held&&!o.unconscious&&areHostile(c,o));
@@ -5013,6 +5012,8 @@ function swingPhase(c){
 
 // Genau EIN Gedanke ueber dem Kopf, nach fester Rangfolge.
 function thoughtOf(c){
+  if(c.shout && c.shoutTicks>0) return c.shout;
+  if(c.rootedTicks>0) return '🌿';
   if(c.imprisoned) return '⛓️';
   if(c.unconscious) return '💫';
   if(c.state==='fleeing') return '❗';
