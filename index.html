@@ -371,6 +371,9 @@
           <button id="cheatGear">Ausrüstung fallen lassen</button>
           <button id="cheatEnemy">Feindliche Kreaturen rufen</button>
           <button id="cheatReveal">Karte aufdecken</button>
+          <button id="dbgFog">Nebel ausschalten</button>
+          <button id="dbgReport">Fehlerbericht kopieren</button>
+          <textarea id="dbgReportText" hidden rows="6" style="width:100%;font-size:10px"></textarea>
         </div>
       </div>
       <button id="resetBtn">Level neu starten</button>
@@ -609,6 +612,7 @@ function areHostile(a, b){
 // --- Schadensberechnung ---
 // Reihenfolge: Ausweichen -> Glueck -> Verteidigung -> Mindestschaden
 function resolveAttack(attacker, defender, context){
+  if(defender.removed) return { dodged:true, damage:0 };
   // Ausweichen
   if(Math.random()*100 < statDex(defender)){
     defender.dodgeAt=Date.now();
@@ -636,6 +640,7 @@ function resolveAttack(attacker, defender, context){
     defender.hp=0;
     outcome = knockOutOrKill(defender, overkill, attacker, context);
   }
+  dbg('combat', `${actorLabel(attacker)} trifft ${actorLabel(defender)} für ${dmg}${crit?' (kritisch)':''} → ${Math.max(0,Math.round(defender.hp))}/${defender.maxHp}${outcome!=='hit'?' · '+outcome:''}`);
   hitFx(attacker, defender, dmg, crit, outcome==='killed');
   return { dodged:false, damage:dmg, crit, soaked, outcome };
 }
@@ -686,6 +691,9 @@ function faintCreature(c){
 }
 
 function killCreature(c, killer){
+  if(c.removed) return;        // a creature dies once, however many blows were already on their way
+  c.removed=true;
+  dbg('kill', `${actorLabel(c)} stirbt${killer?' durch '+actorLabel(killer):''} bei ${c.x},${c.y}`);
   if(c.kind==='dungeonlord'){
     if(possessed===c) endPossession();
     state.creatures=state.creatures.filter(o=>o!==c);
@@ -769,7 +777,7 @@ function tickCombat(c){
   }
 
   // Ziel noch gueltig?
-  if(c.fightTarget && (c.fightTarget.unconscious || c.fightTarget.held
+  if(c.fightTarget && (c.fightTarget.removed || c.fightTarget.unconscious || c.fightTarget.held
       || !areHostile(c, c.fightTarget))) c.fightTarget=null;
 
   if(!c.fightTarget) c.fightTarget=pickFightTarget(c);
@@ -1944,13 +1952,22 @@ function updateFog(){
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.room==='portal'||t.room==='entrance'){ t.seen=true; vis[y*WORLD_COLS+x]=1; } }   // the way in is always in plain sight
   state.imps.forEach(i=>see(Math.round(i.x),Math.round(i.y),FOG_UNIT_RADIUS));
   state.creatures.forEach(c=>{ if(c.faction!=='good') see(Math.round(c.x),Math.round(c.y),FOG_UNIT_RADIUS); });
+  // A cave that still looks like rock must not hide a body walking in it: a creature standing in a lit, undiscovered cave tile, or any
+  // player unit or owned floor right next to one, reveals that cave (the whole connected cave, as when you dig into it).
+  const near=[]; state.imps.forEach(i=>near.push([Math.round(i.x),Math.round(i.y)])); state.creatures.forEach(c=>{ if(c.faction!=='good') near.push([Math.round(c.x),Math.round(c.y)]); });
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'&&t.owned) near.push([x,y]); }
+  const reveal=(x,y)=>{ if(x<0||y<0||x>=WORLD_COLS||y>=WORLD_ROWS) return; const t=g[y][x]; if(t.natural&&!t.discovered&&!t.owned) markCaveDiscovered(x,y); };
+  near.forEach(([x,y])=>{ reveal(x,y); reveal(x+1,y); reveal(x-1,y); reveal(x,y+1); reveal(x,y-1); });
+  state.creatures.forEach(c=>{ if(c.faction==='good' && vis[Math.round(c.y)*WORLD_COLS+Math.round(c.x)]) reveal(Math.round(c.x),Math.round(c.y)); });
 }
+let debugNoFog=false;
+function fogSeen(t){ return t.seen || debugNoFog; }
 // true while something at tile position (x,y) must not be drawn; centered: x,y already point at a tile centre (particles, stains)
 function fogHidden(x,y,centered,enemy){
   if(!state) return false;
   const tx=centered?Math.floor(x):Math.round(x), ty=centered?Math.floor(y):Math.round(y);
   if(tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return false;
-  if(!state.grid[ty][tx].seen) return true;
+  if(!fogSeen(state.grid[ty][tx])) return true;
   return !!enemy && !!state.vis && !state.vis[ty*WORLD_COLS+tx];
 }
 
@@ -4932,7 +4949,7 @@ function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 // ---- 3D view: terrain info, capture of the 2D draw calls, screen overlay ----
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
-  if(!t.seen) return { wall:true, color:'#050403', kind:null };
+  if(!fogSeen(t)) return { wall:true, color:'#050403', kind:null };
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
   if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
@@ -4969,7 +4986,6 @@ function drawOverlay3d(){
   const WALLH=View3D.WALL;
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
-    if(!t.seen) continue;
     if(t.marked){ trace(quad(x+0.1,y+0.1,0.8,0.8,WALLH)); g.strokeStyle=COLORS.mark; g.lineWidth=2; g.stroke(); g.fillStyle='rgba(212,175,55,0.25)'; g.fill(); }
     if(t.queuedRoom && ROOM_TYPES[t.queuedRoom]){ trace(quad(x+0.1,y+0.1,0.8,0.8,0.02)); g.setLineDash([4,3]); g.strokeStyle=ROOM_TYPES[t.queuedRoom].color; g.lineWidth=2; g.stroke(); g.setLineDash([]); g.fillStyle='rgba(255,255,255,0.12)'; g.fill(); }
   }
@@ -5012,7 +5028,7 @@ function draw2d(){
       const t=state.grid[y][x];
       const px=(x-camX)*TILE, py=(y-camY)*TILE;
 
-      if(!t.seen){ ctx.fillStyle='#050403'; ctx.fillRect(px,py,TILE,TILE); continue; }
+      if(!fogSeen(t)){ ctx.fillStyle='#050403'; ctx.fillRect(px,py,TILE,TILE); if(t.marked){ ctx.strokeStyle=COLORS.mark; ctx.lineWidth=2; ctx.strokeRect(px+3,py+3,TILE-6,TILE-6); ctx.lineWidth=1; } continue; }
       if(isHidden(x,y)){
         ctx.fillStyle=COLORS.fog;
         ctx.fillRect(px,py,TILE,TILE);
@@ -5465,7 +5481,12 @@ function markCaveDiscovered(x,y){
   }
 }
 
+// The debug log keeps the last lines of everything (events, combat, kills) for bug reports; it is not saved with the game.
+function dbg(cat,text){ if(!state) return; const l=state.dbg||(state.dbg=[]); l.push(`t${state.tickCount} [${cat}] ${text}`); if(l.length>800) l.splice(0,l.length-800); }
 function logEvent(msg,x,y){
+  dbg('event',msg);
+  const top=state.eventLog[0];
+  if(top && top.msg===msg && top.x===x && top.y===y && state.tickCount-top.tick<40){ top.n=(top.n||1)+1; top.tick=state.tickCount; renderEventLog(); return; }   // the same thing again: count it
   state.eventLog.unshift({ id: eventIdCounter++, msg, x, y, tick: state.tickCount });
   if(state.eventLog.length>20) state.eventLog.length=20;
   renderEventLog();
@@ -5553,7 +5574,7 @@ function renderEventLog(){
   state.eventLog.forEach(ev=>{
     const item=document.createElement('div');
     item.className='logEntry';
-    item.textContent=ev.msg;
+    item.textContent=ev.msg+(ev.n>1?`  ×${ev.n}`:'');
     item.addEventListener('click', ()=> jumpCameraTo(ev.x, ev.y));
     el.appendChild(item);
   });
@@ -6338,6 +6359,7 @@ function refreshInspect(){
 function setInspect(text, remember){
   const el=document.getElementById('inspectPanel');
   if(!el) return;
+  if(remember && remember.kind==='tile' && !document.getElementById('debugPanel').hidden) text+='\n\n🐞 '+tileDebug(remember.x,remember.y);
   el.textContent=text;
   el.classList.add('hasTarget');
   if(remember!==undefined) currentInspect=remember;
@@ -6577,6 +6599,12 @@ function describeStorage(room){
   return `Lagerraum — ${tierLabel}. Bis zu ${tier} Einheiten je Kachel.\nLagert: ${allowed.length?allowed.join(', '):'nichts (alles abgewählt)'}`;
 }
 
+// everything the game knows about a tile, for bug reports (shown in the inspector while the debug panel is open)
+function tileDebug(x,y){
+  const t=state.grid[y][x], flags=['natural','discovered','seen','owned','enemy','marked','reinforced','fixed','gold','ore','gem','root','hoard'].filter(k=>t[k]).join(' ');
+  const here=state.creatures.concat(state.imps).filter(c=>Math.round(c.x)===x&&Math.round(c.y)===y).map(c=>`${c.kind||'imp'}#${c.id} ${c.state||''}${c.fightTarget?'→#'+c.fightTarget.id:''}${c.unconscious?' bewusstlos':''}`).join('; ');
+  return `(${x},${y}) ${t.type}${t.room?' room='+t.room:''}${t.goodRoom?' goodRoom='+t.goodRoom:''}${t.wasGood?' wasGood='+t.wasGood:''}${isHidden(x,y)?' VERSTECKT':''} [${flags}]${here?'\nHier: '+here:''}`;
+}
 function describeTile(t,x,y){
   if(t.type==='water') return 'Wasser — verlangsamt die meisten Kreaturen und kann nicht erobert werden.';
   if(t.type==='bedrock') return 'Bedrock — unzerstörbar, weder abbaubar noch verstärkbar.';
@@ -7264,7 +7292,7 @@ function handleInspectClick(x,y){
   if(chosen.kind!=='tile'){ selectCreature(chosen); draw(); return; }
 
   const t=state.grid[y][x];
-  if(!t.seen){ setInspect('Unerforscht.', null); selectedRoomTiles=null; return; }
+  if(!t.seen && !isDiggable(t)){ setInspect('Unerforscht.', null); selectedRoomTiles=null; return; }
   if(isHidden(x,y)){
     setInspect('Gestein — bisher unerforscht.', null);
     selectedRoomTiles=null; draw(); return;
@@ -7403,7 +7431,7 @@ canvas.addEventListener('mousedown', e=>{
   } else {
     // Die Startkachel darf nicht ueber den ganzen Zug entscheiden: beginnt man auf Wasser,
     // Bedrock oder einer getarnten Hoehle, soll der Rest des Bereichs trotzdem markierbar sein.
-    if(isDiggable(t) && t.seen && !isHidden(x,y)) dragMode = t.marked ? 'unmark' : 'mark';
+    if(isDiggable(t) && !isHidden(x,y)) dragMode = t.marked ? 'unmark' : 'mark';
     else dragMode = 'mark';
   }
 });
@@ -7460,7 +7488,6 @@ window.addEventListener('mouseup', e=>{
     for(let yy=y0; yy<=y1; yy++){
       for(let xx=x0; xx<=x1; xx++){
         const t=state.grid[yy][xx];
-        if(!t.seen) continue;
         if(isHidden(xx,yy)){
           // Getarnte Höhle: kosmetisch mitmarkieren, damit die Auswahl keine verräterischen Lücken zeigt
           t.fakeMarked=wantMark;
@@ -7692,6 +7719,27 @@ document.getElementById('cheatEnemy').addEventListener('click', ()=>{
   draw(); updateUI(); markDirty();
 });
 
+document.getElementById('dbgFog').addEventListener('click', ()=>{ debugNoFog=!debugNoFog; document.getElementById('dbgFog').textContent=debugNoFog?'Nebel einschalten':'Nebel ausschalten'; if(state) state.tickCount+=0; draw(); });
+// A report the player can paste into a message: what happened lately, every error, the map and all creatures.
+function buildReport(){
+  const g=state.grid, rows=[];
+  for(let y=0;y<WORLD_ROWS;y++){ let r=''; for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; const c=state.creatures.concat(state.imps).find(o=>Math.round(o.x)===x&&Math.round(o.y)===y);
+    r+= c ? (c.faction==='good'?'H':(c.kind==='imp'?'i':'c')) : t.type==='bedrock'?'#' : t.type==='water'?'~' : t.type==='rock' ? (t.marked?'m':t.reinforced?'R':t.root?'r':t.gold?'g':'.') : (isHidden(x,y)?'?':t.owned?'o':t.goodRoom?'G':t.enemy?'e':t.room==='portal'?'P':t.room==='throne'?'T':' '); } rows.push(r); }
+  const cr=state.creatures.concat(state.imps).map(c=>`#${c.id} ${c.kind||'imp'} ${c.faction||'evil'} (${c.x},${c.y}) lv${c.level||1} hp${Math.round(c.hp)}/${c.maxHp} ${c.state||''}${c.fightTarget?' →#'+c.fightTarget.id:''}${c.unconscious?' bewusstlos':''}${c.post?' Posten':''}`);
+  const w=state.war;
+  return ['# Dungeon Lord Fehlerbericht','Tick '+state.tickCount+' · Tempo '+gameSpeed+' · 3D '+view3dOn+' · '+(world&&campaign?'Runde '+campaign.round:''),
+    'Krieg: '+JSON.stringify({ wave:w.wave, over:w.over, throneHp:Math.round(w.throneHp), goals:w.goals&&w.goals.length, mods:w.mods&&{ waves:w.mods.waves, size:w.mods.size, levelBonus:w.mods.levelBonus, gearTier:w.mods.gearTier, wizards:w.mods.wizards } }),
+    'Burg: '+(typeof keepSummary==='function'?keepSummary():''),
+    'Fehler: '+(Object.keys(errorCounts).length?JSON.stringify(errorCounts):'keine'),
+    '','## Karte (#=Fels-Rand ~=Wasser .=Fels m=markiert R=verstärkt g=Gold ?=versteckte Höhle o=eigener Boden e=Feind-Boden G=Feind-Raum H=Held c=Kreatur i=Imp)',...rows,
+    '','## Wesen',...cr,'','## Letzte Ereignisse (neueste zuletzt)',...(state.dbg||[]).slice(-120)].join('\n');
+}
+document.getElementById('dbgReport').addEventListener('click', async ()=>{
+  const text=buildReport(), ta=document.getElementById('dbgReportText');
+  try{ await navigator.clipboard.writeText(text); document.getElementById('dbgReport').textContent='Kopiert ✓'; setTimeout(()=>{ document.getElementById('dbgReport').textContent='Fehlerbericht kopieren'; },2000); }
+  catch(e){ ta.hidden=false; ta.value=text; ta.select(); }
+});
+window.addEventListener('keydown', e=>{ if(e.key==='F8'){ document.getElementById('dbgReport').click(); e.preventDefault(); } });
 document.getElementById('cheatReveal').addEventListener('click', ()=>{
   let n=0;
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
@@ -8661,7 +8709,7 @@ function drawMinimap(){
   g.fillStyle='#0f0b09'; g.fillRect(0,0,minimap.width,minimap.height);
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
-    if(!t.seen){ g.fillStyle='#000'; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE); continue; }
+    if(!fogSeen(t)){ g.fillStyle='#000'; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE); continue; }
     let c=MM_COLORS[t.type]||MM_COLORS.rock;
     if(t.type==='floor' && t.owned) c='#6a5640';
     if(t.room) c=MM_ROOMS[t.room]||'#8a7a5c';
