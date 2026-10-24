@@ -1095,6 +1095,7 @@ function jobOpinion(c, roomType){
 // Nimmt die Kreatur diese Arbeit freiwillig an?
 function willWorkVoluntarily(c, roomType){
   if((SPECIES[c.kind]||{}).noWork) return false;      // a dragon does not sweep floors
+  if(c.category==='undead' && (jobCategoryOf(roomType)==='geist' || jobCategoryOf(roomType)==='sozial')) return false;   // the dead lack the mind and the charm (godhand, Teil 17)
   return jobOpinion(c, roomType)!=='hasst';
 }
 
@@ -1911,6 +1912,13 @@ function restoreStats(obj, data){
   return obj;
 }
 
+// Passives (godhand Teil 20): exceptions to the tile rules, named by flags that tileMoveCost reads. `flies` also lets a hero march over water and lava.
+Object.assign(SPECIES.troll,   { ignoresCrowding:true, passive:'Regeneriert langsam, schiebt sich durch Gedränge, liebt Schmiede und Kampf' });
+Object.assign(SPECIES.golem,   { immuneToSlow:true, passive:'Unbeirrbar — nichts bremst ihn, aber er ist von Natur aus langsam' });
+Object.assign(SPECIES.ghost,   { flies:true, ignoresWater:true, ignoresClutter:true, ignoresCrowding:true, passive:'Körperlos — ignoriert Wasser, Gedränge und Gegenstände, schwer zu treffen' });
+Object.assign(SPECIES.banshee, { flies:true, ignoresWater:true, ignoresClutter:true, ignoresCrowding:true });
+Object.assign(SPECIES.dragon,  { flies:true, ignoresWater:true });
+['fairy','griffin','angel','phoenix','wisp'].forEach(k=>Object.assign(SPECIES[k],{ flies:true, ignoresWater:true, ignoresCrowding:true }));
 function applySpecies(obj, kind){
   const s=SPECIES[kind];
   Object.assign(obj, rollStats(kind));
@@ -2334,16 +2342,16 @@ function isHidden(x,y){
 }
 
 function bfsFind(sx,sy,targetTest,opts){
-  const avoidWater = opts && opts.avoidWater;
-  const passable=(x,y)=> isWalkable(x,y) && !(avoidWater && state.grid[y][x].type==='water');
-  if(!isWalkable(sx,sy)) return null;
+  const avoidWater = opts && opts.avoidWater, fly = opts && opts.fly;
+  const passable=(x,y)=> (isWalkable(x,y) || (fly && state.grid[y][x].type==='water')) && !(avoidWater && state.grid[y][x].type==='water');   // flyers cross water and lava
+  if(!isWalkable(sx,sy) && !fly) return null;
   if(targetTest(sx,sy)) return { target:{x:sx,y:sy}, path:[] };
   const startKey=sx+','+sy;
   const visited=new Set([startKey]);
   const queue=[[sx,sy]];
   const cameFrom={};
-  while(queue.length){
-    const [x,y]=queue.shift();
+  for(let qi=0; qi<queue.length; qi++){
+    const [x,y]=queue[qi];
     for(const [nx,ny] of neighbors(x,y)){
       const key=nx+','+ny;
       if(!visited.has(key) && passable(nx,ny)){
@@ -2379,7 +2387,12 @@ function findDigJob(imp){
   if(!dig) return null;
   return { standTile:res.target, path:res.path, digTile:{x:dig[0],y:dig[1]} };
 }
+let roomsMemo=null;      // set while the lure caps are worked out: one pass over the map instead of dozens
 function computeRooms(){
+  if(roomsMemo) return roomsMemo;
+  return computeRoomsRaw();
+}
+function computeRoomsRaw(){
   const visited=new Set();
   const rooms=[];
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
@@ -4520,8 +4533,13 @@ function roomTiles(type){ let n=0; for(const r of computeRooms()) if(r.type===ty
 function ownedEdgeCount(test){ let n=0; for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=state.grid[y][x]; if(t.type==='floor' && t.owned && neighbors(x,y).some(([nx,ny])=>test(state.grid[ny][nx]))) n++; } return n; }
 function tickLures(){
   state.lureTimers=state.lureTimers||{};
+  // the caps look at rooms and terrain: work them out every tenth tick, on one map pass
+  if(!state.lureCaps || state.tickCount%10===0){
+    roomsMemo=computeRoomsRaw();
+    try{ state.lureCaps={}; LURES.forEach(l=>{ state.lureCaps[l.kind]=l.cap(); }); } finally { roomsMemo=null; }
+  }
   LURES.forEach(l=>{
-    const cap=l.cap(), n=state.creatures.filter(c=>c.kind===l.kind).length;
+    const cap=state.lureCaps[l.kind]||0, n=state.creatures.filter(c=>c.kind===l.kind).length;
     if(n>=cap){ return; }
     state.lureTimers[l.kind]=(state.lureTimers[l.kind]===undefined?randInt(l.interval[0],l.interval[1]):state.lureTimers[l.kind])-1;
     if(state.lureTimers[l.kind]<=0){
@@ -6516,7 +6534,7 @@ function tickHero(c){
   if(c.guardRoot){ if(keepGuardRoot(c)) return; }
   if(c.post){ if(keepGarrison(c)) return; }
   if(state.grid[c.y][c.x].room==='throne'){ c.state='besieging'; return; }
-  const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne');
+  const res=bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].room==='throne', (SPECIES[c.kind]||{}).flies?{ fly:true }:undefined);
   if(res && res.path.length){ c.path=res.path; c.state='marching'; stepAlong(c); return; }
   if(!res) heroDig(c);
 }
