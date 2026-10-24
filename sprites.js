@@ -133,7 +133,7 @@ const CREATURES={
         if(t>=2) f.g[y][x]=rel<=1?'M':(rel>=5?'n':'m');
       }
       if(t>=2) set(T.x1-1,T.y0+4,'M');                                                                            // rivet
-      if(t===3){ [[T.x1+1,T.y0,'M'],[T.x1+1,T.y0+1,'m'],[T.x1,T.y0-1,'M'],[T.x0-1,T.y0+1,'M'],[T.x0-1,T.y0+2,'m']].forEach(([x,y,c])=>set(x,y,c)); }   // pauldrons widen the silhouette
+      // no pauldrons: creatures have no arms, so armour never sticks out of the torso
     }
     if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
     if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-3+x,sy+y,c)); }
@@ -321,22 +321,24 @@ function impFrame(state,t,facingRight){
 // ---- hero classes: the humanoid hero with palette variants (equipment rules will change silhouettes later) ----
 (()=>{
   const held=ZOO.held, v=pal=>({ ...held, pal:{...held.pal,...pal} });
+  // a boss keeps the look of its armour, but what it holds comes from its inventory like for everybody else (nothing is baked into the sprite)
+  const bossEq=(base,eq)=>Object.assign({},base,eq?{ weapon:eq.weapon, shield:eq.shield }:{});
   ZOO.barbarian=v({ t:'#8a4a28',T:'#b06a3c',u:'#5a2c14',F:'#b0561e',G:'#d8782e' });
   ZOO.thief=v({ t:'#3a3a46',T:'#555566',u:'#22222a',F:'#2a2218',G:'#3c3224',l:'#2a2a32',L:'#3c3c46',m:'#1c1c22',b:'#1c1c22' });
   ZOO.worker=v({ t:'#7a6a4a',T:'#9a8a62',u:'#4a3e28',F:'#6a4a2a',G:'#8a6a3a',l:'#5a4a30',L:'#6a5a3c',m:'#3a2c1a',b:'#3a2c1a' });
   ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
   // the dwarf king (a boss that can be corrupted): the hero body, red beard, heavy armour; the ally version has the player side's eyes
   const dwarf=swap=>({ ...held, name:'Zwergenkönig', pal:{ ...held.pal, F:'#b8561e', G:'#d8782e', t:'#5a2c14', T:'#7a4a2a', u:'#3a1c0c' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'bronze', helm:1, chest:3, legs:2, weapon:'hacke', shield:'tower' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'bronze', helm:1, chest:3, legs:2 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.dwarfking=dwarf(false); ZOO.dwarfking_ally=dwarf(true);
   // Oberon, lord of the sacred grove: pale fey king, silver-gold hair, green robes, a feathered crown (helm tier 3) and a staff
   const fey=swap=>({ ...held, name:'Oberon', pal:{ ...held.pal, s:'#e2d4b4', S:'#f4ead0', F:'#e8e0a0', G:'#fff8c0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#2f5a2a', L:'#3f7a3a', m:'#1f3a1a', b:'#1f3a1a' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'leder', helm:3, chest:1, legs:1, weapon:'stab' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'leder', helm:3, chest:1, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.oberon=fey(false); ZOO.oberon_ally=fey(true);
   ZOO.elf=v({ s:'#e6d6b4', S:'#f6ead0', F:'#d8d090', G:'#f0eab0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#3a5a2a', L:'#4a7a3a', m:'#243a1c', b:'#243a1c' });
   // King Arthur: crowned human king in steel and blue; the ally version has the player side's eyes
   const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,{ mat:'stahl', helm:2, chest:2, legs:1, weapon:'schwert', shield:'kite' }); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'stahl', helm:2, chest:2, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.arthur=arthur(false); ZOO.arthur_ally=arthur(true);
   // The Dungeon Lord: not a man but a haunted suit of black plate, closed spiked helm, two burning eyes in the slit, a spiked mace.
   // Drawn by hand (no skin anywhere); native facing left like the other humanoids.
@@ -372,6 +374,16 @@ function impFrame(state,t,facingRight){
       if(fr) g=g.map(r=>r.slice().reverse());
       return { g, pal:wpal };
     } };
+  // variants of the hero body: tweak(frame) changes pixels in native (left-facing) orientation
+  const vary=(name,pal,tweak,base)=>({ ...held, name, humanoid:true, pal:{...held.pal,...pal},
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,false,mv,base?Object.assign({},base,eq?{ weapon:eq.weapon, shield:eq.shield }:{}):eq); if(tweak) tweak(f); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } });
+  const headRows=f=>{ let y0=99; f.tag.forEach((r,y)=>r.forEach(c=>{ if(c==='H'&&y<y0) y0=y; })); return y0; };
+  const beard=col=>f=>{ const y0=headRows(f); [[4,6],[5,6],[6,6],[7,6],[4,7],[5,7],[6,7],[5,8]].forEach(([x,dy])=>{ const y=y0+dy; if(y<15&&(f.g[y][x]==='.'||f.tag[y][x]==='T'||f.tag[y][x]==='H')) f.g[y][x]=col; }); };
+  ZOO.archer=vary('Bogenschütze',{ F:'#3a6a3a', G:'#5a9a5a', t:'#5a6a3a', T:'#7a8a52', u:'#3a4a24', l:'#4a3a24', L:'#6a5a3a' });
+  ZOO.monk=vary('Mönch',{ t:'#c8741c', T:'#e89a3c', u:'#8a4a10', F:'#e0b48c', G:'#f2cfa8', l:'#c8741c', L:'#e89a3c', m:'#8a4a10', b:'#5a3a20' },f=>{ f.g.forEach((r,y)=>r.forEach((c,x)=>{ if(f.tag[y][x]==='H'&&(c==='F'||c==='G')) f.g[y][x]=c==='G'?'S':'s'; })); });
+  ZOO.paladin=vary('Paladin',{ t:'#e8e4d8', T:'#ffffff', u:'#a8a498', F:'#f0d060', G:'#fff0a0', y:'#f0d060' },null,{ mat:'stahl', helm:2, chest:3, legs:1 });
+  ZOO.dwarf=vary('Zwerg',{ F:'#b8561e', G:'#d8782e', t:'#6a4a30', T:'#8a6a4a', u:'#3a2a1a', l:'#5a3a24', L:'#7a5a3a', m:'#2e1e12', b:'#2e1e12' },beard('F'),{ mat:'bronze', helm:1, chest:2, legs:1 });
+  ZOO.giant=vary('Riese',{ t:'#8a6a4a', T:'#a8886a', u:'#5a4026', F:'#6a4a2a', G:'#8a6a3a', s:'#d09a74', S:'#e8b890', l:'#6a5238', L:'#8a7050' });
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
@@ -529,4 +541,27 @@ const TILEGEN=(()=>{
   return { gen, full, has, crack };
 })();
 
-
+// ---- the horde: variants of the ork body, and the risen skeleton ----
+(()=>{
+  const ork=ZOO.ork; if(!ork) return;
+  const v=(name,pal)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal} });
+  ZOO.goblin=v('Goblin',{ s:'#8aa83a', S:'#b0cc58', z:'#5a7a24', t:'#7a6a3a', T:'#9a8a52', u:'#4a3e22', c:'#5a3a24', C:'#7a5236', l:'#5a4a2a', L:'#7a6a3c', y:'#2e2414' });
+  ZOO.troll=v('Troll',{ s:'#6a8a96', S:'#8fb0bc', z:'#445a64', t:'#6a8a96', T:'#8fb0bc', u:'#445a64', c:'#4a3a2a', C:'#6a5238', l:'#52707a', L:'#6e909a', y:'#2c3c42' });
+  // the skeleton: bones in the skeleton family's look (skull, ribs, thin legs), eyes black with white pupils like the rest of the horde
+  const N=16, mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
+  const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
+  const pal={ k:'rgba(0,0,0,0.30)', s:'#e8dcc8', S:'#faf3e4', z:'#b8ab94', u:'#8f836f', p:'#14100c', e:'#ffffff', w:'#f2e8d5' };
+  ZOO.skeleton={ name:'Skelett', humanoid:true, pal, frame:(t,fr,mv,eq)=>{
+    const f=mk(N,N), k=t%4, bob=mv?[0,-1,0,-1][k]:0, ff=mv?[-1,0,1,0][k]:0, fb=-ff, nod=mv?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
+    for(let x=4;x<=12;x++) put(f,x,15,'k');
+    const skull=mk(7,7); for(let y=0;y<7;y++) for(let x=0;x<7;x++){ const dx=(x+.5-3.5)/3.3, dy=(y+.5-3.2)/3.2; if(dx*dx+dy*dy<=1) put(skull,x,y,'s'); }
+    [[1,2],[2,2],[1,3],[2,3],[4,2],[5,2],[4,3],[5,3]].forEach(([x,y],i)=>put(skull,x,y,(i%4===0)?'e':'p')); put(skull,3,4,'p'); [2,3,4].forEach((x,i)=>put(skull,x,6,i%2?'p':'w'));
+    const ribs=mk(8,6); for(let y=0;y<6;y++){ const w=y===5?4:8-(y>>1); const x0=Math.floor((8-w)/2); for(let x=0;x<w;x++) put(ribs,x0+x,y,(y%2===0||x===0||x===w-1)?'s':'p'); } for(let y=0;y<6;y++) put(ribs,3,y,'u');
+    const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); put(f,x+1,y+2,'s'); };
+    leg(6+fb,12); leg(9+ff,12);
+    const blit=(p,ox,oy)=>{ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]!=='.') put(f,ox+x,oy+y,p.g[y][x]); };
+    blit(ribs,4,6+bob); blit(skull,4,0+bob+nod);
+    if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon); if(w){ const wp={}; w.px.forEach(([x,y,c])=>{ let ch=Object.keys(wp).find(q=>wp[q]===c); if(!ch){ ch=String(Object.keys(wp).length); wp[ch]=c; } const X=13-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15) f.g[Y][X]=ch; }); f.pal=wp; } }
+    if(fr) f.g=f.g.map(r=>r.slice().reverse());
+    return f; } };
+})();

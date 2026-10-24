@@ -554,6 +554,35 @@ const SPECIES={
   dungeonlord:{ label:'Dungeon Lord', category:'boss', hp:90, strength:8, defense:25, dex:16, dexGrowth:0.03, speed:1.0, tempo:1.0,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Euer Gesicht in der Welt — fällt er, sammelt er sich im Thronsaal' },
+  // ----- more of the Legion (good side) -----
+  archer:  { label:'Bogenschütze', category:'hero',    hp:18, strength:3,  defense:2,  dex:22, dexGrowth:0.05, speed:1.1, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'🏹', passive:'Schießt aus der Ferne und weicht ungern zurück' },
+  monk:    { label:'Mönch',        category:'hero',    hp:24, strength:3,  defense:6,  dex:26, dexGrowth:0.05, speed:1.5, tempo:1.5,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'🥋', passive:'Mönch — schnell, ein Streich folgt dem anderen' },
+  paladin: { label:'Paladin',      category:'hero',    hp:50, strength:6,  defense:30, dex:6,  dexGrowth:0.02, speed:0.8, tempo:0.8,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'⚜️', passive:'Geweiht — heilt Verbündete in der Nähe' },
+  dwarf:   { label:'Zwerg',        category:'hero',    hp:36, strength:5,  defense:25, dex:6,  dexGrowth:0.02, speed:0.8, tempo:0.8, size:0.86,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'⛏️', passive:'Zäh wie ein Berg' },
+  giant:   { label:'Riese',        category:'hero',    hp:90, strength:9,  defense:10, dex:2,  dexGrowth:0.01, speed:0.6, tempo:0.6, size:1.45,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'🗿', passive:'Ein Hieb wirft Gegner zurück' },
+  // ----- more of the Horde (evil side), drawn to the dungeon by what you build (see LURES) -----
+  ork:     { label:'Ork',          category:'humanoid', hp:34, strength:4, defense:8,  dex:8,  dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Orks',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:60, style:'fighter', icon:'👺',
+             passive:'Raufbold — liebt die Arena, hasst Schreibkram' },
+  goblin:  { label:'Goblin',       category:'humanoid', hp:12, strength:2, defense:0,  dex:22, dexGrowth:0.05, speed:1.4, tempo:1.4, size:0.78, plural:'Goblins',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:45, style:'assassin', icon:'👹',
+             passive:'Kleiner Schlitzohr — liebt Handwerk und Gesellschaft, feige im Kampf' },
+  troll:   { label:'Troll',        category:'humanoid', hp:60, strength:7, defense:15, dex:4,  dexGrowth:0.02, speed:0.7, tempo:0.7, size:1.3, plural:'Trolle',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:65, style:'fighter', icon:'🧌',
+             passive:'Regeneriert langsam, liebt Schmiede und Kampf' },
+  skeleton:{ label:'Skelett',      category:'undead',   hp:20, strength:3, defense:0,  dex:14, dexGrowth:0.04, speed:1.0, tempo:1.0, plural:'Skelette',
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:1, loyalty:100, style:'fighter', icon:'💀',
+             passive:'Erhebt sich aus Leichen, schläft nie, fürchtet nichts' },
   oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Schützer des Hains — jagt Frevler an seinen Wurzeln' },
@@ -675,6 +704,7 @@ function creatureEmoji(c){
     case 'knight': return '🤺';
     case 'dwarfking': case 'arthur': return '👑';
     case 'oberon': return '🧚';
+    case 'archer': case 'monk': case 'paladin': case 'dwarf': case 'giant': case 'ork': case 'goblin': case 'troll': case 'skeleton': return SPECIES[c.kind].icon;
     case 'dungeonlord': return '👿';
     case 'elf': return '🧝';
     default: return '❔';
@@ -784,10 +814,10 @@ function tickCombat(c){
   if(!c.fightTarget) return false;
 
   const t=c.fightTarget;
-  const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
-  if(d>1){
+  const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y), reach=reachOf(c);
+  if(d>reach){
     // Heranrücken
-    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=1);
+    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach);
     if(res){ c.path=res.path; c.state='engaging'; stepAlong(c); return true; }
     c.fightTarget=null;
     return false;
@@ -796,6 +826,7 @@ function tickCombat(c){
   c.state='fighting';
   c.verb='attack'; c.actTarget={ x:t.x, y:t.y };
   if(!swing(c)) return true;                 // Ausholen oder danebengehauen
+  if(reach>1 && typeof FX!=='undefined') FX.emit('shot', c.x, c.y, { tx:t.x, ty:t.y });
   const r=resolveAttack(c, t, c.combatContext);
   addGrudge(t, c);                           // wer geschlagen wird, traegt Groll
   if(r.outcome==='killed' || r.outcome==='fainted') c.fightTarget=null;
@@ -805,6 +836,12 @@ function tickCombat(c){
 // Perception (no more "everyone charges at once"): a creature notices a foe that is near, that stands on its owner's ground, that is
 // besieging the throne, or that is fighting a friend close by. Heroes spawning at a far portal go unnoticed.
 const NOTICE_RADIUS=8, NOTICE_INTRUDER_RADIUS=16;
+// How far a creature can strike: by the weapon it holds (a bow shoots, a wand casts), otherwise next to the foe.
+function reachOf(c){
+  const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon');
+  if(!w) return 1;
+  return w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : 1);
+}
 function noticesFoe(c,o){
   const d=Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   if(d<=NOTICE_RADIUS) return true;
@@ -854,7 +891,11 @@ const JOB_CATEGORY_LABEL={ geist:'Geistesarbeit', sozial:'Soziales', hand:'Handw
 
 // liebt / neutral / hasst
 const JOB_PREFS={
-  warlock: { geist:'liebt', sozial:'neutral', hand:'hasst', kampf:'neutral' }
+  warlock: { geist:'liebt', sozial:'neutral', hand:'hasst', kampf:'neutral' },
+  ork:     { geist:'hasst', sozial:'neutral', hand:'neutral', kampf:'liebt' },
+  goblin:  { geist:'neutral', sozial:'liebt', hand:'liebt', kampf:'hasst' },
+  troll:   { geist:'hasst', sozial:'neutral', hand:'liebt', kampf:'liebt' },
+  skeleton:{ geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' }
   // Ork spaeter:    { kampf:'liebt', hand:'neutral', sozial:'neutral', geist:'hasst' }
   // Troll spaeter:  { hand:'liebt',  kampf:'liebt',  sozial:'neutral', geist:'hasst' }
 };
@@ -1658,6 +1699,17 @@ function createBoss(kind,x,y,opts){
   return b;
 }
 
+// the other humanoids of the horde: the same body of needs as the warlock (lair, food, wages, free time), their own kind and taste
+const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'] };
+const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton']);
+function createHorde(kind,x,y){
+  const names=HORDE_NAMES[kind];
+  const c=applySpecies({ id: creatureIdCounter++, x, y, state:kind==='skeleton'?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
+    hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null, energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0,
+    earnedWage:false, owedWages:0, wageTile:null, workLog:{}, lastPayslip:null, name:names[randInt(0,names.length-1)] }, kind);
+  if(kind==='skeleton'){ delete c.happiness; }
+  return c;
+}
 function createWarlockAt(id,x,y){ const w=createWarlock(x,y); w.id=id; return w; }
 
 function randInt(min,max){ return min + Math.floor(Math.random()*(max-min+1)); }
@@ -3157,7 +3209,7 @@ function tickCreature(c){
 function tickCreatureOnce(c){
   if(tickCombat(c)) return;
   if(c.kind==='fly') tickFly(c);
-  else if(c.kind==='warlock') tickWarlock(c);
+  else if(c.kind==='warlock' || HORDE_KINDS.has(c.kind)) tickWarlock(c);
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
   else if(c.category==='hero') tickHero(c);
@@ -3346,7 +3398,10 @@ const ANTICS=[
   { id:'sniff',   icon:'🐾', ticks:9,  weight:5, kinds:['hound'] },
   { id:'scuttle', icon:'💨', ticks:6,  weight:4, kinds:['beetle'] },
   { id:'polish',  icon:'✨', ticks:10, weight:3, kinds:['beetle'] },
-  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle'] }
+  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton'] },
+  { id:'flex',    icon:'💪', ticks:8,  weight:3, kinds:['ork','troll'] },
+  { id:'snicker', icon:'😈', ticks:7,  weight:4, kinds:['goblin'], happiness:2 },
+  { id:'rattle',  icon:'🦴', ticks:7,  weight:4, kinds:['skeleton'] }
 ];
 const ANTIC_CHANCE=0.025;
 function tickAntics(c){
@@ -3571,7 +3626,10 @@ const LEISURE_ACTIVITIES=[
 
 // Wie sehr reizt welche Beschaeftigung welche Art? 0 = kein Interesse.
 const LEISURE_PREFS={
-  warlock: { read:20, watchWork:5, watchChickens:3, watchFight:8, petHound:0 } // Warlocks können Hunde nicht ausstehen
+  warlock: { read:20, watchWork:5, watchChickens:3, watchFight:8, petHound:0 }, // Warlocks können Hunde nicht ausstehen
+  ork:     { watchFight:22, petHound:6, watchChickens:4, watchWork:3 },
+  goblin:  { watchWork:14, watchChickens:12, petHound:3, watchFight:2 },
+  troll:   { watchFight:12, watchWork:8, petHound:4 }
 };
 
 function leisureAppeal(c, activityId){
@@ -3713,6 +3771,7 @@ function tickSmelterWork(c, speed){
 }
 
 function tickWarlock(w){
+  if(w.category==='undead'){ w.energy=ENERGY_MAX; w.hunger=HUNGER_MAX; }      // the dead neither sleep nor eat
   if(tickCreatureNeeds(w, WARLOCK_SPEED)){ leaveSmelter(w); leaveForge(w); return; }
   if(tickSmelterWork(w, WARLOCK_SPEED)) return;
   if(tickForgeWork(w)) return;
@@ -3758,7 +3817,7 @@ function tickWarlock(w){
 
   if(w.state==='wandering'){
     // Idee im Kopf? Dann nichts wie zurueck an den Schreibtisch.
-    if(w.pendingTopic){
+    if(w.kind==='warlock' && w.pendingTopic){
       const dest=findAnyLibraryTile(w);
       if(dest){
         w.state='headingToLibrary'; w.path=dest.path;
@@ -3767,7 +3826,7 @@ function tickWarlock(w){
       return;
     }
     // Gibt es ueberhaupt noch etwas zu erforschen? Sonst ist Feierabend.
-    if(anyResearchLeft()){
+    if(w.kind==='warlock' && anyResearchLeft()){
       const dest=findAnyLibraryTile(w);
       if(dest){
         w.state='headingToLibrary'; w.path=dest.path;
@@ -4026,6 +4085,41 @@ function getEntranceSpawnTile(){
   return tiles[Math.floor(Math.random()*tiles.length)];
 }
 
+// What draws creatures into the dungeon (godhand: `lockmittel`). One row per kind; `cap()` is how many the dungeon can hold right now (0 = nothing lures them),
+// `interval` the ticks between arrivals. Skeletons are not lured: they rise from corpses (see tickLures).
+const LURES=[
+  { kind:'ork',    interval:[110,170], msg:'ist durch den Eingang gestampft, die Arena hat ihn angelockt.', cap:()=>Math.min(3, activeArenas().length*2) },
+  { kind:'goblin', interval:[60,110],  msg:'ist hereingeschlichen, das Gold im Lager riecht gut.',           cap:()=>{ const st=computeRooms().filter(r=>r.type==='storage').reduce((n,r)=>n+r.tiles.length,0); return st>=4&&(state.gold||0)>=120 ? Math.min(5,Math.floor((state.gold||0)/150)) : 0; } },
+  { kind:'troll',  interval:[160,240], msg:'ist angelockt worden, Esse und Schmelze verströmen Hitze.',       cap:()=>{ const r=computeRooms().filter(r=>r.type==='forge'||r.type==='smelter'); return r.length&&((state.ore||0)+(state.iron||0))>0 ? Math.min(2,r.length) : 0; } }
+];
+function tickLures(){
+  state.lureTimers=state.lureTimers||{};
+  LURES.forEach(l=>{
+    const cap=l.cap(), n=state.creatures.filter(c=>c.kind===l.kind).length;
+    if(n>=cap){ return; }
+    state.lureTimers[l.kind]=(state.lureTimers[l.kind]===undefined?randInt(l.interval[0],l.interval[1]):state.lureTimers[l.kind])-1;
+    if(state.lureTimers[l.kind]<=0){
+      const spot=getEntranceSpawnTile(); if(!spot) return;
+      const c=createHorde(l.kind,spot.x,spot.y); state.creatures.push(c);
+      state.lureTimers[l.kind]=randInt(l.interval[0],l.interval[1]);
+      logEvent(`${c.name} (${SPECIES[l.kind].label}) ${l.msg}`, spot.x, spot.y);
+    }
+  });
+  // the dead rise: an old corpse may stand up as a skeleton (at most three)
+  if(state.tickCount%5===0 && state.creatures.filter(c=>c.kind==='skeleton').length<3){
+    const old=state.corpses.find(c=>c.decayTimer<CORPSE_DECAY_TICKS-60 && !c.reservedBy);
+    if(old && Math.random()<0.1){
+      state.corpses=state.corpses.filter(c=>c!==old);
+      const sk=createHorde('skeleton',old.x,old.y); state.creatures.push(sk);
+      logEvent(`${sk.name} erhebt sich als Skelett aus einer Leiche.`, old.x, old.y);
+    }
+  }
+  // trolls mend, paladins bless the heroes around them
+  if(state.tickCount%6===0) state.creatures.forEach(c=>{
+    if(c.kind==='troll' && !c.unconscious && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+1);
+    if(c.kind==='paladin' && !c.unconscious) state.creatures.forEach(o=>{ if(o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
+  });
+}
 function tickFlySpawning(){
   const bestSize=bestDormitorySize();
   if(bestSize<FLY_MIN_DORMITORY) return;
@@ -4889,7 +4983,7 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?Object.assign({},equipLook(c),{ weapon:undefined }):equipLook(c)):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:1);
+  const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:((SPECIES[c.kind]||{}).size||1));
   const fl=(opts&&opts.flash)||0;
   const lift=(opts&&opts.lift)||0;
   if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
@@ -5661,8 +5755,9 @@ function creatureGroups(){
   const byKind={};
   state.creatures.filter(c=> factionOf(c)==='evil').forEach(c=>{ (byKind[c.kind]=byKind[c.kind]||[]).push(c); });
   Object.entries(byKind).forEach(([kind,members])=>{
-    const icon = kind==='fly' ? '🪰' : kind==='warlock' ? '🧙' : kind==='beetle' ? '🪲' : kind==='hound' ? '🐕' : '❔';
-    const label = kind==='fly' ? 'Fliegen' : kind==='warlock' ? 'Warlocks' : kind==='beetle' ? 'Käfer' : kind==='hound' ? 'Höllenhunde' : kind;
+    const sp=SPECIES[kind]||{};
+    const icon = kind==='fly' ? '🪰' : kind==='warlock' ? '🧙' : kind==='beetle' ? '🪲' : kind==='hound' ? '🐕' : (sp.icon||'❔');
+    const label = kind==='fly' ? 'Fliegen' : kind==='warlock' ? 'Warlocks' : kind==='beetle' ? 'Käfer' : kind==='hound' ? 'Höllenhunde' : (sp.plural||kind);
     groups.push({ key:kind, icon, label, members,
       busy:(m)=> !['wandering','seekingLair'].includes(m.state) });
   });
@@ -5676,6 +5771,7 @@ function memberDisplayName(m, groupKey){
   if(groupKey==='fly') return `🪰 Fliege (${lvl})`;
   if(groupKey==='beetle') return `🪲 Käfer (${lvl})`;
   if(groupKey==='hound') return `🐕 Höllenhund (${lvl})`;
+  { const sp=SPECIES[groupKey]; if(sp) return `${sp.icon||''} ${m.name} (${lvl})`; }
   return `${groupKey} (${lvl})`;
 }
 
@@ -6005,6 +6101,11 @@ function heroGear(kind, level, boss, tierIdx){
   else if(kind==='elf'){ add('bow'); add(level>=3?'mediumArmor':'lightArmor'); }
   else if(kind==='wizard'){ add(level>=5?'wandIce':(level>=3?'wandBolt':'wandFire')); if(level>=4) add('lightArmor'); }
   else if(kind==='knight'){ add(boss?'hammer':'sword'); add('heavyArmor'); add(boss?'tower':'kite'); }
+  else if(kind==='archer'){ add(level>=5?'crossbow':'bow'); add('lightArmor'); }
+  else if(kind==='monk'){ add('javelin'); add('lightArmor'); }
+  else if(kind==='paladin'){ add('hammer'); add('heavyArmor'); add('kite'); }
+  else if(kind==='dwarf'){ add('axe'); add(level>=4?'heavyArmor':'mediumArmor'); add('buckler'); }
+  else if(kind==='giant'){ add('hammer'); }
   return items;
 }
 
@@ -6164,7 +6265,7 @@ function gameTick(){
   state.tickCount++;
   state.imps.slice().forEach(i=>guard('imp '+(i.state||''),tickImp,i));
   state.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
-  [processDeaths,tickArenas,tickTantrums,tickCorpses,tickEffects,tickFlySpawning,tickWarlockSpawning,tickBeetleSpawning,tickHoundSpawning,tickHatcheries,tickSmelters,pruneEventLog,tickPayday,tickWar].forEach(f=>guard(f.name,f));
+  [processDeaths,tickLures,tickArenas,tickTantrums,tickCorpses,tickEffects,tickFlySpawning,tickWarlockSpawning,tickBeetleSpawning,tickHoundSpawning,tickHatcheries,tickSmelters,pruneEventLog,tickPayday,tickWar].forEach(f=>guard(f.name,f));
   if(state.tickCount%2===0 || !state.vis) guard('fog',updateFog);
   guard('draw',draw); guard('ui',updateUI); markDirty();
 }

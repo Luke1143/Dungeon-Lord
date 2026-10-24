@@ -35,6 +35,8 @@ const FX=(()=>{
     },
     // knocked out or killed
     poof(x,y,o){ for(let i=0;i<6;i++){ const a=rnd()*6.28, s=between(0.1,0.5); add({ x:x+0.5, y:y+0.5, z:between(0.2,0.5), vx:Math.cos(a)*s, vy:Math.sin(a)*s, vz:between(0.3,0.8), drag:1.0, grow:0.5, life:between(0.6,1.0), size:between(0.2,0.3), color:'#c8c0b8', shape:'puff', alpha:0.5 }); } },
+    // a shot: small bright specks flying from the shooter to the target
+    shot(x,y,o){ const dx=o.tx-x, dy=o.ty-y, L=Math.hypot(dx,dy)||1, v=16; for(let i=0;i<5;i++) add({ x:x+0.5+dx/L*0.3*i, y:y+0.5+dy/L*0.3*i, z:0.5, vx:dx/L*v, vy:dy/L*v, life:L/v, size:0.05, color:i%2?'#fff6c0':'#ffd870' }); },
     hit(x,y,o){ for(let i=0;i<4;i++){ const a=rnd()*6.28; add({ x:x+0.5, y:y+0.5, z:between(0.3,0.7), vx:Math.cos(a)*1.2, vy:Math.sin(a)*1.2, vz:between(0.5,1.5), grav:6, life:between(0.2,0.4), size:0.045, color:pick(['#ff6a4a','#ffd23f','#ffffff']) }); } }
   };
 

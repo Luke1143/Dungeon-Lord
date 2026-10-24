@@ -42,6 +42,8 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Fallen | ❌ | in den Gesprächen erwähnt, nicht im Design verankert |
 | Bedürfnisse (Hunger, Schlaf, Lohn, Zufriedenheit) | ✅ | |
 | Wahrnehmung (Teil 7) | 🟡 | **Wahrnehmungsradius ist neu** (Gegner werden nur in der Nähe, auf eigenem Boden oder bei Belagerung bemerkt); Geschicklichkeits-Wurf und „übersehen“ fehlen |
+| Kreaturen: Bestien (Imp, Fliege, Käfer, Höllenhund), Horde (Warlock, Ork, Goblin, Troll), Untote (Skelett) | 🟡 | fehlen laut godhand Teil 16: Echse, Dämonenbrut, Dunkelelf, Dunkler Priester, Dunkler Ritter, Succubus, Dämon, Banshee, Ghoul, Zombie, Geist, Vampir, Werwolf, Lich, Drache, Gefallener Held |
+| Kreaturen des Guten: Barbar, Dieb, Zauberer, Ritter, Elf, Bogenschütze, Mönch, Paladin, Zwerg, Riese (und Bosse) | 🟡 | fehlen: Fabelwesen (Yule, Fee, Greif, Einhorn, Golem, Kitsune), Himmlische (Irrlicht, Engel, Phönix, Dryade), Held, Avatar |
 | Eigenleben der Kreaturen | 🟡 | **neu**: Marotten (gucken, gähnen, summen, heulen, schnüffeln, plaudern); Freundschaften, Streit, Rudel, Tagesablauf fehlen |
 | Arena (Teil 27) | ✅ | |
 | Moral, Kampfstile, Bewusstlos statt tot | ✅ | |

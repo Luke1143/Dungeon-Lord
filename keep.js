@@ -169,10 +169,15 @@ function keepPickKind(rooms,mods){
   const w=state.war, k=state.keep;
   if(w.heroPool) return w.heroPool[randInt(0,w.heroPool.length-1)];       // gates: the province's own pool
   const bag=['barbarian','barbarian','thief'];
-  // technology: wizards need a school, knights need a forge (and the iron to arm them)
+  // technology: every kind needs the room that trains or arms it (and the stock the world gives the province)
   if((rooms.arena||0)>=2) bag.push('barbarian','barbarian');
+  if((rooms.arena||0)>=1) bag.push('archer','archer');
   if((rooms.library||0)>=1) for(let i=0;i<1+mods.wizards;i++) bag.push('wizard');
+  if((rooms.library||0)>=1) bag.push('monk');
+  if((rooms.forge||0)>=1) bag.push('dwarf');
   if((rooms.forge||0)>=1 && mods.gearTier>=1) bag.push('knight','knight');
+  if((rooms.forge||0)>=2 && mods.gearTier>=2 && (rooms.dormitory||0)>=3) bag.push('paladin');
+  if(mods.levelBonus>=3 && k.recruited>=6) bag.push('giant');
   if((rooms.dormitory||0)>=3) bag.push('thief');
   return bag[randInt(0,bag.length-1)];
 }
