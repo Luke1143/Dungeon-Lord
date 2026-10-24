@@ -241,7 +241,7 @@ function ludusResolve(st){
 }
 function ludusLeaveMatch(){
   if(!ludusResolved){ ludusResolve(state); }
-  ludusActive=false; arenaSpell=null; document.getElementById('menu-spells').hidden=true;
+  ludusActive=false; arenaSpell=null; uiTab('info');
   document.body.classList.remove('arenaMode','ludusMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   document.getElementById('arenaResult').hidden=true; document.getElementById('ludusContinue').hidden=true;
   state=makeDefaultState(); ludusNote=ludusResultText.replace('\n',' — '); ludusTab=ludus.over?'start':'pit'; showScreen('ludus'); ludusRender();

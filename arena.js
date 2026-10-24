@@ -226,7 +226,7 @@ function arenaStart(setup){
   state=st; jumpCameraTo((st.arena.anchors[0].x+st.arena.anchors[1].x)/2, (st.arena.anchors[0].y+st.arena.anchors[1].y)/2);
   setSpeed(1); arenaPanelSig='';
   document.getElementById('arenaResult').hidden=true; arenaSpell=null;
-  document.getElementById('menu-spells').hidden=false;
+  uiTab('spells');
   arenaRenderPanel();
 }
 function arenaTick(){
@@ -248,7 +248,7 @@ function arenaShowResult(){
 }
 function arenaLeave(){
   if(ludusActive){ ludusLeaveMatch(); return; }
-  arenaSpell=null; document.getElementById('menu-spells').hidden=true;
+  arenaSpell=null; uiTab('info');
   document.body.classList.remove('arenaMode','ludusMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   state=makeDefaultState(); showScreen('arena');
 }

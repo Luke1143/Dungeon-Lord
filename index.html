@@ -261,6 +261,43 @@
     body.inLevel #levelScreen .panel{ left:8px; right:8px; top:auto; width:auto; max-height:42vh; }
     body.inLevel .boardWrap .hint{ display:none; }
   }
+
+  /* ---- the menu after Dungeon Keeper: minimap on top, resources, tabs, a grid of tiles, a strip of explanation; events fall in as icons beside it ---- */
+  body.inLevel #levelScreen .panel.dkPanel{ left:10px; right:auto; top:52px; bottom:10px; width:268px; padding:8px; gap:6px; overflow:hidden; background:linear-gradient(#2a2118,#1b140e); border:2px solid #6a5233; box-shadow:0 0 0 1px #14100c, inset 0 0 0 1px #3d2f1e; }
+  .dkMini{ background:#0a0705; border:2px solid #6a5233; border-radius:3px; line-height:0; text-align:center; }
+  .dkMini[hidden]{ display:none; }
+  body.inLevel .dkMini #minimap{ position:static; width:100%; height:auto; max-height:150px; border:none; border-radius:0; background:#0a0705; display:block; margin:0 auto; object-fit:contain; }
+  body.inLevel .dkMini #minimap[hidden]{ display:none; }
+  .dkRes{ grid-template-columns:repeat(4,1fr); gap:2px 4px; background:#120d09; border:1px solid #4a3a26; border-radius:3px; padding:3px 4px; }
+  .dkRes .stat{ flex-direction:row; justify-content:flex-start; gap:4px; align-items:center; }
+  .dkRes .stat .label{ font-size:13px; } .dkRes .stat .value{ font-size:13px; }
+  .dkTabs{ gap:3px; } .dkTab{ flex:1; padding:5px 0; font-size:17px; line-height:1; background:#43321f; border:2px solid #6a5233; border-radius:3px; } .dkTab.active{ background:#8a6d1f; border-color:var(--gold); } .dkTab:disabled{ opacity:.35; }
+  .dkBody{ flex:1; min-height:0; overflow:hidden; background:#16100b; border:1px solid #4a3a26; border-radius:3px; padding:5px; display:flex; flex-direction:column; }
+  .dkPane{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; }
+  .dkPane.tiles, #creatureList.tiles{ display:grid; grid-template-columns:repeat(4,1fr); grid-auto-rows:min-content; gap:4px; align-content:start; }
+  #menu-creatures{ display:block; } #menu-creatures[hidden]{ display:none; }
+  .dkPane.tiles[hidden]{ display:none; }
+  .tile{ position:relative; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; padding:2px 1px; background:linear-gradient(#6b5436,#43321f); border:2px solid #8a7040; border-radius:3px; box-shadow:inset 0 1px 0 #9a8050; min-width:0; overflow:hidden; }
+  .tile .ti{ font-size:22px; line-height:1.1; } .tile canvas.ti{ width:30px; height:30px; image-rendering:pixelated; }
+  .tile .tn{ font-size:8px; line-height:1; text-align:center; color:#e8d9b4; max-width:100%; max-height:18px; overflow:hidden; word-break:break-word; }
+  .tile .tc{ font-size:9px; color:var(--gold); } .tile .tc small{ font-size:8px; margin-left:2px; } .cIdle{ color:#e09090; } .cBusy{ color:#9fd09f; }
+  .tile.active{ border-color:var(--gold); background:linear-gradient(#a0803a,#6a5226); }
+  .tile.dangerBtn{ background:linear-gradient(#5a2a24,#3a1c18); border-color:#a04a3a; color:inherit; } .tile.dangerBtn.active{ background:var(--accent-red); }
+  .tile:disabled{ opacity:.35; }
+  .dkInfo{ background:#120d09; border:1px solid #4a3a26; border-radius:3px; padding:6px 8px; max-height:34%; overflow-y:auto; scrollbar-width:thin; display:flex; flex-direction:column; gap:4px; }
+  .dkInfo #status{ min-height:0; font-size:11px; } .dkInfo #inspectPanel{ font-size:11.5px; min-height:0; }
+  #dkHint{ font-size:11.5px; color:var(--text); line-height:1.4; border-bottom:1px dashed #4a3a26; padding-bottom:4px; } #dkHint[hidden]{ display:none; } #dkHint b{ color:var(--gold); }
+  .dkKeys{ opacity:.7; }
+  .dkWar{ grid-template-columns:1fr 1fr; }
+  #eventStack{ position:absolute; left:290px; top:60px; bottom:16px; width:46px; display:flex; flex-direction:column; justify-content:flex-end; gap:5px; z-index:14; pointer-events:none; }
+  .evIcon{ pointer-events:auto; position:relative; width:42px; height:42px; padding:0; flex:none; border:2px solid #8a7040; border-radius:4px; background:linear-gradient(#4a3a26,#2a1f14); box-shadow:0 2px 6px rgba(0,0,0,.6); }
+  .evIcon span{ font-size:22px; line-height:1; } .evIcon i{ position:absolute; right:1px; bottom:0; font-size:10px; font-style:normal; color:var(--gold); font-weight:700; text-shadow:0 0 3px #000; }
+  .evIcon.drop{ animation:evDrop .75s cubic-bezier(.3,.9,.4,1.15); } .evIcon.gone{ transform:scale(.2); opacity:0; transition:all .2s; }
+  @keyframes evDrop{ 0%{ transform:translateY(-70vh); opacity:0; } 15%{ opacity:1; } 70%{ transform:translateY(0); } 85%{ transform:translateY(-8px); } 100%{ transform:translateY(0); } }
+  body.fp #eventStack{ display:none; }
+  body.arenaMode .dkTabs, body.arenaMode .dkMini{ display:none; }
+  body.arenaMode #arenaPanel{ flex:none; max-height:60%; overflow-y:auto; scrollbar-width:thin; }
+  @media (max-width:900px){ body.inLevel #levelScreen .panel.dkPanel{ left:6px; right:6px; top:auto; width:auto; max-height:45vh; } #eventStack{ left:6px; top:60px; bottom:auto; flex-direction:row; width:auto; height:46px; } }
 </style>
 </head>
 <body>
@@ -337,7 +374,7 @@
     <div class="boardWrap">
       <div id="viewport">
       <canvas id="board"></canvas>
-      <canvas id="minimap" width="192" height="128" title="Klick zum Springen"></canvas>
+      <div id="eventStack"></div>
       <div id="fpHud" hidden>
         <canvas id="fpHand"></canvas>
         <div class="fpCross"></div>
@@ -359,95 +396,86 @@
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       </div>
       <div id="combatBar" hidden></div>
-      <div class="hint">🎮 WASD/Pfeile: Karte · Mausrad: Zoom · Mittlere Maustaste ziehen: Karte verschieben · Leertaste: Pause · 1/2/3: Tempo · M: Minimap · Pos1: Thronsaal</div>
     </div>
-    <div class="panel">
+    <div class="panel dkPanel">
+      <div class="dkMini" id="dkMini"><canvas id="minimap" width="192" height="128" title="Klick zum Springen"></canvas></div>
+      <div class="statGrid dkRes">
+        <div class="stat" title="Gold"><span class="label">💰</span><span class="value" id="goldVal">0</span></div>
+        <div class="stat" title="Erz"><span class="label">🪨</span><span class="value" id="oreVal">0</span></div>
+        <div class="stat" title="Eisen"><span class="label">⛓</span><span class="value" id="ironVal">0</span></div>
+        <div class="stat" title="Imps"><span class="label">👹</span><span class="value" id="impVal">0</span></div>
+      </div>
       <div id="arenaPanel"></div>
-      <div class="statGrid">
-      <div class="stat"><span class="label">Gold</span><span class="value" id="goldVal">0</span></div>
-      <div class="stat"><span class="label">Erz</span><span class="value" id="oreVal">0</span></div>
-      <div class="stat"><span class="label">Eisen</span><span class="value" id="ironVal">0</span></div>
-      <div class="stat"><span class="label">Imps</span><span class="value" id="impVal">0</span></div>
-      <div class="stat"><span class="label">Nächster Lohn</span><span class="value" id="wageVal">0</span></div>
-      <div class="stat"><span class="label">Welle</span><span class="value" id="waveVal">–</span></div>
-      <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
-      <div class="stat"><span class="label">Dungeon Lord</span><span class="value" id="lordVal">–</span></div>
+      <div class="menuRow dkTabs">
+        <button class="menuBtn dkTab active" data-menu="info" title="Übersicht">❔</button>
+        <button class="menuBtn dkTab" data-menu="rooms" title="Gebäude">🏰</button>
+        <button class="menuBtn dkTab" data-menu="spells" title="Zauber">✨</button>
+        <button class="menuBtn dkTab" data-menu="traps" title="Fallen und Türen" disabled>🪤</button>
+        <button class="menuBtn dkTab" data-menu="creatures" title="Kreaturen">🐲</button>
       </div>
-      <div class="hint" id="warHint"></div>
-      <div class="goalsBox" id="goalsBox" hidden></div>
-      <button id="modeToggle" class="modeToggle active" title="Umschalten: Graben / Untersuchen">⛏️</button>
-
-      <div class="section">
-        <div class="menuRow">
-          <button class="menuBtn" data-menu="spells">Zauber</button>
-          <button class="menuBtn" data-menu="rooms">Gebäude</button>
-          <button class="menuBtn" data-menu="creatures">Kreaturen</button>
+      <div class="dkBody">
+        <div id="menu-info" class="menuPanel dkPane">
+          <div class="statGrid dkWar">
+            <div class="stat"><span class="label">Nächster Lohn</span><span class="value" id="wageVal">0</span></div>
+            <div class="stat"><span class="label">Welle</span><span class="value" id="waveVal">–</span></div>
+            <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
+            <div class="stat"><span class="label">Dungeon Lord</span><span class="value" id="lordVal">–</span></div>
+          </div>
+          <div class="hint" id="warHint"></div>
+          <div class="goalsBox" id="goalsBox" hidden></div>
+          <button id="modeToggle" class="modeToggle active" title="Umschalten: Graben / Untersuchen">⛏️</button>
+          <label class="toggleRow"><input type="checkbox" id="corpseFeedToggle" checked> Leichen als Hühnerfutter erlauben</label>
+          <div class="hint dkKeys">WASD/Pfeile: Karte · Mausrad: Zoom · Mittlere Maustaste: verschieben · Leertaste: Pause · 1/2/3: Tempo · M: Minimap · Pos1: Thronsaal</div>
+          <div class="section-title debugToggle" id="debugToggle">🐞 Debug ▸</div>
+          <div id="debugPanel" hidden>
+            <button id="cheatGold">+50 Gold (5.000)</button>
+            <button id="cheatOre">+20 Erz &amp; Eisen</button>
+            <button id="cheatImp">Stufe-10-Imp beschwören</button>
+            <button id="cheatWarlock">Stufe-10-Warlock beschwören</button>
+            <button id="cheatBeast">Käfer + Höllenhund beschwören</button>
+            <button id="cheatGear">Ausrüstung fallen lassen</button>
+            <button id="cheatEnemy">Feindliche Kreaturen rufen</button>
+            <button id="cheatReveal">Karte aufdecken</button>
+            <button id="dbgFog">Nebel ausschalten</button>
+            <button id="dbgReport">Fehlerbericht kopieren</button>
+            <textarea id="dbgReportText" hidden rows="6" style="width:100%;font-size:10px"></textarea>
+          </div>
+          <button id="resetBtn">Level neu starten</button>
         </div>
-        <div id="menu-spells" class="menuPanel" hidden>
-          <button id="summonBtn">Imp beschwören</button>
-          <button id="pickBtn">Aufheben</button>
-          <button id="possessBtn">Besessenheit</button>
+        <div id="menu-rooms" class="menuPanel dkPane tiles" hidden>
+          <button class="roomBtn tile" data-room="storage" data-hint="storage"><span class="ti">📦</span><span class="tn">Lagerraum</span><span class="tc">frei</span></button>
+          <button class="roomBtn tile" data-room="dormitory" data-hint="dormitory"><span class="ti">🛏️</span><span class="tn">Schlafsaal</span><span class="tc">frei</span></button>
+          <button class="roomBtn tile" data-room="library" data-hint="library"><span class="ti">📚</span><span class="tn">Bibliothek</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="hatchery" data-hint="hatchery"><span class="ti">🐔</span><span class="tn">Hühnerfarm</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="bridge" id="bridgeBtn" hidden data-hint="bridge"><span class="ti">🌉</span><span class="tn">Brücke</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="smelter" id="smelterBtn" hidden data-hint="smelter"><span class="ti">🔥</span><span class="tn">Schmelze</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="forge" id="forgeBtn" hidden data-hint="forge"><span class="ti">🔨</span><span class="tn">Schmiede</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="arena" data-hint="arena"><span class="ti">⚔️</span><span class="tn">Arena</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="prison" data-hint="prison"><span class="ti">⛓️</span><span class="tn">Gefängnis</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="armory" data-hint="armory"><span class="ti">🛡️</span><span class="tn">Rüstkammer</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="tavern" data-hint="tavern"><span class="ti">🍺</span><span class="tn">Taverne</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="graveyard" data-hint="graveyard"><span class="ti">🪦</span><span class="tn">Friedhof</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="guardpost" data-hint="guardpost"><span class="ti">🚩</span><span class="tn">Wachposten</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="training" data-hint="training"><span class="ti">🎯</span><span class="tn">Trainingskammer</span><span class="tc">100</span></button>
+          <button class="roomBtn tile" data-room="temple" data-hint="temple"><span class="ti">🕍</span><span class="tn">Tempel</span><span class="tc">100</span></button>
+          <button id="demolishBtn" class="tile dangerBtn" data-hint="demolish"><span class="ti">💥</span><span class="tn">Abreißen</span><span class="tc">100 %</span></button>
         </div>
-        <div id="menu-rooms" class="menuPanel" hidden>
-          <button class="roomBtn" data-room="storage">Lagerraum</button>
-          <button class="roomBtn" data-room="dormitory">Schlafsaal</button>
-          <button class="roomBtn" data-room="library">Bibliothek (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="hatchery">Hühnerfarm (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="bridge" id="bridgeBtn" hidden>Brücke (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="smelter" id="smelterBtn" hidden>Schmelze (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="forge" id="forgeBtn" hidden>Schmiede (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="arena">Arena (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="prison">Gefängnis (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="armory">Rüstkammer (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="tavern">Taverne (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="graveyard">Friedhof (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="guardpost">Wachposten (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="training">Trainingskammer (100 Gold/Kachel)</button>
-          <button class="roomBtn" data-room="temple">Tempel (100 Gold/Kachel)</button>
-          <button id="demolishBtn" class="dangerBtn">Abreißen (volle Rückerstattung)</button>
+        <div id="menu-spells" class="menuPanel dkPane tiles" hidden>
+          <button id="summonBtn" class="tile" data-hint="summon"><span class="ti">👹</span><span class="tn">Imp</span><span class="tc" id="summonCost">frei</span></button>
+          <button id="pickBtn" class="tile" data-hint="pick"><span class="ti">✋</span><span class="tn">Aufheben</span><span class="tc">frei</span></button>
+          <button id="possessBtn" class="tile" data-hint="possess"><span class="ti">👁️</span><span class="tn">Besessenheit</span><span class="tc">frei</span></button>
         </div>
-        <div id="menu-creatures" class="menuPanel" hidden>
-          <div id="creatureList" class="eventLog"></div>
+        <div id="menu-traps" class="menuPanel dkPane" hidden><div class="logEmpty">Fallen und Türen gibt es noch nicht.</div></div>
+        <div id="menu-creatures" class="menuPanel dkPane" hidden>
+          <div id="creatureList" class="tiles"></div>
         </div>
       </div>
-
-      <div class="section">
-        <div class="section-title">Ereignisse</div>
-        <div id="eventLog" class="eventLog"></div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Einstellungen</div>
-        <label class="toggleRow"><input type="checkbox" id="corpseFeedToggle" checked> Leichen als Hühnerfutter erlauben</label>
-        <div class="matPreview">
-          <canvas id="matCanvas" width="336" height="48"></canvas>
-          <div class="matLabels"><span>Erz 1/2/3</span><span>Eisen</span><span>Bronze</span><span>Stahl</span></div>
-        </div>
-      </div>
-
-      <div id="status">Klicke auf Gestein, um es zum Graben zu markieren.</div>
-      <div class="section">
-        <div class="section-title">Inspektor</div>
+      <div class="dkInfo">
+        <div id="status">Klicke auf Gestein, um es zum Graben zu markieren.</div>
+        <div id="dkHint" hidden></div>
         <div id="storagePanel" hidden></div>
         <div id="inspectPanel">Rechtsklick auf Gestein, Wasser, Räume oder Kreaturen zeigt Details.</div>
       </div>
-      <div class="section">
-        <div class="section-title debugToggle" id="debugToggle">🐞 Debug ▸</div>
-        <div id="debugPanel" hidden>
-          <button id="cheatGold">+50 Gold (5.000)</button>
-          <button id="cheatOre">+20 Erz &amp; Eisen</button>
-          <button id="cheatImp">Stufe-10-Imp beschwören</button>
-          <button id="cheatWarlock">Stufe-10-Warlock beschwören</button>
-          <button id="cheatBeast">Käfer + Höllenhund beschwören</button>
-          <button id="cheatGear">Ausrüstung fallen lassen</button>
-          <button id="cheatEnemy">Feindliche Kreaturen rufen</button>
-          <button id="cheatReveal">Karte aufdecken</button>
-          <button id="dbgFog">Nebel ausschalten</button>
-          <button id="dbgReport">Fehlerbericht kopieren</button>
-          <textarea id="dbgReportText" hidden rows="6" style="width:100%;font-size:10px"></textarea>
-        </div>
-      </div>
-      <button id="resetBtn">Level neu starten</button>
     </div>
   </div>
   </div>
@@ -6749,25 +6777,7 @@ function combatBarClick(c){
   draw();
 }
 
-function renderEventLog(){
-  const el=document.getElementById('eventLog');
-  if(!el) return;
-  el.innerHTML='';
-  if(!state.eventLog.length){
-    const empty=document.createElement('div');
-    empty.className='logEmpty';
-    empty.textContent='Noch keine Ereignisse.';
-    el.appendChild(empty);
-    return;
-  }
-  state.eventLog.forEach(ev=>{
-    const item=document.createElement('div');
-    item.className='logEntry';
-    item.textContent=ev.msg+(ev.n>1?`  ×${ev.n}`:'');
-    item.addEventListener('click', ()=> jumpCameraTo(ev.x, ev.y));
-    el.appendChild(item);
-  });
-}
+function renderEventLog(){ if(typeof uiRenderEvents==='function') uiRenderEvents(); }       // the events fall in as icons (ui-panel.js)
 
 let creatureMenuOpen=null; // aufgeklappte Oberkategorie
 const creatureCycle={};    // merkt sich, bei welcher Kreatur der Kamera-Durchlauf steht
@@ -6783,7 +6793,7 @@ function creatureGroups(){
   Object.entries(byKind).forEach(([kind,members])=>{
     const sp=SPECIES[kind]||{};
     const icon = kind==='fly' ? '🪰' : kind==='warlock' ? '🧙' : kind==='beetle' ? '🪲' : kind==='hound' ? '🐕' : (sp.icon||'❔');
-    const label = kind==='fly' ? 'Fliegen' : kind==='warlock' ? 'Warlocks' : kind==='beetle' ? 'Käfer' : kind==='hound' ? 'Höllenhunde' : (sp.plural||kind);
+    const label = kind==='fly' ? 'Fliegen' : kind==='warlock' ? 'Warlocks' : kind==='beetle' ? 'Käfer' : kind==='hound' ? 'Höllenhunde' : (sp.plural||sp.label||kind);
     groups.push({ key:kind, icon, label, members,
       busy:(m)=> !['wandering','seekingLair'].includes(m.state) });
   });
@@ -6817,63 +6827,17 @@ function renderCreatureList(){
   if(!el) return;
   el.innerHTML='';
   const groups=creatureGroups();
-  if(!groups.length){
-    const empty=document.createElement('div');
-    empty.className='logEmpty';
-    empty.textContent='Noch keine Kreaturen.';
-    el.appendChild(empty);
-    return;
-  }
-
+  if(!groups.length){ el.innerHTML='<div class="logEmpty">Noch keine Kreaturen.</div>'; return; }
+  // one tile per kind: the portrait, how many there are; a click walks the camera from one to the next
   groups.forEach(group=>{
-    const busy=group.members.filter(group.busy);
-    const idle=group.members.filter(m=>!group.busy(m));
-
-    const header=document.createElement('div');
-    header.className='logEntry creatureGroup';
-    if(creatureMenuOpen===group.key) header.classList.add('open');
-
-    const title=document.createElement('span');
-    title.textContent=`${group.icon} ${group.label}`;
-    header.appendChild(title);
-
-    const counts=document.createElement('span');
-    counts.className='creatureCounts';
-
-    const mk=(value, cls, list, cycleKey, tip)=>{
-      const s=document.createElement('span');
-      s.className='countChip '+cls;
-      s.textContent=value;
-      s.title=tip;
-      s.addEventListener('click', ev=>{ ev.stopPropagation(); cycleCameraTo(cycleKey, list); });
-      return s;
-    };
-    counts.appendChild(mk(group.members.length, 'total', group.members, group.key+':all', 'Alle durchgehen'));
-    counts.appendChild(document.createTextNode('/'));
-    counts.appendChild(mk(idle.length, 'idle', idle, group.key+':idle', 'Untätige durchgehen'));
-    counts.appendChild(document.createTextNode('/'));
-    counts.appendChild(mk(busy.length, 'busy', busy, group.key+':busy', 'Arbeitende durchgehen'));
-    header.appendChild(counts);
-
-    header.addEventListener('click', ()=>{
-      creatureMenuOpen = creatureMenuOpen===group.key ? null : group.key;
-      renderCreatureList();
-    });
-    el.appendChild(header);
-
-    if(creatureMenuOpen===group.key){
-      group.members.forEach(m=>{
-        const item=document.createElement('div');
-        item.className='logEntry creatureMember';
-        const working=group.busy(m);
-        item.textContent=`${memberDisplayName(m, group.key)} — ${working?'arbeitet':'untätig'}`;
-        item.addEventListener('click', ()=>{
-          jumpCameraTo(m.x, m.y);
-          selectCreature({kind: m.kind || 'imp', obj:m});
-        });
-        el.appendChild(item);
-      });
-    }
+    const busy=group.members.filter(group.busy), idle=group.members.length-busy.length;
+    const b=document.createElement('button'); b.className='tile creatureTile';
+    const pic=(typeof uiPortrait==='function')?uiPortrait(group.key,40):null; if(pic){ pic.className+=' ti'; b.appendChild(pic); }
+    const n=document.createElement('span'); n.className='tn'; n.textContent=group.label; b.appendChild(n);
+    const c=document.createElement('span'); c.className='tc'; c.innerHTML=`${group.members.length} <small class="cIdle">${idle}</small><small class="cBusy">${busy.length}</small>`; b.appendChild(c);
+    b.title=`${group.label}: ${group.members.length} (${idle} untätig, ${busy.length} bei der Arbeit)`;
+    b.addEventListener('click', ()=> cycleCameraTo(group.key+':all', group.members));
+    el.appendChild(b);
   });
 }
 
@@ -6898,7 +6862,7 @@ function updateUI(){
   }
   updateWarUI();
   const cost=summonCost();
-  document.getElementById('summonBtn').textContent = cost>0 ? `Imp beschwören (${gd(cost)} Gold)` : 'Imp beschwören (kostenlos)';
+  const sc=document.getElementById('summonCost'); if(sc) sc.textContent = cost>0 ? gd(cost) : 'frei';
   document.getElementById('summonBtn').disabled = state.gold<cost;
   const creaturesPanel=document.getElementById('menu-creatures');
   if(creaturesPanel && !creaturesPanel.hidden) renderCreatureList();
@@ -8800,11 +8764,7 @@ document.querySelectorAll('.menuBtn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const menu=btn.dataset.menu;
     const panel=document.getElementById('menu-'+menu);
-    const willOpen = panel.hidden;
-    document.querySelectorAll('.menuPanel').forEach(p=> p.hidden=true);
-    document.querySelectorAll('.menuBtn').forEach(b=> b.classList.remove('active'));
-    if(willOpen){ panel.hidden=false; btn.classList.add('active'); }
-    if(menu==='creatures') renderCreatureList();
+    uiTab(menu);
   });
 });
 
@@ -10281,6 +10241,7 @@ async function init(){
 }
 init();
 </script>
+<script src="ui-panel.js"></script>
 <script src="arena-stages.js"></script>
 <script src="arena.js"></script>
 <script src="hub3d.js"></script>
