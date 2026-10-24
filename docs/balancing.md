@@ -23,4 +23,4 @@ Gewinnrate in „fair"-Kämpfen 0,5 bis 0,7 (Schätzung 0,5), vier von acht übe
 - Der Drache ist mit dem Abzug (×0,29) noch immer die stärkste Wahl.
 
 ## Nachtrag: Budget statt Artenstärke (siehe budget.md)
-Die Tabelle `LUDUS_POWER` und der Abzug für starke Arten sind weg: Starke Arten werden nicht mehr abgeschwächt, Kämpfe werden aus dem Budget gebaut. Turnierkämpfe gehen auf Leben und Tod (kein Aufgeben, keine Flucht, keine Bewusstlosigkeit), die Rivalen sind in der ersten Runde leicht (Gewinnrate 0,92) und werden bis 0,45 schwerer. Beim Bot-Test (acht Arten, 45 Tage, richtig ausgeruht) überlebten fünf.
+Die Tabelle `LUDUS_POWER` und der Abzug für starke Arten sind weg: Starke Arten werden nicht mehr abgeschwächt, Kämpfe werden aus dem Budget gebaut. Turnierkämpfe gehen auf Leben und Tod (kein Aufgeben, keine Flucht, keine Bewusstlosigkeit), die Rivalen sind in der ersten Runde leicht (Gewinnrate 0,95) und werden bis 0,6 schwerer; die erste Runde kommt an Tag 8, danach alle 5 Tage. Beim Bot-Test (acht Arten, 45 Tage, richtig ausgeruht) überlebten fünf.
