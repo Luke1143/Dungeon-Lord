@@ -241,6 +241,8 @@ Die Vault ist ein Lager **außerhalb einer Kampagne**. Was in der Vault liegt, �
 
 **Was die Vault ist:** eine **Stase**. Das Objekt ist aus der Welt entfernt, wie in einem Pokéball oder bei Gordon Freeman: *wake me when you need me*. Es altert und lebt dort nicht weiter.
 
+**Umgesetzt:** Das Siegel der Stase liegt als Relikt in Ruinen. Statt eines Menüs gilt eine Regel: Imps tragen es in die Bibliothek, dort lässt der Spieler mit dem Aufheben-Zauber eine eigene Kreatur oder ein Stück Ausrüstung darauf fallen, und das Objekt geht in Stase (nicht möglich bei Boss, Dungeon Lord und Feinden; Hühner noch nicht). Beim Start einer neuen Welt wählt der Spieler, was er mitnimmt.
+
 **Aufbau:** Die Vault ist eine **einfache Liste, nach Typ sortiert**.
 
 **Keine Obergrenze beim Einlagern.** Das Einlagern ist selten (es braucht ein legendäres Artefakt), und der Gewinn beim Mitnehmen ist hoch. Die **Seltenheit** ist die Begrenzung, nicht eine Platzgrenze.

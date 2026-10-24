@@ -225,6 +225,7 @@
     <div class="menuBox">
       <button id="menuNew" class="menuMain">Neue Welt</button>
       <button id="menuContinue" class="menuMain" hidden>Kampagne fortsetzen</button>
+      <div id="vaultInfo" class="subtitle"></div>
       <label class="seedRow">Seed (leer = Zufall) <input id="seedInput" type="text" maxlength="20" placeholder="z. B. Moorhafen"></label>
     </div>
   </div>
@@ -1182,6 +1183,8 @@ function buildItems(){
 }
 
 const ITEMS=buildItems();
+// The seal of stasis: a legendary find. Imps carry it into a library; whatever the player's hand drops on it vanishes into the vault.
+ITEMS.seal_stasis={ label:'Siegel der Stase', baseLabel:'Siegel', icon:'🔮', family:'seal', type:'seal', tier:'epic', tierLabel:'legendär', hands:0, tags:[] };
 
 // Welche Waffenkategorien mag welche Art? Leer = gar keine Waffen.
 const WEAPON_AFFINITY={
@@ -1330,6 +1333,7 @@ function worstCarried(c, forItem){
 // Three slots: body (armour), right hand (weapon), left hand (shield). A two-handed weapon takes both hands.
 function slotsOfItem(v){
   const d=instDef(v); if(!d) return [];
+  if(d.type==='seal') return [];
   if(d.type==='armor') return ['body'];
   if(d.type==='shield') return ['lh'];
   return d.hands===2 ? ['rh','lh'] : ['rh'];
@@ -3205,8 +3209,8 @@ function findCorpseHaulJob(imp){
 }
 
 function findLooseItemJob(imp){
-  const canCarry=(it)=> it.kind!=='equipment' || hasFreeSlot(imp, looseInst(it));
-  const stored=(it)=> it.kind==='equipment' && (onArmoryTile(it.x,it.y) || state.grid[it.y][it.x].room==='storage');   // already put away
+  const canCarry=(it)=> it.kind!=='equipment' || (hasFreeSlot(imp, looseInst(it)) && (it.itemId!=='seal_stasis' || !!findSealSpot(imp)));
+  const stored=(it)=> it.kind==='equipment' && (onArmoryTile(it.x,it.y) || state.grid[it.y][it.x].room==='storage' || (it.itemId==='seal_stasis' && state.grid[it.y][it.x].room==='library'));   // already put away
   const test=(x,y)=> state.looseItems.some(it=>it.x===x && it.y===y && !it.reservedBy && !stored(it) && canCarry(it) && (it.kind==='book' || it.kind==='gold' || it.kind==='equipment'));
   const res=bfsFind(imp.x,imp.y,test);
   if(!res) return null;
@@ -4724,7 +4728,11 @@ const CARGO={
       state.looseItems.splice(idx,1);
       return true;
     },
-    findDest(imp){ return findArmoryTile(imp,(imp.inventory||[])[0]) || findStorageTile(imp,'iron'); },
+    findDest(imp){
+      const first=(imp.inventory||[])[0], d=first&&instDef(first);
+      if(d && d.type==='seal') return findSealSpot(imp);
+      return findArmoryTile(imp,first) || findStorageTile(imp,'iron');
+    },
     drop(imp){ while((imp.inventory||[]).length) dropItemAt(imp,0,imp.x,imp.y); },
     abandon(imp){ while((imp.inventory||[]).length) dropItemAt(imp,0,imp.x,imp.y); }
   },
@@ -7774,6 +7782,8 @@ function handlePickClick(x,y){
     return;
   }
 
+  if(tryStasis(x,y)) return;
+
   if(heldEntity.kind==='book'){
     const item=heldEntity.obj;
     if(target.room==='library' && !state.libraryBooks[x+','+y]){
@@ -9009,7 +9019,7 @@ function showScreen(name){
   document.getElementById('menuScreen').hidden = name!=='menu';
   document.getElementById('overworldScreen').hidden = name!=='overworld';
   document.getElementById('levelScreen').hidden = name!=='level';
-  if(name==='menu') document.getElementById('menuContinue').hidden=!campaign;
+  if(name==='menu'){ document.getElementById('menuContinue').hidden=!campaign; document.getElementById('vaultInfo').textContent=vault.length?('Stase: '+vault.map(vaultLabel).join(', ')):''; }
   if(name==='overworld'){ owRefresh(); }
   document.body.classList.toggle('inLevel', name==='level');
   if(name==='level'){ resizeBoard(); jumpToThrone(); draw(); updateUI(); renderEventLog(); refreshRoomButtons(); }
@@ -9037,6 +9047,7 @@ function newCampaign(seed){
   world=buildWorld(seed); owTerrainCache=null; owSelected=null;
   saveCampaign();
   showScreen('overworld');
+  offerVault(()=>{});
 }
 
 // The dwarf king's hoard: a walled hall far from the throne, full of gold, with the king himself inside.
@@ -9203,6 +9214,84 @@ function setupCamelot(){
   return true;
 }
 
+// ===== The vault (design.md, "Die Vault") =====
+// Outside any campaign: what the player puts into stasis survives permadeath. In: drop a creature or a piece of gear on a seal in a library.
+// Out: at the start of a new world the player picks what to take; gear goes to the Dungeon Lord, creatures appear at the entrance of the first level.
+const VAULT_KEY='dungeon-lord-vault-v1';
+let vault=[];
+async function saveVault(){ try{ await window.storage.set(VAULT_KEY, JSON.stringify(vault), false); }catch(e){} }
+async function loadVault(){ try{ const res=await window.storage.get(VAULT_KEY, false); if(res&&res.value){ const v=JSON.parse(res.value); if(Array.isArray(v)) return v; } }catch(e){} return []; }
+function vaultLabel(e){
+  if(e.k==='item') return instLabel(e.inst);
+  return `${e.name} (${(SPECIES[e.species]||{label:e.species}).label}, Stufe ${e.level||1})`;
+}
+function findSealSpot(imp){
+  const taken=new Set(state.looseItems.filter(it=>it.itemId==='seal_stasis').map(it=>it.x+','+it.y));
+  const tiles=new Set(); roomsOfType('library',1).forEach(r=>r.tiles.forEach(t=>{ if(!taken.has(t.x+','+t.y)) tiles.add(t.x+','+t.y); }));
+  return tiles.size ? bfsFind(imp.x,imp.y,(x,y)=>tiles.has(x+','+y)) : null;
+}
+function sealAt(x,y){ return state.looseItems.find(it=>it.itemId==='seal_stasis' && it.x===x && it.y===y && state.grid[y][x].room==='library'); }
+const VAULT_STATS=['baseHp','baseStrength','baseDefense','baseDex','baseSpeed','baseTempo','luck','loyalty','kills'];
+function vaultEntryOf(c){
+  const e={ k:'creature', species:c.kind||'imp', name:c.name, level:c.level||1, xp:c.xp||0, evilHero:c.category==='hero'||c.corrupted?!!c.corrupted:false, stats:{}, inventory:(c.inventory||[]).map(i=>{ const a=asInstance(i); return { id:a.id, q:a.q, s:a.s, pp:a.pp }; }) };
+  VAULT_STATS.forEach(k=>{ if(c[k]!==undefined) e.stats[k]=c[k]; });
+  return e;
+}
+// the held thing is dropped on a seal: it leaves the world. Returns true when the drop was used up.
+function tryStasis(x,y){
+  const seal=sealAt(x,y); if(!seal || !heldEntity) return false;
+  const h=heldEntity, o=h.obj;
+  let entry=null;
+  if(h.kind==='equipment'){
+    if(o.itemId==='seal_stasis'){ setInspect('Das Siegel braucht etwas anderes, das es verschlingen kann.'); return true; }
+    entry={ k:'item', inst:{ id:o.itemId, q:o.q||1, s:o.s, pp:o.pp } };
+  } else if(h.kind==='imp' || SPECIES[h.kind]){
+    if(o.kind==='dungeonlord' || o.isBoss || factionOf(o)!=='evil'){ setInspect('Das Siegel nimmt nur die Eurigen — nicht den Dungeon Lord, keinen Boss und keinen Feind.'); return true; }
+    entry=vaultEntryOf(o);
+    state.creatures=state.creatures.filter(c=>c!==o); state.imps=state.imps.filter(c=>c!==o);
+    if(o.lairTile){ const lt=state.grid[o.lairTile.y][o.lairTile.x]; if(lt.lairOwner===o.id) lt.lairOwner=null; }
+  } else { setInspect('Das Siegel kann das nicht in Stase nehmen.'); return true; }
+  state.looseItems=state.looseItems.filter(it=>it!==seal);
+  vault.push(entry); saveVault();
+  spawnEffect('teleportOut', x, y);
+  logEvent(`${vaultLabel(entry)} verschwindet in der Stase. Das Siegel zerfällt.`, x, y);
+  setInspect(`${vaultLabel(entry)} liegt jetzt in der Vault und überdauert den Tod dieser Welt.`);
+  heldEntity=null; exitPickMode(); draw(); updateUI(); markDirty();
+  return true;
+}
+// a new world: choose what leaves stasis
+function offerVault(then){
+  if(!vault.length){ then(); return; }
+  const rows=vault.map((e,i)=>`<label class="goodRow"><input type="checkbox" class="vaultPick" data-i="${i}" checked> ${vaultLabel(e)}</label>`).join('');
+  owModal('Die Stase öffnet sich', `<p>Was nehmt Ihr in die neue Welt mit? Ausrüstung geht an den Dungeon Lord, Kreaturen erscheinen am Eingang des ersten Levels.</p>${rows}`, ()=>{
+    const picked=[...document.querySelectorAll('.vaultPick')].filter(c=>c.checked).map(c=>+c.dataset.i);
+    campaign.carry=picked.map(i=>vault[i]);
+    vault=vault.filter((_,i)=>!picked.includes(i)); saveVault(); saveCampaign(); then();
+  });
+}
+function restoreFromVault(e,x,y){
+  const k=e.species; let c;
+  if(k==='imp') c=createImp(x,y); else if(k==='warlock') c=createWarlock(x,y); else if(k==='hound') c=createHound(x,y);
+  else if(k==='beetle') c=createBeetle(x,y); else if(k==='fly') c=createFly(x,y); else if(HORDE_KINDS.has(k)) c=createHorde(k,x,y);
+  else { c=createHero(k,x,y); convertPrisoner(c); }
+  Object.assign(c, e.stats); c.name=e.name; c.level=e.level; c.xp=e.xp;
+  c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=e.inventory.slice();
+  return c;
+}
+function applyCarry(){
+  const carry=campaign&&campaign.carry; if(!carry||!carry.length) return;
+  const lord=state.creatures.find(c=>c.kind==='dungeonlord');
+  const ent=[]; for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++) if(state.grid[y][x].room==='entrance') ent.push({x,y});
+  carry.forEach(e=>{
+    if(e.k==='item'){ if(lord){ lord.inventory=lord.inventory||[]; lord.inventory.push(e.inst); } return; }
+    const at=ent.length?ent[Math.floor(Math.random()*ent.length)]:throneAt;
+    const c=restoreFromVault(e,at.x,at.y);
+    if(c.kind==='imp') state.imps.push(c); else state.creatures.push(c);
+    logEvent(`${c.name} erwacht aus der Stase.`, at.x, at.y);
+  });
+  campaign.carry=null; saveCampaign();
+}
+
 // Fresh level state; the single place that resets all counters.
 function startLevel(nodeId){
   if(typeof FX!=='undefined') FX.reset();
@@ -9229,6 +9318,7 @@ function startLevel(nodeId){
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   state.gold+=150*skillRank('startGold');
   spawnDungeonLord();
+  applyCarry();
   updateFog();
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
@@ -9495,6 +9585,7 @@ window.addEventListener('keydown', e=>{
 async function init(){
   state=makeDefaultState();
   ensurePortal();
+  vault=await loadVault();
   campaign=await loadCampaign();
   if(campaign) world=buildWorld(campaign.seed);
   drawMaterialPreview();

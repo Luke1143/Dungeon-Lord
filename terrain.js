@@ -189,6 +189,7 @@ function placeRelics(g,st){
   const ids=Object.keys(ITEMS).filter(id=>/_(fine|epic)$/.test(id));
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=g[y][x]; if(!t.relic) continue; t.relic=false;
+    if(Math.random()<0.2){ st.looseItems.push(looseOf({ id:'seal_stasis', q:1 }, x, y)); continue; }   // sometimes the relic is a seal of stasis (the vault)
     const pool=ids.filter(id=>/_epic$/.test(id)===(Math.random()<0.3));
     st.looseItems.push(looseOf({ id:pool[Math.floor(Math.random()*pool.length)], q:1 }, x, y));
   }

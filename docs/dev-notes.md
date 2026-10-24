@@ -261,3 +261,9 @@ Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange 
 - Throne in any corner: generation stays canonical (throne top-left), then `mirrorLevel` flips the finished grid at random (x and/or y); `throneAt` holds the centre for everything that needs it (camera start, allies, imp summon, setup distances).
 - Features after rivers and lakes (`growTerrainFeatures`, per region `gen.lava/crystal/ruins`): **Lava** is water with `lava:true` (not walkable except over a bridge, nobody bathes in it); **crystal caves** (`crystal` veins: blue gold, 2 gold per tile instead of 1, `crystalFloor` tint); **ruins** (castle-textured walled halls with pillars, gold and one relic: a fine or epic item on the floor, `placeRelics`).
 - Open: optional levels, more structure types (flooded halls, lava rivers).
+
+## 1.35 - The vault (stasis)
+- `seal_stasis` (an `ITEMS` entry of type `seal`, fits no slot) lies in ruins as a relic (1 in 5). Imps haul it into a library (`CARGO.gear` → `findSealSpot`); it stays there as a loose item.
+- Rule instead of menu: the Pick-up spell drops a creature (own side, no boss, no Dungeon Lord, imps allowed) or a loose piece of gear on the seal (`tryStasis`); the thing leaves the world, the seal falls apart. The entry (`vaultEntryOf`: kind, name, level, xp, base stats, inventory with parts) goes to `vault`, persisted under its own key (`VAULT_KEY`), so it survives permadeath.
+- A new world (`newCampaign` → `offerVault`) shows the vault with checkboxes; the chosen entries become `campaign.carry` and are applied in the first level (`applyCarry`): gear into the Lord's inventory, creatures at the entrance, restored with their stats (`restoreFromVault`). The menu shows what lies in stasis.
+- Open: chickens are not storable, a way to see/manage the vault outside a new world, the seal as a gate reward.
