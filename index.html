@@ -249,6 +249,7 @@
       <button id="menuArena" class="menuMain">Kreaturen-Arena</button>
       <button id="menuContinue" class="menuMain" hidden>Kampagne fortsetzen</button>
       <div id="vaultInfo" class="subtitle"></div>
+      <label class="seedRow">Language <select id="langSelect"><option value="en">English</option><option value="de">Deutsch</option></select></label>
       <label class="seedRow">Seed (leer = Zufall) <input id="seedInput" type="text" maxlength="20" placeholder="z. B. Moorhafen"></label>
     </div>
   </div>
@@ -425,6 +426,8 @@
   </div>
   </div>
 
+<script src="i18n.js"></script>
+<script src="lang-en.js"></script>
 <script src="sprites.js"></script>
 <script src="fx.js"></script>
 <script src="anim.js"></script>
@@ -2042,7 +2045,7 @@ function createBoss(kind,x,y,opts){
 
 // the other humanoids of the horde: the same body of needs as the warlock (lair, food, wages, free time), their own kind and taste
 const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'], darkelf:['Syl','Vael','Nyx','Thalia','Orrin'], vampire:['Graf Vlad','Lilith','Morbus','Sanguin','Carmilla'],
-  lizard:['Schuppe','Zisch','Moorfuß','Glibber','Kriech'], brood:['Funke','Brandt','Zünd','Glut','Ruß'], darkknight:['Ser Mortain','Ser Grimm','Ser Vael','Ser Ostrik'], succubus:['Lilitha','Nyssa','Sorrel','Velvet'], demon:['Azrakul','Baal-Dor','Morzug','Ignaros'], banshee:['Klage','Wehe','Moira','Keen'], zombie:['Modrig','Fauler','Schlurfi','Matsch','Brocken'], ghost:['Hauch','Nebel','Irrlicht-Nick','Flüster'], werewolf:['Fenrir','Graufell','Lykos','Zahn'], lich:['Vorlag der Alte','Mortigan','Kel-Thuzad Nein','Ossuar'], dragon:['Smaragdor','Glutschwinge','Vyrnax','Sengrath'] };
+  lizard:['Schuppe','Zisch','Moorfuß','Glibber','Kriech'], brood:['Funke','Brandt','Zünd','Glut','Ruß'], darkknight:['Ser Mortain','Ser Grimm','Ser Vael','Ser Ostrik'], succubus:['Lilitha','Nyssa','Sorrel','Velvet'], demon:['Azrakul','Baal-Dor','Morzug','Ignaros'], banshee:['Klage','Wehe','Moira','Keen'], zombie:['Modrig','Fauler','Schlurfi','Matsch','Brocken'], ghost:['Hauch','Nebel','Irrlicht-Nick','Flüster'], werewolf:['Fenrir','Graufell','Lykos','Zahn'], lich:['Vorlag der Alte','Mortigan','Kelthar','Ossuar'], dragon:['Smaragdor','Glutschwinge','Vyrnax','Sengrath'] };
 const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire','darkknight','succubus','demon','banshee','zombie','ghost','werewolf','lich','dragon']);
 const BEAST_KINDS=new Set(['lizard','brood']);       // beasts of the horde: they roam like hounds and take no work
 const HORDE_START_GEAR={ darkknight:['sword_plain','heavyArmor_plain','kite_plain'], lich:['wandIce_plain'], zombie:['sword_crude'], ork:['axe_crude'], goblin:['sword_crude'], troll:['hammer_crude'], skeleton:['sword_crude'], priest:['wandBolt_crude'], darkelf:['bow_plain'], vampire:['sword_plain'] };
@@ -4268,7 +4271,7 @@ function tickSmelterWork(c, speed){
       s.heatProgress=0; s.heatWindow=0;
       s.bloom={ heat:BLOOM_HEAT_TICKS*batch, hits:0, count:batch };
       logWork(c, 'Erz geschmolzen');
-      logEvent(`${batch>1?batch+' Luppen sind':'Eine Luppe ist'} entstanden - sie ${batch>1?'müssen':'muss'} geschmiedet werden, bevor sie erkalten!`, c.x, c.y);
+      logEvent(batch>1?`${batch} Luppen sind entstanden - sie müssen geschmiedet werden, bevor sie erkalten!`:'Eine Luppe ist entstanden - sie muss geschmiedet werden, bevor sie erkalten!', c.x, c.y);
     }
     return true;
   }
@@ -4282,7 +4285,7 @@ function tickSmelterWork(c, speed){
       s.bloom=null;
       s.ironReady=(s.ironReady||0)+count;
       logWork(c, 'Eisen geschmiedet');
-      logEvent(`${count>1?count+' Eisenbarren sind':'Ein Eisenbarren ist'} fertig geschmiedet!`, c.x, c.y);
+      logEvent(count>1?`${count} Eisenbarren sind fertig geschmiedet!`:'Ein Eisenbarren ist fertig geschmiedet!', c.x, c.y);
       leaveSmelter(c); c.state='wandering';
     }
     return true;
@@ -8868,6 +8871,11 @@ const OW_WATER_LEVEL=0.36;
 // Location types are table entries: terrain decides the type, the type decides flavour and side goal.
 const LOCATION_TYPES=OW.REGION_TYPES;   // region types live in overworld.js (table)
 const OW_NAME_PREFIX=['Moor','Eich','Stein','Raben','Nebel','Gold','Birken','Falken','Wolfs','Eisen','Linden','Dorn','Nacht','Silber','Hirsch','Bären'];
+// place names are built from syllables; in English the syllables are English ones
+const OW_SYLLABLE_EN={ Moor:'Moor', Eich:'Oak', Stein:'Stone', Raben:'Raven', Nebel:'Mist', Gold:'Gold', Birken:'Birch', Falken:'Falcon', Wolfs:'Wolf', Eisen:'Iron', Linden:'Linden', Dorn:'Thorn', Nacht:'Night', Silber:'Silver', Hirsch:'Stag', Bären:'Bear',
+  bach:'brook', furt:'ford', au:'mead', 'mühl':'mill', markt:'market', stedt:'stead', heim:'ham', feld:'field', hof:'farm', acker:'acre', lager:'camp', platz:'square', wacht:'watch', fels:'rock', berg:'hill', esse:'forge', hammer:'hammer', stollen:'shaft', grube:'pit', schacht:'mine',
+  turm:'tower', warte:'lookout', spitz:'peak', licht:'light', wald:'wood', hain:'grove', tann:'fir', lauf:'run', burg:'castle', stein:'stone', trutz:'hold', moor:'moor', sumpf:'marsh', 'brück':'bridge', nebel:'mist', rast:'rest', pfad:'path', kreuz:'cross' };
+const owSyllable=w=>LANG==='en'?(OW_SYLLABLE_EN[w]||w):w;
 const OW_TERRAIN={
   water:   {base:[47,93,138]},
   grass:   {base:[95,143,58]},
@@ -9004,7 +9012,7 @@ function buildWorld(seed){
   nodes.forEach(n=>{
     const lt=LOCATION_TYPES[n.type];
     if(lt.fixedName){ n.name=lt.fixedName; return; }
-    n.name = n.type==='capital' ? 'Hohenlicht' : OW_NAME_PREFIX[Math.floor(rnd()*OW_NAME_PREFIX.length)]+lt.suffixes[Math.floor(rnd()*lt.suffixes.length)];
+    n.name = n.type==='capital' ? 'Hohenlicht' : owSyllable(OW_NAME_PREFIX[Math.floor(rnd()*OW_NAME_PREFIX.length)])+owSyllable(lt.suffixes[Math.floor(rnd()*lt.suffixes.length)]);
   });
 
   // Roads (two-way): forward to the next column, sideways between neighbours of a column, now and then a shortcut over a column.
@@ -9678,7 +9686,7 @@ function finishLevel(){
 
 document.getElementById('menuNew').addEventListener('click', ()=>{
   const typed=document.getElementById('seedInput').value.trim();
-  const seed = typed || ('Welt'+Math.floor(Math.random()*100000));
+  const seed = typed || ((LANG==='en'?'World':'Welt')+Math.floor(Math.random()*100000));
   newCampaign(seed);
 });
 document.getElementById('menuContinue').addEventListener('click', async ()=>{
@@ -9904,5 +9912,8 @@ async function init(){
 init();
 </script>
 <script src="arena.js"></script>
+<script>
+  (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();
+</script>
 </body>
 </html>

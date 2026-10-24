@@ -3,7 +3,7 @@
 Browser game, prototype in `index.html`. Overview and scope: `docs/design.md`. Level rules: `docs/godhand.md` (read it before changing game rules).
 
 ## Working with the user
-- Conversation in **German**. Code, identifiers, syntax and comments in **English**, uniformly (existing German comments get translated when touched). In-game UI text stays German for now.
+- Conversation in **German**. Code, identifiers, syntax and comments in **English**, uniformly (existing German comments get translated when touched). In-game text is written in German in the source; English (the default) comes from the translation layer `i18n.js` + `lang-en.js` (German → English dictionary, patterns with `{0}`), German is selectable in the main menu. New UI text: write it in German in the code and add the English line to `lang-en.js`; test with `I18N_MISSES` in the browser console.
 - The user has minimal programming experience. Claude writes, tests and pushes everything and decides details on its own judgement.
 
 ## Principles (from the design doc)
