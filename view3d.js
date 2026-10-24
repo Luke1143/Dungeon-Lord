@@ -31,6 +31,14 @@ const View3D=(()=>{
     tileGroup=new T.Group(); spriteGroup=new T.Group(); scene.add(tileGroup, spriteGroup);
     ready=true;
   }
+  // another region, another map size: drop the old tile meshes
+  function setSize(worldCols, worldRows){
+    if(cols===worldCols && rows===worldRows) return;
+    cols=worldCols; rows=worldRows;
+    if(!ready) return;
+    tiles.length=0; while(tileGroup.children.length) tileGroup.remove(tileGroup.children[0]);
+    rayTarget=[]; ceilDirty=true;
+  }
   function resize(cssW,cssH,dpr){
     w=cssW; h=cssH;
     if(!ready) return;
@@ -401,6 +409,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, setSize, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();

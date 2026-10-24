@@ -399,10 +399,12 @@
 <script src="objectives.js"></script>
 <script src="artifacts.js"></script>
 <script src="bosses.js"></script>
+<script src="terrain.js"></script>
 <script src="keep.js"></script>
 <script src="view3d.js"></script>
 <script>
-const WORLD_COLS=48, WORLD_ROWS=32, TILE=32;
+let WORLD_COLS=48, WORLD_ROWS=32;   // set per level by setLevelDims (terrain.js)
+const TILE=32;
 let VIEW_COLS=22, VIEW_ROWS=14;     // visible tiles; recomputed from the viewport size and zoom
 const canvas=document.getElementById('board');
 let ctx=canvas.getContext('2d');
@@ -2157,6 +2159,8 @@ function growLake(g,x,y,size){
 }
 
 function makeDefaultState(){
+  const areaK=setLevelDims();
+  const scaled=n=>Math.max(1,Math.round(n*Math.sqrt(areaK)));
   const g=[];
   for(let y=0;y<WORLD_ROWS;y++){ const row=[]; for(let x=0;x<WORLD_COLS;x++) row.push(emptyTile()); g.push(row); }
   const carve=(x0,y0,x1,y1,room)=>{
@@ -2166,20 +2170,20 @@ function makeDefaultState(){
 
   const farFromStart=(x,y)=> Math.abs(x-2)+Math.abs(y-2) >= 7;
 
-  for(let i=0;i<Math.max(2,7+(levelGen.goldVeins||0));i++){
+  for(let i=0;i<scaled(Math.max(2,7+(levelGen.goldVeins||0)));i++){
     let x,y,tries=0;
     do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);
     growVein(g,x,y, randInt(5,10));
   }
-  for(let i=0;i<6+(levelGen.oreVeins||0);i++){
+  for(let i=0;i<scaled(6+(levelGen.oreVeins||0));i++){
     let x,y,tries=0;
     do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);
     growOreVein(g,x,y, randInt(4,9));
   }
-  growCaveSystem(g);
-  growRivers(g, genRange(levelGen.rivers,[1,2]));
-  for(let i=0,n=genRange(levelGen.lakes,[0,2]);i<n;i++){ let x,y,tries=0; do{ x=randInt(8,WORLD_COLS-4); y=randInt(8,WORLD_ROWS-4); tries++; } while(!farFromStart(x,y) && tries<50); growLake(g,x,y,randInt(8,18)); }
-  for(let i=0;i<3+(levelGen.bedrock||0);i++){
+  growTerrainLayout(g);
+  growRivers(g, scaled(genRange(levelGen.rivers,[1,2])));
+  for(let i=0,n=scaled(genRange(levelGen.lakes,[0,2]));i<n;i++){ let x,y,tries=0; do{ x=randInt(8,WORLD_COLS-4); y=randInt(8,WORLD_ROWS-4); tries++; } while(!farFromStart(x,y) && tries<50); growLake(g,x,y,randInt(8,18)); }
+  for(let i=0;i<scaled(3+(levelGen.bedrock||0));i++){
     let x,y,tries=0;
     do{ x=randInt(0,WORLD_COLS-1); y=randInt(0,WORLD_ROWS-1); tries++; } while(!farFromStart(x,y) && tries<50);
     growBedrock(g,x,y, randInt(4,9));
@@ -2193,8 +2197,8 @@ function makeDefaultState(){
       placed=growGemSeam(g,gx,gy, randInt(4,7));
     }
   }
-  placeEntrance(g, 6, 20);
-  placeEntrance(g, 30, 72, 'portal');
+  placeEntrance(g, 6, Math.round(20*Math.sqrt(areaK)));
+  placeEntrance(g, Math.round(30*Math.sqrt(areaK)), Math.round(72*Math.sqrt(areaK)), 'portal');
   placeMapBorder(g);
 
   const imps=[ createImp(1,1) ];
@@ -6861,9 +6865,8 @@ async function load(){
     const res=await window.storage.get(STORAGE_KEY, false);
     if(res && res.value){
       const data=JSON.parse(res.value);
-      if(!data.grid || data.grid.length!==WORLD_ROWS || !data.grid[0] || data.grid[0].length!==WORLD_COLS){
-        return false;
-      }
+      if(!data.grid || !data.grid.length || !data.grid[0]) return false;
+      WORLD_ROWS=data.grid.length; WORLD_COLS=data.grid[0].length;      // maps differ in size per region
       const grid=data.grid.map(row=>row.map(t=>({
         ...t,
         owned: t.owned!==undefined ? t.owned : (t.type==='floor'),
@@ -9199,6 +9202,7 @@ function startLevel(nodeId){
   saveCampaign();
   levelGen=(LOCATION_TYPES[n.type]&&LOCATION_TYPES[n.type].gen)||{};
   state=makeDefaultState();
+  fitMinimap();
   state.war.difficulty=0;
   state.war.mods=OW.levelMods(world,campaign,n);   // global hero power plus what this region adds
   state.war.champions=(campaign.champions||[]).slice(); campaign.champions=[];
@@ -9412,7 +9416,8 @@ document.getElementById('panelToggle').addEventListener('click', togglePanel);
 document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ await save(); showScreen('menu'); });
 
 // Minimap: one pixel block per tile; click or drag to jump
-const MM_SCALE=4;
+let MM_SCALE=4;
+function fitMinimap(){ MM_SCALE=Math.max(2,Math.min(4,Math.floor(200/WORLD_COLS))); minimap.width=WORLD_COLS*MM_SCALE; minimap.height=WORLD_ROWS*MM_SCALE; if(View3D.ready) View3D.setSize(WORLD_COLS,WORLD_ROWS); }
 const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
 const MM_ROOMS={ prison:'#6a6a78', armory:'#9a8a70', tavern:'#8a5a30', graveyard:'#4a5a3a', guardpost:'#8a8a98', training:'#c0a060', temple:'#e0dcd0', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
 function drawMinimap(){
