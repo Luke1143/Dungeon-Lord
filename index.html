@@ -33,6 +33,25 @@
   .boardWrap{ position:relative; display:flex; flex-direction:column; gap:6px; flex:1; min-width:0; min-height:0; }
   #viewport{ position:relative; flex:1; min-height:0; border:3px solid var(--panel-border); border-radius:6px; overflow:hidden; background:#2a201a; }
   body.fp #minimap{ display:none; }
+  #arenaPanel{ display:none; font-size:12px; }
+  body.arenaMode #arenaPanel{ display:block; }
+  body.arenaMode .statGrid, body.arenaMode #status, body.arenaMode .panel .dangerBtn, body.arenaMode #warHint, body.arenaMode #goalsBox, body.arenaMode #modeToggle, body.arenaMode .panel .section, body.arenaMode #minimap{ display:none !important; }
+  .arResult{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(10,7,5,.55); z-index:20; }
+  .arResult[hidden]{ display:none; }
+  .arenaBox{ max-width:1100px; width:92vw; margin:0 auto; text-align:left; }
+  .arTeams{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .arTeamBox{ background:rgba(25,18,12,.85); border:2px solid #6a5233; border-radius:6px; padding:10px; }
+  .arTeamBox.t0{ border-color:#a04a3a; } .arTeamBox.t1{ border-color:#3a6aa0; }
+  .arTeamBox h3 input{ font:inherit; background:transparent; color:#f0e2c0; border:0; border-bottom:1px solid #6a5233; width:70%; }
+  .arGroup{ margin:6px 0; padding:6px; background:rgba(0,0,0,.25); border-radius:4px; line-height:2; }
+  .arGroup select, .arGroup input, .arMap select, .arMap input, .arBatch input{ background:#2a2018; color:#f0e2c0; border:1px solid #6a5233; border-radius:3px; padding:2px 4px; }
+  .arGroup input[type=number]{ width:48px; } .arMap input[type=number]{ width:44px; }
+  .arMap, .arBatch{ margin-top:10px; padding:10px; background:rgba(25,18,12,.85); border:2px solid #6a5233; border-radius:6px; }
+  .arBtns{ margin-top:14px; display:flex; gap:10px; justify-content:center; }
+  .arTeam{ margin-bottom:8px; } .arTeam.t0 b{ color:#e08a7a; } .arTeam.t1 b{ color:#7aaae0; }
+  .arRow{ display:flex; align-items:center; gap:6px; margin:2px 0; } .arRow.out{ opacity:.4; }
+  .arName{ flex:1; } .arBar{ width:70px; height:7px; background:#3a2a1e; border-radius:3px; overflow:hidden; } .arBar i{ display:block; height:100%; background:#8fd05a; }
+  .arRow button{ padding:0 4px; font-size:12px; }
   #fpHud{ position:absolute; inset:0; pointer-events:none; font-family:'Cinzel',serif; color:#f0e2c0; z-index:5; }
   #fpHud[hidden]{ display:none; }
   #errToast{ position:absolute; left:50%; top:52px; transform:translateX(-50%); z-index:40; background:rgba(110,35,35,.92); color:#fff0d8; border:1px solid #c98080; border-radius:6px; padding:6px 12px; font-size:12px; max-width:70%; pointer-events:none; }
@@ -224,9 +243,19 @@
     <div class="subtitle">Erobert die Welt der Helden, Ort für Ort</div>
     <div class="menuBox">
       <button id="menuNew" class="menuMain">Neue Welt</button>
+      <button id="menuArena" class="menuMain">Kreaturen-Arena</button>
       <button id="menuContinue" class="menuMain" hidden>Kampagne fortsetzen</button>
       <div id="vaultInfo" class="subtitle"></div>
       <label class="seedRow">Seed (leer = Zufall) <input id="seedInput" type="text" maxlength="20" placeholder="z. B. Moorhafen"></label>
+    </div>
+  </div>
+
+  <div id="arenaScreen" class="screen" hidden>
+    <h1 class="bigTitle" style="font-size:34px">Kreaturen-Arena</h1>
+    <div class="subtitle">Zwei Mannschaften, ein Gelände, kein Dungeon: wer gewinnt? Auch zum Testen und Ausprobieren.</div>
+    <div class="arenaBox">
+      <div id="arenaSetupBody"></div>
+      <div class="arBtns"><button id="arenaStart" class="menuMain">Kampf beginnen</button><button id="arenaBack" class="menuMain">Zurück</button></div>
     </div>
   </div>
 
@@ -295,6 +324,7 @@
         <div class="fpKeys">W/S vor/zurück · A/D seitwärts · Q/E oder Maus drehen · gedrückte Maustaste: zuschlagen/graben</div>
       </div>
       <div id="pauseLabel" hidden>PAUSE</div>
+      <div id="arenaResult" class="arResult" hidden><div class="endBox"><h2 id="arenaResultTitle"></h2><p id="arenaResultText"></p><button id="arenaAgain" class="menuMain">Noch einmal</button> <button id="arenaToSetup" class="menuMain">Aufstellung</button></div></div>
       <div id="errToast" hidden></div>
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       </div>
@@ -302,6 +332,7 @@
       <div class="hint">🎮 WASD/Pfeile: Karte · Mausrad: Zoom · Mittlere Maustaste ziehen: Karte verschieben · Leertaste: Pause · 1/2/3: Tempo · M: Minimap · Pos1: Thronsaal</div>
     </div>
     <div class="panel">
+      <div id="arenaPanel"></div>
       <div class="statGrid">
       <div class="stat"><span class="label">Gold</span><span class="value" id="goldVal">0</span></div>
       <div class="stat"><span class="label">Erz</span><span class="value" id="oreVal">0</span></div>
@@ -1014,6 +1045,7 @@ function reachOf(c){
   return base+((base>1 && hasPerk('shadow_arrows') && factionOf(c)==='evil')?1:0);
 }
 function noticesFoe(c,o){
+  if(state.arena) return true;          // the arena: everybody sees every foe
   const d=Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   if(d<=NOTICE_RADIUS) return true;
   if(c.state==='guarding' && c.postTile && d<=GUARD_NOTICE_RADIUS) return true;
@@ -1026,7 +1058,8 @@ function noticesFoe(c,o){
 function pickFightTarget(c){
   let foes=state.creatures.concat(state.imps)
     .filter(o=> !o.held && (!o.unconscious || o.kind==='dungeonlord') && areHostile(c,o));
-  if(c.category==='hero') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=HERO_AGGRO_RADIUS);
+  if(state.arena){}
+  else if(c.category==='hero') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=HERO_AGGRO_RADIUS);
   else if(c.category==='boss') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=(c.alert?80:7));
   else foes=foes.filter(o=> noticesFoe(c,o));
   if(!foes.length) return null;
@@ -3527,6 +3560,7 @@ function tickCreature(c){
 
 function tickCreatureOnce(c){
   if(tickCombat(c)) return;
+  if(state.arena) return;          // in the arena creatures only fight
   if(c.kind==='fly') tickFly(c);
   else if(BEAST_KINDS.has(c.kind)) tickHound(c);
   else if(c.kind==='warlock' || HORDE_KINDS.has(c.kind) || c.corrupted) tickWarlock(c);
@@ -5624,6 +5658,7 @@ function drawCreatureSprite(c,px,py,opts){
   const lift=(opts&&opts.lift)||0;
   if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
   const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size)-lift*TILE, o=opts||{};
+  if(c.arenaTeam!==undefined){ ctx.save(); ctx.fillStyle=c.arenaTeam?'rgba(70,130,255,0.6)':'rgba(230,60,50,0.6)'; ctx.beginPath(); ctx.ellipse(sx+size/2, sy+size-2, size*0.34, size*0.11, 0, 0, 7); ctx.fill(); ctx.restore(); }
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
@@ -6924,6 +6959,7 @@ function reportError(where,e){
 function guard(where,fn,arg){ try{ fn(arg); }catch(e){ reportError(where,e); } }
 function gameTick(){
   if(screen!=='level') return;
+  if(state.arena){ arenaTick(); return; }       // arena.js: the creature arena has its own, lean tick
   if(state.war && state.war.over){ guard('draw',draw); guard('ui',updateUI); return; }
   state.tickCount++;
   state.imps.slice().forEach(i=>guard('imp '+(i.state||''),tickImp,i));
@@ -7011,6 +7047,7 @@ function tickPayday(){
 }
 
 async function save(){
+  if(state.arena) return;          // a creature arena match is never saved
   try{
     const payload={
       grid: state.grid.map(row=>row.map(t=>({
@@ -9224,6 +9261,7 @@ function showScreen(name){
   document.getElementById('menuScreen').hidden = name!=='menu';
   document.getElementById('overworldScreen').hidden = name!=='overworld';
   document.getElementById('levelScreen').hidden = name!=='level';
+  document.getElementById('arenaScreen').hidden = name!=='arena';
   if(name==='menu'){ document.getElementById('menuContinue').hidden=!campaign; document.getElementById('vaultInfo').textContent=vault.length?('Stase: '+vault.map(vaultLabel).join(', ')):''; }
   if(name==='overworld'){ owRefresh(); }
   document.body.classList.toggle('inLevel', name==='level');
@@ -9743,7 +9781,7 @@ document.getElementById('muteBtn').textContent=SFX.muted?'🔇':'🔊';
 ['pointerdown','keydown'].forEach(ev=>window.addEventListener(ev, ()=>SFX.ensure(), { once:false, passive:true }));
 function togglePanel(){ document.getElementById('levelScreen').classList.toggle('panelHidden'); }
 document.getElementById('panelToggle').addEventListener('click', togglePanel);
-document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ await save(); showScreen('menu'); });
+document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ if(state.arena){ arenaLeave(); return; } await save(); showScreen('menu'); });
 
 // Minimap: one pixel block per tile; click or drag to jump
 let MM_SCALE=4;
@@ -9828,5 +9866,6 @@ async function init(){
 }
 init();
 </script>
+<script src="arena.js"></script>
 </body>
 </html>

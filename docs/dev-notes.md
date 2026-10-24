@@ -294,3 +294,8 @@ Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange 
 - The Lord's abilities come from artifacts (`abilities`); the first-person bar shows 2-6 with cooldown fills (`renderFpAbilities`).
 - Books: `libraryBooks` entries and loose books carry `ability`; `maybeWriteAbilityBook` (after research), `readAbilityBook` (leisure `read`), scrolls from fallen heroes (`dropLoot`); imps now really haul loose books to a shelf.
 - Rebirth and ward are abilities (`knows(c,'rebirth')`).
+
+## 1.40 - Creature arena (separate game mode and test bench)
+- Main menu "Kreaturen-Arena" (`arena.js`, `#arenaScreen`): two teams (dark side = faction `evil`, heroes = `good`, whatever the species), each with any number of groups (kind, number, level 1-40, gear: standard by grade / none / own weapon, armour and shield, one extra ability), a procedural map (open pit, caverns, halls, canyon, tunnels; size; seed; lava, water, crystal; start distance). The set-up is stored.
+- A match reuses the level screen (`body.arenaMode`): `state.arena` makes `gameTick` hand over to `arenaTick` (creatures run `tickCombat` only; `noticesFoe` is always true), teams carry a red/blue ring, a side panel lists everybody with life bars and an eye button that starts possession (first person, abilities 2-6 work). A match ends when a side has nobody conscious left (or after 4000 ticks: draw). `arenaLeave` returns to the set-up.
+- Test bench: `ArenaLab.simulate(setup, n)` runs n matches headless (maps seeded per run) and returns wins, draws, average length and survivors; the set-up screen has a "Simulieren" button with the same.
