@@ -78,7 +78,7 @@ const PERKS={
   troll_blood:    { text:'Trolle heilen doppelt so schnell und doppelt so viel.' },
   shadow_arrows:  { text:'Fernkämpfer und Zauberer Eurer Seite reichen ein Feld weiter.' },
   grave_whisper:  { text:'Gräber lassen Ghule früher aufsteigen, zwei mehr sind möglich.' },
-  blood_pact:     { text:'Vampire heilen sich an 80 % des Schadens statt 50 %.' }
+  blood_pact:     { text:'Vampire heilen sich an 65 % des Schadens statt 40 %.' }
 };
 function hasPerk(id){
   const c=(typeof campaign!=='undefined')?campaign:null;

@@ -656,7 +656,7 @@ const SPECIES={
   darkelf: { label:'Dunkelelf',    category:'humanoid', hp:22, strength:3, defense:2,  dex:24, dexGrowth:0.05, speed:1.2, tempo:1.1, plural:'Dunkelelfen',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:55, style:'assassin', icon:'🏹',
              passive:'Schießt aus dem Schatten, kommt zur Trainingskammer' },
-  vampire: { label:'Vampir',       category:'undead',   hp:55, strength:6, defense:10, dex:18, dexGrowth:0.04, speed:1.2, tempo:1.2, plural:'Vampire',
+  vampire: { label:'Vampir',       category:'undead',   hp:48, strength:6, defense:10, dex:18, dexGrowth:0.04, speed:1.2, tempo:1.2, plural:'Vampire',
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:100, style:'assassin', icon:'🧛',
              passive:'Heilt sich an jedem Biss, schläft nie' },
   dryad:   { label:'Dryade',       category:'hero',    hp:22, strength:3,  defense:4,  dex:18, dexGrowth:0.04, speed:1.0, tempo:1.0,
@@ -689,10 +689,10 @@ const SPECIES={
   ghost:   { label:'Geist',        category:'undead',   hp:20, strength:3, defense:0, dex:40, dexGrowth:0.02, speed:1.4, tempo:1.3, plural:'Geister', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'👻',
              passive:'Schwer zu treffen, schwächt Gegner mit kalter Hand' },
-  werewolf:{ label:'Werwolf',      category:'undead',   hp:60, strength:8, defense:6, dex:18, dexGrowth:0.04, speed:1.6, tempo:1.5, size:1.15, plural:'Werwölfe',
+  werewolf:{ label:'Werwolf',      category:'undead',   hp:52, strength:7, defense:6, dex:18, dexGrowth:0.04, speed:1.4, tempo:1.3, size:1.15, plural:'Werwölfe',
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'🐺',
              passive:'Heilt sich langsam, vom Geruch vieler Hühner gelockt' },
-  lich:    { label:'Lich',         category:'undead',   hp:80, strength:7, defense:12, dex:14, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Lichs', noWork:true,
+  lich:    { label:'Lich',         category:'undead',   hp:72, strength:7, defense:12, dex:14, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Lichs', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100, style:'support', icon:'🧙‍♂️',
              passive:'Beschwört Skelette; Bibliothek, Friedhof und Tempel locken ihn' },
   dragon:  { label:'Drache',       category:'humanoid', hp:220, strength:14, defense:30, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.8, plural:'Drachen', noWork:true,
@@ -704,7 +704,7 @@ const SPECIES={
   fairy:   { label:'Fee',          category:'hero',    hp:14, strength:2, defense:0, dex:38, dexGrowth:0.05, speed:1.5, tempo:1.4, size:0.7,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🧚', passive:'Heilt Verbündete in der Nähe' },
-  griffin: { label:'Greif',        category:'hero',    hp:60, strength:8, defense:8, dex:20, dexGrowth:0.04, speed:1.7, tempo:1.5, size:1.4,
+  griffin: { label:'Greif',        category:'hero',    hp:52, strength:7, defense:8, dex:20, dexGrowth:0.04, speed:1.7, tempo:1.5, size:1.4,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'assassin', icon:'🦅', passive:'Stürzt sich aus der Ferne auf einen Gegner' },
   unicorn: { label:'Einhorn',      category:'hero',    hp:55, strength:6, defense:10, dex:28, dexGrowth:0.04, speed:1.4, tempo:1.3, size:1.2,
@@ -716,7 +716,7 @@ const SPECIES={
   wisp:    { label:'Irrlicht',     category:'hero',    hp:10, strength:2, defense:0, dex:40, dexGrowth:0.03, speed:1.8, tempo:1.5, size:0.7,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🔮', passive:'Treibt Verbündete in der Nähe an' },
-  angel:   { label:'Engel',        category:'hero',    hp:100, strength:10, defense:20, dex:16, dexGrowth:0.03, speed:1.2, tempo:1.2, size:1.4,
+  angel:   { label:'Engel',        category:'hero',    hp:90, strength:10, defense:20, dex:16, dexGrowth:0.03, speed:1.2, tempo:1.2, size:1.4,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'👼', passive:'Heilt Verbündete und richtet mit heiligem Licht' },
   phoenix: { label:'Phönix',       category:'hero',    hp:50, strength:7, defense:5, dex:24, dexGrowth:0.04, speed:1.6, tempo:1.4, size:1.1,
@@ -838,7 +838,7 @@ function resolveAttack(attacker, defender, context){
   defender.hitAt=Date.now();          // fuer das Treffer-Feedback
   defender.hitHard=crit;
 
-  if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*(hasPerk('blood_pact')?0.8:0.5))));   // the bite heals
+  if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*(hasPerk('blood_pact')?0.65:0.4))));   // the bite heals
   let outcome='hit';
   if(defender.hp<=0){
     defender.hp=0;
