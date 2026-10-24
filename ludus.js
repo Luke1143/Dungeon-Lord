@@ -49,10 +49,26 @@ function ludusKinds(){ const all=arenaKinds(); return ludusMeta.unlockAll?all:al
 
 // ---- the team: the fighter and the mates recruited in the tavern, each with gear, wounds and gifts of their own. `ludus.fighter` is the member shown and worked on (a getter on the run) ----
 function ludusLink(l){ if(!l) return l; if(!l.team){ l.team=l.fighter?[l.fighter]:[]; delete l.fighter; l.companion=null; } l.sel=Math.max(0,Math.min(l.team.length-1,l.sel|0)); l.team.forEach((m,i)=>{ if(!m.id) m.id='m'+i+Math.floor(Math.random()*1e6); if(!m.gifts) m.gifts=[]; });
+  if(!l.stash){ l.stash=[]; l.bookbag=[]; const keep=ludus; ludus=l; try{ l.team.forEach(m=>{ ludusNormalizeGear(m); (m.books||[]).forEach(b=>l.bookbag.push(b)); m.books=[]; }); } finally { ludus=keep; } }
   Object.defineProperty(l,'fighter',{ configurable:true, enumerable:false, get(){ return this.team[this.sel]||this.team[0]; } }); return l; }
 const ludusLevel=()=>Math.max(1,Math.round(ludus.team.reduce((a,m)=>a+m.level,0)/Math.max(1,ludus.team.length)));
 const ludusTeamMax=()=>1+ludusInnTier();
 const ludusSlotsFree=()=>ludusTeamMax()-ludus.team.length;
+// the team shares one store of gear and books: a member carries what it wears, everything else lies in the stash
+function ludusNormalizeGear(m){
+  if(!m.inventory||!m.inventory.length) return;
+  const c=ludusMemberCreature(m), worn=new Set(wornItems(c).map(w=>c.inventory.indexOf(w))), keep=[];
+  m.inventory.forEach((x,i)=>{ delete x.off; if(worn.has(i)) keep.push(x); else ludus.stash.push(x); });
+  m.inventory=keep;
+}
+// every piece the team owns, with who wears it (null: in the stash)
+function ludusItems(){ const out=[]; ludus.team.forEach(m=>(m.inventory||[]).forEach(inst=>out.push({ inst, owner:m }))); ludus.stash.forEach(inst=>out.push({ inst, owner:null })); return out; }
+function ludusGiveItem(inst,to){       // to: a member, or null for the stash; the piece put on last takes its place first, what no longer fits goes to the stash
+  ludus.team.forEach(m=>{ const i=(m.inventory||[]).indexOf(inst); if(i>=0) m.inventory.splice(i,1); });
+  const k=ludus.stash.indexOf(inst); if(k>=0) ludus.stash.splice(k,1);
+  if(!to){ delete inst.pin; ludus.stash.push(inst); return; }
+  inst.pin=Date.now(); to.inventory.push(inst); ludusNormalizeGear(to);
+}
 function ludusFighterGroup(f){
   f=f||ludus.fighter; const g=arenaGroup(f.kind,1,f.level); g.fighter=f; g.seed=f.seed; return g;
 }
@@ -92,10 +108,10 @@ const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.
 function ludusMatchSetup(o,salt){
   const foes=ludusFoes(o);
   return { teams:[ { name:ludus.team[0].name, groups:ludus.team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
-    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day+(salt||''), lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, mercy:ludus.wins+ludus.losses<3 };
+    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, mercy:ludus.wins+ludus.losses<3 };
 }
 function ludusAverageTier(){
-  const worn=wornItems(ludusCreature()); if(!worn.length) return 0;
+  const worn=ludus.team.reduce((a,m)=>a.concat(wornItems(ludusMemberCreature(m))),[]); if(!worn.length) return 0;
   return Math.max(0,Math.min(3,Math.round(worn.reduce((t,i)=>t+ludusTierIndex(i),0)/worn.length)));
 }
 function ludusBoutLabel(o){
@@ -216,14 +232,14 @@ function ludusResolve(st){
     const prev=state; state=st;
     try{ alive.forEach(p=>grantXp(p.c,xp)); } finally { state=prev; }
     alive.forEach(({m,c})=>{
-      m.level=c.level; m.xp=c.xp; m.inventory=JSON.parse(JSON.stringify(c.inventory||[])); m.learned=(c.learned||[]).slice();
+      m.level=c.level; m.xp=c.xp; m.inventory=JSON.parse(JSON.stringify(c.inventory||[])); m.learned=(c.learned||[]).slice(); ludusNormalizeGear(m);
       m.hp=c.asleep?Math.max(1,Math.round(c.hp)):(c.unconscious?1:Math.max(1,c.hp));
       m.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:(m.energy===undefined?100:m.energy))-12);
     });
     if(won){
       ludus.gold+=Math.round(o.reward*giftMul(lead.c,'gold')); ludus.fame++; ludus.wins++; if(!o.tour) ludusGainRenown(({ easy:3, fair:6, hard:9 }[o.diff]||6)+(ludusRoomTier('pit')>=3?1:0));
       const loot=(st.looseItems||[]).filter(it=>it&&it.kind==='equipment'&&!it.arenaFloor);
-      loot.forEach(it=>{ lead.m.inventory.push(looseInst(it)); });
+      loot.forEach(it=>{ ludus.stash.push(looseInst(it)); });
       head='Sieg'; text=`${who} gewinnt gegen ${o.title||o.name}. +${o.reward} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}.`;
       ludusLog(`Sieg über ${o.title||o.name}`);
       if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; ludusGainRenown(Math.round((o.rank===1?40:12)*ludusHallMult())); ludus.giftChoice=genGiftOffer(Math.random,lead.c,ludus.fame); if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Rangliste!'; } }
@@ -281,15 +297,15 @@ function ludusBooks(){
 const ludusBookPrice=id=>30+22*(ABILITIES[id].power||2);
 function ludusBuyBook(id){
   const pr=ludusBookPrice(id); if(ludus.gold<pr) return;
-  ludus.gold-=pr; (ludus.fighter.books=ludus.fighter.books||[]).push(id); ludusNote=`Du kaufst das Buch "${ABILITIES[id].name}". Es liegt im Inventar und will gelernt werden.`; ludusSave(); ludusRender();
+  ludus.gold-=pr; ludus.bookbag.push(id); ludusNote=`Du kaufst das Buch "${ABILITIES[id].name}". Es liegt im Inventar und will gelernt werden.`; ludusSave(); ludusRender();
 }
 // a book in the bag is read: the fighter learns the ability (the rules of the main game decide whether there is room)
-function ludusLearnBook(i){
-  const f=ludus.fighter, id=(f.books||[])[i]; if(!id) return;
-  const c=ludusCreature(), prev=state; let ok=false;
+function ludusLearnBook(i,mi){
+  const f=ludus.team[mi===undefined?ludus.sel:mi], id=ludus.bookbag[i]; if(!f||!id) return;
+  const c=ludusMemberCreature(f), prev=state; let ok=false;
   try{ if(!state||!state.eventLog) state=makeDefaultState(); ok=learnAbility(c,id); } finally { state=prev; }
   if(!ok){ ludusNote='Das Buch verrät ihm nichts Neues oder er hat keinen Platz dafür.'; ludusRender(); return; }
-  f.learned=(c.learned||[]).slice(); f.books.splice(i,1); ludusNote=`${f.name} lernt "${ABILITIES[id].name}".`; ludusSave(); ludusRender();
+  f.learned=(c.learned||[]).slice(); ludus.bookbag.splice(i,1); ludusNote=`${f.name} lernt "${ABILITIES[id].name}".`; ludusSave(); ludusRender();
 }
 // ---- the training room: one turn of practice gives experience without a scratch, for a little gold ----
 const ludusTrainCost=()=>10+4*ludus.fighter.level, ludusTrainXp=()=>Math.round((8+4*ludus.fighter.level)*[1,1.6,2.4][Math.max(0,ludusRoomTier('training')-1)]);
@@ -348,7 +364,7 @@ function ludusRender(){
     left=`<div class="luCard">${strip}<canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div>${ludus.team.length>1?`<button data-dismiss="${ludus.sel}" class="luSmall">Entlassen</button>`:''}<div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+Tr(l.text)).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
       <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
-      <div class="luInv">${(f.inventory||[]).some((x,i)=>wornIdx.has(i))?f.inventory.map((x,i)=>wornIdx.has(i)?`<div class="luItem worn" data-pick="${i}"><span>${ludusEsc(instLabel(x))} ✓</span></div>`:'').join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
+      <div class="luInv">${(f.inventory||[]).length?(f.inventory||[]).map(x=>`<img class="luMini" src="${itemIconURL(x,32)}" title="${ludusEsc(instLabel(x))}" data-item="${ludusItems().findIndex(e=>e.inst===x)}">`).join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
   }
   const itemRow=(inst,i)=>`<div class="luItem${wornIdx.has(i)?' worn':''}${ludusSel===i?' sel':''}" data-pick="${i}"><span>${ludusEsc(instLabel(inst))}${wornIdx.has(i)?' ✓':''}</span></div>`;
   let main='', override='';
@@ -393,13 +409,14 @@ function ludusRender(){
     main=`<div class="luPanel"><h2>Bücherei</h2><p class="luHint">Jeden Tag liegen drei Bücher aus, passend zur Art deines Kämpfers. Gekaufte Bücher liegen im Inventar und müssen gelernt werden.</p>
       ${books.length?books.map(id=>`<div class="luItem"><span>${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITIES[id].text||''}</span><button data-book="${id}" ${ludus.gold<ludusBookPrice(id)?'disabled':''}>${ludusBookPrice(id)} Gold</button></div>`).join(''):'<p><i>Heute gibt es nichts Neues für ihn.</i></p>'}${ludusRoomBox('library')}</div>`;
   } else if(ludusTab==='gear'){
-    const inv=f.inventory||[], sel=inv[ludusSel], books=f.books||[];
-    main=`<div class="luPanel"><h2>Inventar</h2>${inv.length?inv.map(itemRow).join(''):'<p><i>Du besitzt noch keine Ausrüstung. Die Schmiede verkauft welche.</i></p>'}
-      ${sel?`<div class="luDetail"><pre>${ludusEsc(itemDescription(sel))}</pre>
-        <button data-equip="${ludusSel}">${wornIdx.has(ludusSel)?'Ablegen':'Anlegen'}</button>
-        <button data-reroll="${ludusSel}" title="Aussehen neu würfeln">🎲 ${ludusRerollPrice(sel)}</button>
-        <button data-sell="${ludusSel}" title="Verkaufen">💰 ${ludusSellPrice(sel)}</button></div>`:(inv.length?'<p class="luHint">Wähle ein Stück, um es zu lesen, an- oder abzulegen.</p>':'')}
-      ${books.length?`<h3>Bücher</h3>${books.map((id,i)=>`<div class="luItem"><span>📖 ${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITIES[id].text||''}</span><button data-learn="${i}">Lernen</button></div>`).join('')}`:''}</div>`;
+    const all=ludusItems(), sel=all[ludusSel], books=ludus.bookbag||[], total=Math.max(24,Math.ceil((all.length+1)/6)*6);
+    const cells=all.map((e,k)=>`<button class="luCell${ludusSel===k?' sel':''}" data-item="${k}" style="border-color:${itemTierColor(e.inst)}" title="${ludusEsc(instLabel(e.inst))}"><img src="${itemIconURL(e.inst,40)}">${e.owner?`<b>${ludusEsc(e.owner.name[0])}</b>`:''}</button>`).concat(Array.from({length:total-all.length},()=>'<span class="luCell empty"></span>')).join('');
+    main=`<div class="luPanel"><h2>Inventar</h2><p class="luHint">Das ganze Team teilt sich diese Fächer. Ein Buchstabe in der Ecke zeigt, wer das Stück trägt.</p><div class="luGrid">${cells}</div>
+      ${sel?`<div class="luDetail"><pre>${ludusEsc(itemDescription(sel.inst))}</pre>
+        ${ludus.team.filter(m=>m!==sel.owner).map(m=>`<button data-give="${ludusSel}:${ludus.team.indexOf(m)}">${sel.owner?'Geben':'Anlegen'}: ${ludusEsc(m.name)}</button>`).join(' ')}${sel.owner?`<button data-give="${ludusSel}:-1">Ablegen</button>`:''}
+        <button data-reroll="${ludusSel}" title="Aussehen neu würfeln">🎲 ${ludusRerollPrice(sel.inst)}</button>
+        <button data-sell="${ludusSel}" title="Verkaufen">💰 ${ludusSellPrice(sel.inst)}</button></div>`:(all.length?'<p class="luHint">Wähle ein Stück, um es zu lesen, weiterzugeben oder zu verkaufen.</p>':'<p><i>Das Team besitzt noch keine Ausrüstung. Die Schmiede verkauft welche.</i></p>')}
+      ${books.length?`<h3>Bücher</h3>${books.map((id,i)=>`<div class="luItem"><span>📖 ${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITIES[id].text||''}</span><span>${ludus.team.map((m,mi)=>`<button data-learn="${i}:${mi}">Lernen: ${ludusEsc(m.name)}</button>`).join(' ')}</span></div>`).join('')}`:''}</div>`;
   } else if(ludusTab==='smith'){
     const stock=ludusStock();
     main=`<div class="luPanel"><h2>Schmiede</h2><p>Heute im Angebot (${LUDUS_ROOMS.forge.text[tier-1]}):</p>${stock.length?stock.map((it,i)=>`<div class="luItem"><span>${ludusEsc(instLabel(it))}</span><button data-buy="${i}" ${ludus.gold<ludusPrice(it.id)?'disabled':''}>${ludusPrice(it.id)} Gold</button></div>`).join(''):'<p><i>Die Schmiede hat heute nichts, was du führen kannst. Kaufe unten mehr Sorten.</i></p>'}<h3>Sortiment der Schmiede</h3>${ludusCatsHTML()}${ludusRoomBox('forge')}</div>`;
@@ -413,15 +430,13 @@ function ludusRender(){
   const stockNow=el._stock;
   el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; if(ludusTab!=='gear') ludusSel=-1; ludusRender(); if(ludusTab==='pit'&&live) ludusScoutOpponent(); }));
   if(live){
-    el.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>{ ludusSel=+b.dataset.pick; ludusTab='gear'; ludusRender(); }));
-    el.querySelectorAll('[data-equip]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.equip, inst=f.inventory[i];
-      if(wornIdx.has(i)){ inst.off=true; delete inst.pin; } else { delete inst.off; inst.pin=Date.now(); }       // the piece put on last takes its place first; a second one-handed blade fills the other hand
-      ludusSave(); ludusRender(); }));
-    el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.sell, inst=f.inventory[i]; ludus.gold+=ludusSellPrice(inst); f.inventory.splice(i,1); ludusSel=-1; ludusNote=''; ludusSave(); ludusRender(); }));
-    el.querySelectorAll('[data-reroll]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.reroll, inst=f.inventory[i], pr=ludusRerollPrice(inst); if(ludus.gold<pr) return; ludus.gold-=pr; inst.s=Math.floor(Math.random()*1e9); ludusSave(); ludusRender(); }));
-    el.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{ const it=stockNow[+b.dataset.buy], pr=ludusPrice(it.id); if(ludus.gold<pr) return; ludus.gold-=pr; f.inventory.push({ id:it.id, q:it.q, s:it.s }); ludusNote=''; ludusSave(); ludusRender(); }));
+    el.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>{ ludusSel=+b.dataset.item; ludusTab='gear'; ludusRender(); }));
+    el.querySelectorAll('[data-give]').forEach(b=>b.addEventListener('click',()=>{ const [k,mi]=b.dataset.give.split(':').map(Number), e=ludusItems()[k]; if(!e) return; ludusGiveItem(e.inst,mi<0?null:ludus.team[mi]); ludusSel=-1; ludusSave(); ludusRender(); }));
+    el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const e=ludusItems()[+b.dataset.sell]; if(!e) return; ludus.gold+=ludusSellPrice(e.inst); const list=e.owner?e.owner.inventory:ludus.stash; list.splice(list.indexOf(e.inst),1); ludusSel=-1; ludusNote=''; ludusSave(); ludusRender(); }));
+    el.querySelectorAll('[data-reroll]').forEach(b=>b.addEventListener('click',()=>{ const e=ludusItems()[+b.dataset.reroll]; if(!e) return; const pr=ludusRerollPrice(e.inst); if(ludus.gold<pr) return; ludus.gold-=pr; e.inst.s=Math.floor(Math.random()*1e9); ludusSave(); ludusRender(); }));
+    el.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{ const it=stockNow[+b.dataset.buy], pr=ludusPrice(it.id); if(ludus.gold<pr) return; ludus.gold-=pr; ludus.stash.push({ id:it.id, q:it.q, s:it.s }); ludusNote=''; ludusSave(); ludusRender(); }));
     el.querySelectorAll('[data-book]').forEach(b=>b.addEventListener('click',()=>ludusBuyBook(b.dataset.book)));
-    el.querySelectorAll('[data-learn]').forEach(b=>b.addEventListener('click',()=>ludusLearnBook(+b.dataset.learn)));
+    el.querySelectorAll('[data-learn]').forEach(b=>b.addEventListener('click',()=>{ const [i,mi]=b.dataset.learn.split(':').map(Number); ludusLearnBook(i,mi); }));
   }
   const on=(id,fn)=>{ const b=document.getElementById(id); if(b) b.addEventListener('click',fn); };
   el.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>ludusBuyRoom(b.dataset.room)));

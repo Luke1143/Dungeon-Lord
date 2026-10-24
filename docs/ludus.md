@@ -97,3 +97,7 @@ Neben der offenen Grube und den Höhlen gibt es geformte Kampfplätze (`arena-st
 
 ## Tempo
 Die Turnierrunde kommt alle 5 Tage (Pflichtkampf nach 3 Tagen ohne Kampf), Erfahrung aus Kämpfen ×3,5, Ansehen ×1,5.
+
+## Gemeinsames Inventar (neu)
+Das Team teilt sich einen Vorrat (`ludus.stash` für Ausrüstung, `ludus.bookbag` für Bücher). Ein Mitglied trägt nur, was es anhat; Einkäufe, Beute und Funde landen im Vorrat. Der Reiter „Inventar" zeigt alles als Gitter mit den Pixelbildern des Spiels (Waffen aus ihren Teilen, Schilde, Rüstungen; der Rand zeigt die Güteklasse, ein Buchstabe in der Ecke den Träger). Ein Stück wird einem Mitglied angelegt, weitergegeben oder abgelegt; Würfeln und Verkaufen gelten für alle Stücke. Bücher werden von einem gewählten Mitglied gelernt.
+Die Karte eines Kampfes steht jetzt für die ganze Probe fest (`fixedMap`): Die Probekämpfe der Grube und der echte Kampf finden auf derselben Höhle statt, sonst stimmte die Schätzung nicht mit dem Kampf überein.

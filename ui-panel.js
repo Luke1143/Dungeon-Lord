@@ -73,3 +73,45 @@ function uiPortrait(kind,size){
 }
 
 uiHintWire(); uiTab('info');
+
+// ---- item pictures from the game's own pixel art: weapons from their parts, shields from the shield rows, armour from three small shapes ----
+const ARMOR_ICON_ROWS={
+  1:['..oo..oo..','.oaaooaao.','oaaabbaaao','oaaaaaaaao','.oaaaaaao.','.oabbbbao.','.oaaaaaao.','.oabbbbao.','.oaaaaaao.','.oaaooaao.','..oo..oo..'],
+  2:['.oo....oo.','oaaoooooaao','oaaaabbaaaao','oacaaaaaaaao','oaaaaaaaaaao','.oaabbbbaao.','.oaaaaaaaao.','.oabbbbbbao.','.oaaaaaaaao.','.oaaoooaaao.','..ooo..ooo..'],
+  3:['occoo..oocco','occaaoooaacco','oaaaaaaaaaaao','.oaacaaaacaao.','.oaaaaaaaaaao.','..oaabbbbaao..','..oaaaaaaaao..','..oabbbbbbao..','..oaaaaaaaao..','..oaaoooooaao.','...ooo...ooo..']
+};
+const ARMOR_ICON_PAL={ leder:{ a:'#9a6a3a', b:'#7a4e28', c:'#c08a50', o:'#3a2412' }, bronze:{ a:'#c08a3a', b:'#8a5a20', c:'#e8b860', o:'#3a2410' }, eisen:{ a:'#9aa4ae', b:'#6a747e', c:'#cfd6dc', o:'#262a30' }, stahl:{ a:'#b8c4d4', b:'#7e8ca0', c:'#eaf0f8', o:'#20242c' } };
+const ITEM_TIER_COLOR={ crude:'#7a6a58', plain:'#cfc3a8', fine:'#4a8ad8', epic:'#b060e0' };
+const ITEM_ICON_CACHE=new Map();
+// the bare picture of one item as a canvas of `px` pixels a side (nearest-neighbour, in whole steps); null if there is no art
+function itemIconCanvas(v,px){
+  const inst=asInstance(v), d=instDef(inst); if(!d) return null;
+  let cells=null, w=0, h=0;      // cells: [x,y,colour]
+  if(d.type==='weapon' && typeof TOOLGEN!=='undefined'){
+    const name=WEAPON_SPRITE[d.family], p=partsOf(inst), wp=TOOLGEN.weapon(name,p?{ head:p.head, len:p.len, shaft:p.shaft, pommel:p.pommel, mat:p.mat }:undefined);
+    if(wp){ let x0=99,y0=99,x1=-99,y1=-99; wp.px.forEach(([x,y])=>{ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); }); cells=wp.px.map(([x,y,c])=>[x-x0,y-y0,c]); w=x1-x0+1; h=y1-y0+1; }
+  } else if(d.type==='shield' && typeof SHIELDGEN!=='undefined' && SHIELDGEN.rows[d.family]){
+    const rows=SHIELDGEN.rows[d.family], pal=SHIELDGEN.palette(TOOLGEN.matOfTier(d.tier)); cells=[]; h=rows.length; w=rows[0].length;
+    rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.') cells.push([x,y,pal[c]||'#888']); }));
+  } else if(d.type==='armor'){
+    const wgt=d.family==='heavyArmor'?3:(d.family==='mediumArmor'?2:1), step=d.tier==='epic'?2:(d.tier==='fine'?1:(d.tier==='crude'?-1:0)), mat=['leder','bronze','eisen','stahl'][Math.max(0,Math.min(3,wgt-1+step))], rows=ARMOR_ICON_ROWS[wgt], pal=ARMOR_ICON_PAL[mat];
+    cells=[]; h=rows.length; w=Math.max(...rows.map(r=>r.length)); rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.') cells.push([x,y,pal[c]||'#888']); }));
+  }
+  if(!cells) return null;
+  const cv=document.createElement('canvas'); cv.width=cv.height=px; const g=cv.getContext('2d'); g.imageSmoothingEnabled=false;
+  if(d.type==='weapon'){       // a weapon lies at a slant, which fits a long one into the square
+    const src=document.createElement('canvas'); src.width=w; src.height=h; const sg=src.getContext('2d'); cells.forEach(([x,y,c])=>{ sg.fillStyle=c; sg.fillRect(x,y,1,1); });
+    const k=(px-4)/((w+h)/Math.SQRT2); const s=k>=2?Math.floor(k):Math.max(1,k);
+    g.translate(px/2,px/2); g.rotate(Math.PI/4); g.drawImage(src,-w*s/2,-h*s/2,w*s,h*s); return cv;
+  }
+  const s=Math.max(1,Math.floor((px-2)/Math.max(w,h))), ox=Math.floor((px-w*s)/2), oy=Math.floor((px-h*s)/2);
+  cells.forEach(([x,y,c])=>{ g.fillStyle=c; g.fillRect(ox+x*s,oy+y*s,s,s); });
+  return cv;
+}
+function itemIconURL(v,px){
+  const inst=asInstance(v), key=inst.id+'|'+inst.s+'|'+(inst.pp?JSON.stringify(inst.pp):'')+'|'+px;
+  if(ITEM_ICON_CACHE.has(key)) return ITEM_ICON_CACHE.get(key);
+  let url=''; try{ const cv=itemIconCanvas(inst,px); url=cv?cv.toDataURL():''; }catch(e){}
+  ITEM_ICON_CACHE.set(key,url); return url;
+}
+const itemTierColor=v=>ITEM_TIER_COLOR[(instDef(v)||{}).tier]||ITEM_TIER_COLOR.plain;

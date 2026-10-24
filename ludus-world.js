@@ -95,7 +95,7 @@ function ludusJoinTeam(n){
   const lv=ludusMateLevel(n), c=arenaMake(n.kind,0,0); c.level=lv;
   const inv=arenaGear(c,ludusOppGroup(ludusNpcFoe(n)),0);
   ludus.team.push({ id:'m'+n.id, npc:n.id, gifts:[], kind:n.kind, name:n.name, level:lv, xp:xpForLevel(lv), hp:undefined, inventory:JSON.parse(JSON.stringify(inv)), learned:[], books:[], seed:n.seed });
-  n.status='team'; n.maimed=false; n.met=1; n.last={ t:'joined', d:ludus.day };
+  ludusNormalizeGear(ludus.team[ludus.team.length-1]); n.status='team'; n.maimed=false; n.met=1; n.last={ t:'joined', d:ludus.day };
 }
 function ludusRecruit(id){
   const n=ludusNpc(id); if(!n||n.status!=='active'||ludusSlotsFree()<1||(n.bond||0)<=-2) return false;

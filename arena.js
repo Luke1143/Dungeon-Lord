@@ -200,7 +200,7 @@ function arenaSimulate(setup,n,onProgress){
   const prevState=state, prevScreen=screen, res={ wins:[0,0], draws:0, ticks:0, left:[0,0], runs:n };
   try{
     for(let i=0;i<n;i++){
-      const st=arenaBuild(setup,'#'+i); state=st; screen='level';
+      const st=arenaBuild(setup,setup.fixedMap?'':'#'+i); state=st; screen='level';
       while(arenaStep(st)){}
       if(st.arena.winner<0) res.draws++; else res.wins[st.arena.winner]++;
       res.ticks+=st.tickCount; res.left[0]+=arenaAlive(st,0).length; res.left[1]+=arenaAlive(st,1).length;

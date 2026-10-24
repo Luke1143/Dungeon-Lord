@@ -25,7 +25,7 @@ const LUDUS_EVENTS=[
     make:r=>({ cast:[ludusAnon(r,['dwarf','goblin'],2,2,'Händler')] }),
     text:()=>'Ein Händler mit einem großen Sack baut seinen Stand im Hof auf. "Ein Buch gefällig? Nur heute, und es ist sein Geld wert!"',
     options:[
-      { label:'Kaufen (25 Gold)', when:()=>ludus.gold>=25, run:()=>{ const c=ludusCreature(), pool=(ARCHETYPE_POOL[archetypeOf(c)]||[]).filter(id=>ABILITIES[id]&&!knownAbilities(c).includes(id)); if(!pool.length) return { text:'Er hat nichts, was du nicht schon kennst.' }; const id=pool[Math.floor(Math.random()*pool.length)]; ludus.gold-=25; (ludus.fighter.books=ludus.fighter.books||[]).push(id); return { text:`Du kaufst das Buch "${ABILITIES[id].name}". Es liegt im Inventar.` }; } },
+      { label:'Kaufen (25 Gold)', when:()=>ludus.gold>=25, run:()=>{ const c=ludusCreature(), pool=(ARCHETYPE_POOL[archetypeOf(c)]||[]).filter(id=>ABILITIES[id]&&!knownAbilities(c).includes(id)); if(!pool.length) return { text:'Er hat nichts, was du nicht schon kennst.' }; const id=pool[Math.floor(Math.random()*pool.length)]; ludus.gold-=25; ludus.bookbag.push(id); return { text:`Du kaufst das Buch "${ABILITIES[id].name}". Es liegt im Inventar.` }; } },
       { label:'Ablehnen', run:()=>({ text:'Du zuckst mit den Schultern. Der Händler packt wieder ein.', exit:true }) },
       { label:'Beutel stehlen', trait:['thief','goblin','kitsune'], run:()=>{ const g=30+Math.round(Math.random()*20); ludus.gold+=g; return { text:`Unauffällig verschwindet sein Beutel in deiner Tasche: +${g} Gold.` }; } }
     ] },
