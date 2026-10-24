@@ -853,7 +853,9 @@ function resolveAttack(attacker, defender, context){
 
   // the blow is a vector of cut, pierce and blunt; each part meets the defence against its own kind, the species' and the size's factors
   const prof=attackProfile(attacker), shares=prof.map((s,i)=>{ const d=defenseVs(defender,DMG_KINDS[i]); return dmg*s*(1-d/(d+DEFENSE_K))*resistOf(defender,i); });
-  dmg = Math.max(MIN_DAMAGE, Math.round(shares[0]+shares[1]+shares[2]));
+  const tires=sleepsLikeUs(defender) && defender.kind!=='dungeonlord';        // blunt force half bruises, half wears the victim out
+  dmg = Math.max(MIN_DAMAGE, Math.round(shares[0]+shares[1]+shares[2]*(tires?1-BLUNT_FATIGUE:1)));
+  const tiredBy=tires?shares[2]*BLUNT_FATIGUE/Math.max(1,statMaxHp(defender))*100*FATIGUE_WEIGHT:0;
   if(dmg>=defender.hp && factionOf(defender)==='good'){          // a guardian angel catches one deadly blow
     const ga=state.creatures.find(o=>o.kind==='guardian' && knows(o,'ward') && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
     if(ga){ ga.wardUsed=true; dmg=Math.max(0,defender.hp-1); logEvent(`${actorLabel(ga)} fängt den tödlichen Schlag für ${actorLabel(defender)} ab!`, defender.x, defender.y); }
@@ -870,7 +872,12 @@ function resolveAttack(attacker, defender, context){
   if(defender.hp<=0){
     defender.hp=0;
     outcome = knockOutOrKill(defender, overkill, attacker, context);
+  } else if(tiredBy>0){
+    if(!Number.isFinite(defender.energy)) defender.energy=ENERGY_MAX;
+    defender.energy=Math.max(0,defender.energy-tiredBy);
+    if(defender.energy<=0){ faintCreature(defender,true); outcome='fainted'; }       // out of strength before out of life: falls asleep, never dies of it
   }
+  if(outcome==='hit') applyHitEffects(attacker,defender,shares,(activeWeapon(attacker)&&instDef(activeWeapon(attacker))||{}).family);
   dbg('combat', `${actorLabel(attacker)} trifft ${actorLabel(defender)} für ${dmg}${crit?' (kritisch)':''} → ${Math.max(0,Math.round(defender.hp))}/${defender.maxHp}${outcome!=='hit'?' · '+outcome:''}`);
   hitFx(attacker, defender, dmg, crit, outcome==='killed');
   return { dodged:false, damage:dmg, crit, soaked, outcome, profile:prof };
@@ -915,13 +922,14 @@ function creatureEmoji(c){
   }
 }
 
-function faintCreature(c){
+function faintCreature(c,asleep){
   c.unconscious=true;
-  c.unconsciousTimer=UNCONSCIOUS_TICKS;
-  c.hp=0;
+  c.unconsciousTimer=asleep?Math.round(UNCONSCIOUS_TICKS*0.5):UNCONSCIOUS_TICKS;
+  c.asleep=!!asleep; c.stunTicks=0;
+  if(!asleep) c.hp=0;
   c.path=[]; c.fightTarget=null;
   leaveSmelter(c); leaveForge(c);
-  logEvent(`${actorLabel(c)} sinkt bewusstlos zu Boden.`, c.x, c.y);
+  logEvent(asleep?`${actorLabel(c)} schläft vor Erschöpfung ein.`:`${actorLabel(c)} sinkt bewusstlos zu Boden.`, c.x, c.y);
 }
 
 // A fallen creature may drop what it wore; the rest is lost. Common pieces fall more often than rare ones.
@@ -978,8 +986,8 @@ function tickUnconscious(c){
   c.unconsciousTimer--;
   if(c.unconsciousTimer<=0){
     c.unconscious=false;
-    c.hp=Math.max(1, Math.round(statMaxHp(c)*(c.kind==='dungeonlord'?0.5:0.25)));
-    logEvent(`${actorLabel(c)} kommt wieder zu sich.`, c.x, c.y);
+    if(c.asleep){ c.asleep=false; c.energy=45; c.hp=Math.max(1,c.hp); logEvent(`${actorLabel(c)} erwacht erholt.`, c.x, c.y); }
+    else { c.hp=Math.max(1, Math.round(statMaxHp(c)*(c.kind==='dungeonlord'?0.5:0.25))); logEvent(`${actorLabel(c)} kommt wieder zu sich.`, c.x, c.y); }
   }
   return true;
 }
@@ -1747,6 +1755,35 @@ const STAMINA_MAX=100, STAMINA_REGEN=8, STAMINA_PAUSE=1, STAMINA_SPRINT_PAUSE=2,
 function staminaOf(c){ if(c.stamina===undefined) c.stamina=STAMINA_MAX; return c.stamina; }
 function spendStamina(c,n,pause){ c.stamina=Math.max(0,staminaOf(c)-n); c.staminaPause=pause||STAMINA_PAUSE; if(c.stamina<=0) c.exhausted=true; }
 function staminaTempoF(c){ const s=staminaOf(c); return s>=STAMINA_SOFT?1:0.6+0.4*s/STAMINA_SOFT; }
+// ===== Status effects from the kind of damage (docs/kampfsystem.md): blunt stuns, cuts bleed, piercing slows; blunt also tires =====
+// Bleeding is not damage over time: every action of a bleeding creature (a step, a blow, an ability) rolls to lose some health, so resting stops it.
+const BLUNT_FATIGUE=0.5, FATIGUE_WEIGHT=2.0, STATUS_FACTOR={ bleed:1.6, slow:1.8, stun:0.8 }, STATUS_CAP=0.5;
+const STATUS_IMMUNE={ skeleton:['bleed'], zombie:['bleed'], ghoul:['bleed'], lich:['bleed'], golem:['bleed','stun'], ghost:['bleed','stun','slow'], wisp:['bleed','stun','slow'], banshee:['bleed'] };
+const immuneTo=(c,s)=>((STATUS_IMMUNE[c.kind]||[]).indexOf(s)>=0);
+const sleepsLikeUs=c=>!(c.category==='undead' || c.kind==='golem' || c.kind==='ghost' || c.kind==='wisp' || c.kind==='imp' && false);
+function tickStatuses(c){
+  if(c.slowTicks>0) c.slowTicks--;
+  if(c.stunImmune>0) c.stunImmune--;
+  if(c.bleedStacks>0 && --c.bleedTicks<=0){ c.bleedStacks--; c.bleedTicks=18; }
+}
+function bleedCheck(c,px,py){
+  if(!(c.bleedStacks>0) || c.unconscious || c.removed) return;
+  if(c.x===px && c.y===py && c.lastActTick!==state.tickCount) return;       // standing still: no bleeding
+  if(Math.random()<0.1*c.bleedStacks){
+    const dmg=Math.max(1,Math.round(statMaxHp(c)*0.04)); c.hp-=dmg; c.hitAt=Date.now();
+    if(typeof emitFx==='function') emitFx('claim',c.x,c.y,{ color:c.bleedKind==='burn'?'#ff7a20':'#b02020' });
+    if(c.hp<=0){ c.hp=0; knockOutOrKill(c,0,null,null); }
+  }
+}
+// what a landed blow does besides damage; `shares` = the damage that got through per kind
+function applyHitEffects(attacker,defender,shares,weaponFamily){
+  if(defender.unconscious || defender.removed || defender.hp<=0) return;
+  const maxHp=Math.max(1,statMaxHp(defender)), say=(icon)=>{ defender.shout=icon; defender.shoutTicks=6; };
+  const roll=(i,kind)=> !immuneTo(defender,kind) && Math.random()<Math.min(STATUS_CAP,shares[i]/maxHp*STATUS_FACTOR[kind]);
+  if(roll(0,'bleed')){ defender.bleedStacks=Math.min(3,(defender.bleedStacks||0)+1); defender.bleedTicks=18; defender.bleedKind=(weaponFamily==='wandFire')?'burn':'cut'; say(defender.bleedKind==='burn'?'🔥':'🩸'); }
+  if(roll(1,'slow')){ defender.slowTicks=8; say('🐌'); }
+  if(!(defender.stunImmune>0) && roll(2,'stun')){ defender.stunTicks=2+(shares[2]/maxHp>0.3?1:0); defender.stunImmune=defender.stunTicks+4; defender.path=[]; defender.swingBudget=0; say('💫'); }
+}
 function tickStamina(c){
   if(c.kind==='imp') return; staminaOf(c);
   if(c.staminaPause>0){ c.staminaPause--; return; }
@@ -1756,7 +1793,7 @@ function tickStamina(c){
 }
 const attackStaminaCost=c=>Math.round(4+7*swingFactorOf(c));
 function statTempo(c){
-  return staminaTempoF(c)*statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
+  return staminaTempoF(c)*(c.slowTicks>0?0.7:1)*statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -2109,6 +2146,7 @@ function windup(actor){
   const cost=swingCostOf(actor);
   if(actor.swingBudget < cost) return false;
   actor.swingBudget-=cost;
+  actor.lastActTick=state.tickCount;
   if(combat && actor.kind!=='imp') spendStamina(actor,attackStaminaCost(actor));
   startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
   actor.lastHand=actor.handTurn?1:0;
@@ -3795,13 +3833,17 @@ function tickCreature(c){
   if(c.hastedTicks>0) c.hastedTicks--;
   if(c.rageTicks>0) c.rageTicks--;
   tickStamina(c);
-  if(BOSS_ABILITIES[c.kind]) runBossAbilities(c); else runAbilities(c, isPossessed(c));     // creatures.js: the table of abilities (levels 5 and 10, books, artifacts)     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
-  if(isPossessed(c)){ tickPossessed(c); return; }
+  tickStatuses(c);
+  if(c.stunTicks>0){ c.stunTicks--; return; }                // stunned: nothing happens this tick
+  const px=c.x, py=c.y;
+  if(BOSS_ABILITIES[c.kind]) runBossAbilities(c); else runAbilities(c, isPossessed(c));     // creatures.js: the table of abilities (levels 5 and 10, books, artifacts)     // bosses.js: summons, quake
+  if(isPossessed(c)){ tickPossessed(c); bleedCheck(c,px,py); return; }
   const actions=actionCount(c);
   for(let i=0;i<actions;i++){
     if(c.dead || c.held) return;
     tickCreatureOnce(c);
   }
+  bleedCheck(c,px,py);
 }
 
 function tickCreatureOnce(c){
@@ -8001,7 +8043,7 @@ function fpBlocked(c,x,y){
   return state.creatures.concat(state.imps).some(o=>{ if(o===c||o.held||o.unconscious) return false; const d=Math.hypot(rx(o)+0.5-x, ry(o)+0.5-y); return d<0.55 && d<old(o); });
 }
 function fpMove(dt){
-  const c=possessed; if(!fpActive()||!state||gameSpeed===0) return;
+  const c=possessed; if(!fpActive()||!state||gameSpeed===0||c.stunTicks>0) return;
   if(c.fx===undefined || Math.floor(c.fx)!==c.x || Math.floor(c.fy)!==c.y){ c.fx=c.x+0.5; c.fy=c.y+0.5; }
   const f={ x:Math.cos(c.fpYaw), y:Math.sin(c.fpYaw) }, r={ x:-f.y, y:f.x };
   let mx=0, my=0;
@@ -8041,6 +8083,7 @@ function fpPickTarget(c){
 }
 // one step of the held primary button: hit the target or work the tile
 function fpActStep(c){
+  if(c.stunTicks>0) return;
   const tg=fpPickTarget(c);
   if(!tg){ c.verb='attack'; c.actTarget=null; if(!c.aim || state.tickCount-(c.aimTick||0)>14){ const a=fpAxis(c.fpYaw), sp=strikeSpec(c); c.aimTick=state.tickCount; c.aim={ x:c.x+a.x*Math.max(1,sp.reach), y:c.y+a.y*Math.max(1,sp.reach) }; } if(!windup(c)) return; doStrike(c,strikeSpec(c),c.aim); c.aim=null; return; }   // the weapon may always be swung: a blow into the air still covers its tiles   // the weapon may always be swung, a blow into the air feels like one
   if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!c.aim || state.tickCount-(c.aimTick||0)>14){ c.aim={ x:tg.foe.x, y:tg.foe.y }; c.aimTick=state.tickCount; } if(!windup(c)) return; doStrike(c,strikeSpec(c),c.aim); c.aim=null; return; }

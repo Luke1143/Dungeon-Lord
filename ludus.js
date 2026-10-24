@@ -125,7 +125,7 @@ function ludusResolve(st){
     const prev=state; state=st;
     try{ grantXp(c, won ? 18+8*o.level : 6+2*o.level); } finally { state=prev; }
     f.level=c.level; f.xp=c.xp; f.inventory=JSON.parse(JSON.stringify(c.inventory||[])); f.learned=(c.learned||[]).slice();
-    f.hp=c.unconscious?1:Math.max(1,c.hp);
+    f.hp=c.asleep?Math.max(1,Math.round(c.hp)):(c.unconscious?1:Math.max(1,c.hp));
     if(won){
       ludus.gold+=o.reward; ludus.fame++; ludus.wins++; if(!o.tour) ludusGainRenown(1+(ludusRoomTier('pit')>=3?1:0));
       const loot=(st.looseItems||[]).filter(it=>it&&it.kind==='equipment');
@@ -138,7 +138,7 @@ function ludusResolve(st){
       text=`${f.name} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
       ludusLog(`Niederlage gegen ${o.name}`);
     }
-    f.energy=Math.max(10,(f.energy===undefined?100:f.energy)-12); ludus.day++; ludus.opp=null;
+    f.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:(f.energy===undefined?100:f.energy))-12); ludus.day++; ludus.opp=null;
   }
   ludusResultText=head+'\n'+text; ludusSave();
   return head;
