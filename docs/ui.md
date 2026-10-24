@@ -8,3 +8,6 @@ Die Welt füllt das ganze Fenster, links liegt das Menü (`ui-panel.js` und das 
 - **Meldungen** (`#eventStack`): Jede Meldung des Ereignisprotokolls ist ein Symbol, das von oben auf den Stapel fällt. Die Form verrät die Art (Stufenaufstieg, Tod, Gefahr, Lager voll, Bau, Graben, Gold, Idee). Ein Klick springt zum Ort und zeigt den Text im Erklärstreifen; die Meldung verschwindet danach (oder nach etwa 1500 Ticks).
 - **Raus:** die Legende der Materialien (Erz, Eisen, Bronze, Stahl), die Ereignisliste, die Tastenleiste am unteren Rand (steht jetzt in der Übersicht).
 - **Arena und Ludus-Kampf** nutzen dasselbe Menü ohne Reiter: oben die Teams und Zauber, darunter der Zauberreiter.
+
+## Bildeffekt in 3D
+Über das 3D-Bild der Level-Ansicht legt `view3d.js` einen kleinen Nachbearbeitungsschritt: Das Bild wird zuerst in eine Textur gerendert, dann weichzeichnet ein Shader es leicht (die harten Pixelkanten der Sprites verschmelzen mit der Welt), helle Stellen leuchten etwas nach, die Ecken werden dunkler. Stufen: aus, weich, dunstig (Knopf 🌫 oder Taste F, wird gemerkt). Die Stufe „weich" ist voreingestellt.

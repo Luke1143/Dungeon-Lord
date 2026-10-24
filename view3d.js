@@ -3,7 +3,7 @@
 // Input stays on the 2D canvas, which lies on top as a transparent overlay (marks, selection, drag rectangle).
 const View3D=(()=>{
   const PITCH=0.85, FOV=45, WALL=1.0;
-  let T, host, renderer, scene, camera, tileGroup, spriteGroup, ready=false, loading=null, active=false;
+  let T, host, renderer, rt, postScene, postCam, postMat, postLevel=1, scene, camera, tileGroup, spriteGroup, ready=false, loading=null, active=false;
   let yaw=0, w=1, h=1, cols=0, rows=0;
   const tiles=[];                 // index y*cols+x -> { mesh, sig }
   const texCache=new Map(), matCache=new Map(), canvasTex=new Map(), emojiCanvas=new Map();
@@ -29,8 +29,33 @@ const View3D=(()=>{
     scene.add(new T.AmbientLight(0xa8a0b8,1.7));
     const sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
     tileGroup=new T.Group(); spriteGroup=new T.Group(); scene.add(tileGroup, spriteGroup);
+    initPost();
     ready=true;
   }
+  // ---- a soft finish over the whole picture: the render goes to a texture first, a small shader blurs it a little (the hard pixel edges of the sprites melt into the world),
+  // lets bright spots glow and darkens the corners. Levels: 0 off, 1 soft, 2 hazy.
+  const POST_LEVELS=[null,{ blur:1.0, bloom:0.12, vig:0.16 },{ blur:1.9, bloom:0.28, vig:0.3 }];
+  function initPost(){
+    rt=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true });
+    postCam=new T.OrthographicCamera(-1,1,1,-1,0,1); postScene=new T.Scene();
+    postMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
+      uniforms:{ tDiffuse:{ value:rt.texture }, px:{ value:new T.Vector2(1,1) }, blur:{ value:1 }, bloom:{ value:0.1 }, vig:{ value:0.2 } },
+      vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
+      fragmentShader:`uniform sampler2D tDiffuse; uniform vec2 px; uniform float blur; uniform float bloom; uniform float vig; varying vec2 vUv;
+        vec3 s(vec2 o){ return texture2D(tDiffuse,vUv+o).rgb; }
+        void main(){
+          vec2 o=px*blur;
+          vec3 c=s(vec2(0.0))*0.25 + (s(vec2(o.x,0.0))+s(vec2(-o.x,0.0))+s(vec2(0.0,o.y))+s(vec2(0.0,-o.y)))*0.125 + (s(o)+s(-o)+s(vec2(o.x,-o.y))+s(vec2(-o.x,o.y)))*0.0625;
+          vec2 w=o*3.0;
+          vec3 wide=(s(vec2(w.x,0.0))+s(vec2(-w.x,0.0))+s(vec2(0.0,w.y))+s(vec2(0.0,-w.y))+s(w)+s(-w)+s(vec2(w.x,-w.y))+s(vec2(-w.x,w.y)))*0.125;
+          c+=max(wide-vec3(0.45),vec3(0.0))*bloom*2.0;
+          vec2 d=vUv-0.5; c*=1.0-vig*dot(d,d)*2.4;
+          gl_FragColor=vec4(c,1.0);
+          #include <colorspace_fragment>
+        }` });
+    postScene.add(new T.Mesh(new T.PlaneGeometry(2,2),postMat));
+  }
+  function setPost(level){ postLevel=Math.max(0,Math.min(2,level|0)); if(ready&&postLevel){ const p=POST_LEVELS[postLevel]; postMat.uniforms.blur.value=p.blur; postMat.uniforms.bloom.value=p.bloom; postMat.uniforms.vig.value=p.vig; } }
   // another region, another map size: drop the old tile meshes
   function setSize(worldCols, worldRows){
     if(cols===worldCols && rows===worldRows) return;
@@ -44,6 +69,7 @@ const View3D=(()=>{
     if(!ready) return;
     renderer.setPixelRatio(Math.min(2,dpr||1)); renderer.setSize(cssW,cssH,false);
     camera.aspect=cssW/cssH; camera.updateProjectionMatrix();
+    const pr=Math.min(2,dpr||1), pw=Math.max(2,Math.round(cssW*pr)), ph=Math.max(2,Math.round(cssH*pr)); rt.setSize(pw,ph); postMat.uniforms.px.value.set(1/pw,1/ph);
   }
   function setFog(near,far){ if(ready&&scene.fog){ scene.fog.near=near; scene.fog.far=far; } }
   function setActive(on){ active=on; if(ready) renderer.domElement.style.display=on?'block':'none'; }
@@ -396,7 +422,8 @@ const View3D=(()=>{
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
-    renderer.render(scene,camera);
+    if(postLevel){ setPost(postLevel); renderer.setRenderTarget(rt); renderer.render(scene,camera); renderer.setRenderTarget(null); renderer.render(postScene,postCam); }
+    else renderer.render(scene,camera);
   }
   function pick(px,py){
     if(!ready||!active) return null;
@@ -410,6 +437,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, setSize, resize, setActive, setFog, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();
