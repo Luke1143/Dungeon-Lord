@@ -1045,6 +1045,14 @@ function lineClear(x0,y0,x1,y1){
     const t=state.grid[y]&&state.grid[y][x]; if(!t || t.type==='rock' || t.type==='bedrock') return false;
   }
 }
+// can `from` walk to `to` in at most `limit` steps (flyers: always)?
+function canReach(from,to,limit){
+  if((SPECIES[from.kind]||{}).flies || from.flying) return true;
+  const seen=new Set([from.x+','+from.y]); let frontier=[[from.x,from.y]];
+  for(let d=0;d<limit&&frontier.length;d++){ const next=[];
+    for(const [x,y] of frontier) for(const [nx,ny] of neighbors(x,y)){ const k=nx+','+ny; if(seen.has(k)) continue; if(Math.abs(nx-to.x)+Math.abs(ny-to.y)<=1) return true; if(!isWalkable(nx,ny)) continue; seen.add(k); next.push([nx,ny]); } frontier=next; }
+  return Math.abs(from.x-to.x)+Math.abs(from.y-to.y)<=1;
+}
 function tickCombat(c){
   if(c.unconscious) return tickUnconscious(c);
   tickGrudges(c);
@@ -1052,7 +1060,8 @@ function tickCombat(c){
   // Rueckzug: Imps immer, andere je nach Moral. A fighter runs (a sprint that costs stamina) towards the tile that is farthest from the threat; with nowhere to go it turns and fights.
   if(c.desperate>0) c.desperate--;
   else if(shouldFlee(c)){
-    const threat=state.creatures.concat(state.imps).filter(o=> o!==c && !o.held && !o.unconscious && areHostile(o,c) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=5)
+    // a threat is one that can actually get at us: an intruder behind water or rock a few tiles away does not stop the work (the imps used to freeze for good)
+    const threat=state.creatures.concat(state.imps).filter(o=> o!==c && !o.held && !o.unconscious && areHostile(o,c) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=5 && canReach(o,c,10))
       .sort((p,q)=>(Math.abs(p.x-c.x)+Math.abs(p.y-c.y))-(Math.abs(q.x-c.x)+Math.abs(q.y-c.y)))[0];
     if(threat){
       c.fightTarget=null;
@@ -1068,7 +1077,7 @@ function tickCombat(c){
       const plan=c.path.length?c.path:null;
       if(plan){ c.state='fleeing'; if(!c.exhausted && staminaOf(c)>0 && !giftOn(c,'noFlight')){ if(!giftOn(c,'sprintFree')) spendStamina(c,Math.round(STAMINA_SPRINT_COST*giftMul(c,'staminaCost')),STAMINA_SPRINT_PAUSE); stepAlong(c,SPRINT_SPEED); } else stepAlong(c); return true; }
       c.desperate=8;       // cornered: turn and fight
-    } else return false;
+    } else { if(c.state==='fleeing') c.state='idle'; return false; }
   }
 
   // Ziel noch gueltig?
@@ -8999,7 +9008,7 @@ function buildReport(){
   const g=state.grid, rows=[];
   for(let y=0;y<WORLD_ROWS;y++){ let r=''; for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; const c=state.creatures.concat(state.imps).find(o=>Math.round(o.x)===x&&Math.round(o.y)===y);
     r+= c ? (c.faction==='good'?'H':(c.kind==='imp'?'i':'c')) : t.type==='bedrock'?'#' : t.type==='water'?'~' : t.type==='rock' ? (t.marked?'m':t.reinforced?'R':t.root?'r':t.gold?'g':'.') : (isHidden(x,y)?'?':t.owned?'o':t.goodRoom?'G':t.enemy?'e':t.room==='portal'?'P':t.room==='throne'?'T':' '); } rows.push(r); }
-  const cr=state.creatures.concat(state.imps).map(c=>`#${c.id} ${c.kind||'imp'} ${c.faction||'evil'} (${c.x},${c.y}) lv${c.level||1} hp${Math.round(c.hp)}/${c.maxHp} ${c.state||''}${c.fightTarget?' →#'+c.fightTarget.id:''}${c.unconscious?' bewusstlos':''}${c.post?' Posten':''}`);
+  const cr=state.creatures.concat(state.imps).map(c=>`#${c.id} ${c.kind||'imp'} ${c.faction||'evil'} (${c.x},${c.y}) lv${c.level||1} hp${Math.round(c.hp)}/${c.maxHp} ${c.state||''}${c.fightTarget?' →#'+c.fightTarget.id:''}${c.unconscious?' bewusstlos':''}${c.post?' Posten':''}${c.task?' Aufgabe:'+c.task:''}${c.path&&c.path.length?' Weg'+c.path.length:''}${c.state==='fleeing'?' Bedrohung:'+(state.creatures.concat(state.imps).filter(o=>o!==c&&!o.held&&!o.unconscious&&areHostile(o,c)&&Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=5).map(o=>'#'+o.id).join(',')||'keine'):''}`);
   const w=state.war;
   return ['# Dungeon Lord Fehlerbericht','Tick '+state.tickCount+' · Tempo '+gameSpeed+' · 3D '+view3dOn+' · '+(world&&campaign?'Runde '+campaign.round:''),
     'Krieg: '+JSON.stringify({ wave:w.wave, over:w.over, throneHp:Math.round(w.throneHp), goals:w.goals&&w.goals.length, mods:w.mods&&{ waves:w.mods.waves, size:w.mods.size, levelBonus:w.mods.levelBonus, gearTier:w.mods.gearTier, wizards:w.mods.wizards } }),
