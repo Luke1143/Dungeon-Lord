@@ -153,7 +153,7 @@ const OW=(()=>{
   const timeFactor=c=>TIME_BASE+TIME_GROWTH*(c.round||0);
   // hero power right now: sources x time + event bonuses
   function power(world,c){
-    const inc=income(world,c), tf=timeFactor(c), alarm=1+ALARM_PER_REGION*c.conquered.length, stats={};
+    const inc=income(world,c), tf=timeFactor(c), alarm=(1+ALARM_PER_REGION*c.conquered.length)*(1+0.25*(c.ng||0)), stats={};   // every New Game Plus makes the good side a quarter stronger
     STAT_KEYS.forEach(k=>{ stats[k]=Math.max(0, inc.out[k]*tf*alarm+(c.bonus[k]||0)+((c.curse&&c.curse[k])||0)); });   // curse: the permanent price of artifacts
     return { stats, income:inc, tf, alarm };
   }
@@ -288,11 +288,11 @@ const OW=(()=>{
     let aura={ waves:0 };
     neighbours(world,node.id).forEach(nb=>{ const t=world.nodes[nb]; if(!c.conquered.includes(nb)){ const a=REGION_TYPES[t.type].aura; if(a&&a.waves) aura.waves+=a.waves; } });
     const v=k=>Math.round(st[k]*10)/10;
-    const gearIdx=clamp((st.iron<3?0:st.iron<6?1:st.iron<10?2:3)+(local.gearTier||0),0,3);
+    const rawGear=(st.iron<3?0:st.iron<6?1:st.iron<10?2:3)+(local.gearTier||0), gearIdx=clamp(rawGear,0,3), gearExcess=Math.max(0,rawGear-3)+Math.floor(Math.max(0,st.iron-10)/4);   // armour beyond epic raises the heroes' level instead
     const mods={
-      waves:clamp(3+Math.floor(st.fort/3)+(local.waves||0)+aura.waves,3,9),
+      waves:Math.max(3,3+Math.floor(st.fort/3)+(local.waves||0)+aura.waves),     // no ceiling (it grows with the run)
       size:Math.floor(st.food/4)+(local.size||0),
-      levelBonus:Math.floor(st.training/4)+(local.levelBonus||0),
+      levelBonus:Math.floor(st.training/4)+(local.levelBonus||0)+gearExcess,
       gearTier:gearIdx,
       wizards:Math.floor(st.magic/4)+(local.wizards||0)
     };
@@ -302,8 +302,8 @@ const OW=(()=>{
     notes.push(`${GEAR_NAMES[gearIdx]} Ausrüstung (Rüstung ${v('iron')}${local.gearTier?', Schmiede':''})`);
     notes.push(`${mods.wizards} zusätzliche Zauberer (Magie ${v('magic')}${local.wizards?', Turm':''})`);
     if(extra && Object.keys(extra).length) notes.push('Die Gegner haben sich vorbereitet (Alarm in dieser Region)');
-    if(c.encounter){ mods.waves=clamp(mods.waves+3,3,12); mods.levelBonus+=1; notes.push(`Ihr trefft ${c.encounter.legend?c.encounter.legend+'s Heer':'eine Armee'}: +3 Wellen, Heldenstufe +1`); }
-    if(c.ambush){ mods.waves=clamp(mods.waves+c.ambush,3,12); notes.push(`Eine Armee ist euch auf den Fersen: +${c.ambush} Wellen`); }
+    if(c.encounter){ mods.waves=mods.waves+3; mods.levelBonus+=1; notes.push(`Ihr trefft ${c.encounter.legend?c.encounter.legend+'s Heer':'eine Armee'}: +3 Wellen, Heldenstufe +1`); }
+    if(c.ambush){ mods.waves=mods.waves+c.ambush; notes.push(`Eine Armee ist euch auf den Fersen: +${c.ambush} Wellen`); }
     mods.notes=notes; mods.gearName=GEAR_NAMES[gearIdx];
     return mods;
   }

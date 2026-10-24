@@ -233,3 +233,7 @@ Alles wird live mit der Web-Audio-API erzeugt (gefilterte Rauschstöße und Tön
 
 ## 1.29 Freundschaften und Rivalitäten
 Kreaturen führen `c.bonds` (Wert −100 bis 100 je anderer Kreatur). Plaudern stärkt (+8, gleiche Art +11), Streit schwächt (−12), Plaudern mit einer ungeliebten Art (`DISLIKES`) schwächt (−6); ab +30 Freunde, ab −30 Rivalen (Meldung im Log), ohne Gesellschaft verblassen Bindungen langsam. Freunde werden bevorzugt als Gesprächspartner gewählt und besucht (`following`, Marotte „follow“), Rivalen meiden das Plaudern und streiten eher. Fällt ein Freund, trauert der andere (Marotte „grief“, Zufriedenheit −20, Groll gegen den Mörder); Freunde im Kampf werden aus größerer Entfernung bemerkt. Der Inspektor zeigt Freunde und Rivalen. `tickAntics` ist die Stelle dafür.
+
+## 1.30 Keine Deckel, Neues Spiel+
+- Verteidigung: `defenseReduction(c) = d/(d+DEFENSE_K)` (K = 60), kein Deckel mehr; die Anzeige nennt Wert und Schadensminderung. Stufen: `MAX_LEVEL` ist unendlich, `xpForLevel` hat die Tabelle bis Stufe 10 und verdoppelt die Kosten danach. Wellen ohne Obergrenze, Rüstung über „episch“ hinaus erhöht die Heldenstufe (`gearExcess` in `OW.levelMods`).
+- Neues Spiel+: Sieg in der Hauptstadt ruft `startNewGamePlus` (statt zu enden): neue Welt aus `baseSeed|NG<n>`, behalten werden `skills`, `artifacts`, `curse`, `allies`, `round` (die Welt-Uhr läuft weiter) und die Fertigkeitspunkte (+3), `OW.power` multipliziert mit `1+0.25·ng`, der Dungeon Lord startet 3 Stufen höher je NG+. Niederlage bleibt Permadeath.

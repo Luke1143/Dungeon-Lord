@@ -518,7 +518,7 @@ const LIBRARY_MIN_SIZE=9; // wie im Original Dungeon Keeper: 9 Felder für den e
 const LEVEL_SCALE_PER_LEVEL=0.20;
 const DEX_CAP=40;      // maximale Ausweichchance in %
 const LUCK_CAP=25;     // maximale Glueckschance in %
-const DEFENSE_CAP=80;  // Schaden wird nie unter 20% gesenkt
+const DEFENSE_K=60;      // armour works as damage x K / (K + defence): every point helps, nothing ever reaches 100 %
 const MIN_DAMAGE=1;
 
 const SPECIES={
@@ -671,7 +671,7 @@ function faintLord(c){
 function resolveAttack(attacker, defender, context){
   if(defender.removed) return { dodged:true, damage:0 };
   if(defender.kind==='dungeonlord' && defender.unconscious){          // the reserve takes the blow
-    const w=state.war; let dmg=Math.max(MIN_DAMAGE, Math.round(statStrength(attacker)*(1-statDefense(defender)/100)));
+    const w=state.war; let dmg=Math.max(MIN_DAMAGE, Math.round(statStrength(attacker)*(1-defenseReduction(defender))));
     w.lordPool=(w.lordPool||0)-dmg; defender.hitAt=Date.now();
     dbg('combat', `${actorLabel(attacker)} trifft den bewusstlosen Dungeon Lord für ${dmg}, Reserve ${Math.max(0,Math.round(w.lordPool))}`);
     hitFx(attacker, defender, dmg, false, false);
@@ -692,7 +692,7 @@ function resolveAttack(attacker, defender, context){
   if(Math.random()*100 < statLuck(defender)){ dmg*=0.5; soaked=true; }
 
   // Verteidigung mindert prozentual, Deckel liegt bei DEFENSE_CAP
-  dmg = dmg * (1 - statDefense(defender)/100);
+  dmg = dmg * (1 - defenseReduction(defender));
   dmg = Math.max(MIN_DAMAGE, Math.round(dmg));
   if(defender.kind==='herakles' && !state.war.peltTaken) dmg=Math.max(1,Math.round(dmg*0.25));      // the lion pelt
 
@@ -1175,7 +1175,7 @@ function forgeItem(itemId, smith){
   if(smith){
     q += (statDex(smith)/DEX_CAP)*0.05;
     q += (statLuck(smith)/LUCK_CAP)*0.05;
-    q += (((smith.level||1)-1)/(MAX_LEVEL-1))*0.05;
+    q += ((Math.min(smith.level||1,TABLE_LEVELS)-1)/(TABLE_LEVELS-1))*0.05;
   }
   q += Math.random()*0.04;
   return { id:itemId, q:+Math.min(1.15, q).toFixed(3) };
@@ -1275,7 +1275,9 @@ function statMaxHp(c){
 }
 function statDefense(c){
   const eq=equipmentBonus(c);
-  return Math.min(DEFENSE_CAP, (c.baseDefense||0)+eq.defense); // skaliert NICHT mit Stufe
+  return Math.max(0,(c.baseDefense||0)+eq.defense); // skaliert NICHT mit Stufe
+}
+function defenseReduction(c){ const d=statDefense(c); return d/(d+DEFENSE_K);
 }
 function statDex(c){
   const s=SPECIES[c.kind]||{dexGrowth:0.05};
@@ -1379,7 +1381,8 @@ const WAGE_NOTHING_EARNED_HAPPINESS=2; // kleiner Dämpfer, wenn es nichts zu ve
 // ===== Erfahrung, Stufen und Aktionen =====
 // Jede Arbeit ist ein "Schwung": eine Aktion gegen ein Objekt. Nur ein erfolgreicher
 // Schwung bringt Fortschritt UND Erfahrung - so zaehlt Arbeit, nicht der letzte Treffer.
-const MAX_LEVEL=10;
+const TABLE_LEVELS=10;   // levels with a hand-made experience table
+const MAX_LEVEL=Infinity;   // no ceiling (design: scaling without a cap); beyond the table the cost per level doubles
 // Verdopplung je Stufe - Stufe 10 ist damit eine echte Rarität
 const XP_THRESHOLDS=[0, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]; // Index = Level-1
 const HIT_CHANCE_BASE=0.60;      // Stufe 1 patzt noch oft
@@ -1409,7 +1412,7 @@ function hitChance(actor){
 }
 
 function xpForLevel(level){
-  return XP_THRESHOLDS[Math.min(level, MAX_LEVEL)-1];
+  return level<=TABLE_LEVELS ? XP_THRESHOLDS[level-1] : XP_THRESHOLDS[TABLE_LEVELS-1]*Math.pow(2, level-TABLE_LEVELS);
 }
 
 function actorLabel(actor){
@@ -6796,7 +6799,7 @@ function warlockActivityLabel(w){
 
 function levelLine(actor){
   const lvl=actor.level||1;
-  if(lvl>=MAX_LEVEL) return `Stufe ${lvl} (Meisterschaft) · Treffer ${Math.round(hitChance(actor)*100)}%`;
+  if(lvl>=TABLE_LEVELS) return `Stufe ${lvl} (Meisterschaft) · Treffer ${Math.round(hitChance(actor)*100)}%`;
   const cur=actor.xp||0, next=xpForLevel(lvl+1);
   return `Stufe ${lvl} · EP ${cur}/${next} · Treffer ${Math.round(hitChance(actor)*100)}%`;
 }
@@ -6805,7 +6808,7 @@ function levelLine(actor){
 function statBlock(c){
   const lines=[];
   lines.push(`Leben ${c.hp}/${statMaxHp(c)} · ${levelLine(c)}`);
-  lines.push(`Stärke ${statStrength(c)} · Verteidigung ${statDefense(c)}% · Geschick ${statDex(c)}%`);
+  lines.push(`Stärke ${statStrength(c)} · Verteidigung ${statDefense(c)} (${Math.round(100*defenseReduction(c))}% weniger Schaden) · Geschick ${statDex(c)}%`);
   lines.push(`Tempo ${statSpeed(c).toFixed(1)}`);
   if(c.needsFood) lines.push(`Hunger ${c.hunger}/${HUNGER_MAX} · Energie ${c.energy}/${ENERGY_MAX}`);
   else lines.push(`Energie ${c.energy}/${ENERGY_MAX}`);
@@ -7978,9 +7981,9 @@ document.getElementById('debugToggle').addEventListener('click', ()=>{
 
 // Setzt eine Kreatur/einen Imp direkt auf Stufe 10 samt passender Erfahrung
 function makeMaxLevel(actor){
-  actor.level=MAX_LEVEL;
-  actor.xp=xpForLevel(MAX_LEVEL);
-  actor.maxHp=(actor.maxHp||10)+2*(MAX_LEVEL-1);
+  actor.level=TABLE_LEVELS;
+  actor.xp=xpForLevel(TABLE_LEVELS);
+  actor.maxHp=(actor.maxHp||10)+2*(TABLE_LEVELS-1);
   actor.hp=actor.maxHp;
 }
 
@@ -8658,7 +8661,7 @@ document.getElementById('owArtifacts').addEventListener('click', ()=>{
 function owRefresh(){
   document.getElementById('owTurn').textContent=String((campaign.round||0)+1);
   document.getElementById('owDiff').textContent=String(campaign.skillPoints||0);
-  document.getElementById('owSubtitle').textContent=`Seed: ${campaign.seed} — Erobert die Hauptstadt des Guten, bevor ihre Heere zu stark werden`;
+  document.getElementById('owSubtitle').textContent=`${campaign.ng?'Neues Spiel+ '+campaign.ng+' · ':''}Seed: ${campaign.seed} — Erobert die Hauptstadt des Guten, bevor ihre Heere zu stark werden`;
   owRenderStats(); owDraw(); owShowInfo();
 }
 
@@ -8747,7 +8750,7 @@ const LORD_RESPAWN_TICKS=500;
 function spawnDungeonLord(){
   const th=tilesOfRoom('throne')[0]; if(!th) return;
   const ag=lordArtifactGear(campaign);
-  const lvl=Math.min(MAX_LEVEL, 2+Math.floor(((campaign&&campaign.conquered&&campaign.conquered.length)||0)/2));
+  const lvl=2+Math.floor(((campaign&&campaign.conquered&&campaign.conquered.length)||0)/2)+3*((campaign&&campaign.ng)||0);
   const lord=createBoss('dungeonlord', th.x, th.y, { faction:'evil', name:'Der Dungeon Lord', level:lvl, extraHp:20, gear:[ag.weapon||'hammer_plain', ag.armor||'heavyArmor_plain'], guard:true });
   state.creatures.push(lord);
   state.war.lordPool=Math.round(statMaxHp(lord)*skillMult('lordReserve'));
@@ -8943,6 +8946,17 @@ function startLevel(nodeId){
 }
 
 // Called by the end overlay button of a level
+// New Game Plus: a new, harder world. The Dungeon Lord keeps everything (skill ranks, artifacts, allies, curses); the round counter and the strength
+// of the good side keep growing (OW.power multiplies by the NG factor). Defeat still ends everything (permadeath).
+function startNewGamePlus(w){
+  const prev=campaign, ng=(prev.ng||0)+1, base=prev.baseSeed||prev.seed;
+  const text=(w.ally ? `Die Hauptstadt des Guten ist gefallen, und ${w.ally.name}, der Held der Welt, dient nun dem Dunkel.` : 'Die Hauptstadt des Guten ist gefallen. Der Held der Welt liegt am Boden.')+`\n\nDoch das Gute gibt nicht auf: eine neue, härtere Welt (Neues Spiel+ ${ng}) wartet. Euer Dungeon Lord behält Fertigkeiten, Artefakte und Verbündete.`;
+  const next=OW.initCampaign({ seed:base+'|NG'+ng, baseSeed:base, ng, pos:-1, levelNode:null, inLevel:false, round:prev.round, skills:prev.skills, artifacts:prev.artifacts, curse:prev.curse,
+    allies:(prev.allies||[]).concat(w.ally?[w.ally]:[]), skillPoints:(prev.skillPoints||0)+3 });
+  campaign=next; world=buildWorld(next.seed); owTerrainCache=null; owSelected=null; owLiveCache=null;
+  saveCampaign(); showScreen('overworld');
+  owModal('Die Welt gehört euch – vorerst', text.replace(/\n/g,'<br>'), ()=>{});
+}
 function finishLevel(){
   const w=state.war, n=world.nodes[campaign.levelNode];
   campaign.inLevel=false;
@@ -8959,10 +8973,7 @@ function finishLevel(){
     if(campaign.encounter){ const ar=campaign.armies.splice(campaign.encounter.idx,1)[0]; const gain=ar&&ar.legend?2:1; campaign.skillPoints+=gain; campaign.report.push(`Das Heer ${ar&&ar.legend?'von '+ar.legend+' ':''}wurde zerschlagen (+${gain} Fertigkeitspunkt${gain>1?'e':''}).`); campaign.encounter=null; }
     owSelected=null;
     if(n.type==='capital'){
-      campaign=null; saveCampaign();
-      try{ window.storage.delete(STORAGE_KEY,false); }catch(e){}
-      showScreen('menu');
-      alert(w.ally ? `Die Hauptstadt des Guten ist gefallen, und ${w.ally.name}, der Held der Welt, dient nun dem Dunkel. Die Welt gehört euch!` : 'Die Hauptstadt des Guten ist gefallen. Der Held der Welt liegt am Boden. Die Welt gehört euch!');
+      startNewGamePlus(w);
       return;
     }
     owAfterMove();

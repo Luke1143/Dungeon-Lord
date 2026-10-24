@@ -13,7 +13,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Finale: Boss der Hauptstadt (besiegen oder unterwerfen) | ✅ | Herakles in seiner Halle: direkt (im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung) oder listig (Fell stehlen, dann korrumpieren). Das Ende der Kampagne zeigt nur eine Meldung, kein Abspann |
 | Levellänge 10 min bis 1 h nach Entwicklungsstufe | ❌ | Kartengröße fest 48×32 |
 | Zeitdruck als Nebenziel (z. B. Atlantis) | ❌ | |
-| New Game Plus | ❌ | |
+| New Game Plus | ✅ | Nach dem Fall der Hauptstadt entsteht eine neue Welt (Seed + NG-Zähler); Fertigkeiten, Artefakte, Preise, Verbündete bleiben, die Runde läuft weiter, die Guten sind je NG+ ein Viertel stärker, der Lord gewinnt 3 Stufen. Verlieren beendet alles. Vault und Perks fehlen weiter |
 
 ## Fortschritt, Belohnungen
 | Thema | Stand | Anmerkung |
@@ -23,7 +23,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Artefakte, Seltenheiten, Belohnungen | ✅ | `artifacts.js`: 20 Einträge in fünf Seltenheiten, Waffen und Rüstungen trägt der Lord, Talismane geben Fertigkeitsränge, manche haben einen Preis (Heldenmacht dauerhaft höher). Fundorte auf der Karte (Labyrinth, Rand der Welt) fehlen noch |
 | Vault (Stase, Mitnehmen) | ❌ | |
 | Verbündete aus korrumpierten Bossen | ✅ | |
-| Unbegrenzte Skalierung | ❌ | Deckel: Verteidigung 80 %, Heldenstufe 10, Wellen 3 bis 12; Design verlangt Formeln ohne Deckel |
+| Unbegrenzte Skalierung | ✅ | Verteidigung `d/(d+60)` ohne Deckel, Stufen ohne Obergrenze (Erfahrungskosten verdoppeln sich nach Stufe 10), Wellen ohne Deckel, überzählige Rüstung wird Heldenstufe. Fertigkeiten wirken prozentual |
 
 ## Der Dungeon Lord
 | Thema | Stand | Anmerkung |
@@ -69,4 +69,4 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 3. ~~Finale mit Boss der Hauptstadt~~ (gebaut).
 4. ~~Gefängnis und Bekehren~~ (gebaut).
 5. ~~Eigenleben vertiefen~~ (Freundschaft, Streit, Trauer gebaut).
-6. Deckel entfernen, NG+, Vault.
+6. ~~Deckel entfernen, NG+~~ (gebaut). Offen: Vault, Perks, Boss-Fähigkeiten für die übrigen Bosse, weitere Räume und Kreaturen.
