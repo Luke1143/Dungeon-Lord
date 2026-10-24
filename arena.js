@@ -67,7 +67,9 @@ function arenaBuild(setup,seedExtra){
     const cells=comps[0], key=([x,y])=>x+y*0.8;
     const A=cells.reduce((a,b)=>key(a)<=key(b)?a:b);
     const B=m.near ? cells.reduce((a,b)=>Math.abs(Math.abs(b[0]-A[0])+Math.abs(b[1]-A[1])-14)<Math.abs(Math.abs(a[0]-A[0])+Math.abs(a[1]-A[1])-14)?b:a) : cells.reduce((a,b)=>key(a)>=key(b)?a:b);
-    for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; } }
+    for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; t.look='arena'; } }
+    // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
+    for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
     st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], maxTicks:ARENA_MAX_TICKS, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
@@ -135,7 +137,8 @@ function arenaStart(setup){
   showScreen('level');
   state=st; jumpCameraTo((st.arena.anchors[0].x+st.arena.anchors[1].x)/2, (st.arena.anchors[0].y+st.arena.anchors[1].y)/2);
   setSpeed(1); arenaPanelSig='';
-  document.getElementById('arenaResult').hidden=true;
+  document.getElementById('arenaResult').hidden=true; arenaSpell=null;
+  document.getElementById('menu-spells').hidden=false;
   arenaRenderPanel();
 }
 function arenaTick(){
@@ -153,10 +156,43 @@ function arenaShowResult(){
   box.hidden=false;
 }
 function arenaLeave(){
+  arenaSpell=null; document.getElementById('menu-spells').hidden=true;
   document.body.classList.remove('arenaMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   state=makeDefaultState(); showScreen('arena');
 }
 function fpRestoreOnLeave(){ try{ if(typeof endPossession==='function') endPossession(); }catch(e){} }
+// ---- god spells for the arena (the player's hand: heal, wake, curse, speed, fire, lightning, paralyse, summon) ----
+const ARENA_SPELLS=[ { id:'heal', icon:'💚', name:'Heilen' }, { id:'revive', icon:'🦄', name:'Wecken' }, { id:'curse', icon:'🥶', name:'Fluch' }, { id:'haste', icon:'💨', name:'Eile' },
+  { id:'fireball', icon:'🔥', name:'Feuerball' }, { id:'bolt', icon:'⚡', name:'Blitz' }, { id:'paralyze', icon:'😱', name:'Lähmen' }, { id:'summon', icon:'➕', name:'Herbeirufen' } ];
+let arenaSpell=null, arenaSummon={ kind:'ork', level:5, team:0 };
+function arenaSetSpell(id){
+  arenaSpell=(arenaSpell===id)?null:id;
+  if(arenaSpell){ if(pickMode){ cancelHeldEntity(); exitPickMode(); } possessMode=false; document.getElementById('possessBtn').classList.remove('active'); }
+  arenaPanelSig=''; arenaRenderPanel();
+  setInspect(arenaSpell?`${ARENA_SPELLS.find(s=>s.id===arenaSpell).name}: auf ein Feld klicken (Rechtsklick/erneut wählen bricht ab).`:'');
+}
+function arenaDamage(c,dmg){
+  c.hp-=dmg; c.hitAt=Date.now();
+  if(c.hp<=0){ c.hp=0; knockOutOrKill(c,0,null,'arena'); }
+}
+function arenaCast(x,y){
+  const st=state, all=st.creatures, at=all.find(c=>c.x===x&&c.y===y&&!c.held), near=r=>all.filter(c=>Math.abs(c.x-x)+Math.abs(c.y-y)<=r&&!c.removed);
+  const s=arenaSpell; let used=true;
+  if(s==='heal'){ if(at){ at.hp=at.maxHp; emitFx('claim',x,y); } else used=false; }
+  else if(s==='revive'){ if(at&&at.unconscious){ at.unconscious=false; at.hp=Math.max(1,Math.round(at.maxHp*0.5)); emitFx('claim',x,y); } else used=false; }
+  else if(s==='curse'){ near(1).forEach(c=>{ c.weakTicks=80; }); emitFx('claim',x,y); }
+  else if(s==='haste'){ near(1).forEach(c=>{ c.hastedTicks=60; c.rallyTicks=60; }); emitFx('claim',x,y); }
+  else if(s==='fireball'){ near(1).forEach(c=>arenaDamage(c,20)); emitFx('dig',x,y,{ color:'#ff7a20' }); }
+  else if(s==='bolt'){ if(at) arenaDamage(at,35); else used=false; if(at) emitFx('dig',x,y,{ color:'#ffe060' }); }
+  else if(s==='paralyze'){ near(2).forEach(c=>{ c.rootedTicks=20; c.path=[]; }); emitFx('claim',x,y); }
+  else if(s==='summon'){
+    if(st.grid[y][x].type!=='floor'||at) used=false;
+    else { const c=arenaMake(arenaSummon.kind,x,y); c.faction=arenaSummon.team===0?'evil':'good'; c.level=Math.max(1,arenaSummon.level|0||1); c.xp=xpForLevel(c.level); c.maxHp=statMaxHp(c); c.hp=c.maxHp;
+      c.inventory=arenaGear(c,{ gear:'auto', tier:1 }); c.arenaTeam=arenaSummon.team; c.state='fighting'; c.path=[]; st.creatures.push(c); st.arena.roster[arenaSummon.team].push(c); emitFx('claim',x,y); }
+  }
+  if(!used) setInspect('Hier gibt es kein Ziel für diesen Zauber.');
+  draw(); arenaPanelSig=''; arenaRenderPanel();
+}
 let arenaPanelSig='';
 function arenaRenderPanel(){
   const st=state, box=document.getElementById('arenaPanel'); if(!st||!st.arena||!box) return;
@@ -164,8 +200,13 @@ function arenaRenderPanel(){
   const row=c=>{ const pct=Math.max(0,Math.round(100*c.hp/Math.max(1,c.maxHp))), out=c.unconscious||c.removed||c.dead;
     return `<div class="arRow${out?' out':''}"><span class="arIc">${creatureEmoji(c)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
   const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
-  const html=`<div class="arInfo">Tick ${st.tickCount}</div>${cols}`;
-  if(html!==arenaPanelSig){ arenaPanelSig=html; box.innerHTML=html; box.querySelectorAll('button[data-pos]').forEach(b=>b.addEventListener('click',()=>{ const c=st.creatures[+b.dataset.pos]; if(c && !c.unconscious){ startPossession(c); } })); }
+  const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
+  const spells=`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
+    + (arenaSpell==='summon'?`<div class="arSummon"><select data-sk>${arenaOpts(kinds,arenaSummon.kind)}</select> Stufe <input data-sl type="number" min="1" max="40" value="${arenaSummon.level}" style="width:44px"> <select data-st>${arenaOpts([[0,names[0]],[1,names[1]]],arenaSummon.team)}</select></div>`:'');
+  const html=`<div class="arInfo">Tick ${st.tickCount}</div>${spells}${cols}`;
+  if(html!==arenaPanelSig && !(box.contains(document.activeElement) && /SELECT|INPUT/.test(document.activeElement.tagName))){ arenaPanelSig=html; box.innerHTML=html; box.querySelectorAll('button[data-spell]').forEach(b=>b.addEventListener('click',()=>arenaSetSpell(b.dataset.spell)));
+    const sk=box.querySelector('[data-sk]'); if(sk){ sk.addEventListener('change',()=>{ arenaSummon.kind=sk.value; }); box.querySelector('[data-sl]').addEventListener('change',e=>{ arenaSummon.level=+e.target.value; }); box.querySelector('[data-st]').addEventListener('change',e=>{ arenaSummon.team=+e.target.value; }); }
+    box.querySelectorAll('button[data-pos]').forEach(b=>b.addEventListener('click',()=>{ const c=st.creatures[+b.dataset.pos]; if(c && !c.unconscious){ startPossession(c); } })); }
 }
 
 // ---- the set-up screen ----

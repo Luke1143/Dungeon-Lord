@@ -35,7 +35,8 @@
   body.fp #minimap{ display:none; }
   #arenaPanel{ display:none; font-size:12px; }
   body.arenaMode #arenaPanel{ display:block; }
-  body.arenaMode .statGrid, body.arenaMode #status, body.arenaMode .panel .dangerBtn, body.arenaMode #warHint, body.arenaMode #goalsBox, body.arenaMode #modeToggle, body.arenaMode .panel .section, body.arenaMode #minimap{ display:none !important; }
+  body.arenaMode .statGrid, body.arenaMode #status, body.arenaMode .panel .dangerBtn, body.arenaMode #warHint, body.arenaMode #goalsBox, body.arenaMode #modeToggle, body.arenaMode .toggleRow, body.arenaMode .matPreview, body.arenaMode #resetBtn, body.arenaMode .menuRow, body.arenaMode #menu-rooms, body.arenaMode #menu-creatures, body.arenaMode #summonBtn, body.arenaMode #minimap{ display:none !important; }
+  .arSpells{ display:flex; flex-wrap:wrap; gap:4px; margin:8px 0; } .arSpells button{ padding:3px 6px; } .arSpells button.on{ background:#8a6a2a; } .arSummon{ font-size:11px; margin-bottom:6px; } .arSummon select,.arSummon input{ background:#2a2018; color:#f0e2c0; border:1px solid #6a5233; border-radius:3px; }
   .arResult{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(10,7,5,.55); z-index:20; }
   .arResult[hidden]{ display:none; }
   .arenaBox{ max-width:1100px; width:92vw; margin:0 auto; text-align:left; }
@@ -5556,11 +5557,13 @@ function wallFaceSpec(base,nx,ny,reinforced){
   const n=state.grid[ny][nx];
   if(n.type!=='floor' || isHidden(nx,ny)){ return (n.room==='bridge'&&TILEGEN.has('wall:bridge'))?{full:'wall:bridge'}:base; }
   if(!reinforced) return base;      // a plain wall keeps its rock look; only reinforcing dresses it
+  if(n.look && TILEGEN.has('wall:'+n.look)) return { full:'wall:'+n.look };
   if(n.room && TILEGEN.has('wall:'+n.room)) return { full:'wall:'+n.room };
   if(n.owned) return { full:'brick' };
   return base;
 }
 function floorSpec(t){
+  if(t.look && TILEGEN.has(t.look)) return { full:t.look };          // the creature arena wears the arena building's tiles
   if(t.grove && !t.owned && !t.room) return { full:'grove' };
   if(t.castle && !t.owned && !t.room) return { full:'castle' };
   if(t.room && TILEGEN.has(t.room)) return { full:t.room };
@@ -8230,6 +8233,7 @@ function handleInspectClick(x,y){
 
 function handleSingleClick(x,y){
   const t=state.grid[y][x];
+  if(state.arena && arenaSpell){ arenaCast(x,y); return; }        // arena.js: a god spell is chosen, aim it
 
   // Zauber ausgewaehlt: Ziel bestimmen
   if(possessMode){
@@ -8247,7 +8251,7 @@ function handleSingleClick(x,y){
     return;
   }
 
-  if(inspectMode && !pickMode && !demolishMode && !buildMode){
+  if((inspectMode || state.arena) && !pickMode && !demolishMode && !buildMode){
     handleInspectClick(x,y);
     return;
   }
@@ -8345,7 +8349,7 @@ canvas.addEventListener('mousedown', e=>{
     // Ein gewaehlter Raum hat Vorrang - sonst blockiert der Untersuchen-Modus das Ziehen
     const currentlyQueued = t.queuedRoom===buildMode;
     dragMode = currentlyQueued ? 'unmark' : 'mark';
-  } else if(pickMode || demolishMode || inspectMode || possessMode || possessed){
+  } else if(pickMode || demolishMode || inspectMode || possessMode || possessed || state.arena){
     dragMode=null;
   } else {
     // Die Startkachel darf nicht ueber den ganzen Zug entscheiden: beginnt man auf Wasser,
