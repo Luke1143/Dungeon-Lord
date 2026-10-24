@@ -175,6 +175,8 @@ function keepPickKind(rooms,mods){
   if((rooms.library||0)>=1) for(let i=0;i<1+mods.wizards;i++) bag.push('wizard');
   if((rooms.library||0)>=1) bag.push('monk');
   if((rooms.forge||0)>=1) bag.push('dwarf');
+  if((rooms.library||0)>=2) bag.push('dryad');
+  if((rooms.forge||0)>=3 && mods.gearTier>=2) bag.push('golem');
   if((rooms.forge||0)>=1 && mods.gearTier>=1) bag.push('knight','knight');
   if((rooms.forge||0)>=2 && mods.gearTier>=2 && (rooms.dormitory||0)>=3) bag.push('paladin');
   if(mods.levelBonus>=3 && k.recruited>=6) bag.push('giant');

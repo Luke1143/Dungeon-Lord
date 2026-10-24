@@ -615,6 +615,18 @@ const SPECIES={
   priest:  { label:'Dunkler Priester', category:'humanoid', hp:26, strength:2, defense:2, dex:10, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Dunkle Priester',
              needsFood:true,  avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:70, style:'fighter', icon:'🕯️',
              passive:'Heilt Verbündete in der Nähe, zieht der Tempel an' },
+  darkelf: { label:'Dunkelelf',    category:'humanoid', hp:22, strength:3, defense:2,  dex:24, dexGrowth:0.05, speed:1.2, tempo:1.1, plural:'Dunkelelfen',
+             needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:55, style:'assassin', icon:'🏹',
+             passive:'Schießt aus dem Schatten, kommt zur Trainingskammer' },
+  vampire: { label:'Vampir',       category:'undead',   hp:55, strength:6, defense:10, dex:18, dexGrowth:0.04, speed:1.2, tempo:1.2, plural:'Vampire',
+             needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:100, style:'assassin', icon:'🧛',
+             passive:'Heilt sich an jedem Biss, schläft nie' },
+  dryad:   { label:'Dryade',       category:'hero',    hp:22, strength:3,  defense:4,  dex:18, dexGrowth:0.04, speed:1.0, tempo:1.0,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'support', icon:'🌿', passive:'Heilt Verbündete in der Nähe, wirft Dornenblitze' },
+  golem:   { label:'Golem',        category:'hero',    hp:80, strength:7,  defense:35, dex:1,  dexGrowth:0.01, speed:0.5, tempo:0.5, size:1.5,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
+             style:'fighter', icon:'🪨', passive:'Fast unverwundbar, aber sehr langsam' },
   herakles:{ label:'Herakles', category:'boss', hp:140, strength:11, defense:22, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.3,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', icon:'🦁', passive:'Im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung' },
@@ -724,6 +736,7 @@ function resolveAttack(attacker, defender, context){
   defender.hitAt=Date.now();          // fuer das Treffer-Feedback
   defender.hitHard=crit;
 
+  if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*0.5)));   // the bite heals
   let outcome='hit';
   if(defender.hp<=0){
     defender.hp=0;
@@ -766,7 +779,7 @@ function creatureEmoji(c){
     case 'dwarfking': case 'arthur': return '👑';
     case 'herakles': return '🦁';
     case 'oberon': return '🧚';
-    case 'archer': case 'monk': case 'paladin': case 'dwarf': case 'giant': case 'ork': case 'goblin': case 'troll': case 'skeleton': case 'ghoul': case 'priest': return SPECIES[c.kind].icon;
+    case 'archer': case 'monk': case 'paladin': case 'dwarf': case 'giant': case 'ork': case 'goblin': case 'troll': case 'skeleton': case 'ghoul': case 'priest': case 'darkelf': case 'vampire': case 'dryad': case 'golem': return SPECIES[c.kind].icon;
     case 'dungeonlord': return '👿';
     case 'elf': return '🧝';
     default: return '❔';
@@ -912,7 +925,7 @@ function reachOf(c){
 function noticesFoe(c,o){
   const d=Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   if(d<=NOTICE_RADIUS) return true;
-  if(c.state==='guarding' && d<=GUARD_NOTICE_RADIUS) return true;
+  if(c.state==='guarding' && c.postTile && d<=GUARD_NOTICE_RADIUS) return true;
   if(state.war && state.war.siege && o.category==='hero') return true;
   const t=state.grid[o.y]&&state.grid[o.y][o.x];
   if(t && t.owned && d<=NOTICE_INTRUDER_RADIUS) return true;
@@ -965,6 +978,8 @@ const JOB_PREFS={
   troll:   { geist:'hasst', sozial:'neutral', hand:'liebt', kampf:'liebt' },
   skeleton:{ geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
   ghoul:   { geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
+  vampire: { geist:'neutral', sozial:'neutral', hand:'neutral', kampf:'neutral' },
+  darkelf: { geist:'liebt', sozial:'hasst', hand:'neutral', kampf:'liebt' },
   priest:  { geist:'liebt', sozial:'liebt', hand:'hasst', kampf:'hasst' }
   // Ork spaeter:    { kampf:'liebt', hand:'neutral', sozial:'neutral', geist:'hasst' }
   // Troll spaeter:  { hand:'liebt',  kampf:'liebt',  sozial:'neutral', geist:'hasst' }
@@ -1794,14 +1809,15 @@ function createBoss(kind,x,y,opts){
 }
 
 // the other humanoids of the horde: the same body of needs as the warlock (lair, food, wages, free time), their own kind and taste
-const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'] };
-const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest']);
+const HORDE_NAMES={ ork:['Gruk','Brak','Mogor','Ulzak','Dreg','Hakka'], goblin:['Snik','Pip','Nix','Rattl','Zib','Grubb'], troll:['Bruno','Klotz','Moss','Brocken','Grumm'], skeleton:['Kn. Albert','Rasseln','Gebein','Klapper','Staub'], ghoul:['Moder','Krypta','Schlurf','Fäule','Grabbe'], priest:['Bruder Nacht','Mortis','Vesper','Cinis','Umbra'], darkelf:['Syl','Vael','Nyx','Thalia','Orrin'], vampire:['Graf Vlad','Lilith','Morbus','Sanguin','Carmilla'] };
+const HORDE_KINDS=new Set(['ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire']);
 function createHorde(kind,x,y){
   const names=HORDE_NAMES[kind];
-  const c=applySpecies({ id: creatureIdCounter++, x, y, state:(kind==='skeleton'||kind==='ghoul')?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
+  const c=applySpecies({ id: creatureIdCounter++, x, y, state:(kind==='skeleton'||kind==='ghoul'||kind==='vampire')?'wandering':'seekingLair', path:[], claimProgress:0, lairTile:null, lairTargetTile:null, held:false,
     hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null, energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0,
     earnedWage:false, owedWages:0, wageTile:null, workLog:{}, lastPayslip:null, name:names[randInt(0,names.length-1)] }, kind);
-  if(kind==='skeleton'||kind==='ghoul'){ delete c.happiness; }
+  if(kind==='skeleton'||kind==='ghoul'||kind==='vampire'){ delete c.happiness; }
+  if(kind==='darkelf') c.inventory=[{ id:'bow_plain', q:1 }];
   return c;
 }
 function createWarlockAt(id,x,y){ const w=createWarlock(x,y); w.id=id; return w; }
@@ -3497,9 +3513,9 @@ const ANTICS=[
   { id:'sniff',   icon:'🐾', ticks:9,  weight:5, kinds:['hound'] },
   { id:'scuttle', icon:'💨', ticks:6,  weight:4, kinds:['beetle'] },
   { id:'polish',  icon:'✨', ticks:10, weight:3, kinds:['beetle'] },
-  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest'] },
+  { id:'chat',    icon:'💬', ticks:14, weight:4, social:true, happiness:5, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire'] },
   { id:'quarrel', icon:'💢', ticks:12, weight:2, social:true, quarrel:true, happiness:-4, kinds:['warlock','ork','goblin','troll'] },
-  { id:'follow',  icon:'🐾', ticks:16, weight:3, follow:true, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest'] },
+  { id:'follow',  icon:'🐾', ticks:16, weight:3, follow:true, kinds:['warlock','hound','beetle','ork','goblin','troll','skeleton','ghoul','priest','darkelf','vampire'] },
   { id:'flex',    icon:'💪', ticks:8,  weight:3, kinds:['ork','troll'] },
   { id:'snicker', icon:'😈', ticks:7,  weight:4, kinds:['goblin'], happiness:2 },
   { id:'rattle',  icon:'🦴', ticks:7,  weight:4, kinds:['skeleton'] }
@@ -3508,7 +3524,7 @@ const ANTIC_CHANCE=0.025;
 // ----- bonds: creatures who spend time together become friends, creatures who quarrel become rivals -----
 const BOND_FRIEND=30, BOND_RIVAL=-30;
 // who rubs whom the wrong way (godhand: warlocks cannot stand hounds, skeletons loathe warlocks ...); the kind decides, not the individual
-const DISLIKES={ ork:['warlock','goblin'], goblin:['troll','ork'], troll:['goblin'], skeleton:['warlock'], ghoul:['priest'], priest:['ghoul','ork'], warlock:['skeleton','ork','hound'], hound:['warlock'] };
+const DISLIKES={ ork:['warlock','goblin'], goblin:['troll','ork'], troll:['goblin'], skeleton:['warlock'], ghoul:['priest'], priest:['ghoul','ork'], darkelf:['ork','troll'], vampire:['ork','priest'], warlock:['skeleton','ork','hound'], hound:['warlock'] };
 const dislikes=(a,b)=>(DISLIKES[a.kind]||[]).includes(b.kind)||(DISLIKES[b.kind]||[]).includes(a.kind);
 function bondOf(a,b){ return (a.bonds&&a.bonds[b.id])||0; }
 function addBond(a,b,d){
@@ -3787,7 +3803,8 @@ const LEISURE_PREFS={
   ork:     { watchFight:22, petHound:6, watchChickens:4, watchWork:3, drink:26, pray:3 },
   goblin:  { watchWork:14, watchChickens:12, petHound:3, watchFight:2, drink:22, pray:6 },
   troll:   { watchFight:12, watchWork:8, petHound:4, drink:18, pray:4 },
-  priest:  { read:14, pray:30, watchWork:4, drink:4 }
+  priest:  { read:14, pray:30, watchWork:4, drink:4 },
+  darkelf: { read:10, drink:12, watchFight:10, pray:4 }
 };
 
 function leisureAppeal(c, activityId){
@@ -4297,6 +4314,8 @@ const LURES=[
   { kind:'ork',    interval:[110,170], msg:'ist durch den Eingang gestampft, die Arena hat ihn angelockt.', cap:()=>Math.min(3, activeArenas().length*2) },
   { kind:'goblin', interval:[60,110],  msg:'ist hereingeschlichen, das Gold im Lager riecht gut.',           cap:()=>{ const st=computeRooms().filter(r=>r.type==='storage').reduce((n,r)=>n+r.tiles.length,0); return st>=4&&(state.gold||0)>=120 ? Math.min(5,Math.floor((state.gold||0)/150)) : 0; } },
   { kind:'priest', interval:[200,300], msg:'ist dem Ruf des Tempels gefolgt.', cap:()=>{ const n=computeRooms().filter(r=>r.type==='temple'&&r.tiles.length>=ROOM_MIN2).length; return Math.min(2,n); } },
+  { kind:'darkelf', interval:[150,220], msg:'tritt aus dem Schatten, die Trainingskammer hat ihn angelockt.', cap:()=>Math.min(3, roomsOfType('training').length*2) },
+  { kind:'vampire', interval:[300,420], msg:'ist der Gruft gefolgt und schwebt herein.', cap:()=>{ const n=roomsOfType('graveyard').reduce((s,r)=>s+r.tiles.length,0); return n>=24?2:(n>=12?1:0); } },
   { kind:'troll',  interval:[160,240], msg:'ist angelockt worden, Esse und Schmelze verströmen Hitze.',       cap:()=>{ const r=computeRooms().filter(r=>r.type==='forge'||r.type==='smelter'); return r.length&&((state.ore||0)+(state.iron||0))>0 ? Math.min(2,r.length) : 0; } }
 ];
 function tickLures(){
@@ -4335,6 +4354,7 @@ function tickLures(){
   if(state.tickCount%6===0) state.creatures.forEach(c=>{
     if(c.kind==='troll' && !c.unconscious && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+1);
     if(c.kind==='priest' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='evil' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
+    if(c.kind==='dryad' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=4) o.hp=Math.min(o.maxHp,o.hp+2); });
     if(c.kind==='paladin' && !c.unconscious) state.creatures.forEach(o=>{ if(o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
   });
 }
@@ -5389,7 +5409,7 @@ function drawParticles(){
 function emitFx(type,x,y,opts){ if(typeof FX!=='undefined') FX.emit(type,x,y,opts); }
 if(typeof FX!=='undefined') FX.solidAt=(tx,ty)=>{ if(!state||tx<0||ty<0||tx>=WORLD_COLS||ty>=WORLD_ROWS) return true; const ty_=state.grid[ty][tx].type; return ty_!=='floor' && ty_!=='water'; };
 // what comes out of a creature when it is hit: blood colour per kind (null = bone chips)
-const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, ghoul:'#4a6a2a', priest:'#7a1a1a', barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
+const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, ghoul:'#4a6a2a', darkelf:'#7a1a1a', vampire:'#5a0a0a', dryad:'#8ab030', golem:null, priest:'#7a1a1a', barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
 function bloodOf(c){ const k=c.kind||'imp'; return k in BLOOD ? BLOOD[k] : '#b01818'; }
 function hitFx(attacker, defender, dmg, crit, killed){
   const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
@@ -6407,6 +6427,7 @@ function heroGear(kind, level, boss, tierIdx){
   else if(kind==='paladin'){ add('hammer'); add('heavyArmor'); add('kite'); }
   else if(kind==='dwarf'){ add('axe'); add(level>=4?'heavyArmor':'mediumArmor'); add('buckler'); }
   else if(kind==='giant'){ add('hammer'); }
+  else if(kind==='dryad'){ add('wandBolt'); }
   return items;
 }
 

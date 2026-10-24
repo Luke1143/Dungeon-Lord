@@ -388,6 +388,8 @@ function impFrame(state,t,facingRight){
   ZOO.paladin=vary('Paladin',{ t:'#e8e4d8', T:'#ffffff', u:'#a8a498', F:'#f0d060', G:'#fff0a0', y:'#f0d060' },null,{ mat:'stahl', helm:2, chest:3, legs:1 });
   ZOO.dwarf=vary('Zwerg',{ F:'#b8561e', G:'#d8782e', t:'#6a4a30', T:'#8a6a4a', u:'#3a2a1a', l:'#5a3a24', L:'#7a5a3a', m:'#2e1e12', b:'#2e1e12' },beard('F'),{ mat:'bronze', helm:1, chest:2, legs:1 });
   ZOO.giant=vary('Riese',{ t:'#8a6a4a', T:'#a8886a', u:'#5a4026', F:'#6a4a2a', G:'#8a6a3a', s:'#d09a74', S:'#e8b890', l:'#6a5238', L:'#8a7050' });
+  ZOO.dryad=vary('Dryade',{ t:'#3f8a4a', T:'#6ac06a', u:'#265a30', F:'#7a5a3a', G:'#9a7a52', l:'#3f8a4a', L:'#6ac06a', y:'#2a6a34' });
+  ZOO.golem=vary('Golem',{ t:'#7c7c84', T:'#a4a4ac', u:'#505058', F:'#8a8a92', G:'#b0b0b8', s:'#8a8a92', S:'#b0b0b8', l:'#6a6a72', L:'#8a8a92', y:'#50505a' });
   ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
@@ -573,6 +575,8 @@ const TILEGEN=(()=>{
   const v=(name,pal)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal} });
   ZOO.goblin=v('Goblin',{ s:'#8aa83a', S:'#b0cc58', z:'#5a7a24', t:'#7a6a3a', T:'#9a8a52', u:'#4a3e22', c:'#5a3a24', C:'#7a5236', l:'#5a4a2a', L:'#7a6a3c', y:'#2e2414' });
   ZOO.troll=v('Troll',{ s:'#6a8a96', S:'#8fb0bc', z:'#445a64', t:'#6a8a96', T:'#8fb0bc', u:'#445a64', c:'#4a3a2a', C:'#6a5238', l:'#52707a', L:'#6e909a', y:'#2c3c42' });
+  ZOO.darkelf=v('Dunkelelf',{ s:'#5a5a8a', S:'#7a7aaa', z:'#3a3a60', t:'#1e1a2e', T:'#34304a', u:'#120e1c', c:'#1e1a2e', C:'#34304a', l:'#161224', L:'#2a2640', y:'#0e0a18' });
+  ZOO.vampire=v('Vampir',{ s:'#d8d0d0', S:'#f0e8e8', z:'#a89898', t:'#6a0f1a', T:'#8f1a28', u:'#3a060c', c:'#1a1014', C:'#2c1a20', l:'#1a1014', L:'#2c1a20', y:'#0e080a' });
   ZOO.ghoul=v('Ghul',{ s:'#7e8c5e', S:'#a2b07e', z:'#566240', t:'#5a5a48', T:'#74745e', u:'#3e3e30', c:'#3a3a2c', C:'#505040', l:'#464636', L:'#5e5e4a', y:'#22221a' });
   ZOO.priest=v('Dunkler Priester',{ s:'#b09a8a', S:'#cdb8a8', z:'#7a6658', t:'#2a1a3a', T:'#44285c', u:'#1a0e26', c:'#2a1a3a', C:'#44285c', l:'#1a0e26', L:'#30204a', y:'#120a1a' });
   // the skeleton: bones in the skeleton family's look (skull, ribs, thin legs), eyes black with white pupils like the rest of the horde
@@ -597,7 +601,7 @@ const TILEGEN=(()=>{
 // ---- converted heroes: the same body on the player's side (player-side eyes, darker clothes) ----
 (()=>{
   const dark=hex=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16), f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k))); return '#'+[f((n>>16)&255,0.62),f((n>>8)&255,0.55),f(n&255,0.72)].map(v=>v.toString(16).padStart(2,'0')).join(''); };
-  ['barbarian','thief','wizard','knight','elf','archer','monk','paladin','dwarf','giant'].forEach(k=>{
+  ['barbarian','thief','wizard','knight','elf','archer','monk','paladin','dwarf','giant','dryad','golem'].forEach(k=>{
     const z=ZOO[k]; if(!z||ZOO[k+'_ally']) return;
     const pal={}; Object.keys(z.pal).forEach(c=>{ pal[c]=(c==='e'||c==='p'||c==='k')?z.pal[c]:dark(z.pal[c]); });
     ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,fr,mv,eq); f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } };
