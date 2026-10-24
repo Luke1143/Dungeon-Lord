@@ -851,9 +851,9 @@ function resolveAttack(attacker, defender, context){
   // Glueck des Verteidigers: halbierter Schaden
   if(Math.random()*100 < statLuck(defender)){ dmg*=0.5; soaked=true; }
 
-  // Verteidigung mindert prozentual, Deckel liegt bei DEFENSE_CAP
-  dmg = dmg * (1 - defenseReduction(defender));
-  dmg = Math.max(MIN_DAMAGE, Math.round(dmg));
+  // the blow is a vector of cut, pierce and blunt; each part meets the defence against its own kind, the species' and the size's factors
+  const prof=attackProfile(attacker), shares=prof.map((s,i)=>{ const d=defenseVs(defender,DMG_KINDS[i]); return dmg*s*(1-d/(d+DEFENSE_K))*resistOf(defender,i); });
+  dmg = Math.max(MIN_DAMAGE, Math.round(shares[0]+shares[1]+shares[2]));
   if(dmg>=defender.hp && factionOf(defender)==='good'){          // a guardian angel catches one deadly blow
     const ga=state.creatures.find(o=>o.kind==='guardian' && knows(o,'ward') && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
     if(ga){ ga.wardUsed=true; dmg=Math.max(0,defender.hp-1); logEvent(`${actorLabel(ga)} fängt den tödlichen Schlag für ${actorLabel(defender)} ab!`, defender.x, defender.y); }
@@ -873,7 +873,7 @@ function resolveAttack(attacker, defender, context){
   }
   dbg('combat', `${actorLabel(attacker)} trifft ${actorLabel(defender)} für ${dmg}${crit?' (kritisch)':''} → ${Math.max(0,Math.round(defender.hp))}/${defender.maxHp}${outcome!=='hit'?' · '+outcome:''}`);
   hitFx(attacker, defender, dmg, crit, outcome==='killed');
-  return { dodged:false, damage:dmg, crit, soaked, outcome };
+  return { dodged:false, damage:dmg, crit, soaked, outcome, profile:prof };
 }
 
 // Bewusstlos oder tot? Entschieden aus Ueberschussschaden, Glueck und Kontext.
@@ -7601,6 +7601,7 @@ function itemDescription(inst){
     if(d.dex) mods.push(`Geschick ${fmt(instStat(inst,'dex'))}`);
     if(d.speed) mods.push(`Tempo ${fmt(instStat(inst,'speed'))}`);
     if(d.tempo) mods.push(`Arbeitstempo ${fmt(instStat(inst,'tempo'))}`);
+    if(d.type==='armor' && ARMOR_MULT[d.family]){ const m=ARMOR_MULT[d.family]; const best=m.indexOf(Math.max(...m)), worst=m.indexOf(Math.min(...m)); mods.push(`stark gegen ${DMG_LABEL[DMG_KINDS[best]]}, schwach gegen ${DMG_LABEL[DMG_KINDS[worst]]}`); }
     if(d.type==='weapon'){
       const pp=partsOf(inst), sw=+((d.swing||1)*(pp?pp.swingF:1)).toFixed(2);
       if(sw<0.9) mods.push(`schnelle Schläge (×${sw})`); else if(sw>1.1) mods.push(`langsame Schläge (×${sw})`);
@@ -7609,6 +7610,7 @@ function itemDescription(inst){
       else if(d.cat==='ranged') mods.push(`Reichweite ${d.family==='javelin'?3:5} Felder`);
       else if(d.cat==='magic') mods.push('Reichweite 4 Felder');
       if(pp){ mods.push(`Balance: ${weaponBalanceLabel(pp.model)}`); mods.push(`${instParts(inst)}`); }
+      const wprof=weaponProfile(inst); mods.push(`${profileText(wprof)} (${Math.round(weaponConv(inst)*100)} % des Schadens)`);
     }
   }
   const kindLabel = d ? (d.type==='weapon' ? ({melee:'Nahkampf',ranged:'Fernkampf',magic:'Magie'}[d.cat]||d.cat) : d.type==='shield' ? 'Schild' : 'Rüstung') : '';
@@ -7622,7 +7624,7 @@ function statBlock(c){
   lines.push(`Leben ${c.hp}/${statMaxHp(c)} · ${levelLine(c)}`);
   lines.push(`Stärke ${statStrength(c)} · Verteidigung ${statDefense(c)} (${Math.round(100*defenseReduction(c))}% weniger Schaden) · Geschick ${statDex(c)}%`);
   lines.push(`Tempo ${statSpeed(c).toFixed(1)}`);
-  if((SPECIES[c.kind]||{}).canFight) lines.push(`Kampfstil: ${STANCES[stanceOf(c)].label} — ${STANCES[stanceOf(c)].text}`);
+  if((SPECIES[c.kind]||{}).canFight){ lines.push(`Kampfstil: ${STANCES[stanceOf(c)].label} — ${STANCES[stanceOf(c)].text}`); lines.push(`Schadensart: ${profileText(attackProfile(c))}`); const tv=takenVs(c), ref=(1-defenseReduction(c)); lines.push('Schaden erleidet er '+DMG_KINDS.map((k,i)=>`${DMG_LABEL[k]} ×${(tv[i]/Math.max(0.01,ref)).toFixed(1)}`).join(' · ')+' (gegenüber einem mittleren Treffer)'); }
   if(c.needsFood) lines.push(`Hunger ${c.hunger}/${HUNGER_MAX} · Energie ${c.energy}/${ENERGY_MAX}`);
   else lines.push(`Energie ${c.energy}/${ENERGY_MAX}`);
   if(c.happiness!==undefined){
