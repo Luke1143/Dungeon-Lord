@@ -16,12 +16,21 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - Nur Kreaturen, Waffen, Rüstungen, Fähigkeiten und Räume, die im Hauptspiel schon freigeschaltet wurden (Vault/Kampagnenstand), tauchen auf. Die Kampagne speist den Ludus, der Ludus gibt kleine Belohnungen zurück (Zukunftsidee).
 - Kämpfer leveln wie im Hauptspiel (Stufen 5/10, Fähigkeiten), Ausrüstung ist prozedural (Teile, Güte, Reroll).
 
-## Offene Entscheidungen
-- Tod: dauerhaft, oder Verletzung mit Heilkosten, oder wählbarer Schwierigkeitsgrad?
-- Ein Kämpfer oder ein Team (1–3) von Anfang an? Teammates kaufen oder gewinnen?
-- Turnierform: feste Leiter, Auswahl aus Aushängen, oder Saison mit Kalender?
-- Wirtschaft: Unterhalt der Kämpfer, Preise, Ruhm-Schwellen.
-- Rolle der Rassen/Spezies: freie Wahl oder Rekrutierung nur über Händler.
+## Entschieden (Nutzer)
+- Roguelike mit Permadeath, gleiche Mechaniken wie im Hauptspiel. Wer ohnmächtig wird (Faint), statt zu sterben, überlebt.
+- Start: eine beliebige bekannte Kreatur, Stufe 1, ohne Ausrüstung.
+- Pit Matches: kleine 1v1-Kämpfe, jederzeit machbar, sehr ausbalanciert, geringe Einsätze, Gewinn nur Gold.
+- Wöchentliche Turniere mit kleinem Leaderboard; prozedurale Gegner mit Namen und Ausrüstung wie im Hauptspiel.
+- Jeder Kampf ist ein Zug, strikte Zeitfenster (Tage/Wochen als Takt).
+- Globales Leaderboard: gewinnen heißt, Platz 1 zu schlagen.
+- Heilung wie im Hauptspiel: Hühner essen/kaufen; ohne Geld im Bett schlafen = eine Runde aussetzen.
+- Mehrere Shops: Schmiede, Bücherei usw.
+
+## Vorschläge (zur Diskussion)
+- Globale Rangliste ohne Server: Jede Woche gibt es einen festen Seed (aus dem Datum). Alle Spieler bekommen dieselben Gegner. Das Ergebnis (Punkte, Runden) lässt sich vergleichen; ein echtes Online-Ranking kann später als optionales Backend dazukommen. Ohne Server ist "Platz 1" ein Geisterfeld (prozedurale Rivalen, deren Ergebnis aus dem Seed folgt).
+- Kopplung Hauptspiel ↔ Ludus: lose und einseitig stark. Das Hauptspiel schaltet Inhalte frei (Katalog), der Ludus gibt Sachwerte zurück (Zauber/Artefakt-Funde, Ruhm-Titel), aber keine Zahlenvorteile für die Kampagne.
+- Meta-Progression: persistenter Ludus (Gebäude: Schlafsaal, Schmiede, Bücherei, Küche), über Läufe hinweg ausbaubar mit Ruhm.
+- Austausch von Kreaturen: Hauptspiel → Ludus als Startoption (Vault-Kreaturen); Ludus → Hauptspiel nur als Verbündeter über die Vault, gegen Ressourcen.
 
 ## Zwischenschritte (Arena als Testbank, unabhängig vom Ludus)
 - Roster: jede Kreatur einzeln, "Kopieren" statt "×N".
