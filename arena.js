@@ -105,6 +105,7 @@ function arenaApplyFighter(c,f){
   c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.maxHp=statMaxHp(c);
   c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice();
   c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));
+  if(f.energy!==undefined) c.energy=f.energy;          // how well rested: the quicker the stamina returns
 }
 function arenaFreeTiles(st,from,n){
   const g=st.grid, seen=new Set([from.x+','+from.y]), q=[[from.x,from.y]], out=[];
@@ -228,7 +229,7 @@ function arenaRenderPanel(){
   const st=state, box=document.getElementById('arenaPanel'); if(!st||!st.arena||!box) return;
   const names=(arenaLiveSetup||arenaSetup).teams.map(t=>t.name);
   const row=c=>{ const pct=Math.max(0,Math.round(100*c.hp/Math.max(1,c.maxHp))), out=c.unconscious||c.removed||c.dead;
-    return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
+    return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i><em style="width:${Math.round(staminaOf(c))}%"></em></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
   const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
   const spells=ludusActive?'':`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`

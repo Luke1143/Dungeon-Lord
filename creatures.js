@@ -172,8 +172,9 @@ function abilityCd(c,id){
 }
 function abilityCdMax(c,id){ if(c.kind==='imp'){ if(id==='haste') return HASTE_COOLDOWN; if(id==='teleport') return TELEPORT_COOLDOWN; } return ABILITIES[id].cooldown; }
 function useAbility(c,id,ctx){
-  const a=ABILITIES[id]; if(!a || a.passive || !knows(c,id) || abilityCd(c,id)>0 || c.unconscious) return false;
+  const a=ABILITIES[id]; if(!a || a.passive || !knows(c,id) || abilityCd(c,id)>0 || c.unconscious || c.exhausted) return false;
   if(a.run(c,ctx||{})===false) return false;
+  if(c.kind!=='imp' && typeof spendStamina==='function') spendStamina(c,ABILITY_STAMINA);
   c.abil=c.abil||{ cd:{}, used:{} }; c.abil.cd[id]=a.cooldown;
   if(!a.quiet && a.text) logEvent(`${actorLabel(c)} ${a.text}`, c.x, c.y);
   c.shout=a.icon; c.shoutTicks=8;

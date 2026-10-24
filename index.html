@@ -68,7 +68,7 @@
   .arBtns{ margin-top:14px; display:flex; gap:10px; justify-content:center; }
   .arTeam{ margin-bottom:8px; } .arTeam.t0 b{ color:#e08a7a; } .arTeam.t1 b{ color:#7aaae0; }
   .arRow{ display:flex; align-items:center; gap:6px; margin:2px 0; } .arRow.out{ opacity:.4; }
-  .arName{ flex:1; } .arBar{ width:70px; height:7px; background:#3a2a1e; border-radius:3px; overflow:hidden; } .arBar i{ display:block; height:100%; background:#8fd05a; }
+  .arName{ flex:1; } .arBar{ position:relative; width:70px; height:9px; background:#3a2a1e; border-radius:3px; overflow:hidden; } .arBar i{ display:block; height:6px; background:#8fd05a; } .arBar em{ position:absolute; left:0; bottom:0; height:3px; background:#e8c24a; }
   .arRow button{ padding:0 4px; font-size:12px; }
   #fpHud{ position:absolute; inset:0; pointer-events:none; font-family:'Cinzel',serif; color:#f0e2c0; z-index:5; }
   #fpHud[hidden]{ display:none; }
@@ -86,7 +86,7 @@
   .fpOrb{ position:relative; width:84px; height:84px; border-radius:50%; border:3px solid #6a5233; background:rgba(10,6,4,.85); overflow:hidden; box-shadow:0 0 10px rgba(0,0,0,.7), inset 0 0 12px rgba(0,0,0,.8); }
   .fpOrb i{ position:absolute; left:0; right:0; bottom:0; height:100%; }
   .fpOrb.hp i{ background:radial-gradient(circle at 35% 25%, #ff7a6a, #b01818 55%, #5a0808); }
-  .fpOrb.en i{ background:radial-gradient(circle at 35% 25%, #8ad0ff, #2a64c0 55%, #10285a); }
+  .fpOrb.en i{ background:radial-gradient(circle at 35% 25%, #b8f08a, #4aa02a 55%, #1c4a10); }
   .fpOrb b{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; text-shadow:0 1px 3px #000; }
   .fpSlots{ display:flex; gap:8px; padding:8px 10px; background:rgba(25,18,12,.88); border:2px solid #6a5233; border-radius:6px; }
   .fpSlot{ position:relative; width:64px; height:64px; border:2px solid #4a3a28; background:rgba(15,11,9,.9); display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
@@ -1027,20 +1027,26 @@ function tickCombat(c){
   if(c.unconscious) return tickUnconscious(c);
   tickGrudges(c);
 
-  // Rueckzug: Imps immer, andere je nach Moral
-  if(shouldFlee(c)){
-    const threat=state.creatures.concat(state.imps).find(o=> o!==c && !o.held && !o.unconscious
-      && areHostile(o,c) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=4);
+  // Rueckzug: Imps immer, andere je nach Moral. A fighter runs (a sprint that costs stamina) towards the tile that is farthest from the threat; with nowhere to go it turns and fights.
+  if(c.desperate>0) c.desperate--;
+  else if(shouldFlee(c)){
+    const threat=state.creatures.concat(state.imps).filter(o=> o!==c && !o.held && !o.unconscious && areHostile(o,c) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=5)
+      .sort((p,q)=>(Math.abs(p.x-c.x)+Math.abs(p.y-c.y))-(Math.abs(q.x-c.x)+Math.abs(q.y-c.y)))[0];
     if(threat){
       c.fightTarget=null;
-      // Weg vom Bedroher suchen statt blind umherzuirren
-      const away=bfsFind(c.x, c.y, (x,y)=>
-        Math.abs(x-threat.x)+Math.abs(y-threat.y) >= 7 && !tileOccupied(x,y,c));
-      if(away){ c.path=away.path; c.state='fleeing'; stepAlong(c); return true; }
-      const any=pickWanderTarget(c);
-      if(any){ c.path=any.path; c.state='fleeing'; stepAlong(c); return true; }
-    }
-    return false;
+      if(!(SPECIES[c.kind]||{}).canFight){            // imps and the like keep to the old way: any far tile
+        const away=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-threat.x)+Math.abs(y-threat.y) >= 7 && !tileOccupied(x,y,c));
+        if(away){ c.path=away.path; c.state='fleeing'; stepAlong(c); return true; }
+        const any=pickWanderTarget(c);
+        if(any){ c.path=any.path; c.state='fleeing'; stepAlong(c); return true; }
+        return false;
+      }
+      // the run is committed to for a few steps (no shuffling back and forth); then the way is chosen anew
+      if(!(c.path&&c.path.length&&c.fleeCool>0&&c.state==='fleeing'&&!tileOccupied(c.path[0].x,c.path[0].y,c))){ c.path=fleePlan(c,threat)||[]; c.fleeCool=5; } else c.fleeCool--;
+      const plan=c.path.length?c.path:null;
+      if(plan){ c.state='fleeing'; if(!c.exhausted && staminaOf(c)>0){ spendStamina(c,STAMINA_SPRINT_COST,STAMINA_SPRINT_PAUSE); stepAlong(c,SPRINT_SPEED); } else stepAlong(c); return true; }
+      c.desperate=8;       // cornered: turn and fight
+    } else return false;
   }
 
   // Ziel noch gueltig?
@@ -1104,6 +1110,10 @@ function canStrikeFrom(spec,x,y,t){
 // where the strike goes: the foe's tile, led ahead for a shot by what the shooter's level can judge
 function aimTile(c,t,spec){
   let ax=t.x, ay=t.y;
+  if(spec.kind==='melee'){                     // a runner is struck where it is going: its next step, if that is within reach
+    const nx=t.path&&t.path[0];
+    if(nx && Math.abs(nx.x-c.x)+Math.abs(nx.y-c.y)<=spec.reach && Math.random()<Math.max(0.3,Math.min(0.95,0.3+0.05*((c.level||1)-1)+statDex(c)/250))){ ax=nx.x; ay=nx.y; }
+  }
   if(spec.kind==='shot'){
     const skill=Math.max(0.2,Math.min(0.95,0.25+0.045*((c.level||1)-1)+statDex(c)/250));
     const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
@@ -1176,6 +1186,23 @@ function tickProjectiles(){
   });
 }
 
+// where to run: the reachable tile (within 12 steps) farthest from the threat, a long detour counting against it; null when no tile is farther than where we stand
+function fleePlan(c,threat){
+  const dist=(x,y)=>Math.abs(x-threat.x)+Math.abs(y-threat.y), here=dist(c.x,c.y), seen=new Map([[c.x+','+c.y,null]]), q=[{ x:c.x, y:c.y, d:0 }];
+  let best=null;
+  for(let qi=0;qi<q.length;qi++){
+    const n=q[qi];
+    if(n.d>0){ const sc=dist(n.x,n.y)-0.3*n.d; if(dist(n.x,n.y)>=here+3 && (!best||sc>best.sc)) best={ sc, n }; }
+    if(n.d>=12) continue;
+    for(const [nx,ny] of neighbors(n.x,n.y)){
+      const k=nx+','+ny; if(seen.has(k) || !isWalkable(nx,ny) || tileOccupied(nx,ny,c)) continue;
+      seen.set(k,n); q.push({ x:nx, y:ny, d:n.d+1 });
+    }
+  }
+  if(!best) return null;
+  const path=[]; let cur=best.n; while(cur && !(cur.x===c.x&&cur.y===c.y)){ path.unshift({ x:cur.x, y:cur.y }); cur=seen.get(cur.x+','+cur.y); }
+  return path.length?path:null;
+}
 // stance moves are free steps taken with the blow, no path and no move cost
 function stanceMove(c,step){ c.x=step.x; c.y=step.y; c.path=[]; }
 function kiteBack(c,t){
@@ -1713,8 +1740,23 @@ function statSpeed(c){
 // Tempo ist EIN Wert: er steuert Bewegung und Handlungsrate gleichermassen.
 // Bewegung nutzt ihn direkt, Handlungen werden gedaempft - sonst schlaegt ein Imp
 // mehrmals pro Sekunde zu, was weder aussieht noch sich anfuehlt wie Arbeit.
+// ===== Stamina (docs/kampfsystem.md): the short fighting resource next to the long one (energy = sleep) =====
+// Every blow and every ability costs some, running away costs a little each step; it comes back quickly after a short pause, the faster the better rested the creature is.
+// Below STAMINA_SOFT everything gets slower (down to 60 %), at 0 the creature is exhausted: no blows or abilities until STAMINA_RECOVER is back.
+const STAMINA_MAX=100, STAMINA_REGEN=8, STAMINA_PAUSE=1, STAMINA_SPRINT_PAUSE=2, STAMINA_SPRINT_COST=7, SPRINT_SPEED=1.3, STAMINA_SOFT=30, STAMINA_RECOVER=15, ABILITY_STAMINA=12;
+function staminaOf(c){ if(c.stamina===undefined) c.stamina=STAMINA_MAX; return c.stamina; }
+function spendStamina(c,n,pause){ c.stamina=Math.max(0,staminaOf(c)-n); c.staminaPause=pause||STAMINA_PAUSE; if(c.stamina<=0) c.exhausted=true; }
+function staminaTempoF(c){ const s=staminaOf(c); return s>=STAMINA_SOFT?1:0.6+0.4*s/STAMINA_SOFT; }
+function tickStamina(c){
+  if(c.kind==='imp') return; staminaOf(c);
+  if(c.staminaPause>0){ c.staminaPause--; return; }
+  const rest=Number.isFinite(c.energy)?0.6+0.4*Math.max(0,Math.min(1,c.energy/ENERGY_MAX)):1;      // well rested: quick recovery
+  c.stamina=Math.min(STAMINA_MAX,c.stamina+STAMINA_REGEN*rest*(c.bleedTicks>0?0.6:1)*(c.state==='fleeing'?0.25:1));      // running scared, the breath does not come back
+  if(c.exhausted && c.stamina>=STAMINA_RECOVER) c.exhausted=false;
+}
+const attackStaminaCost=c=>Math.round(4+7*swingFactorOf(c));
 function statTempo(c){
-  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
+  return staminaTempoF(c)*statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -2061,10 +2103,13 @@ function applyRecipe(actor, rec, x, y){
 // Stimmung: Treffer nach Vorliebe, Fehlschlag immer ein wenig negativ.
 // the wind-up of a blow: the budget fills tick by tick and the weapon decides how much it takes; true when the blow is made (hit or not)
 function windup(actor){
+  const combat=actor.verb==='attack'||actor.state==='fighting';
+  if(combat && actor.exhausted) return false;          // no breath left for a blow
   actor.swingBudget=(actor.swingBudget||0)+1;
   const cost=swingCostOf(actor);
   if(actor.swingBudget < cost) return false;
   actor.swingBudget-=cost;
+  if(combat && actor.kind!=='imp') spendStamina(actor,attackStaminaCost(actor));
   startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
   actor.lastHand=actor.handTurn?1:0;
   return true;
@@ -3749,6 +3794,7 @@ function tickCreature(c){
   if(c.tempDefenseTicks>0 && --c.tempDefenseTicks===0) c.tempDefense=0;
   if(c.hastedTicks>0) c.hastedTicks--;
   if(c.rageTicks>0) c.rageTicks--;
+  tickStamina(c);
   if(BOSS_ABILITIES[c.kind]) runBossAbilities(c); else runAbilities(c, isPossessed(c));     // creatures.js: the table of abilities (levels 5 and 10, books, artifacts)     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
   if(isPossessed(c)){ tickPossessed(c); return; }
   const actions=actionCount(c);
@@ -8029,7 +8075,7 @@ function updateFpHud(){
   const lv=c.level||1, lo=xpForLevel(lv), hi=lv>=MAX_LEVEL?lo+1:xpForLevel(lv+1);
   document.getElementById('fpXpFill').style.width=Math.max(0,Math.min(100,100*((c.xp||0)-lo)/Math.max(1,hi-lo)))+'%';
   set('fpHpFill', Math.max(0,100*c.hp/c.maxHp)); document.getElementById('fpHpText').textContent=Math.ceil(c.hp)+'/'+c.maxHp;
-  const en=Number.isFinite(c.energy)?c.energy:100; set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
+  const en=staminaOf(c); set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
   renderFpAbilities(c);
   drawFpHand(c);
   const tg=fpPickTarget(c);

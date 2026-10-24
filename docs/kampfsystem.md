@@ -25,3 +25,11 @@ Die Art ergibt sich aus der **Kopfform** der Waffe (die Teile sind schon da), ni
 1. Ausdauer (nur Kosten, Erholung, weiche Kopplung) und Flucht als Sprint samt Einschließen.
 2. Zustände Wucht / Schnitt / Stich, Anzeige über dem Kopf.
 3. Magie-Zustände, Widerstände der Arten, Feinabstimmung mit dem Duell-Test.
+
+## Stand: Stufe 1 ist drin (Ausdauer, Flucht)
+- **Ausdauer** (`stamina`, 0 bis 100): Ein Hieb kostet 4 + 7 × Schlagdauer-Faktor (Dolch ≈ 8, Schwert 11, Axt 14, Hammer 17), eine Fähigkeit 12, ein Fluchtschritt 7. Nach einer Handlung 1 Tick Pause (nach einem Fluchtschritt 2), dann +8 pro Tick, mal 0,6 bis 1 je nach Ausgeschlafenheit (`energy`), ×0,6 bei Blutung (kommt mit Stufe 2), ×0,25 auf der Flucht. Unter 30 % läuft das Tempo linear bis auf 60 % herunter (`staminaTempoF` in `statTempo`), bei 0 ist die Kreatur erschöpft (`exhausted`): keine Hiebe, keine Fähigkeiten, bis wieder 15 % da sind.
+- **Flucht** (`fleePlan`): Kämpfer rennen (Tempo ×1,3, kostet Ausdauer) zum erreichbaren Feld mit dem größten Abstand zum Verfolger (mindestens 3 Felder mehr als jetzt), legen sich auf diesen Weg für 5 Schritte fest (kein Hin und Her) und kämpfen weiter ("verzweifelt", 8 Ticks), wenn es keinen solchen Weg gibt. Imps behalten die alte Flucht.
+- **Zielen im Nahkampf**: Gegen einen Läufer wird auf sein nächstes Feld gezielt, wenn es in Reichweite liegt (Wahrscheinlichkeit nach Stufe und Geschick).
+- **Ludus**: Ausgeschlafenheit (`energy`) sinkt mit jedem Kampf (−12) und Training (−15), Schlafen setzt sie auf 100, ein Huhn gibt +10; sie bestimmt, wie schnell die Ausdauer im Kampf zurückkommt.
+- Anzeige: Ausdauer als gelber Streifen unter dem Lebensbalken in der Arena-Liste, die blaue Kugel der Ich-Ansicht zeigt jetzt die Ausdauer (grün).
+- **Befund aus dem Test** (60 Duelle mit gemischten Arten): Der Krabbenlauf (Flüchtender mit Feind in zwei Feldern Nähe) ist um etwa 30 % seltener geworden; ein schnellerer Flüchtender (Echse, Werwolf) bleibt auch erschöpft schneller als sein Verfolger und wird erst durch die Aufgabe nach 60 Ticks Flucht beendet. Dafür sind die Zustände der Stufe 2 gedacht (Verlangsamung, Blutung).

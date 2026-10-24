@@ -138,7 +138,7 @@ function ludusResolve(st){
       text=`${f.name} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
       ludusLog(`Niederlage gegen ${o.name}`);
     }
-    ludus.day++; ludus.opp=null;
+    f.energy=Math.max(10,(f.energy===undefined?100:f.energy)-12); ludus.day++; ludus.opp=null;
   }
   ludusResultText=head+'\n'+text; ludusSave();
   return head;
@@ -203,7 +203,7 @@ function ludusTrain(){
   const cost=ludusTrainCost(); if(ludus.gold<cost||ludusRoomTier('training')<1) return;
   const f=ludus.fighter, c=ludusCreature(), prev=state, xp=ludusTrainXp(), before=c.level;
   try{ if(!state||!state.eventLog) state=makeDefaultState(); grantXp(c,xp); } finally { state=prev; }
-  f.level=c.level; f.xp=c.xp; ludus.gold-=cost; ludus.day++; ludus.opp=null; if(c.level>before) f.hp=undefined;
+  f.level=c.level; f.xp=c.xp; f.energy=Math.max(10,(f.energy===undefined?100:f.energy)-15); ludus.gold-=cost; ludus.day++; ludus.opp=null; if(c.level>before) f.hp=undefined;
   ludusNote=`${f.name} übt am Dummy: +${xp} Erfahrung${c.level>before?` — Stufe ${c.level}!`:''}`; ludusLog('trainiert'); ludusSave(); ludusRender();
 }
 
@@ -250,7 +250,7 @@ function ludusRender(){
     wornIdx=new Set(wornItems(c).map(w=>c.inventory.indexOf(w)));
     const abil=knownAbilities(c).filter(id=>ABILITIES[id]);
     left=`<div class="luCard"><canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div><div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>
-      <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div>
+      <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
       <div class="luInv">${(f.inventory||[]).some((x,i)=>wornIdx.has(i))?f.inventory.map((x,i)=>wornIdx.has(i)?`<div class="luItem worn" data-pick="${i}"><span>${ludusEsc(instLabel(x))} ✓</span></div>`:'').join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
   }
@@ -317,8 +317,8 @@ function ludusRender(){
   el.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>ludusBuyRoom(b.dataset.room)));
   el.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{ const [t,f2]=b.dataset.cat.split(':'); ludusBuyCat(t,f2); }));
   on('luFight',ludusFight); on('luChallenge',ludusChallenge); on('luTrain',ludusTrain);
-  on('luChicken',()=>{ if(ludus.gold<ludusChickenCost()) return; ludus.gold-=ludusChickenCost(); ludusHeal(ludusChickenHeal()); ludusSave(); ludusRender(); });
-  on('luSleep',()=>{ ludusHeal(ludusSleepHeal()); ludus.day++; ludus.opp=null; ludusLog('geschlafen'); ludusSave(); ludusRender(); });
+  on('luChicken',()=>{ if(ludus.gold<ludusChickenCost()) return; ludus.gold-=ludusChickenCost(); ludusHeal(ludusChickenHeal()); ludus.fighter.energy=Math.min(100,(ludus.fighter.energy===undefined?100:ludus.fighter.energy)+10); ludusSave(); ludusRender(); });
+  on('luSleep',()=>{ ludusHeal(ludusSleepHeal()); ludus.fighter.energy=100; ludus.day++; ludus.opp=null; ludusLog('geschlafen'); ludusSave(); ludusRender(); });
   on('luMenu',()=>showScreen('menu'));
   on('luReset',e=>{ const b=e.currentTarget; if(b.dataset.sure){ ludus=null; ludusNote=''; ludusTab='start'; ludusSave(); ludusRender(); return; } b.dataset.sure='1'; b.textContent=Tr('Sicher? Nochmal klicken'); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent=Tr('Neu beginnen'); } },3000); });
   if(ludusTab==='start') ludusWireStart(el);
