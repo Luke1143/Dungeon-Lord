@@ -1299,4 +1299,8 @@ i18nRegister({"Thronsaal":"Throne Room",
 "mittel":"medium",
 "weit auseinander":"far apart",
 "nah beieinander":"close together",
+"Wasser":"Water",
+"Kristall":"Crystal",
+"Lava":"Lava",
+"{0} ({1})":"{0} ({1})",
 "+20 Erz & Eisen":"+20 ore & iron"});

@@ -10,7 +10,7 @@ const ARENA_GEARS=[['auto','Standard'],['none','keine'],['custom','eigene']];
 
 function arenaGroup(kind,count,level){ return { kind, count, level, gear:'auto', tier:1, weapon:'', armor:'', shield:'', ability:'' }; }
 function arenaDefaultSetup(){
-  return { teams:[ { name:'Dunkelheit', groups:[arenaGroup('ork',3,1)] }, { name:'Helden', groups:[arenaGroup('barbarian',3,1)] } ],
+  return { teams:[ { name:Tr('Dunkelheit'), groups:[arenaGroup('ork',3,1)] }, { name:Tr('Helden'), groups:[arenaGroup('barbarian',3,1)] } ],
            map:{ layout:'pit', dims:'S', seed:'', lava:0, water:0, crystal:0, near:0 }, batch:20 };
 }
 let arenaSetup=arenaDefaultSetup();
