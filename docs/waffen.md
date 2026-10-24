@@ -32,6 +32,10 @@ Alle Maße sind **Sprite-Pixel** und werden gezeichnet, wie sie sind. So folgt d
 
 **Tile-Muster** (aus Länge und Breite statt aus Tabellen): Reichweite n = n Felder in der Blickrichtung. Breite 3 = die beiden Nachbarfelder des vordersten Feldes (Fegen). Modus Spitze = nur die Linie, kein Fegen. Modus Wucht = Zielfeld plus ein Stoß-Feld dahinter. Jedes Feld würfelt einzeln, nur Feinde werden getroffen (kein Eigenbeschuss).
 
+## Fernkampf und angeborene Waffen (entschieden)
+- **Bogen**: Pfeil = Kopf (Schaden, Trefferfläche), Bogen = Schaft (Länge und Zuggewicht: Reichweite und Stärke des Trägers, der ihn spannen kann), Sehne = Knauf (Spannung: eine straffe Sehne gibt Wucht und Reichweite, kostet aber Zeit zum Spannen; Balance-Wert wie beim Knauf). Armbrust, Stäbe und Wurfspeere folgen derselben Zuordnung (Stab: Kristall = Kopf, Stab = Schaft, Fokus = Knauf). Fernkampf zielt weiter auf das Ziel, nicht auf ein Feld.
+- **Angeborene Waffen** (Horn, Klauen, Chitin) sind **keine Teile**, sondern abstrakte Werte der Art: ein Einhorn hat etwas mehr Grundschaden, der Käfer etwas mehr Rüstung. Sie wandern in die Artentabelle (`SPECIES`), nicht in das Waffensystem.
+
 ## Beispiele (Prototyp, noch nicht kalibriert)
 Mensch (Stärke 10, Größe 1): Dolch T≈1,5 Ticks, Schaden 5, Treffer 45 %; Schwert 2,9 / 12 / 64 %; Speer 3,7 / 16 / 49 % mit Reichweite 2; Axt 4,0 / 17 / 70 %; Hammer 4,2 / 19 / 74 %. Das "Schwert von Guts" (Kopf 20×5 Pixel): Mensch 12 Ticks / Schaden 61 / Reichweite 2, breit; Goblin (Stärke 4, Größe 0,7) 18 Ticks / 40 / Reichweite 2, ohne Fegen, Riese 8,6 Ticks / 90 / Reichweite 3, breit. Riese mit Dolch: 1 Tick, Schaden 8, Treffer 45 %: eine lächerliche Salve.
 Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vorhandenen Duell-Test (Ork gegen Ork, je 24 Läufe pro Paarung, `ArenaLab`): Ziel für Standardformen höchstens 55:45.
@@ -49,4 +53,4 @@ Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vo
 
 ## Offen
 - Soll die Schlagdauer von Wesen mit Größe 0,7 oder 1,4 mehr vom Träger oder von der Waffe abhängen?
-- Sollen Kreaturen mit angeborenen Waffen (Krallen, Hörner) dasselbe Modell nutzen? Vorschlag: ja, als feste Teile ohne Schaft.
+- Zuggewicht und Stärke: ab welcher Stärke spannt ein Träger einen schweren Bogen noch (sonst Schlagdauer ×2)?
