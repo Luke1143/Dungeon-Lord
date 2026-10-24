@@ -36,3 +36,8 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - Roster: jede Kreatur einzeln, "Kopieren" statt "×N".
 - Sprite mit Idle-Animation im Roster, Ausrüstung direkt auf dem Sprite sichtbar.
 - Reroll-Knopf für das prozedurale Aussehen der Ausrüstung.
+
+## Stand der Umsetzung (ludus.js)
+- Läuft: Neuer Lauf (freie Kreatur, Stufe 1, 40 Gold, ohne Ausrüstung), Pit-Kämpfe als 1v1 (Gegner und Ausrüstungsstufe werden per Probekämpfen so gewählt, dass das Duell ungefähr ausgeglichen ist), Taverne (Huhn / Schlafen), Schmiede (täglich wechselndes Angebot, Verkauf, Aussehen neu würfeln), Permadeath, Rekorde.
+- Debug-Schalter "alles freigeschaltet" im Startbildschirm (an). Ohne ihn nur Startkreaturen, bis die Freischaltung aus der Kampagne angebunden ist.
+- Offen: Bücherei (Fähigkeiten kaufen), wöchentliche Turniere mit Seed-Rangliste, Ludus-Ausbau (Meta-Fortschritt), Anbindung an Vault/Kampagne.

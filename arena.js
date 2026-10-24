@@ -88,6 +88,8 @@ function arenaBuild(setup,seedExtra){
           c.faction=ti===0?'evil':'good'; c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.xp=xpForLevel(c.level);
           c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=arenaGear(c,grp,i);
           if(grp.ability && ABILITIES[grp.ability]) c.learned=[grp.ability];
+          if(grp.name) c.name=grp.name;
+          if(grp.fighter) arenaApplyFighter(c,grp.fighter);
           c.state='idle'; c.path=[]; c.arenaTeam=ti; c.state='fighting';
           st.creatures.push(c); st.arena.roster[ti].push(c);
         }
@@ -95,6 +97,12 @@ function arenaBuild(setup,seedExtra){
     });
   } finally { state=prev; }
   return st;
+}
+// a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
+function arenaApplyFighter(c,f){
+  c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.maxHp=statMaxHp(c);
+  c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice();
+  c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));
 }
 function arenaFreeTiles(st,from,n){
   const g=st.grid, seen=new Set([from.x+','+from.y]), q=[[from.x,from.y]], out=[];
@@ -157,9 +165,13 @@ function arenaShowResult(){
   const st=state, w=st.arena.winner, names=arenaLiveSetup?arenaLiveSetup.teams.map(t=>t.name):['A','B'];
   document.getElementById('arenaResultTitle').textContent= w<0 ? 'Unentschieden' : `${names[w]} gewinnt`;
   document.getElementById('arenaResultText').textContent=`Nach ${st.tickCount} Ticks. Überlebende: ${names[0]} ${arenaAlive(st,0).length}, ${names[1]} ${arenaAlive(st,1).length}.`;
+  document.getElementById('arenaAgain').hidden=document.getElementById('arenaToSetup').hidden=ludusActive;
+  document.getElementById('ludusContinue').hidden=!ludusActive;
+  if(ludusActive){ document.getElementById('arenaResultTitle').textContent=ludusResolve(st); document.getElementById('arenaResultText').textContent=ludusResultText.split('\n').slice(1).join(' '); }
   box.hidden=false;
 }
 function arenaLeave(){
+  if(ludusActive){ ludusLeaveMatch(); return; }
   arenaSpell=null; document.getElementById('menu-spells').hidden=true;
   document.body.classList.remove('arenaMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   state=makeDefaultState(); showScreen('arena');
@@ -205,7 +217,7 @@ function arenaRenderPanel(){
     return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
   const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
-  const spells=`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
+  const spells=ludusActive?'':`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
     + (arenaSpell==='summon'?`<div class="arSummon"><select data-sk>${arenaOpts(kinds,arenaSummon.kind)}</select> Stufe <input data-sl type="number" min="1" max="40" value="${arenaSummon.level}" style="width:44px"> <select data-st>${arenaOpts([[0,names[0]],[1,names[1]]],arenaSummon.team)}</select></div>`:'');
   const html=`<div class="arInfo">Tick ${st.tickCount}</div>${spells}${cols}`;
   if(html!==arenaPanelSig && !(box.contains(document.activeElement) && /SELECT|INPUT/.test(document.activeElement.tagName))){ arenaPanelSig=html; box.innerHTML=html; box.querySelectorAll('button[data-spell]').forEach(b=>b.addEventListener('click',()=>arenaSetSpell(b.dataset.spell)));
@@ -272,15 +284,19 @@ function arenaPreviewCreature(grp){
   try{ c=arenaMake(grp.kind,0,0); c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.inventory=arenaGear(c,grp,0); }catch(e){ c=null; } finally { Math.random=keep; }
   ARENA_PREVIEWS.set(grp,{ sig, c }); return c;
 }
+// one creature as an idling sprite with its gear on a canvas; team 0 stands on a red ring, team 1 on a blue one
+function arenaPaintCreature(cv,c,ti,unit){
+  const g=cv.getContext('2d'); g.clearRect(0,0,cv.width,cv.height); if(!c) return;
+  const key=(typeof ZOO!=='undefined'&&ZOO[c.kind+(ti===0?'_ally':'')])?c.kind+(ti===0?'_ally':''):c.kind, z=ZOO[key]; if(!z) return;
+  const extra=z.humanoid?equipLook(c):undefined, t=Math.floor(Date.now()/260)+(c.id||0), img=spriteCanvas(key,t,ti===0,false,extra);
+  const size=Math.round((unit||64)*creatureScale(c)), x=(cv.width-size)>>1, y=cv.height-size-4;
+  g.fillStyle=ti===0?'rgba(230,60,50,0.55)':'rgba(70,130,255,0.55)'; g.beginPath(); g.ellipse(cv.width/2,cv.height-8,size*0.34,size*0.11,0,0,7); g.fill();
+  g.imageSmoothingEnabled=false; g.drawImage(img,x,y,size,size);
+}
 function arenaDrawPreviews(){
   document.querySelectorAll('#arenaSetupBody canvas[data-prev]').forEach(cv=>{
     const row=cv.closest('.arGroup'); if(!row) return; const grp=arenaSetup.teams[+row.dataset.t].groups[+row.dataset.g]; if(!grp) return;
-    const c=arenaPreviewCreature(grp), g=cv.getContext('2d'); g.clearRect(0,0,cv.width,cv.height); if(!c) return;
-    const key=(typeof ZOO!=='undefined'&&ZOO[c.kind+(row.dataset.t==='0'?'_ally':'')])?c.kind+(row.dataset.t==='0'?'_ally':''):c.kind, z=ZOO[key]; if(!z) return;
-    const extra=z.humanoid?equipLook(c):undefined, t=Math.floor(Date.now()/260)+(c.id||0), img=spriteCanvas(key,t,row.dataset.t==='0',false,extra);
-    const size=Math.round(64*creatureScale(c)), x=(cv.width-size)>>1, y=cv.height-size-4;
-    g.fillStyle=row.dataset.t==='0'?'rgba(230,60,50,0.55)':'rgba(70,130,255,0.55)'; g.beginPath(); g.ellipse(cv.width/2,cv.height-8,size*0.34,size*0.11,0,0,7); g.fill();
-    g.imageSmoothingEnabled=false; g.drawImage(img,x,y,size,size);
+    arenaPaintCreature(cv,arenaPreviewCreature(grp),+row.dataset.t);
   });
 }
 setInterval(()=>{ if(screen==='arena') arenaDrawPreviews(); },200);

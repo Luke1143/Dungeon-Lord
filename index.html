@@ -46,6 +46,16 @@
   .arTeamBox{ background:rgba(25,18,12,.85); border:2px solid #6a5233; border-radius:6px; padding:10px; }
   .arTeamBox.t0{ border-color:#a04a3a; } .arTeamBox.t1{ border-color:#3a6aa0; }
   .arTeamBox h3 input{ font:inherit; background:transparent; color:#f0e2c0; border:0; border-bottom:1px solid #6a5233; width:70%; }
+  .luCols{ display:grid; grid-template-columns:260px minmax(300px,520px); gap:16px; align-items:start; }
+  .luCard, .luPanel{ background:rgba(0,0,0,.28); border:1px solid #6a5233; border-radius:6px; padding:12px; }
+  .luCard{ text-align:center; } .luCard h2, .luPanel h2{ margin:4px 0; font-size:18px; color:var(--gold); }
+  .luTop{ display:flex; gap:18px; margin:4px 0 10px; font-weight:600; } .luNote{ color:var(--gold); margin-bottom:6px; }
+  .luBar{ position:relative; height:16px; background:#2a2018; border-radius:3px; margin:4px 0; overflow:hidden; } .luBar i{ display:block; height:100%; } .luBar i.hp{ background:#a33; } .luBar i.xp{ background:#6a8f3a; }
+  .luBar b{ position:absolute; inset:0; font-size:11px; line-height:16px; } .luAbil{ font-size:12px; margin:6px 0; } .luHint{ opacity:.7; font-size:12px; }
+  .luItem{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:13px; text-align:left; } .luItem.worn{ color:var(--gold); }
+  .luTabs{ display:flex; gap:6px; margin-bottom:8px; } .luTabs button.on{ background:var(--gold); color:#1c140f; }
+  .luOpp{ display:flex; gap:12px; align-items:center; margin:8px 0; } #luPrev, #luOpp{ image-rendering:pixelated; } .luLog{ margin-top:10px; font-size:12px; opacity:.75; }
+  #ludusScreen button, .luPanel select, .luPanel input[type=text], #luName{ font-family:inherit; }
   .arGroup{ margin:6px 0; padding:6px; background:rgba(0,0,0,.25); border-radius:4px; line-height:2; display:flex; gap:10px; align-items:center; }
   .arPrev{ width:96px; height:96px; flex:none; image-rendering:pixelated; background:rgba(0,0,0,.25); border-radius:4px; }
   .arFields{ flex:1; } .arBtns{ display:flex; flex-direction:column; gap:4px; }
@@ -249,12 +259,15 @@
     <div class="menuBox">
       <button id="menuNew" class="menuMain">Neue Welt</button>
       <button id="menuArena" class="menuMain">Kreaturen-Arena</button>
+      <button id="menuLudus" class="menuMain">Ludus</button>
       <button id="menuContinue" class="menuMain" hidden>Kampagne fortsetzen</button>
       <div id="vaultInfo" class="subtitle"></div>
       <label class="seedRow">Language <select id="langSelect"><option value="en">English</option><option value="de">Deutsch</option></select></label>
       <label class="seedRow">Seed (leer = Zufall) <input id="seedInput" type="text" maxlength="20" placeholder="z. B. Moorhafen"></label>
     </div>
   </div>
+
+  <div id="ludusScreen" class="screen" hidden><div id="ludusBody"></div></div>
 
   <div id="arenaScreen" class="screen" hidden>
     <h1 class="bigTitle" style="font-size:34px">Kreaturen-Arena</h1>
@@ -330,7 +343,7 @@
         <div class="fpKeys">W/S vor/zurück · A/D seitwärts · Q/E oder Maus drehen · gedrückte Maustaste: zuschlagen/graben</div>
       </div>
       <div id="pauseLabel" hidden>PAUSE</div>
-      <div id="arenaResult" class="arResult" hidden><div class="endBox"><h2 id="arenaResultTitle"></h2><p id="arenaResultText"></p><button id="arenaAgain" class="menuMain">Noch einmal</button> <button id="arenaToSetup" class="menuMain">Aufstellung</button></div></div>
+      <div id="arenaResult" class="arResult" hidden><div class="endBox"><h2 id="arenaResultTitle"></h2><p id="arenaResultText"></p><button id="arenaAgain" class="menuMain">Noch einmal</button> <button id="arenaToSetup" class="menuMain">Aufstellung</button><button id="ludusContinue" class="menuMain" hidden>Weiter</button></div></div>
       <div id="errToast" hidden></div>
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       </div>
@@ -430,6 +443,7 @@
 
 <script src="i18n.js"></script>
 <script src="lang-en.js"></script>
+<script src="lang-en-ludus.js"></script>
 <script src="sprites.js"></script>
 <script src="fx.js"></script>
 <script src="anim.js"></script>
@@ -9309,6 +9323,7 @@ function showScreen(name){
   document.getElementById('overworldScreen').hidden = name!=='overworld';
   document.getElementById('levelScreen').hidden = name!=='level';
   document.getElementById('arenaScreen').hidden = name!=='arena';
+  document.getElementById('ludusScreen').hidden = name!=='ludus';
   if(name==='menu'){ document.getElementById('menuContinue').hidden=!campaign; document.getElementById('vaultInfo').textContent=vault.length?('Stase: '+vault.map(vaultLabel).join(', ')):''; }
   if(name==='overworld'){ owRefresh(); }
   document.body.classList.toggle('inLevel', name==='level');
@@ -9914,6 +9929,7 @@ async function init(){
 init();
 </script>
 <script src="arena.js"></script>
+<script src="ludus.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();
 </script>
