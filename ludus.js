@@ -102,6 +102,7 @@ function ludusResolve(st){
       loot.forEach(it=>{ f.inventory.push(looseInst(it)); });
       head='Sieg'; text=`${f.name} gewinnt gegen ${o.name}. +${o.reward} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}.`;
       ludusLog(`Sieg über ${o.name}`);
+      if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Woche!'; } }
     } else {
       ludus.losses++; ludus.gold+=2; head=c.surrendered?'Aufgegeben':(c.unconscious?'Bewusstlos':'Verloren');
       text=`${f.name} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
@@ -118,6 +119,47 @@ function ludusLeaveMatch(){
   document.body.classList.remove('arenaMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   document.getElementById('arenaResult').hidden=true; document.getElementById('ludusContinue').hidden=true;
   state=makeDefaultState(); ludusNote=ludusResultText.replace('\n',' — '); ludusTab='pit'; showScreen('ludus'); ludusRender();
+}
+
+// ---- the weekly ladder: ten rivals from a seed that depends only on the calendar week, so every player meets the same ones ----
+const LUDUS_CAST=['Ferox','Rufus','Magnus','Niger','Longus','Crassus','Felix','Fortis','Gracilis','Pius'];
+function ludusWeekId(d){
+  d=d||new Date(); const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())), day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
+  const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1)), wk=Math.ceil(((t-y0)/86400000+1)/7);
+  return t.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
+}
+function ludusLadder(week){
+  const r=seededRng(arenaHash('ladder:'+week)), pool=arenaKinds().slice(), out=[];
+  for(let i=0;i<10;i++){      // i = 0 is the champion, i = 9 the weakest
+    const kind=pool.splice(Math.floor(r()*pool.length),1)[0], strength=9-i;
+    out.push({ kind, level:1+Math.round(strength*1.8), tier:Math.max(0,Math.min(3,Math.floor(strength/3))), seed:Math.floor(r()*1e9),
+      name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], rank:i+1 });
+  }
+  return out;
+}
+function ludusTour(){
+  const w=ludusWeekId(); if(!ludus.tour||ludus.tour.week!==w) ludus.tour={ week:w, beaten:0 };
+  return ludus.tour;
+}
+function ludusChallenge(){
+  const t=ludusTour(), lad=ludusLadder(t.week), rival=lad[9-t.beaten]; if(!rival||ludus.over) return;
+  ludus.opp=Object.assign({},rival,{ reward:20+12*(t.beaten+1)+(rival.rank===1?100:0), tour:true });
+  ludusSave(); ludusFight();
+}
+// ---- the library: ability books, three a day, fitted to the fighter's kind ----
+function ludusBooks(){
+  const c=ludusCreature(), r=ludusRng('books'+ludus.day);
+  const pool=(ARCHETYPE_POOL[archetypeOf(c)]||[]).concat(['haste','guard']).filter((id,i,a)=>a.indexOf(id)===i && ABILITIES[id] && !knownAbilities(c).includes(id));
+  const out=[]; while(out.length<3 && pool.length) out.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
+  return out;
+}
+const ludusBookPrice=id=>30+22*(ABILITIES[id].power||2);
+function ludusBuyBook(id){
+  const pr=ludusBookPrice(id); if(ludus.gold<pr) return;
+  const c=ludusCreature(), prev=state;
+  try{ if(!state||!state.eventLog) state=makeDefaultState(); const ok=learnAbility(c,id); if(!ok){ ludusNote='Das Buch verrät ihm nichts Neues oder er hat keinen Platz dafür.'; ludusRender(); return; } }
+  finally { state=prev; }
+  ludus.fighter.learned=(c.learned||[]).slice(); ludus.gold-=pr; ludusNote=`${ludus.fighter.name} lernt "${ABILITIES[id].name}".`; ludusSave(); ludusRender();
 }
 
 // ---- the town square ----
@@ -150,6 +192,15 @@ function ludusRender(){
   } else if(ludusTab==='inn'){
     main=`<div class="luPanel"><h2>Taverne</h2><p>Ein gebratenes Huhn stärkt (${LUDUS_CHICKEN_COST} Gold). Im Bett schlafen ist gratis, kostet aber einen Tag.</p>
       <button id="luChicken" ${ludus.gold<LUDUS_CHICKEN_COST?'disabled':''}>🍗 Huhn essen (${LUDUS_CHICKEN_COST} Gold, +${Math.round(LUDUS_CHICKEN_HEAL*100)} % LP)</button> <button id="luSleep">🛏️ Schlafen (+${Math.round(LUDUS_SLEEP_HEAL*100)} % LP, ein Tag)</button></div>`;
+  } else if(ludusTab==='tour'){
+    const t=ludusTour(), lad=ludusLadder(t.week), next=t.beaten<10?lad[9-t.beaten]:null;
+    main=`<div class="luPanel"><h2>Wochenturnier ${t.week}</h2><p class="luHint">Die Rangliste ist für alle Spieler dieser Woche gleich. Besiege die Gegner von unten nach oben, bis du den Meister schlägst.</p>
+      ${lad.map((r,i)=>{ const done=(9-i)<t.beaten; return `<div class="luItem${done?' worn':''}${next&&next.rank===r.rank?' sel':''}"><span>${r.rank}. ${ludusEsc(r.name)} — ${SPECIES[r.kind].label}, Stufe ${r.level}</span><span>${done?'✓':''}</span></div>`; }).join('')}
+      ${next?`<p>Nächster Gegner: <b>${ludusEsc(next.name)}</b> (Platz ${next.rank}) · Preis ${20+12*(t.beaten+1)+(next.rank===1?100:0)} Gold</p><button id="luChallenge" class="menuMain">Herausfordern</button>`:'<p><b>Du bist Meister dieser Woche!</b> Nächste Woche gibt es eine neue Rangliste.</p>'}</div>`;
+  } else if(ludusTab==='lib'){
+    const books=ludusBooks();
+    main=`<div class="luPanel"><h2>Bücherei</h2><p class="luHint">Jeden Tag liegen drei Bücher aus, passend zur Art deines Kämpfers.</p>
+      ${books.length?books.map(id=>`<div class="luItem"><span>${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITIES[id].text||''}</span><button data-book="${id}" ${ludus.gold<ludusBookPrice(id)?'disabled':''}>${ludusBookPrice(id)} Gold</button></div>`).join(''):'<p><i>Heute gibt es nichts Neues für ihn.</i></p>'}</div>`;
   } else if(ludusTab==='gear'){
     const inv=f.inventory||[], sel=inv[ludusSel];
     main=`<div class="luPanel"><h2>Ausrüstung</h2>${inv.length?inv.map(itemRow).join(''):'<p><i>Du besitzt noch nichts. Die Schmiede verkauft Ausrüstung.</i></p>'}
@@ -162,7 +213,7 @@ function ludusRender(){
     main=`<div class="luPanel"><h2>Schmiede</h2><p>Heute im Angebot:</p>${stock.map((id,i)=>`<div class="luItem"><span>${ludusEsc(ITEMS[id].label)}</span><button data-buy="${i}" ${ludus.gold<ludusPrice(id)?'disabled':''}>${ludusPrice(id)} Gold</button></div>`).join('')}</div>`;
     el._stock=stock;
   }
-  const tabs=ludus.over?'':`<div class="luTabs">${[['pit','Grube'],['inn','Taverne'],['smith','Schmiede'],['gear','Ausrüstung']].map(([k,l])=>`<button data-tab="${k}" class="${ludusTab===k?'on':''}">${l}</button>`).join('')}</div>`;
+  const tabs=ludus.over?'':`<div class="luTabs">${[['pit','Grube'],['tour','Turnier'],['inn','Taverne'],['smith','Schmiede'],['lib','Bücherei'],['gear','Ausrüstung']].map(([k,l])=>`<button data-tab="${k}" class="${ludusTab===k?'on':''}">${l}</button>`).join('')}</div>`;
   el.innerHTML=`<h1 class="bigTitle" style="font-size:30px">Ludus</h1>
     <div class="luTop"><span>Tag ${ludus.day}</span><span>💰 ${ludus.gold}</span><span>Ruhm ${ludus.fame}</span><span>Siege ${ludus.wins}</span></div>
     ${ludusNote?`<div class="luNote">${ludusEsc(ludusNote)}</div>`:''}
@@ -178,7 +229,8 @@ function ludusRender(){
   el.querySelectorAll('[data-reroll]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.reroll, inst=f.inventory[i], pr=ludusRerollPrice(inst); if(ludus.gold<pr) return; ludus.gold-=pr; inst.s=Math.floor(Math.random()*1e9); ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{ const id=stockNow[+b.dataset.buy], pr=ludusPrice(id); if(ludus.gold<pr) return; ludus.gold-=pr; f.inventory.push({ id, q:1, s:Math.floor(Math.random()*1e9) }); ludusNote=''; ludusSave(); ludusRender(); }));
   const on=(id,fn)=>{ const b=document.getElementById(id); if(b) b.addEventListener('click',fn); };
-  on('luFight',ludusFight); on('luNew',()=>{ ludus=null; ludusSave(); ludusRender(); });
+  on('luFight',ludusFight); on('luChallenge',ludusChallenge);
+  el.querySelectorAll('[data-book]').forEach(b=>b.addEventListener('click',()=>ludusBuyBook(b.dataset.book))); on('luNew',()=>{ ludus=null; ludusSave(); ludusRender(); });
   on('luChicken',()=>{ if(ludus.gold<LUDUS_CHICKEN_COST) return; ludus.gold-=LUDUS_CHICKEN_COST; ludusHeal(LUDUS_CHICKEN_HEAL); ludusSave(); ludusRender(); });
   on('luSleep',()=>{ ludusHeal(LUDUS_SLEEP_HEAL); ludus.day++; ludus.opp=null; ludusLog('geschlafen'); ludusSave(); ludusRender(); });
   on('luMenu',()=>showScreen('menu'));

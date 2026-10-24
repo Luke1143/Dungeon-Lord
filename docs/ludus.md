@@ -41,3 +41,9 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - Läuft: Neuer Lauf (freie Kreatur, Stufe 1, 40 Gold, ohne Ausrüstung), Pit-Kämpfe als 1v1 (Gegner und Ausrüstungsstufe werden per Probekämpfen so gewählt, dass das Duell ungefähr ausgeglichen ist), Taverne (Huhn / Schlafen), Schmiede (täglich wechselndes Angebot, Verkauf, Aussehen neu würfeln), Permadeath, Rekorde.
 - Debug-Schalter "alles freigeschaltet" im Startbildschirm (an). Ohne ihn nur Startkreaturen, bis die Freischaltung aus der Kampagne angebunden ist.
 - Offen: Bücherei (Fähigkeiten kaufen), wöchentliche Turniere mit Seed-Rangliste, Ludus-Ausbau (Meta-Fortschritt), Anbindung an Vault/Kampagne.
+
+## Stand (Fortsetzung)
+- **Bücherei**: drei Bücher am Tag (Fähigkeiten passend zur Art, Preis nach Kraft); gelernt wird mit den Regeln des Hauptspiels (Plätze, schwächste wird ersetzt).
+- **Wochenturnier**: zehn Rivalen aus einem Seed, der nur von der Kalenderwoche abhängt; alle Spieler treffen dieselben Gegner (Stufe 1 bis 17, steigende Ausrüstung). Von unten nach oben besiegen, der Meister gibt 10 Ruhm und einen Titel. Jeder Kampf kostet einen Tag.
+- **Zwei Waffen und Waffensystem** (siehe waffen.md) gelten auch im Ludus; der Reiter "Ausrüstung" legt Waffen an (zwei Einhandwaffen = Doppelführung).
+- Offen: echtes Online-Ranking (nur mit Server), Meta-Fortschritt (Ausbau des Ludus über Läufe), Freischaltung der Kreaturen aus der Kampagne statt Debug-Schalter.
