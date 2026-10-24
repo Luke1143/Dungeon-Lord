@@ -46,6 +46,7 @@
   .arTeamBox{ background:rgba(25,18,12,.85); border:2px solid #6a5233; border-radius:6px; padding:10px; }
   .arTeamBox.t0{ border-color:#a04a3a; } .arTeamBox.t1{ border-color:#3a6aa0; }
   .arTeamBox h3 input{ font:inherit; background:transparent; color:#f0e2c0; border:0; border-bottom:1px solid #6a5233; width:70%; }
+  #hubHost{ position:relative; width:min(1100px,96vw); height:min(46vh,420px); border:1px solid #6a5233; border-radius:6px; overflow:hidden; background:#14100c; }
   .luCols{ display:grid; grid-template-columns:260px minmax(300px,520px); gap:16px; align-items:start; }
   .luCard, .luPanel{ background:rgba(0,0,0,.28); border:1px solid #6a5233; border-radius:6px; padding:12px; }
   .luCard{ text-align:center; } .luCard h2, .luPanel h2{ margin:4px 0; font-size:18px; color:var(--gold); }
@@ -269,7 +270,7 @@
     </div>
   </div>
 
-  <div id="ludusScreen" class="screen" hidden><div id="ludusBody"></div></div>
+  <div id="ludusScreen" class="screen" hidden><div id="hubHost"></div><div id="ludusBody"></div></div>
 
   <div id="arenaScreen" class="screen" hidden>
     <h1 class="bigTitle" style="font-size:34px">Kreaturen-Arena</h1>
@@ -10148,6 +10149,7 @@ async function init(){
 init();
 </script>
 <script src="arena.js"></script>
+<script src="hub3d.js"></script>
 <script src="ludus.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();

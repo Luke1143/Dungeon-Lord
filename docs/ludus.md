@@ -47,3 +47,10 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - **Wochenturnier**: zehn Rivalen aus einem Seed, der nur von der Kalenderwoche abhängt; alle Spieler treffen dieselben Gegner (Stufe 1 bis 17, steigende Ausrüstung). Von unten nach oben besiegen, der Meister gibt 10 Ruhm und einen Titel. Jeder Kampf kostet einen Tag.
 - **Zwei Waffen und Waffensystem** (siehe waffen.md) gelten auch im Ludus; der Reiter "Ausrüstung" legt Waffen an (zwei Einhandwaffen = Doppelführung).
 - Offen: echtes Online-Ranking (nur mit Server), Meta-Fortschritt (Ausbau des Ludus über Läufe), Freischaltung der Kreaturen aus der Kampagne statt Debug-Schalter.
+
+## Meta-Fortschritt als Ort (neu)
+- **Der Hof ist ein 3D-Raum** (`hub3d.js`, Three.js): Orbit-Kamera (Ziehen dreht, Rad zoomt, Klick auf ein Gebäude öffnet seinen Reiter), Gäste laufen durch die Taverne, der Kämpfer des Laufs steht am Kamin. Gebäude, die noch nicht gebaut sind, erscheinen als Bauplatz mit Schloss.
+- **Räume** (`LUDUS_ROOMS`) werden mit **Ansehen** gekauft und in Stufen ausgebaut; Ansehen kommt aus Siegen (Grube +1, Turnier +2, Meister +10, Lauf-Ende Ruhm/2) und bleibt über alle Läufe. Die Taverne gibt es von Anfang an, die Grube kostet 10, genau so viel wie ein neuer Spieler (12) besitzt.
+  - **Taverne** (3 Stufen): besseres Huhn und stärkerer Schlaf. **Grube** (3): größere Preise. **Schmiede** (4): die Qualität der Ware (Stufe 1 nur grobe Ware aus dem schlechtesten von sechs Teile-Würfen, Stufe 4 episch aus dem besten) und die **Sorten** (Waffenarten, Rüstungsgewichte, Schilde) werden einzeln gekauft (`LUDUS_CATS`). **Bücherei** (3): Stärke der angebotenen Fähigkeiten. **Turnierhalle** (2): Wochenturnier, höhere Preise.
+- Debug: "alle Kreaturen freigeschaltet" und "alle Räume voll ausgebaut" im Startbildschirm.
+- Offen: weitere Räume (Küche, Schlafsaal als Heilung, Markt), Kreaturen-Freischaltung aus der Kampagne, Darstellung von Waffen- und Rüstungsständern in der Schmiede nach Sorten.
