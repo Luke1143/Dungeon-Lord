@@ -303,6 +303,7 @@ Manche Spielelemente sollen sich **ohne Obergrenze** skalieren lassen, sodass ei
 - **Rassen haben Vorlieben:** Jede Art mag bestimmte Waffenkategorien und Gewichte (`WEAPON_AFFINITY`, `GEAR_PREFS`). Ein Ork nimmt schwere Nahkampfwaffen, ein Goblin leichte und Fernkampf, ein Troll Hämmer, ein Dunkelelf Bögen, ein Priester Stäbe. Was eine Art nicht mag, hebt sie nicht auf. Die Horde bringt eine einfache Startwaffe mit.
 - **Beute:** Stirbt eine Kreatur, hat jedes getragene Stück eine Chance, auf den Boden zu fallen (krude 60 %, normal 50 %, fein 35 %, episch 20 %). Der Rest ist verloren. Bewusstlose behalten ihre Ausrüstung. Gefallene Stücke tragen Imps ein oder Kreaturen heben sie auf.
 - **Schmiede:** Der Schmied wählt die Teile einer Waffe nach dem Geschmack seiner Art (Ork: schwerer Kopf, langer Eisenschaft; Goblin: leichte Spitze, Knochenschaft), geübte Schmiede treffen die Wahl sicherer und setzen einen Knauf auf. Ungeübte nehmen, was gerade da ist.
+- **Rüstkammer:** Lager nur für Ausrüstung (drei Stücke je Kachel), je Raum nach Waffen, Rüstungen und Schilden filterbar. Imps räumen herumliegende Ausrüstung dorthin, Kreaturen holen sich, was sie mögen.
 - **Offen:** Teile als eigenes Lager (erst Teile schmieden, dann zusammensetzen), die Rüstkammer als Lager, Zuteilung durch den Spieler, Abnutzung.
 
 ## 7. Umfang in Stufen *(Vorschlag)*

@@ -337,6 +337,7 @@
           <button class="roomBtn" data-room="forge" id="forgeBtn" hidden>Schmiede (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="arena">Arena (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="prison">Gefängnis (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="armory">Rüstkammer (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="tavern">Taverne (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="graveyard">Friedhof (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="guardpost">Wachposten (100 Gold/Kachel)</button>
@@ -433,6 +434,7 @@ const ROOM_TYPES={
   forge:     { label:'Schmiede',    costPerTile:1, color:'#4a3520', icon:null },
   arena:     { label:'Arena',       costPerTile:1, color:'#5a2a2a', icon:null },
   prison:    { label:'Gefängnis',   costPerTile:1, color:'#34343c', icon:null },
+  armory:    { label:'Rüstkammer',  costPerTile:1, color:'#55504a', icon:null },
   tavern:    { label:'Taverne',     costPerTile:1, color:'#4a3220', icon:null },
   graveyard: { label:'Friedhof',    costPerTile:1, color:'#2e2a20', icon:null },
   guardpost: { label:'Wachposten',  costPerTile:1, color:'#46464e', icon:null },
@@ -453,6 +455,7 @@ const RESEARCH_TOPICS=[
     trigger:(x,y)=> (state.storageContents||[]).some(s=>s.x===x && s.y===y && s.goodId==='iron') },
   // The sight of a fallen hero gives the idea of a prison
   // each idea comes from seeing a reason for the room
+  { id:'armory', label:'Rüstkammer', unlocksRoom:'armory', trigger:(x,y)=> state.looseItems.some(it=>it.kind==='equipment' && it.x===x && it.y===y) },
   { id:'graveyard', label:'Friedhof', unlocksRoom:'graveyard', trigger:(x,y)=> state.corpses.some(c=>c.x===x && c.y===y) },
   { id:'tavern', label:'Taverne', unlocksRoom:'tavern', trigger:(x,y)=> state.creatures.some(c=>c.faction==='evil' && c.happiness!==undefined && c.happiness<45 && Math.round(c.x)===x && Math.round(c.y)===y) },
   { id:'training', label:'Trainingskammer', unlocksRoom:'training', trigger:(x,y)=> state.creatures.some(c=>c.faction==='evil' && (c.kind==='ork'||c.kind==='troll'||c.kind==='dungeonlord') && Math.round(c.x)===x && Math.round(c.y)===y && c.state==='wandering') },
@@ -1442,7 +1445,7 @@ function hasFreeSlot(c, itemId){
     const busy=new Set(); (c.inventory||[]).forEach(inst=>slotsOfItem(inst).forEach(s=>busy.add(s)));
     return slotsOfItem(itemId).every(s=>!busy.has(s));
   }
-  const need = itemId ? itemSlotCost(itemId) : 1;
+  const need = (itemId && c.kind!=='imp') ? itemSlotCost(itemId) : 1;       // an imp drags even a war hammer in one go
   return usedSlots(c)+need <= inventorySlots(c);
 }
 
@@ -3193,7 +3196,9 @@ function findCorpseHaulJob(imp){
 }
 
 function findLooseItemJob(imp){
-  const test=(x,y)=> state.looseItems.some(it=>it.x===x && it.y===y && !it.reservedBy && (it.kind==='book' || it.kind==='gold' || it.kind==='equipment'));
+  const canCarry=(it)=> it.kind!=='equipment' || hasFreeSlot(imp, looseInst(it));
+  const stored=(it)=> it.kind==='equipment' && (onArmoryTile(it.x,it.y) || state.grid[it.y][it.x].room==='storage');   // already put away
+  const test=(x,y)=> state.looseItems.some(it=>it.x===x && it.y===y && !it.reservedBy && !stored(it) && canCarry(it) && (it.kind==='book' || it.kind==='gold' || it.kind==='equipment'));
   const res=bfsFind(imp.x,imp.y,test);
   if(!res) return null;
   return { path:res.path, target:res.target };
@@ -4512,6 +4517,35 @@ function roomBlockSpots(room,step){
   return room.tiles.filter(t=>(t.x-minX)%step===0 && (t.y-minY)%step===0);
 }
 const roomsOfType=(type,min)=>computeRooms().filter(r=>r.type===type && r.tiles.length>=(min===undefined?ROOM_MIN2:min));
+// ----- Rüstkammer: a store for equipment only, filterable by kind (godhand: one tile holds three pieces) -----
+const ARMORY_SLOTS=[ { id:'weapon', label:'Waffen', icon:'🗡️' }, { id:'armor', label:'Rüstungen', icon:'🦺' }, { id:'shield', label:'Schilde', icon:'🛡️' } ];
+const ARMORY_PER_TILE=3;
+function armoryFilter(room){
+  const key='armory:'+storageKey(room);
+  if(!state.storageFilters[key]) state.storageFilters[key]={ weapon:true, armor:true, shield:true };
+  return state.storageFilters[key];
+}
+function armoryTiles(){ const out=[]; roomsOfType('armory',1).forEach(r=>r.tiles.forEach(t=>out.push({ x:t.x, y:t.y, room:r }))); return out; }
+function itemsOnTile(x,y){ return state.looseItems.filter(it=>it.kind==='equipment' && it.x===x && it.y===y).length; }
+// where an imp can put this piece: an armory tile whose room accepts the kind and still has room
+function findArmoryTile(imp, inst){
+  const d=instDef(inst); if(!d) return null;
+  const ok=new Set(armoryTiles().filter(t=>armoryFilter(t.room)[d.type] && itemsOnTile(t.x,t.y)<ARMORY_PER_TILE).map(t=>t.x+','+t.y));
+  return ok.size ? bfsFind(imp.x, imp.y, (x,y)=>ok.has(x+','+y)) : null;
+}
+function onArmoryTile(x,y){ return state.grid[y][x].room==='armory'; }
+function renderArmoryPanel(room){
+  const el=document.getElementById('storagePanel'); if(!el) return;
+  el.hidden=false; el.innerHTML='';
+  const title=document.createElement('div'); title.className='section-title'; title.textContent='Verwahrt hier'; el.appendChild(title);
+  const f=armoryFilter(room);
+  ARMORY_SLOTS.forEach(g=>{
+    const row=document.createElement('label'); row.className='goodRow';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=!!f[g.id];
+    cb.addEventListener('change', ()=>{ f[g.id]=cb.checked; markDirty(); draw(); });
+    row.appendChild(cb); row.appendChild(document.createTextNode(`${g.icon} ${g.label}`)); el.appendChild(row);
+  });
+}
 function dummySpots(){ const out=[]; roomsOfType('training').forEach(r=>roomBlockSpots(r,2).forEach(s=>out.push(s))); return out; }
 function altarSpots(){ const out=[]; roomsOfType('temple').forEach(r=>{ const s=roomBlockSpots(r,3).map(t=>({ x:t.x+(r.tiles.some(q=>q.x===t.x+1&&q.y===t.y+1)?1:0), y:t.y+(r.tiles.some(q=>q.x===t.x+1&&q.y===t.y+1)?1:0) })); (s.length?s:[roomAnchor(r)]).forEach(a=>out.push(a)); }); return out; }
 function graveSpots(){ const out=[]; roomsOfType('graveyard').forEach(r=>roomBlockSpots(r,2).forEach(s=>out.push(s))); return out; }
@@ -4681,7 +4715,7 @@ const CARGO={
       state.looseItems.splice(idx,1);
       return true;
     },
-    findDest(imp){ return findStorageTile(imp,'iron'); },
+    findDest(imp){ return findArmoryTile(imp,(imp.inventory||[])[0]) || findStorageTile(imp,'iron'); },
     drop(imp){ while((imp.inventory||[]).length) dropItemAt(imp,0,imp.x,imp.y); },
     abandon(imp){ while((imp.inventory||[]).length) dropItemAt(imp,0,imp.x,imp.y); }
   },
@@ -5037,6 +5071,7 @@ function tickImpOnce(imp){
     if(job){
       const item=state.looseItems.find(it=>it.x===job.target.x && it.y===job.target.y && !it.reservedBy);
       if(item) item.reservedBy=imp.id;
+      if(item && item.kind==='equipment'){ beginHaul(imp, 'gear', job.target, job.path); return; }
       imp.task='fetchItem'; imp.path=job.path; imp.itemTile=job.target;
       imp.state=imp.path.length?'walking':'atItem'; imp.digProgress=0;
       return;
@@ -5753,6 +5788,7 @@ function draw2d(){
   altarSpots().forEach(s=> drawProp('altar', s.x, s.y));
   graveSpots().forEach(s=>{ if(state.graves&&state.graves[s.x+','+s.y]) drawProp('tomb', s.x, s.y); });
   roomsOfType('tavern').forEach(r=>roomBlockSpots(r,2).forEach(s=> drawProp('barrel', s.x, s.y)));
+  roomsOfType('armory',1).forEach(r=>roomBlockSpots(r,2).forEach(s=> drawProp('shelf', s.x, s.y)));
   roomsOfType('guardpost',1).forEach(r=>r.tiles.forEach(s=> drawProp('banner', s.x, s.y)));
 
   allRooms.filter(r=>r.type==='library' && r.tiles.length>=LIBRARY_MIN_SIZE).forEach(room=>{
@@ -7387,6 +7423,7 @@ function highlightRoomAt(t,x,y){
     if(room && room.type==='storage'){ renderStoragePanel(room); }
     else if(room && room.type==='smelter' && room.tiles.length>=SMELTER_MIN_SIZE){ renderSmelterPanel(room); }
     else if(room && room.type==='forge'){ renderForgePanel(room); }
+    else if(room && room.type==='armory'){ renderArmoryPanel(room); }
     else { renderStoragePanel(null); }
   } else {
     selectedRoomTiles=null;
@@ -9377,7 +9414,7 @@ document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ aw
 // Minimap: one pixel block per tile; click or drag to jump
 const MM_SCALE=4;
 const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
-const MM_ROOMS={ prison:'#6a6a78', tavern:'#8a5a30', graveyard:'#4a5a3a', guardpost:'#8a8a98', training:'#c0a060', temple:'#e0dcd0', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
+const MM_ROOMS={ prison:'#6a6a78', armory:'#9a8a70', tavern:'#8a5a30', graveyard:'#4a5a3a', guardpost:'#8a8a98', training:'#c0a060', temple:'#e0dcd0', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
 function drawMinimap(){
   if(!minimapOn || !state) return;
   const g=mmCtx;
