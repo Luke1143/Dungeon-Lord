@@ -7748,6 +7748,9 @@ function drawFpHand(c){
   const al=fpPose?slashAlpha(pose):0;
   if(al>0.02){ g.globalAlpha=al*0.55; const sk=k*1.05; g.drawImage(slashCanvas(pose.anim.tint), -TOOL_S/2*sk, -(TOOL_S-1)*sk, TOOL_S*sk, TOOL_S*sk); }
   g.restore();
+  // the left hand: the shield, seen from the front, tilted a little towards the middle
+  const eq=equipLook(c), sc=eq&&eq.shield?shieldCanvas(eq.shield,eq.mat):null;
+  if(sc){ const ks=H/26; g.save(); g.imageSmoothingEnabled=false; g.translate(W*0.2, H*(0.95+bob*0.6)); g.rotate(0.1); g.drawImage(sc, -sc.width/2*ks, -sc.height*ks, sc.width*ks, sc.height*ks); g.restore(); }
 }
 function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
 // the cardinal direction a yaw angle points to (the game moves on tiles)
@@ -7807,7 +7810,8 @@ function fpPickTarget(c){
 }
 // one step of the held primary button: hit the target or work the tile
 function fpActStep(c){
-  const tg=fpPickTarget(c); if(!tg) return;
+  const tg=fpPickTarget(c);
+  if(!tg){ c.swingBudget=(c.swingBudget||0)+1; if(c.swingBudget>=SWING_COST){ c.swingBudget-=SWING_COST; c.verb='attack'; c.actTarget=null; startAnim(c,gameSpeed); } return; }   // the weapon may always be swung, a blow into the air feels like one
   if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
   interact(c, tg.tile.x, tg.tile.y);
 }

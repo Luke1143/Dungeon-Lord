@@ -56,21 +56,21 @@ function ludusAverageTier(){
 function ludusScoutOpponent(){
   if(ludusBusy||ludus.opp||ludus.over) return;
   ludusBusy=true; ludusRender();
-  setTimeout(()=>{
-    try{
-      const r=ludusRng('opp'+ludus.day), kinds=ludusKinds().filter(k=>k!==ludus.fighter.kind||true), tier=ludusAverageTier();
-      const pool=kinds.slice(); const cands=[];
-      for(let i=0;i<7&&pool.length;i++) cands.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
-      let best=null;
-      cands.forEach(kind=>{
-        const o={ kind, level:ludus.fighter.level, tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] };
-        const res=arenaSimulate(ludusMatchSetup(o,'scout'),3,null), rate=res.wins[0]/3, score=Math.abs(rate-0.5)+r()*0.05;
-        if(!best||score<best.score) best={ score, o, rate };
-      });
-      ludus.opp=Object.assign(best.o,{ reward:12+6*ludus.fighter.level });
-    }catch(e){ console.error(e); const ks=ludusKinds(); ludus.opp={ kind:ks[Math.floor(Math.random()*ks.length)], level:ludus.fighter.level, tier:0, seed:Math.floor(Math.random()*1e9), name:LUDUS_NAMES[0], reward:12+6*ludus.fighter.level }; } finally { ludusBusy=false; }
-    ludusSave(); ludusRender();
-  },30);
+  // one candidate per timer tick, so the page stays alive and can paint between the test fights
+  const r=ludusRng('opp'+ludus.day), tier=ludusAverageTier(), pool=ludusKinds().slice(), cands=[];
+  for(let i=0;i<5&&pool.length;i++) cands.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
+  const run=ludus, step=(i,best)=>{
+    if(ludus!==run) { ludusBusy=false; return; }
+    if(i>=cands.length){
+      run.opp=Object.assign(best.o,{ reward:12+6*run.fighter.level }); ludusBusy=false; ludusSave(); ludusRender(); return;
+    }
+    const kind=cands[i], o={ kind, level:run.fighter.level, tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] };
+    let score=1;
+    try{ const res=arenaSimulate(ludusMatchSetup(o,'scout'),2,null); score=Math.abs(res.wins[0]/2-0.5)+r()*0.05; }catch(e){ console.error(e); }
+    const el=document.getElementById('luScout'); if(el) el.textContent=`${i+1}/${cands.length}`;
+    setTimeout(()=>step(i+1,(!best||score<best.score)?{ score, o }:best),20);
+  };
+  setTimeout(()=>step(0,null),30);
 }
 
 // ---- the match ----
@@ -146,7 +146,7 @@ function ludusRender(){
   } else if(ludusTab==='pit'){
     const o=ludus.opp;
     main=`<div class="luPanel"><h2>Pit-Kampf</h2>`+(o?`<div class="luOpp"><canvas id="luOpp" width="110" height="110"></canvas><div><b>${ludusEsc(o.name)}</b><br>${SPECIES[o.kind].label} · Stufe ${o.level}<br>Preis: ${o.reward} Gold</div></div><button id="luFight" class="menuMain">Kämpfen</button>`
-      : (ludusBusy?'<p>Der Wirt sucht einen Gegner …</p>':'<p>Kein Gegner in Sicht.</p>'))+`<p class="luHint">Jeder Kampf kostet einen Tag. Wer bewusstlos wird, überlebt; wer fällt, beendet den Lauf.</p></div>`;
+      : (ludusBusy?'<p>Der Wirt sucht einen Gegner … <span id="luScout"></span></p>':'<p>Kein Gegner in Sicht.</p>'))+`<p class="luHint">Jeder Kampf kostet einen Tag. Wer bewusstlos wird, überlebt; wer fällt, beendet den Lauf.</p></div>`;
   } else if(ludusTab==='inn'){
     main=`<div class="luPanel"><h2>Taverne</h2><p>Ein gebratenes Huhn stärkt (${LUDUS_CHICKEN_COST} Gold). Im Bett schlafen ist gratis, kostet aber einen Tag.</p>
       <button id="luChicken" ${ludus.gold<LUDUS_CHICKEN_COST?'disabled':''}>🍗 Huhn essen (${LUDUS_CHICKEN_COST} Gold, +${Math.round(LUDUS_CHICKEN_HEAL*100)} % LP)</button> <button id="luSleep">🛏️ Schlafen (+${Math.round(LUDUS_SLEEP_HEAL*100)} % LP, ein Tag)</button></div>`;

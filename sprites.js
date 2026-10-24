@@ -151,11 +151,14 @@ const CREATURES={
     const w=weaponParts(name,parts); if(w) return w;
     const wp=WEAPONS[name]; return wp?{ px:wp.px.map(([x,y,c])=>[x,y,c==='W'?'V':(c==='K'?'v':c)]), grip:wp.grip }:null;
   }
-  const SHIELDS={   // drawn in front of the chest (left side), no arm needed
-    buckler:[[0,0,'m'],[1,0,'M'],[0,1,'M'],[1,1,'M'],[0,2,'n'],[1,2,'m']],
-    kite:[[0,0,'M'],[1,0,'M'],[2,0,'m'],[0,1,'m'],[1,1,'M'],[2,1,'m'],[0,2,'m'],[1,2,'m'],[2,2,'n'],[1,3,'n'],[2,3,'n'],[1,4,'n']],
-    tower:[[0,0,'M'],[1,0,'M'],[2,0,'M'],[0,1,'m'],[1,1,'M'],[2,1,'m'],[0,2,'m'],[1,2,'m'],[2,2,'m'],[0,3,'m'],[1,3,'M'],[2,3,'m'],[0,4,'m'],[1,4,'m'],[2,4,'n'],[0,5,'n'],[1,5,'n'],[2,5,'n']]
+  // shields are drawn from the front, like the emoji 🛡️: a rim, a face with an emblem, the point below. Rows of the pattern; M light, m middle, n dark.
+  const SHIELD_ROWS={
+    buckler:['.MMM.','MmMmn','MMMMn','MmMmn','.nnn.'],
+    kite:['MMMMM','MmMmn','MMMMn','MmMmn','MmMmn','.mMmn','.nMn.','..n..'],
+    tower:['MMMMM','MmMmn','MmMmn','MMMMn','MmMmn','MmMmn','MMMMn','MmMmn','nnnnn']
   };
+  const SHIELDS={}; Object.keys(SHIELD_ROWS).forEach(k=>{ SHIELDS[k]=[]; SHIELD_ROWS[k].forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.') SHIELDS[k].push([x,y,c]); })); });
+  globalThis.SHIELDGEN={ rows:SHIELD_ROWS, palette:mat=>MATS[mat||'eisen']||MATS.eisen };
   const bbox=(f,tag)=>{ let x0=99,x1=-1,y0=99,y1=-1; for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(f.tag[y][x]===tag){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } return {x0,x1,y0,y1}; };
   function armour(f,e){
     const H=bbox(f,'H'), T=bbox(f,'T'), L=bbox(f,'L');
@@ -184,7 +187,7 @@ const CREATURES={
       // no pauldrons: creatures have no arms, so armour never sticks out of the torso
     }
     if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
-    if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-3+x,sy+y,c)); }
+    if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-4+x,sy+y,c)); }
     const wp=e.weapon&&weaponShape(e.weapon,e.wparts);
     if(wp){ const ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
       wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }

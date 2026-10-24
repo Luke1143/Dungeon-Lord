@@ -91,6 +91,14 @@ function toolCanvas(weapon){
   wp.px.forEach(([x,y,c])=>{ g.fillStyle=c; g.fillRect(gx-wp.grip[0]+x, gy-wp.grip[1]+y-1, 1, 1); });
   return TOOL_CACHE[weapon]=cv;
 }
+// a shield seen from the front (first person viewmodel), cached per family and material
+function shieldCanvas(family,mat){
+  const key='shield|'+family+'|'+(mat||''); if(TOOL_CACHE[key]) return TOOL_CACHE[key];
+  if(typeof SHIELDGEN==='undefined' || !SHIELDGEN.rows[family]) return null;
+  const rows=SHIELDGEN.rows[family], pal=SHIELDGEN.palette(mat), cv=document.createElement('canvas'); cv.width=rows[0].length; cv.height=rows.length; const g=cv.getContext('2d');
+  rows.forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.'){ g.fillStyle=pal[c]||'#888'; g.fillRect(x,y,1,1); } }));
+  return TOOL_CACHE[key]=cv;
+}
 // a crescent that trails behind the swing direction (the swing turns clockwise, so the arc lies counter-clockwise of the tool)
 function slashCanvas(tint){
   const key='slash|'+(tint||''); if(TOOL_CACHE[key]) return TOOL_CACHE[key];
