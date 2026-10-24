@@ -2,7 +2,7 @@
 // New sound = new entry in RECIPES. Cosmetic only: it has its own random numbers and never touches the game state.
 // SFX.play(name, { x, y, delay }) is positional: volume falls with the distance to the listener (the camera, or the possessed body).
 const SFX=(()=>{
-  let ac=null, master=null, noiseBuf=null, muted=false, vol=0.55, lx=0, ly=0, voices=0, ambient=null, dripTimer=null;
+  let ac=null, master=null, noiseBuf=null, muted=false, vol=0.55, lx=0, ly=0, voices=0, dripTimer=null;
   const last={};
   try{ muted=localStorage.getItem('dl_muted')==='1'; }catch(e){}
   let seed=4242; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
@@ -68,14 +68,62 @@ const SFX=(()=>{
     voices++; setTimeout(()=>{ voices--; }, 700+(op.delay||0)*1000);
     r(d,t);
   }
-  // ---- atmosphere: a low drone and now and then a drip ----
+  // ---- atmosphere: now and then a drip ----
   function startAmbient(){
-    ambient=ac.createGain(); ambient.gain.value=0.05; ambient.connect(master);
-    [55,57.5,82.4].forEach((f,i)=>{ const o=ac.createOscillator(); o.type=i===2?'sine':'sawtooth'; o.frequency.value=f; const flt=ac.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=180; o.connect(flt); flt.connect(ambient); o.start(); });
-    const lfo=ac.createOscillator(); lfo.frequency.value=0.07; const lg=ac.createGain(); lg.gain.value=0.02; lfo.connect(lg); lg.connect(ambient.gain); lfo.start();
-    const drip=()=>{ if(!muted && ac && ac.state==='running') play('drip',{ x:lx+between(-8,8), y:ly+between(-8,8) }); dripTimer=setTimeout(drip, between(2500,9000)); };
+    const drip=()=>{ if(!muted && ac && ac.state==='running') play('drip',{ x:lx+between(-8,8), y:ly+between(-8,8) }); dripTimer=setTimeout(drip, between(3500,11000)); };
     dripTimer=setTimeout(drip, 4000);
+    startMusic();
   }
+  // ---- procedural music (dark ambient with a pulse): a pad on a slow minor/phrygian progression, a bass line, sparse echoing lead notes, and drums that come in with the danger ----
+  // intensity 0 = quiet (building), 1 = heroes in the dungeon, 2 = fighting. Everything is generated, nothing is recorded.
+  let musicOn=true, musicGain=null, wet=null, delay=null, intensity=0, intensityTarget=0, step=0, nextT=0, musicTimer=null, bar=0, leadIdx=7, padNodes=[];
+  try{ musicOn=localStorage.getItem('dl_music')!=='0'; }catch(e){}
+  const BPM=84, STEP=60/BPM/4;
+  const SCALE=[0,1,3,5,7,8,10], ROOT=45;                        // A phrygian
+  const PROG=[{r:0,t:[0,3,7]},{r:1,t:[0,4,7]},{r:0,t:[0,3,7]},{r:-2,t:[0,4,7]}];
+  const mtof=m=>440*Math.pow(2,(m-69)/12);
+  const scaleNote=i=>{ const o=Math.floor(i/7), d=((i%7)+7)%7; return ROOT+12+o*12+SCALE[d]; };
+  function impulse(){ const len=ac.sampleRate*2.4, b=ac.createBuffer(2,len,ac.sampleRate); for(let c=0;c<2;c++){ const d=b.getChannelData(c); for(let i=0;i<len;i++) d[i]=(rnd()*2-1)*Math.pow(1-i/len,2.6); } return b; }
+  function startMusic(){
+    musicGain=ac.createGain(); musicGain.gain.value=musicOn?0.5:0; musicGain.connect(master);
+    const conv=ac.createConvolver(); conv.buffer=impulse(); wet=ac.createGain(); wet.gain.value=0.45; wet.connect(conv); conv.connect(musicGain);
+    delay=ac.createDelay(1); delay.delayTime.value=STEP*3; const fb=ac.createGain(); fb.gain.value=0.42; delay.connect(fb); fb.connect(delay); delay.connect(wet);
+    nextT=ac.currentTime+0.3; musicTimer=setInterval(scheduleMusic, 120);
+  }
+  function voice(type,f,t,dur,gain,{ cutoff=1200, att=0.01, rel=0.2, send=0, detune=0 }={}){
+    const o=ac.createOscillator(); o.type=type; o.frequency.value=f; o.detune.value=detune;
+    const flt=ac.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=cutoff; flt.Q.value=2;
+    const g=ac.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain,t+att); g.gain.setValueAtTime(gain,t+Math.max(att,dur)); g.gain.exponentialRampToValueAtTime(0.0001,t+dur+rel);
+    o.connect(flt); flt.connect(g); g.connect(musicGain); if(send){ const sg=ac.createGain(); sg.gain.value=send; g.connect(sg); sg.connect(delay); sg.connect(wet); }
+    o.start(t); o.stop(t+dur+rel+0.05);
+  }
+  function drum(kind,t,gain){
+    if(kind==='kick'){ const o=ac.createOscillator(); o.frequency.setValueAtTime(130,t); o.frequency.exponentialRampToValueAtTime(42,t+0.14); const g=ac.createGain(); g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22); o.connect(g); g.connect(musicGain); o.start(t); o.stop(t+0.25); }
+    else { const src=ac.createBufferSource(); src.buffer=noiseBuf; const f=ac.createBiquadFilter(); f.type=kind==='hat'?'highpass':'bandpass'; f.frequency.value=kind==='hat'?7000:1800; const g=ac.createGain(); const d=kind==='hat'?0.05:0.14; g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(0.0001,t+d); src.connect(f); f.connect(g); g.connect(musicGain); src.start(t,rnd()); src.stop(t+d+0.02); }
+  }
+  function scheduleMusic(){
+    if(!ac||ac.state!=='running'||!musicOn||muted){ if(ac) nextT=Math.max(nextT,ac.currentTime+0.1); return; }
+    intensity+=(intensityTarget-intensity)*0.15;
+    while(nextT<ac.currentTime+0.35){
+      const t=nextT, s=step%16, br=Math.floor(step/16), chord=PROG[Math.floor(br/2)%PROG.length], I=intensity;
+      if(s===0 && br%2===0){                                   // a new chord every two bars: a slowly breathing pad
+        chord.t.forEach((iv,i)=>{ const m=ROOT-12+chord.r+iv; [-7,7].forEach(dt=>voice('sawtooth',mtof(m+12),t,STEP*30,0.045,{ cutoff:500+250*Math.sin(br)+I*500, att:1.6, rel:2.2, detune:dt, send:0.5 })); });
+        voice('sine',mtof(ROOT-24+chord.r),t,STEP*30,0.2,{ att:0.5, rel:1.5 });
+      }
+      // bass: one long note when quiet, a pulse when the danger rises
+      if(I<0.6){ if(s===0 || s===8) voice('triangle',mtof(ROOT-12+chord.r),t,STEP*6,0.16,{ cutoff:420, att:0.03, rel:0.4 }); }
+      else { const pat=[1,0,0,1,0,1,0,0,1,0,0,1,0,0,1,0]; if(pat[s]) voice('sawtooth',mtof(ROOT-12+chord.r+(s===11&&I>1.4?7:0)),t,STEP*1.4,0.14,{ cutoff:300+I*180, att:0.005, rel:0.1 }); }
+      // lead: sparse notes by a random walk through the scale, with echo
+      const pLead=0.11-0.04*I;
+      if(s%2===0 && rnd()<pLead){ leadIdx=Math.max(2,Math.min(13,leadIdx+Math.round(between(-2,2)))); voice('triangle',mtof(scaleNote(leadIdx)),t,STEP*2,0.13,{ cutoff:2600, att:0.01, rel:0.9, send:0.7 }); }
+      // drums
+      if(I>0.5){ if(s%8===0||(s===10&&I>1.2)) drum('kick',t,0.5); if(s%4===2) drum('hat',t,0.07+0.05*I); }
+      if(I>1.3){ if(s%4===0) drum('kick',t,0.35); if(s===4||s===12) drum('snare',t,0.18); }
+      nextT+=STEP; step++;
+    }
+  }
+  function setIntensity(i){ intensityTarget=i; }
+  function setMusic(on){ musicOn=on; try{ localStorage.setItem('dl_music', on?'1':'0'); }catch(e){} if(musicGain) musicGain.gain.value=on?0.5:0; }
   function setMuted(m){ muted=m; try{ localStorage.setItem('dl_muted', m?'1':'0'); }catch(e){} if(master) master.gain.value=m?0:vol; }
-  return { ensure, play, listener, setMuted, get muted(){ return muted; }, RECIPES };
+  return { ensure, play, listener, setMuted, setIntensity, setMusic, get music(){ return musicOn; }, get muted(){ return muted; }, RECIPES };
 })();

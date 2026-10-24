@@ -21,6 +21,7 @@ const View3D=(()=>{
     T=window.THREE; host=hostEl; cols=worldCols; rows=worldRows;
     renderer=new T.WebGLRenderer({ antialias:false, alpha:false });
     renderer.domElement.id='board3d';
+    renderer.domElement.addEventListener('webglcontextlost', e=>{ e.preventDefault(); if(View3D.onLost) View3D.onLost(); });
     Object.assign(renderer.domElement.style,{ position:'absolute', left:'0', top:'0', width:'100%', height:'100%', display:'none' });
     host.insertBefore(renderer.domElement, host.firstChild);
     scene=new T.Scene(); scene.background=new T.Color(0x0f0b09); scene.fog=new T.Fog(0x0f0b09,26,70);
@@ -379,6 +380,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { init, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();

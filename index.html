@@ -35,6 +35,8 @@
   body.fp #minimap{ display:none; }
   #fpHud{ position:absolute; inset:0; pointer-events:none; font-family:'Cinzel',serif; color:#f0e2c0; z-index:5; }
   #fpHud[hidden]{ display:none; }
+  #errToast{ position:absolute; left:50%; top:52px; transform:translateX(-50%); z-index:40; background:rgba(110,35,35,.92); color:#fff0d8; border:1px solid #c98080; border-radius:6px; padding:6px 12px; font-size:12px; max-width:70%; pointer-events:none; }
+  #errToast[hidden]{ display:none; }
   #fpHand{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
   .fpCross{ position:absolute; left:50%; top:50%; width:14px; height:14px; margin:-7px 0 0 -7px; }
   .fpCross::before,.fpCross::after{ content:''; position:absolute; background:rgba(255,240,200,.75); }
@@ -264,6 +266,7 @@
       <button id="view3dBtn" title="3D-Ansicht (V) — Q/E dreht die Kamera">3D</button>
       <span class="sep"></span>
       <button id="muteBtn" title="Ton ein/aus (N)">🔊</button>
+      <button id="musicBtn" title="Musik ein/aus (B)">🎵</button>
       <button id="panelToggle" title="Seitenleiste ein/aus (Tab)">🗂</button>
       <button id="levelMenuBtn" title="Zurück zum Hauptmenü">☰</button>
     </div>
@@ -290,6 +293,7 @@
         <div class="fpKeys">W/S vor/zurück · A/D seitwärts · Q/E oder Maus drehen · gedrückte Maustaste: zuschlagen/graben</div>
       </div>
       <div id="pauseLabel" hidden>PAUSE</div>
+      <div id="errToast" hidden></div>
       <div id="endOverlay" hidden><div class="endBox"><h2 id="endTitle"></h2><p id="endText"></p><button id="endBtn">Neues Spiel</button></div></div>
       </div>
       <div id="combatBar" hidden></div>
@@ -6053,28 +6057,26 @@ function updateWarUI(){
   } else overlay.hidden=true;
 }
 
+// Errors never stop the game: each part of a tick is guarded on its own, the error is reported once (toast + console) and play goes on.
+const errorCounts={};
+function reportError(where,e){
+  const key=where+': '+(e&&e.message||e); errorCounts[key]=(errorCounts[key]||0)+1;
+  if(errorCounts[key]===1 || errorCounts[key]%500===0){
+    console.error('[Dungeon Lord] '+key+' (x'+errorCounts[key]+')\n'+(e&&e.stack||''));
+    const t=document.getElementById('errToast');
+    if(t){ t.textContent='⚠ Fehler im Spiel (läuft weiter): '+key+' · bitte melden'; t.hidden=false; clearTimeout(t._h); t._h=setTimeout(()=>{ t.hidden=true; },12000); }
+  }
+}
+function guard(where,fn,arg){ try{ fn(arg); }catch(e){ reportError(where,e); } }
 function gameTick(){
   if(screen!=='level') return;
-  if(state.war && state.war.over){ draw(); updateUI(); return; }
+  if(state.war && state.war.over){ guard('draw',draw); guard('ui',updateUI); return; }
   state.tickCount++;
-  state.imps.forEach(tickImp);
-  state.creatures.forEach(tickCreature);
-  processDeaths();
-  tickArenas();
-  tickTantrums();
-  tickCorpses();
-  tickEffects();
-  tickFlySpawning();
-  tickWarlockSpawning();
-  tickBeetleSpawning();
-  tickHoundSpawning();
-  tickHatcheries();
-  tickSmelters();
-  pruneEventLog();
-  tickPayday();
-  tickWar();
-  if(state.tickCount%2===0 || !state.vis) updateFog();
-  draw(); updateUI(); markDirty();
+  state.imps.slice().forEach(i=>guard('imp '+(i.state||''),tickImp,i));
+  state.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
+  [processDeaths,tickArenas,tickTantrums,tickCorpses,tickEffects,tickFlySpawning,tickWarlockSpawning,tickBeetleSpawning,tickHoundSpawning,tickHatcheries,tickSmelters,pruneEventLog,tickPayday,tickWar].forEach(f=>guard(f.name,f));
+  if(state.tickCount%2===0 || !state.vis) guard('fog',updateFog);
+  guard('draw',draw); guard('ui',updateUI); markDirty();
 }
 
 function pruneEventLog(){
@@ -7797,6 +7799,10 @@ function updateRenderPositions(dt){
 
 let lastFrameTime=null, lastMinimap=0;
 function renderLoop(now){
+  requestAnimationFrame(renderLoop);      // first: a failing frame must not end the loop
+  try{ renderFrame(now); }catch(e){ reportError('render',e); }
+}
+function renderFrame(now){
   if(lastFrameTime===null) lastFrameTime=now;
   const dt=Math.min(0.1, (now-lastFrameTime)/1000);
   lastFrameTime=now;
@@ -7805,7 +7811,14 @@ function renderLoop(now){
   updateRenderPositions(dt);
   if(typeof FX!=='undefined') FX.update(gameSpeed===0?0:dt);
   if(state && screen==='level'){ refreshInspect(); renderCombatBar(); draw(); if(now-lastMinimap>200){ lastMinimap=now; drawMinimap(); } }
-  requestAnimationFrame(renderLoop);
+  if(typeof SFX!=='undefined' && state && screen==='level' && now-lastMood>1000){ lastMood=now; SFX.setIntensity(moodLevel()); }
+}
+let lastMood=0;
+// how dangerous it is right now for the music: 0 quiet, 1 heroes in the dungeon, 2 fighting
+function moodLevel(){
+  const heroes=state.creatures.filter(c=>c.category==='hero'&&!c.unconscious&&!c.post);
+  if(!heroes.length) return 0;
+  return state.creatures.some(c=>c.state==='fighting'||c.state==='engaging') ? 2 : 1;
 }
 requestAnimationFrame(renderLoop);
 
@@ -8626,6 +8639,10 @@ document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
 document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
 document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
 document.getElementById('view3dBtn').addEventListener('click', ()=> setView3d(!view3dOn));
+View3D.onLost=()=>{ reportError('3D', new Error('Die Grafikkarte hat den 3D-Kontext verloren, ich wechsle zur 2D-Ansicht')); if(possessed) endPossession(); setView3d(false); };
+function toggleMusic(){ SFX.ensure(); SFX.setMusic(!SFX.music); document.getElementById('musicBtn').style.opacity=SFX.music?1:0.45; }
+document.getElementById('musicBtn').addEventListener('click', toggleMusic);
+document.getElementById('musicBtn').style.opacity=SFX.music?1:0.45;
 function toggleMute(){ SFX.ensure(); SFX.setMuted(!SFX.muted); document.getElementById('muteBtn').textContent=SFX.muted?'🔇':'🔊'; }
 document.getElementById('muteBtn').addEventListener('click', toggleMute);
 document.getElementById('muteBtn').textContent=SFX.muted?'🔇':'🔊';
@@ -8674,9 +8691,10 @@ window.addEventListener('mouseup', ()=>{ mmDrag=false; });
 minimap.addEventListener('contextmenu', e=>e.preventDefault());
 
 // Game ticks run in a self-scheduling loop so the speed can change (and pause) at any time
+// The next tick is scheduled first and a failing tick is reported instead of killing the loop (one exception used to freeze the whole game world).
 function tickLoop(){
-  if(gameSpeed>0) gameTick();
   setTimeout(tickLoop, TICK_MS/Math.max(1,gameSpeed));
+  if(gameSpeed>0){ try{ gameTick(); }catch(e){ reportError('tick',e); } }
 }
 
 // Comfort keys
@@ -8695,6 +8713,7 @@ window.addEventListener('keydown', e=>{
   else if(k==='v'){ setView3d(!view3dOn); }
   else if(e.key==='Tab'){ togglePanel(); e.preventDefault(); }
   else if(k==='n'){ toggleMute(); }
+  else if(k==='b'){ toggleMusic(); }
   else if(k==='home'){ jumpToThrone(); }
 });
 
