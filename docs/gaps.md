@@ -36,8 +36,8 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Räume: Thron, Lager, Schlafsaal, Bibliothek, Hühnerfarm, Arena, Schmelze, Schmiede, Brücke | ✅ | |
-| Räume: Gefängnis (bekehren), Friedhof, Tempel, Taverne, Wachposten, Werkstatt, Rüstkammer | ❌ | Arbeitskategorien kennen sie schon, die Räume nicht |
-| Bekehren und Korrumpieren gefallener Helden | ❌ | |
+| Räume: Friedhof, Tempel, Taverne, Wachposten, Werkstatt, Rüstkammer | ❌ | Arbeitskategorien kennen sie schon, die Räume nicht |
+| Bekehren gefallener Helden im Gefängnis | ✅ | Raum `prison` (freigeschaltet durch Forschung beim Anblick eines bewusstlosen Helden); Imps tragen Bewusstlose in Zellen, nach einer Weile wird der Held ein Diener des Dunkels (`convertPrisoner`). Fehlt: Korrumpieren durch Wärter-Arbeit, Tempel/Opfer, Verhör |
 | Zauber: Imp beschwören, Aufheben, Besessenheit | ✅ | weitere Zauber und Fähigkeiten (Teil 22) fehlen |
 | Fallen | ❌ | in den Gesprächen erwähnt, nicht im Design verankert |
 | Bedürfnisse (Hunger, Schlaf, Lohn, Zufriedenheit) | ✅ | |
@@ -67,6 +67,6 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 1. ~~Fertigkeitspunkte ausgeben und Tod des Lords mit Lebenspool~~ (gebaut).
 2. ~~Belohnungen: Artefakte aus Nebenzielen und Pforten~~ (gebaut). Offen: Artefakte, die Kreaturen betreffen, und versteckte Funde.
 3. ~~Finale mit Boss der Hauptstadt~~ (gebaut).
-4. **Gefängnis und Bekehren** (bringt Eigenleben und Bossmechanik zusammen).
+4. ~~Gefängnis und Bekehren~~ (gebaut).
 5. **Eigenleben vertiefen**: Freundschaften, Streit, Rudelverhalten.
 6. Deckel entfernen, NG+, Vault.

@@ -477,6 +477,10 @@ const TILEGEN=(()=>{
     for(let x=0;x<16;x++){ g[3][x]=P.z; g[12][x]=P.z; } [[2,3],[6,3],[10,3],[14,3],[2,12],[6,12],[10,12],[14,12]].forEach(([x,y])=>{ g[y][x]=P.W; }); return { g, pal:P }; });
   mk('hatchery',(v)=>{ const r=rng(v*29+6), P={ h:'#b8a24a', H:'#d8c468', d:'#8f7a2c' }, g=grid(P.h);
     for(let i=0;i<34;i++){ const x=Math.floor(r()*13), y=Math.floor(r()*16), c=r()<0.5?P.H:P.d; g[y][x]=c; g[y][x+1]=c; if(r()<0.5) g[y][x+2]=c; } return { g, pal:P }; });
+  mk('prison',(v)=>{ const r=rng(v*53+17), P={ s:'#3c3c44', S:'#4c4c56', k:'#1c1c22', i:'#8d949c', y:'#6a5a3a' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.15) g[y][x]=P.S; else if(q<0.22) g[y][x]=P.k; }
+    for(let x=0;x<16;x++){ g[7][x]=P.k; g[8][x]=P.k; } for(let y=0;y<16;y++){ g[y][7]=P.k; g[y][8]=P.k; }
+    [[3,3],[12,3],[3,12],[12,12]].forEach(([x,y])=>{ g[y][x]=P.i; g[y+1][x]=P.i; g[y][x+1]=P.y; }); return { g, pal:P }; });
   mk('arena',(v)=>{ const r=rng(v*37+7), P={ s:'#c9b080', S:'#dcc898', d:'#b39a68', r:'#7a2a22' }, g=grid(P.s);
     for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.12) g[y][x]=P.S; else if(q<0.3) g[y][x]=P.d; }
     if(v%3===2) for(let i=0;i<5;i++){ g[4+Math.floor(r()*8)][4+Math.floor(r()*8)]=P.r; } return { g, pal:P }; });
@@ -569,4 +573,14 @@ const TILEGEN=(()=>{
     if(eq&&eq.weapon&&globalThis.TOOLGEN){ const w=TOOLGEN.weapon(eq.weapon); if(w){ const wp={}; w.px.forEach(([x,y,c])=>{ let ch=Object.keys(wp).find(q=>wp[q]===c); if(!ch){ ch=String(Object.keys(wp).length); wp[ch]=c; } const X=13-w.grip[0]+x, Y=8-w.grip[1]+y+bob; if(X>=0&&X<16&&Y>=0&&Y<15) f.g[Y][X]=ch; }); f.pal=wp; } }
     if(fr) f.g=f.g.map(r=>r.slice().reverse());
     return f; } };
+})();
+
+// ---- converted heroes: the same body on the player's side (player-side eyes, darker clothes) ----
+(()=>{
+  const dark=hex=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16), f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k))); return '#'+[f((n>>16)&255,0.62),f((n>>8)&255,0.55),f(n&255,0.72)].map(v=>v.toString(16).padStart(2,'0')).join(''); };
+  ['barbarian','thief','wizard','knight','elf','archer','monk','paladin','dwarf','giant'].forEach(k=>{
+    const z=ZOO[k]; if(!z||ZOO[k+'_ally']) return;
+    const pal={}; Object.keys(z.pal).forEach(c=>{ pal[c]=(c==='e'||c==='p'||c==='k')?z.pal[c]:dark(z.pal[c]); });
+    ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,fr,mv,eq); f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } };
+  });
 })();

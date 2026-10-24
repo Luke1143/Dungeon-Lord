@@ -336,6 +336,7 @@
           <button class="roomBtn" data-room="smelter" id="smelterBtn" hidden>Schmelze (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="forge" id="forgeBtn" hidden>Schmiede (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="arena">Arena (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="prison">Gefängnis (100 Gold/Kachel)</button>
           <button id="demolishBtn" class="dangerBtn">Abreißen (volle Rückerstattung)</button>
         </div>
         <div id="menu-creatures" class="menuPanel" hidden>
@@ -425,6 +426,7 @@ const ROOM_TYPES={
   smelter:   { label:'Schmelze',    costPerTile:1, color:'#5c2f24', icon:null },
   forge:     { label:'Schmiede',    costPerTile:1, color:'#4a3520', icon:null },
   arena:     { label:'Arena',       costPerTile:1, color:'#5a2a2a', icon:null },
+  prison:    { label:'Gefängnis',   costPerTile:1, color:'#34343c', icon:null },
   portal:    { label:'Weltportal',  costPerTile:0, color:'#5a1a1a', icon:null }
 };
 
@@ -437,7 +439,10 @@ const RESEARCH_TOPICS=[
     trigger:(x,y)=> (state.storageContents||[]).some(s=>s.x===x && s.y===y && s.goodId==='ore') },
   // Der Anblick fertiger Eisenbarren bringt die Idee zur Schmiede
   { id:'forge', label:'Schmiede', unlocksRoom:'forge',
-    trigger:(x,y)=> (state.storageContents||[]).some(s=>s.x===x && s.y===y && s.goodId==='iron') }
+    trigger:(x,y)=> (state.storageContents||[]).some(s=>s.x===x && s.y===y && s.goodId==='iron') },
+  // The sight of a fallen hero gives the idea of a prison
+  { id:'prison', label:'Gefängnis', unlocksRoom:'prison',
+    trigger:(x,y)=> state.creatures.some(c=>c.unconscious && c.faction==='good' && c.kind!=='dungeonlord' && Math.round(c.x)===x && Math.round(c.y)===y) }
 ];
 
 function isTopicUnlocked(id){
@@ -758,6 +763,7 @@ function killCreature(c, killer){
   if(c.kind==='dungeonlord'){ if(!c.unconscious) faintLord(c); return; }
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
   c.removed=true;
+  if(c.carryingPrisoner) CARGO.prisoner.abandon(c);
   dbg('kill', `${actorLabel(c)} stirbt${killer?' durch '+actorLabel(killer):''} bei ${c.x},${c.y}`);
   if(c.kind==='dungeonlord'){
     if(possessed===c) endPossession();
@@ -783,6 +789,7 @@ function killCreature(c, killer){
 // Bewusstlose erholen sich langsam, wenn niemand eingreift
 function tickUnconscious(c){
   if(!c.unconscious) return true;
+  if(c.imprisoned){ tickPrisoner(c); return true; }
   c.unconsciousTimer--;
   if(c.unconsciousTimer<=0){
     c.unconscious=false;
@@ -1218,7 +1225,7 @@ function usedSlots(c){
 // Imps duerfen Ausruestung tragen (liefern, einlagern), profitieren aber nicht davon.
 function usesEquipment(c){
   const s=SPECIES[c.kind];
-  return !!(s && s.usesEquipment);
+  return !!((s && s.usesEquipment) || c.corrupted);
 }
 
 function levelScale(level){ return 1 + LEVEL_SCALE_PER_LEVEL*((level||1)-1); }
@@ -3266,7 +3273,7 @@ function tickCreature(c){
 function tickCreatureOnce(c){
   if(tickCombat(c)) return;
   if(c.kind==='fly') tickFly(c);
-  else if(c.kind==='warlock' || HORDE_KINDS.has(c.kind)) tickWarlock(c);
+  else if(c.kind==='warlock' || HORDE_KINDS.has(c.kind) || c.corrupted) tickWarlock(c);
   else if(c.kind==='beetle') tickBeetle(c);
   else if(c.kind==='hound') tickHound(c);
   else if(c.category==='hero') tickHero(c);
@@ -4237,7 +4244,56 @@ function idleAtThrone(imp){
 // ===== Frachtarten =====
 // Jede Art beschreibt selbst: aufnehmen, Ziel finden, abliefern, notfalls fallenlassen.
 // Neue Ressourcen brauchen nur einen Eintrag hier - kein neuer Zustand, kein neuer Job.
+// ===== Prisoners: fallen heroes are carried to a prison cell by imps and converted there =====
+const PRISON_MIN_SIZE=4, PRISON_CONVERT_BASE=420, PRISON_CONVERT_PER_LEVEL=80;
+function prisonRoomsReady(){ return computeRooms().filter(r=>r.type==='prison' && r.tiles.length>=PRISON_MIN_SIZE); }
+function freePrisonSpots(){
+  const taken=new Set(state.creatures.filter(c=>c.imprisoned).map(c=>Math.round(c.x)+','+Math.round(c.y)));
+  const spots=new Set();
+  prisonRoomsReady().forEach(r=>r.tiles.forEach(t=>{ if((t.x+t.y)%2===0 && !taken.has(t.x+','+t.y)) spots.add(t.x+','+t.y); }));
+  return spots;
+}
+function findPrisonerJob(imp){
+  if(!freePrisonSpots().size) return null;
+  const res=bfsFind(imp.x,imp.y,(x,y)=>state.creatures.some(c=>c.unconscious && c.faction==='good' && c.category==='hero' && !c.isBoss && !c.imprisoned && !c.reservedBy && Math.round(c.x)===x && Math.round(c.y)===y));
+  return res?{ path:res.path, target:res.target }:null;
+}
+function convertPrisoner(c){
+  Object.assign(c,{ imprisoned:null, unconscious:false, corrupted:true, faction:'evil', category:'humanoid', needsFood:true, hunger:HUNGER_MAX, hungerTick:0, eatProgress:0, foodTile:null,
+    energy:ENERGY_MAX, energyTick:0, leisureId:null, leisureTimer:0, earnedWage:false, owedWages:0, workLog:{}, happiness:50, loyalty:60, state:'seekingLair',
+    lairTile:null, lairTargetTile:null, claimProgress:0, path:[], fightTarget:null, grudges:{}, post:null, guardRoot:null, hp:statMaxHp(c) });
+  logEvent(`${c.name} (${(SPECIES[c.kind]||{}).label||c.kind}) wurde bekehrt und dient nun dem Dunkel.`, c.x, c.y);
+}
+function tickPrisoner(c){
+  const keepers=state.creatures.filter(o=>o!==c && factionOf(o)==='evil' && !o.unconscious && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3).length;
+  c.imprisoned.progress+=1+Math.min(2,keepers*0.5);
+  if(c.imprisoned.progress>=PRISON_CONVERT_BASE+PRISON_CONVERT_PER_LEVEL*(c.level||1)) convertPrisoner(c);
+}
 const CARGO={
+  prisoner: {
+    icon: ()=> '⛓️',
+    label: 'Gefangenen',
+    take(imp,x,y){
+      const idx=state.creatures.findIndex(c=>c.unconscious && c.reservedBy===imp.id && Math.round(c.x)===x && Math.round(c.y)===y);
+      if(idx<0) return false;
+      imp.carryingPrisoner=state.creatures.splice(idx,1)[0];
+      return true;
+    },
+    findDest(imp){ const spots=freePrisonSpots(); return spots.size ? bfsFind(imp.x,imp.y,(x,y)=>spots.has(x+','+y)) : null; },
+    drop(imp,x,y){
+      const c=imp.carryingPrisoner; if(!c) return;
+      imp.carryingPrisoner=null;
+      Object.assign(c,{ x, y, renderX:x, renderY:y, reservedBy:null, imprisoned:{ progress:0 }, unconscious:true });
+      state.creatures.push(c);
+      logEvent(`${c.name} sitzt jetzt im Gefängnis.`, x, y);
+    },
+    abandon(imp){
+      const c=imp.carryingPrisoner; if(!c) return;
+      imp.carryingPrisoner=null;
+      Object.assign(c,{ x:imp.x, y:imp.y, renderX:imp.x, renderY:imp.y, reservedBy:null, unconsciousTimer:UNCONSCIOUS_TICKS });
+      state.creatures.push(c);
+    }
+  },
   gold: {
     icon: (imp)=> goldIcon(imp.carryAmount||1),
     label: 'Gold',
@@ -4607,9 +4663,9 @@ function tickImpOnce(imp){
 
   if(imp.state==='idle'){
     // Traegt der Imp schon etwas? Dann erst abliefern.
-    if(imp.carrying || imp.carryOre>0 || imp.carryIron>0 || imp.carryingCorpse || imp.carryingBook){
+    if(imp.carrying || imp.carryOre>0 || imp.carryIron>0 || imp.carryingCorpse || imp.carryingBook || imp.carryingPrisoner){
       const kind = imp.carrying ? 'gold' : imp.carryOre>0 ? 'ore' : imp.carryIron>0 ? 'iron'
-                 : imp.carryingCorpse ? 'corpse' : 'book';
+                 : imp.carryingCorpse ? 'corpse' : imp.carryingPrisoner ? 'prisoner' : 'book';
       const def=CARGO[kind];
       const dest=def.findDest(imp);
       if(dest){
@@ -4673,6 +4729,11 @@ function tickImpOnce(imp){
       imp.task='claim'; imp.path=job.path; imp.claimTile=job.target;
       imp.state=imp.path.length?'walking':'claiming'; imp.digProgress=0;
       return;
+    }
+    job=findPrisonerJob(imp);      // a fallen hero must reach a cell before he wakes: ahead of reinforcing and feeding
+    if(job){
+      const pr=state.creatures.find(c=>c.unconscious && c.faction==='good' && !c.imprisoned && !c.reservedBy && Math.round(c.x)===job.target.x && Math.round(c.y)===job.target.y);
+      if(pr){ pr.reservedBy=imp.id; beginHaul(imp,'prisoner',job.target,job.path); return; }
     }
     job=findReinforceJob(imp);
     if(job){
@@ -4868,6 +4929,7 @@ function heldSlotIcons(c, skipGear){
   if(c.carryOre && !sack)       for(let i=0;i<c.carryOre;i++)         cargo.push(ORE_EMOJI);
   if(c.carryIron && !sack)      for(let i=0;i<c.carryIron;i++)        cargo.push(INGOT_EMOJI);
   if(c.carryingCorpse) cargo.push(CORPSE_ICON);
+  if(c.carryingPrisoner) cargo.push('⛓️');
   if(c.carryingBook)   cargo.push('📕');
   cargo.forEach(ic=>{
     const free=slots.indexOf(null);
@@ -4906,6 +4968,7 @@ function swingPhase(c){
 
 // Genau EIN Gedanke ueber dem Kopf, nach fester Rangfolge.
 function thoughtOf(c){
+  if(c.imprisoned) return '⛓️';
   if(c.unconscious) return '💫';
   if(c.state==='fleeing') return '❗';
   if(c.state==='fighting' || c.state==='engaging') return '⚔️';
@@ -9014,7 +9077,7 @@ document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ aw
 // Minimap: one pixel block per tile; click or drag to jump
 const MM_SCALE=4;
 const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
-const MM_ROOMS={ throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
+const MM_ROOMS={ prison:'#6a6a78', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
 function drawMinimap(){
   if(!minimapOn || !state) return;
   const g=mmCtx;
