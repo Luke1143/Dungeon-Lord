@@ -8,16 +8,18 @@ const ARENA_LAYOUTS=[['pit','Offene Grube'],['caverns','Höhlen'],['halls','Hall
 const ARENA_DIMS=[['S','klein'],['M','mittel'],['L','groß']];
 const ARENA_GEARS=[['auto','Standard'],['none','keine'],['custom','eigene']];
 
-function arenaGroup(kind,count,level){ return { kind, count, level, gear:'auto', tier:1, weapon:'', armor:'', shield:'', ability:'' }; }
+function arenaGroup(kind,count,level){ return { kind, count, level, gear:'auto', tier:1, weapon:'', armor:'', shield:'', ability:'', seed:Math.floor(Math.random()*1e9) }; }
+// the set-up lists every creature on its own: a group of N becomes N entries (older saved set-ups), each with its own look seed
+function arenaExpand(setup){ setup.teams.forEach(t=>{ const out=[]; t.groups.forEach(g=>{ for(let i=0;i<Math.max(1,Math.min(20,g.count|0||1));i++) out.push(Object.assign({},g,{ count:1, seed:i?Math.floor(Math.random()*1e9):(g.seed!==undefined?g.seed:Math.floor(Math.random()*1e9)) })); }); t.groups=out; }); return setup; }
 function arenaDefaultSetup(){
-  return { teams:[ { name:Tr('Dunkelheit'), groups:[arenaGroup('ork',3,1)] }, { name:Tr('Helden'), groups:[arenaGroup('barbarian',3,1)] } ],
-           map:{ layout:'pit', dims:'S', seed:'', lava:0, water:0, crystal:0, near:0 }, batch:20 };
+  return arenaExpand({ teams:[ { name:Tr('Dunkelheit'), groups:[arenaGroup('ork',3,1)] }, { name:Tr('Helden'), groups:[arenaGroup('barbarian',3,1)] } ],
+           map:{ layout:'pit', dims:'S', seed:'', lava:0, water:0, crystal:0, near:0 }, batch:20 });
 }
 let arenaSetup=arenaDefaultSetup();
 function arenaKinds(){ return Object.keys(SPECIES).filter(k=>SPECIES[k].canFight && SPECIES[k].category!=='boss' && !['worker','dungeonlord','imp','fly'].includes(k)); }
 const arenaTeamOf=c=> c.faction==='evil'?0:1;
 async function arenaSaveSetup(){ try{ await window.storage.set(ARENA_STORE, JSON.stringify(arenaSetup), false); }catch(e){} }
-async function arenaLoadSetup(){ try{ const r=await window.storage.get(ARENA_STORE,false); if(r&&r.value){ const s=JSON.parse(r.value); if(s&&s.teams&&s.teams.length===2&&s.map) arenaSetup=Object.assign(arenaDefaultSetup(),s); } }catch(e){} }
+async function arenaLoadSetup(){ try{ const r=await window.storage.get(ARENA_STORE,false); if(r&&r.value){ const s=JSON.parse(r.value); if(s&&s.teams&&s.teams.length===2&&s.map) arenaSetup=arenaExpand(Object.assign(arenaDefaultSetup(),s)); } }catch(e){} }
 
 // ---- building a match ----
 function arenaHash(s){ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
@@ -28,13 +30,15 @@ function arenaMake(kind,x,y){
   if(HORDE_KINDS.has(kind)||BEAST_KINDS.has(kind)) return createHorde(kind,x,y);
   return createHero(kind,x,y);
 }
-function arenaGear(c,g){
+// the look of each piece (blade shape, helm style ...) follows from the entry's seed, so a re-roll of the seed re-rolls the look
+function arenaSeedGear(items,g,i){ if(g.seed!==undefined) items.forEach((it,k)=>{ it.s=arenaHash(g.seed+':'+(i|0)+':'+k); }); return items; }
+function arenaGear(c,g,i){
   const inst=id=>({ id, q:1, s:Math.floor(Math.random()*1e9) });
   if(g.gear==='none') return [];
-  if(g.gear==='custom') return [g.weapon,g.armor,g.shield].filter(id=>id&&ITEMS[id]).map(inst);
+  if(g.gear==='custom') return arenaSeedGear([g.weapon,g.armor,g.shield].filter(id=>id&&ITEMS[id]).map(inst),g,i);
   const geared=['barbarian','thief','elf','wizard','knight','archer','monk','paladin','dwarf','giant','dryad'];
-  if(geared.includes(c.kind)) return heroGear(c.kind,c.level||1,false,Math.max(0,Math.min(3,g.tier===undefined?1:g.tier)));
-  return (HORDE_START_GEAR[c.kind]||[]).map(inst);
+  if(geared.includes(c.kind)) return arenaSeedGear(heroGear(c.kind,c.level||1,false,Math.max(0,Math.min(3,g.tier===undefined?1:g.tier))),g,i);
+  return arenaSeedGear((HORDE_START_GEAR[c.kind]||[]).map(inst),g,i);
 }
 function arenaComponents(g){
   const W=WORLD_COLS,H=WORLD_ROWS, comp=Array.from({length:H},()=>Array(W).fill(-1)), list=[];
@@ -82,7 +86,7 @@ function arenaBuild(setup,seedExtra){
         for(let i=0;i<Math.max(1,Math.min(20,grp.count|0));i++){
           const at=free.shift()||anchor, c=arenaMake(grp.kind,at.x,at.y);
           c.faction=ti===0?'evil':'good'; c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.xp=xpForLevel(c.level);
-          c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=arenaGear(c,grp);
+          c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=arenaGear(c,grp,i);
           if(grp.ability && ABILITIES[grp.ability]) c.learned=[grp.ability];
           c.state='idle'; c.path=[]; c.arenaTeam=ti; c.state='fighting';
           st.creatures.push(c); st.arena.roster[ti].push(c);
@@ -221,13 +225,16 @@ function arenaRenderSetup(){
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((a,b)=>a[1].localeCompare(b[1],'de'));
   const abil=[['','keine']].concat(Object.keys(ABILITIES).filter(id=>!ABILITIES[id].passive).map(id=>[id,ABILITIES[id].icon+' '+ABILITIES[id].name]));
   const group=(ti,gi,g)=>`<div class="arGroup" data-t="${ti}" data-g="${gi}">
-    <select data-f="kind">${arenaOpts(kinds,g.kind)}</select> × <input data-f="count" type="number" min="1" max="20" value="${g.count}"> Stufe <input data-f="level" type="number" min="1" max="40" value="${g.level}">
-    Ausrüstung <select data-f="gear">${arenaOpts(ARENA_GEARS,g.gear)}</select>
-    ${g.gear==='auto'?`Güte <select data-f="tier">${arenaOpts([[0,'krude'],[1,'normal'],[2,'fein'],[3,'episch']],g.tier)}</select>`:''}
-    ${g.gear==='custom'?`<select data-f="weapon" title="Waffe">${arenaItemOpts('weapon',g.weapon)}</select><select data-f="armor" title="Rüstung">${arenaItemOpts('armor',g.armor)}</select><select data-f="shield" title="Schild">${arenaItemOpts('shield',g.shield)}</select>`:''}
-    Fähigkeit <select data-f="ability">${arenaOpts(abil,g.ability)}</select>
-    <button data-del="1" title="Gruppe entfernen">✕</button></div>`;
-  const team=(ti)=>`<div class="arTeamBox t${ti}"><h3><input data-tn="${ti}" value="${arenaSetup.teams[ti].name}"></h3>${arenaSetup.teams[ti].groups.map((g,gi)=>group(ti,gi,g)).join('')}<button data-add="${ti}">+ Gruppe</button></div>`;
+    <canvas class="arPrev" width="96" height="96" data-prev></canvas>
+    <div class="arFields">
+      <select data-f="kind">${arenaOpts(kinds,g.kind)}</select> Stufe <input data-f="level" type="number" min="1" max="40" value="${g.level}">
+      Ausrüstung <select data-f="gear">${arenaOpts(ARENA_GEARS,g.gear)}</select>
+      ${g.gear==='auto'?`Güte <select data-f="tier">${arenaOpts([[0,'krude'],[1,'normal'],[2,'fein'],[3,'episch']],g.tier)}</select>`:''}
+      ${g.gear==='custom'?`<select data-f="weapon" title="Waffe">${arenaItemOpts('weapon',g.weapon)}</select><select data-f="armor" title="Rüstung">${arenaItemOpts('armor',g.armor)}</select><select data-f="shield" title="Schild">${arenaItemOpts('shield',g.shield)}</select>`:''}
+      Fähigkeit <select data-f="ability">${arenaOpts(abil,g.ability)}</select>
+    </div>
+    <div class="arBtns"><button data-copy="1" title="Kopie ins Team legen">Kopieren</button><button data-reroll="1" title="Aussehen der Ausrüstung neu würfeln">🎲</button><button data-del="1" title="Kämpfer entfernen">✕</button></div></div>`;
+  const team=(ti)=>`<div class="arTeamBox t${ti}"><h3><input data-tn="${ti}" value="${arenaSetup.teams[ti].name}"></h3>${arenaSetup.teams[ti].groups.map((g,gi)=>group(ti,gi,g)).join('')}<button data-add="${ti}">+ Kämpfer</button></div>`;
   const m=arenaSetup.map, num=(f,v,max)=>`<input data-m="${f}" type="number" min="0" max="${max}" value="${v}">`;
   el.innerHTML=`<div class="arTeams">${team(0)}${team(1)}</div>
     <div class="arMap"><h3>Gelände</h3>
@@ -241,7 +248,9 @@ function arenaRenderSetup(){
   const apply=()=>{ arenaSaveSetup(); };
   el.querySelectorAll('.arGroup').forEach(row=>{
     const ti=+row.dataset.t, gi=+row.dataset.g, grp=arenaSetup.teams[ti].groups[gi];
-    row.querySelectorAll('[data-f]').forEach(inp=>inp.addEventListener('change',()=>{ const f=inp.dataset.f; grp[f]=inp.type==='number'||f==='tier'?+inp.value:inp.value; apply(); if(f==='gear') arenaRenderSetup(); }));
+    row.querySelectorAll('[data-f]').forEach(inp=>inp.addEventListener('change',()=>{ const f=inp.dataset.f; grp[f]=inp.type==='number'||f==='tier'?+inp.value:inp.value; apply(); if(f==='gear'||f==='kind') arenaRenderSetup(); }));
+    row.querySelector('[data-copy]').addEventListener('click',()=>{ arenaSetup.teams[ti].groups.splice(gi+1,0,Object.assign({},grp,{ seed:Math.floor(Math.random()*1e9) })); apply(); arenaRenderSetup(); });
+    row.querySelector('[data-reroll]').addEventListener('click',()=>{ grp.seed=Math.floor(Math.random()*1e9); apply(); });
     row.querySelector('[data-del]').addEventListener('click',()=>{ arenaSetup.teams[ti].groups.splice(gi,1); if(!arenaSetup.teams[ti].groups.length) arenaSetup.teams[ti].groups.push(arenaGroup(ti?'barbarian':'ork',1,1)); apply(); arenaRenderSetup(); });
   });
   el.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>{ const ti=+b.dataset.add; arenaSetup.teams[ti].groups.push(arenaGroup(ti?'knight':'troll',1,1)); apply(); arenaRenderSetup(); }));
@@ -254,6 +263,27 @@ function arenaRenderSetup(){
       out.textContent=`${nm[0]} ${r.wins[0]} · ${nm[1]} ${r.wins[1]} · unentschieden ${r.draws} (von ${n}) · Ø ${r.ticks} Ticks · Überlebende Ø ${r.left[0]} / ${r.left[1]}`; },30);
   });
 }
+// the live picture of each entry: its sprite with the chosen gear, idling; the creature is rebuilt whenever the entry changes
+const ARENA_PREVIEWS=new WeakMap();
+function arenaPreviewCreature(grp){
+  const sig=JSON.stringify([grp.kind,grp.level,grp.gear,grp.tier,grp.weapon,grp.armor,grp.shield,grp.seed]);
+  let p=ARENA_PREVIEWS.get(grp); if(p&&p.sig===sig) return p.c;
+  const keep=Math.random; let c=null;
+  try{ c=arenaMake(grp.kind,0,0); c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.inventory=arenaGear(c,grp,0); }catch(e){ c=null; } finally { Math.random=keep; }
+  ARENA_PREVIEWS.set(grp,{ sig, c }); return c;
+}
+function arenaDrawPreviews(){
+  document.querySelectorAll('#arenaSetupBody canvas[data-prev]').forEach(cv=>{
+    const row=cv.closest('.arGroup'); if(!row) return; const grp=arenaSetup.teams[+row.dataset.t].groups[+row.dataset.g]; if(!grp) return;
+    const c=arenaPreviewCreature(grp), g=cv.getContext('2d'); g.clearRect(0,0,cv.width,cv.height); if(!c) return;
+    const key=(typeof ZOO!=='undefined'&&ZOO[c.kind+(row.dataset.t==='0'?'_ally':'')])?c.kind+(row.dataset.t==='0'?'_ally':''):c.kind, z=ZOO[key]; if(!z) return;
+    const extra=z.humanoid?equipLook(c):undefined, t=Math.floor(Date.now()/260)+(c.id||0), img=spriteCanvas(key,t,row.dataset.t==='0',false,extra);
+    const size=Math.round(64*creatureScale(c)), x=(cv.width-size)>>1, y=cv.height-size-4;
+    g.fillStyle=row.dataset.t==='0'?'rgba(230,60,50,0.55)':'rgba(70,130,255,0.55)'; g.beginPath(); g.ellipse(cv.width/2,cv.height-8,size*0.34,size*0.11,0,0,7); g.fill();
+    g.imageSmoothingEnabled=false; g.drawImage(img,x,y,size,size);
+  });
+}
+setInterval(()=>{ if(screen==='arena') arenaDrawPreviews(); },200);
 async function arenaOpenSetup(){ await arenaLoadSetup(); showScreen('arena'); arenaRenderSetup(); }
 document.getElementById('menuArena').addEventListener('click',arenaOpenSetup);
 document.getElementById('arenaBack').addEventListener('click',()=>showScreen('menu'));
