@@ -403,6 +403,7 @@
 <script src="keep.js"></script>
 <script src="view3d.js"></script>
 <script>
+let throneAt={ x:2, y:2 };   // centre of the throne room (top-left unless the level was mirrored, see mirrorLevel)
 let WORLD_COLS=48, WORLD_ROWS=32;   // set per level by setLevelDims (terrain.js)
 const TILE=32;
 let VIEW_COLS=22, VIEW_ROWS=14;     // visible tiles; recomputed from the viewport size and zoom
@@ -475,7 +476,7 @@ function isTopicClaimed(id){
   return isTopicUnlocked(id) || state.creatures.some(c=>c.kind==='warlock' && c.pendingTopic===id);
 }
 
-const COLORS={ rock:'#372c24', goldRock:'#8a6d1f', gemRock:'#6b3fa0', floorNeutral:'#4a4a46', floor:'#6e5a45', mark:'#d4af37', reinforced:'#9db4c9', water:'#2c5570', bedrock:'#15100c' };
+const COLORS={ rock:'#372c24', goldRock:'#8a6d1f', gemRock:'#6b3fa0', floorNeutral:'#4a4a46', floor:'#6e5a45', mark:'#d4af37', reinforced:'#9db4c9', water:'#2c5570', lava:'#c8461a', crystalRock:'#2f7fa8', bedrock:'#15100c' };
 const ORE_ROCK_COLOR='#6b4a32'; // Erzader im Gestein - rostig-braun
 // Rohes Erz wird als Haeufchen aus 1-3 Brocken gezeichnet (siehe drawEmojiCluster)
 const ORE_EMOJI='🪨';
@@ -1712,7 +1713,7 @@ function applyRecipe(actor, rec, x, y){
     const hadGold=t.gold, hadOre=t.ore;
     t.type='floor'; t.gold=false; t.ore=false; t.marked=false; t.reserved=null; t.owned=false; t.reinforced=false;
     t.enemy = actor.faction==='good';   // ground dug by heroes is theirs
-    if(hadGold) t.goldPile=1;
+    if(hadGold) t.goldPile=t.crystal?2:1;
     if(hadOre) t.orePile=1;
 
     let anyMarked=false;
@@ -2197,18 +2198,22 @@ function makeDefaultState(){
       placed=growGemSeam(g,gx,gy, randInt(4,7));
     }
   }
+  growTerrainFeatures(g);
   placeEntrance(g, 6, Math.round(20*Math.sqrt(areaK)));
   placeEntrance(g, Math.round(30*Math.sqrt(areaK)), Math.round(72*Math.sqrt(areaK)), 'portal');
   placeMapBorder(g);
+  const mir=mirrorLevel(g); throneAt=mir.throne;
 
-  const imps=[ createImp(1,1) ];
-  return { grid:g, imps, gold:0, eventLog:[], creatures:[], flySpawnTimer:randInt(30,60), hatcheries:{}, tickCount:0, paydayTimer:PAYDAY_INTERVAL, corpses:[], libraryBooks:{}, warlockSpawnTimer:randInt(40,70), allowCorpseFeeding:true, looseItems:[], effects:[], researchExhaustedLogged:false, ore:0, iron:0, storageFilters:{}, smelters:{}, forges:{}, arenas:{}, beetleSpawnTimer:randInt(80,140), houndSpawnTimer:randInt(90,160), storageWarnings:{}, war:newWar() };
+  const imps=[ createImp(mir.fx?WORLD_COLS-2:1, mir.fy?WORLD_ROWS-2:1) ];
+  const st={ grid:g, imps, gold:0, eventLog:[], creatures:[], flySpawnTimer:randInt(30,60), hatcheries:{}, tickCount:0, paydayTimer:PAYDAY_INTERVAL, corpses:[], libraryBooks:{}, warlockSpawnTimer:randInt(40,70), allowCorpseFeeding:true, looseItems:[], effects:[], researchExhaustedLogged:false, ore:0, iron:0, storageFilters:{}, smelters:{}, forges:{}, arenas:{}, beetleSpawnTimer:randInt(80,140), houndSpawnTimer:randInt(90,160), storageWarnings:{}, war:newWar() };
+  placeRelics(g, st);
+  return st;
 }
 
 function neighbors(x,y){
   return [[x+1,y],[x-1,y],[x,y+1],[x,y-1]].filter(([nx,ny])=>nx>=0&&nx<WORLD_COLS&&ny>=0&&ny<WORLD_ROWS);
 }
-function isWalkable(x,y){ const type=state.grid[y][x].type; return type==='floor' || type==='water'; }
+function isWalkable(x,y){ const t=state.grid[y][x]; return t.type==='floor' || (t.type==='water' && (!t.lava || t.room==='bridge')); }   // lava stops everyone but a bridge
 function isDiggable(t){ return t.type==='rock'; }
 // ===== Fog of war =====
 // Everything starts black. Conquered ground (radius 2) and the player's own units (radius 3) light up what is around them;
@@ -3846,7 +3851,7 @@ const LEISURE_ACTIVITIES=[
   },
   {
     id:'bathe', label:'planscht im Wasser', icon:'💦', duration:20, happiness:10,
-    locate:(c)=> bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].type==='water' && !leisureSpotTaken(x,y,c))
+    locate:(c)=> bfsFind(c.x, c.y, (x,y)=> state.grid[y][x].type==='water' && !state.grid[y][x].lava && !leisureSpotTaken(x,y,c))
   },
   {
     id:'watchFight', label:'verfolgt den Kampf in der Arena', icon:'🎪', duration:22, happiness:14,
@@ -5318,6 +5323,7 @@ function wallBaseSpec(t){
   if(t.castle && t.type==='rock') return { full:'wall:castle', color:'#8d949c', kind:'rock', resource:true };
   if(t.root) return { full:'root', color:'#3a2616', kind:'rock', resource:true };
   const gem=t.gem&&t.gemRevealed;
+  if(t.crystal && t.gold) return { color:COLORS.crystalRock, kind:'gold', resource:true };
   return { color: gem?COLORS.gemRock:(t.gold?COLORS.goldRock:(t.ore?ORE_ROCK_COLOR:COLORS.rock)), kind: gem?'rock':(t.gold?'gold':(t.ore?'ore':'rock')), resource: !!(gem||t.gold||t.ore) };
 }
 function wallFaceSpec(base,nx,ny,reinforced){
@@ -5335,6 +5341,7 @@ function floorSpec(t){
   if(t.room && TILEGEN.has(t.room)) return { full:t.room };
   if(t.goodRoom && !t.owned && TILEGEN.has(t.goodRoom)) return { full:t.goodRoom };   // the enemy's rooms: same textures, blue skin
   if(t.owned) return { full:'owned' };
+  if(t.crystalFloor) return { color:'#34505e', kind:'floor' };
   return { color:COLORS.floorNeutral, kind:'floor' };
 }
 // top-down look of a tile for the 2D view
@@ -5564,7 +5571,7 @@ function tileInfo3d(x,y){
   if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
-    return { wall:false, water:true, color:COLORS.water, kind:null };
+    return { wall:false, water:true, color:t.lava?COLORS.lava:COLORS.water, kind:null };
   }
   if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
   const base=wallBaseSpec(t);
@@ -5657,11 +5664,11 @@ function draw2d(){
         if(t.room && ROOM_TYPES[t.room]) color=ROOM_TYPES[t.room].color;
         else color = t.owned ? COLORS.floor : COLORS.floorNeutral;
       } else if(t.type==='water'){
-        color = COLORS.water;
+        color = t.lava ? COLORS.lava : COLORS.water;
       } else if(t.type==='bedrock'){
         color = COLORS.bedrock;
       } else {
-        color = (t.gem && t.gemRevealed) ? COLORS.gemRock : t.gold ? COLORS.goldRock : t.ore ? ORE_ROCK_COLOR : COLORS.rock;
+        color = (t.gem && t.gemRevealed) ? COLORS.gemRock : (t.crystal&&t.gold) ? COLORS.crystalRock : t.gold ? COLORS.goldRock : t.ore ? ORE_ROCK_COLOR : COLORS.rock;
       }
       const look=tileLook2d(x,y,t);
       if(look && look.full){
@@ -5682,7 +5689,7 @@ function draw2d(){
       ctx.strokeRect(px+0.5,py+0.5,TILE-1,TILE-1);
       if(t.type==='water'){
         const wavePhase = Math.floor((Date.now() + (x*137 + y*271)) / 700) % 2 === 0;
-        ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1;
+        ctx.strokeStyle=t.lava?'rgba(255,220,90,0.45)':'rgba(255,255,255,0.18)'; ctx.lineWidth=1;
         ctx.beginPath();
         if(wavePhase){
           ctx.moveTo(px+4, py+TILE/2);
@@ -6610,7 +6617,7 @@ function winByGoal(g){
   const w=state.war, boss=state.creatures.find(c=>c.isBoss), def=GOALS[g.id];
   if(def.corrupts && boss){
     boss.faction='evil'; boss.alert=false; boss.fightTarget=null; boss.path=[]; boss.state='guarding'; boss.grudges={};
-    boss.home={ x:2, y:2 };
+    boss.home={ x:throneAt.x, y:throneAt.y };
     w.ally={ kind:boss.kind, name:boss.name, level:boss.level };
     w.wonText=def.corruptText(boss);
     logEvent(`${boss.name} ist korrumpiert und kämpft jetzt für euch!`, boss.x, boss.y);
@@ -6825,7 +6832,7 @@ async function save(){
   try{
     const payload={
       grid: state.grid.map(row=>row.map(t=>({
-        type:t.type, gold:t.gold, gem:t.gem, gemRevealed:t.gemRevealed, ore:t.ore, goldPile:t.goldPile, orePile:t.orePile, marked:t.marked, room:t.room, queuedRoom:t.queuedRoom,
+        type:t.type, lava:t.lava, crystal:t.crystal, crystalFloor:t.crystalFloor, castle:t.castle, gold:t.gold, gem:t.gem, gemRevealed:t.gemRevealed, ore:t.ore, goldPile:t.goldPile, orePile:t.orePile, marked:t.marked, room:t.room, queuedRoom:t.queuedRoom,
         owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, seen:t.seen, goodRoom:t.goodRoom, wasGood:t.wasGood, enemy:t.enemy, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
       }))),
       imps: state.imps.map(i=>({id:i.id,x:i.x,y:i.y,carrying:i.carrying,name:i.name,flavor:i.flavor,hp:i.hp,maxHp:i.maxHp,level:i.level,xp:i.xp,baseHp:i.baseHp,baseStrength:i.baseStrength,baseDefense:i.baseDefense,baseDex:i.baseDex,baseSpeed:i.baseSpeed,baseTempo:i.baseTempo,luck:i.luck,loyalty:i.loyalty,kills:i.kills,goldEarned:i.goldEarned,inventory:i.inventory})),
@@ -7254,6 +7261,7 @@ function tileDebug(x,y){
   return `(${x},${y}) ${t.type}${t.room?' room='+t.room:''}${t.goodRoom?' goodRoom='+t.goodRoom:''}${t.wasGood?' wasGood='+t.wasGood:''}${isHidden(x,y)?' VERSTECKT':''} [${flags}]${here?'\nHier: '+here:''}`;
 }
 function describeTile(t,x,y){
+  if(t.type==='water' && t.lava) return 'Lava — nichts kommt hinüber, nur eine Brücke.';
   if(t.type==='water') return 'Wasser — verlangsamt die meisten Kreaturen und kann nicht erobert werden.';
   if(t.type==='bedrock') return 'Bedrock — unzerstörbar, weder abbaubar noch verstärkbar.';
   if(t.type==='floor'){
@@ -7948,6 +7956,7 @@ function handleInspectClick(x,y){
   }
   if(isDiggable(t)){
     const base = (t.gem && t.gemRevealed) ? 'Diamantenfeld — unerschöpflich! Imps können hier endlos Gold abbauen.'
+      : t.crystal ? 'Kristalle — wertvoller als Gold, noch nicht abgebaut.'
       : t.gold ? 'Golderz — wertvoll, aber noch nicht abgebaut.'
       : t.ore ? 'Erzader — liefert Erz für Waffen und Rüstungen.' : 'Gestein — kann abgebaut werden.';
     setInspect(base + (t.marked ? ' (zum Graben markiert)' : ''), {kind:'tile', x, y});
@@ -8185,7 +8194,7 @@ document.getElementById('summonBtn').addEventListener('click', ()=>{
   const cost=summonCost();
   if(state.gold>=cost){
     state.gold-=cost;
-    state.imps.push(createImp(1,1));
+    state.imps.push(createImp(throneAt.x, throneAt.y));
     draw(); updateUI(); markDirty();
   }
 });
@@ -9056,7 +9065,7 @@ function setupDwarfHoard(){
     }
     if(!ok) continue;
     const cx=x0+4, cy=y0+3;
-    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<18 || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<7)) continue;
+    if(phase===0 && (Math.abs(cx-throneAt.x)+Math.abs(cy-throneAt.y)<18 || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<7)) continue;
     for(let y=y0+1;y<=y0+5;y++) for(let x=x0+1;x<=x0+7;x++){
       const t=g[y][x], inHall=(y>=y0+2&&y<=y0+4&&x>=x0+2&&x<=x0+6);
       if(inHall){ t.type='floor'; t.owned=false; t.natural=false; t.goldPile=3; t.hoard=true; t.gold=false; t.ore=false; }
@@ -9084,7 +9093,7 @@ function findStructureSpot(hx,hy,minThrone,minPortal){
       if(phase<2 && (t.type!=='rock'||t.gold||t.ore||t.natural)){ ok=false; break; }
     }
     if(!ok) continue;
-    if(phase===0 && (Math.abs(cx-2)+Math.abs(cy-2)<minThrone || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<minPortal)) continue;
+    if(phase===0 && (Math.abs(cx-throneAt.x)+Math.abs(cy-throneAt.y)<minThrone || Math.abs(cx-portal.x)+Math.abs(cy-portal.y)<minPortal)) continue;
     return { cx, cy };
   }
   return null;
@@ -9216,7 +9225,7 @@ function startLevel(nodeId){
     if(rt.setup && LEVEL_SETUPS[rt.setup]) LEVEL_SETUPS[rt.setup]();
     if(state.war.goals && state.war.rootsTotal) state.war.goals.forEach(g=>{ if(g.id==='undermine_roots') g.total=state.war.rootsTotal; });
     initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
-    (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
+    (campaign.allies||[]).forEach((a,ai)=>{ const off=[[0,0],[-1,0],[1,0],[0,-1],[0,1]][ai%5], throneTile=[throneAt.x+off[0],throneAt.y+off[1]]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, throneAt.x, throneAt.y); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
   state.gold+=150*skillRank('startGold');
   spawnDungeonLord();
@@ -9224,9 +9233,9 @@ function startLevel(nodeId){
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;
   selectedRoomTiles=null; lastInspectTile=null; inspectIndex=0;
   document.querySelectorAll('.roomBtn[data-room]').forEach(b=>{ if(RESEARCH_TOPICS.some(t=>t.unlocksRoom===b.dataset.room)) b.hidden=true; });
-  camX=0; camY=0;
+  jumpCameraTo(throneAt.x, throneAt.y);
   document.getElementById('levelSubtitle').textContent=`${n.name} (${LOCATION_TYPES[n.type].label}) — Runde ${campaign.round+1}. Erobert das Weltportal, bevor die Helden euren Thronsaal einnehmen`;
-  state.war.mods.notes.forEach(t=>logEvent('Gegner: '+t, 2, 2));
+  state.war.mods.notes.forEach(t=>logEvent('Gegner: '+t, throneAt.x, throneAt.y));
   markDirty();
   showScreen('level');
 }
@@ -9418,7 +9427,7 @@ document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ aw
 // Minimap: one pixel block per tile; click or drag to jump
 let MM_SCALE=4;
 function fitMinimap(){ MM_SCALE=Math.max(2,Math.min(4,Math.floor(200/WORLD_COLS))); minimap.width=WORLD_COLS*MM_SCALE; minimap.height=WORLD_ROWS*MM_SCALE; if(View3D.ready) View3D.setSize(WORLD_COLS,WORLD_ROWS); }
-const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
+const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a', lava:'#d0561c' };
 const MM_ROOMS={ prison:'#6a6a78', armory:'#9a8a70', tavern:'#8a5a30', graveyard:'#4a5a3a', guardpost:'#8a8a98', training:'#c0a060', temple:'#e0dcd0', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
 function drawMinimap(){
   if(!minimapOn || !state) return;
@@ -9428,6 +9437,7 @@ function drawMinimap(){
     const t=state.grid[y][x];
     if(!fogSeen(t)){ g.fillStyle='#000'; g.fillRect(x*MM_SCALE,y*MM_SCALE,MM_SCALE,MM_SCALE); continue; }
     let c=MM_COLORS[t.type]||MM_COLORS.rock;
+    if(t.type==='water' && t.lava && fogSeen(t)) c=MM_COLORS.lava;
     if(t.type==='floor' && t.owned) c='#6a5640';
     if(t.room) c=MM_ROOMS[t.room]||'#8a7a5c';
     else if(t.root) c='#a0622a';

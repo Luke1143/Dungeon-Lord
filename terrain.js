@@ -115,6 +115,85 @@ function growTerrainLayout(g){
   growVaults(g, genRange(levelGen.vaults,[1,2])+Math.floor(areaFactor()/2));
 }
 
+// ---- features laid over the finished terrain (after rivers and lakes) ----
+const farFromThrone=(x,y,d)=> Math.abs(x-2)+Math.abs(y-2)>=d;
+function blobCells(x,y,size){
+  const cells=[[x,y]], seen=new Set([x+','+y]);
+  for(let i=0;i<cells.length && cells.length<size;i++){
+    const [cx,cy]=cells[i];
+    [[1,0],[-1,0],[0,1],[0,-1]].sort(()=>Math.random()-0.5).forEach(([dx,dy])=>{
+      const nx=cx+dx, ny=cy+dy, k=nx+','+ny;
+      if(cells.length<size && !seen.has(k) && terrainInZone(nx,ny) && Math.random()<0.8){ seen.add(k); cells.push([nx,ny]); }
+    });
+  }
+  return cells;
+}
+// lava: like water an obstacle for walkers (only a bridge crosses it), but nobody swims and nobody bathes in it
+function growLava(g,count){
+  for(let i=0;i<count;i++){
+    let x,y,tries=0; do{ x=randInt(8,WORLD_COLS-8); y=randInt(8,WORLD_ROWS-8); tries++; } while(!farFromThrone(x,y,14) && tries<60);
+    blobCells(x,y,randInt(7,16)).forEach(([cx,cy])=>{ const t=g[cy][cx]; if((t.type==='rock'||t.type==='floor') && !t.room && t.type!=='bedrock'){ t.type='water'; t.lava=true; t.natural=false; t.owned=false; t.gold=false; t.ore=false; } });
+  }
+}
+// crystal caves: a cavern whose walls are crystal veins (a richer kind of gold, shown in blue)
+function growCrystalCave(g,count){
+  for(let i=0;i<count;i++){
+    let cx,cy,tries=0; do{ cx=randInt(10,WORLD_COLS-10); cy=randInt(10,WORLD_ROWS-10); tries++; } while(!farFromThrone(cx,cy,16) && tries<60);
+    const r=randInt(4,6);
+    for(let y=cy-r;y<=cy+r;y++) for(let x=cx-r;x<=cx+r;x++){
+      if(!terrainInZone(x,y)) continue; const d=Math.hypot(x-cx,y-cy); if(d>r) continue;
+      const t=g[y][x];
+      if(d<r-1.5){ if(t.type==='rock' && !t.room){ t.type='floor'; t.natural=true; t.owned=false; t.gold=false; t.ore=false; t.crystalFloor=true; } else if(t.type==='floor' && t.natural) t.crystalFloor=true; }
+      else if(t.type==='rock' && !t.room && !t.gem && Math.random()<0.75){ t.gold=true; t.crystal=true; t.ore=false; }
+    }
+  }
+}
+// ruins: an old walled hall in the rock, found by digging; it keeps gold and a relic (an item lying on the floor)
+function growRuins(g,count){
+  for(let i=0;i<count;i++){
+    for(let tries=0;tries<150;tries++){
+      const w=randInt(7,9), h=randInt(5,6), x=randInt(4,WORLD_COLS-w-4), y=randInt(4,WORLD_ROWS-h-4);
+      if(!farFromThrone(x,y,18)) continue;
+      let ok=true;
+      for(let yy=y-1;yy<=y+h&&ok;yy++) for(let xx=x-1;xx<=x+w;xx++){ const t=g[yy][xx]; if(t.type!=='rock'||t.room||t.gold||t.ore||t.gem||t.natural){ ok=false; break; } }
+      if(!ok) continue;
+      for(let yy=y-1;yy<=y+h;yy++) for(let xx=x-1;xx<=x+w;xx++){
+        const t=g[yy][xx], wall=(yy===y-1||yy===y+h||xx===x-1||xx===x+w);
+        if(wall){ t.castle=true; continue; }
+        t.type='floor'; t.natural=true; t.owned=false; t.castle=true;
+        if((xx-x)%3===1 && (yy-y)%2===1 && xx>x && xx<x+w-1 && yy>y && yy<y+h-1){ t.type='bedrock'; t.natural=false; t.castle=true; }   // pillars
+      }
+      const free=[]; for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) if(g[yy][xx].type==='floor') free.push([xx,yy]);
+      free.sort(()=>Math.random()-0.5);
+      free.slice(0,3).forEach(([xx,yy])=>{ g[yy][xx].goldPile=randInt(20,45); });
+      const [rx,ry]=free[3]; g[ry][rx].relic=true;
+      break;
+    }
+  }
+}
+function growTerrainFeatures(g){
+  const k=Math.sqrt(areaFactor()), n=r=>Math.max(0,Math.round(r*k));
+  growLava(g, n(genRange(levelGen.lava,[0,1])));
+  growCrystalCave(g, n(genRange(levelGen.crystal,[0,1])));
+  growRuins(g, n(genRange(levelGen.ruins,[0,1])));
+}
+// the Dungeon Lord's throne is always generated in the top-left corner; the finished map is then mirrored at random so every corner gets its turn
+function mirrorLevel(g){
+  const fx=Math.random()<0.5, fy=Math.random()<0.5;
+  if(fy) g.reverse();
+  if(fx) g.forEach(r=>r.reverse());
+  return { fx, fy, throne:{ x:fx?WORLD_COLS-3:2, y:fy?WORLD_ROWS-3:2 } };
+}
+// relic tiles become items on the floor (picked by gear tier, mostly fine, sometimes epic)
+function placeRelics(g,st){
+  const ids=Object.keys(ITEMS).filter(id=>/_(fine|epic)$/.test(id));
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
+    const t=g[y][x]; if(!t.relic) continue; t.relic=false;
+    const pool=ids.filter(id=>/_epic$/.test(id)===(Math.random()<0.3));
+    st.looseItems.push(looseOf({ id:pool[Math.floor(Math.random()*pool.length)], q:1 }, x, y));
+  }
+}
+
 // sets the map size for the region about to be generated; returns the growth factor
 function setLevelDims(){
   const d=LEVEL_DIMS[levelGen.dims]||DEFAULT_DIMS;
