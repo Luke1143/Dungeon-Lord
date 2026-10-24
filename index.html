@@ -237,6 +237,7 @@
       <div class="panel owPanel">
         <div class="stat"><span class="label">Runde</span><span class="value" id="owTurn">1</span></div>
         <div class="stat"><span class="label">Fertigkeitspunkte</span><span class="value" id="owDiff">0</span></div>
+        <button id="owSkills" class="menuMain" style="font-size:14px;padding:6px">Fertigkeiten einsetzen</button>
         <div class="section-title">Heldenmacht</div>
         <div id="owStats" class="owStats"></div>
         <div class="section-title">Ort</div>
@@ -308,6 +309,7 @@
       <div class="stat"><span class="label">Nächster Lohn</span><span class="value" id="wageVal">0</span></div>
       <div class="stat"><span class="label">Welle</span><span class="value" id="waveVal">–</span></div>
       <div class="stat"><span class="label">Thronsaal</span><span class="value" id="throneVal">100</span></div>
+      <div class="stat"><span class="label">Dungeon Lord</span><span class="value" id="lordVal">–</span></div>
       </div>
       <div class="hint" id="warHint"></div>
       <div class="goalsBox" id="goalsBox" hidden></div>
@@ -631,7 +633,13 @@ function tickGrudges(c){
 // Die zentrale Frage: sind diese beiden gerade feindlich?
 function areHostile(a, b){
   if(!a || !b || a===b) return false;
-  if(a.unconscious || b.unconscious) return false;
+  if(a.unconscious || b.unconscious){
+    // the fallen Dungeon Lord stays vulnerable to the other side
+    const lord=a.unconscious&&a.kind==='dungeonlord'?a:(b.unconscious&&b.kind==='dungeonlord'?b:null);
+    if(!lord) return false;
+    const other=lord===a?b:a;
+    return !other.unconscious && factionOf(other)!==factionOf(lord);
+  }
   if(factionOf(a)!==factionOf(b)) return true;    // Fraktion
   if(hasGrudge(a,b) || hasGrudge(b,a)) return true; // Groll
   if(a.fightTarget===b || b.fightTarget===a) return true; // Auftrag (Arena)
@@ -640,8 +648,26 @@ function areHostile(a, b){
 
 // --- Schadensberechnung ---
 // Reihenfolge: Ausweichen -> Glueck -> Verteidigung -> Mindestschaden
+// The Dungeon Lord does not die at once: he falls unconscious in the throne room with a reserve of life. Heroes may strike him there;
+// when the reserve is spent he is lost and the run is over (design: "Der Tod des Dungeon Lords").
+const LORD_FAINT_TICKS=240;
+function faintLord(c){
+  const th=tilesOfRoom('throne')[0];
+  if(possessed===c) endPossession();
+  c.unconscious=true; c.unconsciousTimer=LORD_FAINT_TICKS; c.hp=0; c.path=[]; c.fightTarget=null; c.anim=null; c.state='unconscious';
+  if(th){ c.x=th.x; c.y=th.y; c.renderX=th.x; c.renderY=th.y; }
+  logEvent(`Der Dungeon Lord wurde niedergestreckt und liegt bewusstlos im Thronsaal. Reserve: ${Math.max(0,Math.round(state.war.lordPool||0))}.`, c.x, c.y);
+}
 function resolveAttack(attacker, defender, context){
   if(defender.removed) return { dodged:true, damage:0 };
+  if(defender.kind==='dungeonlord' && defender.unconscious){          // the reserve takes the blow
+    const w=state.war; let dmg=Math.max(MIN_DAMAGE, Math.round(statStrength(attacker)*(1-statDefense(defender)/100)));
+    w.lordPool=(w.lordPool||0)-dmg; defender.hitAt=Date.now();
+    dbg('combat', `${actorLabel(attacker)} trifft den bewusstlosen Dungeon Lord für ${dmg}, Reserve ${Math.max(0,Math.round(w.lordPool))}`);
+    hitFx(attacker, defender, dmg, false, false);
+    if(w.lordPool<=0 && !w.over){ w.over='lost'; w.lostBy='lord'; logEvent('Der Dungeon Lord ist gefallen. Der Run ist vorbei.', defender.x, defender.y); }
+    return { dodged:false, damage:dmg, outcome:'hit' };
+  }
   // Ausweichen
   if(Math.random()*100 < statDex(defender)){
     defender.dodgeAt=Date.now();
@@ -676,6 +702,7 @@ function resolveAttack(attacker, defender, context){
 
 // Bewusstlos oder tot? Entschieden aus Ueberschussschaden, Glueck und Kontext.
 function knockOutOrKill(victim, overkill, killer, context){
+  if(victim.kind==='dungeonlord'){ faintLord(victim); return 'fainted'; }
   const limit=statMaxHp(victim)*FAINT_OVERKILL_RATIO;
   if(overkill>=limit) { killCreature(victim, killer); return 'killed'; }
 
@@ -721,6 +748,7 @@ function faintCreature(c){
 }
 
 function killCreature(c, killer){
+  if(c.kind==='dungeonlord'){ if(!c.unconscious) faintLord(c); return; }
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
   c.removed=true;
   dbg('kill', `${actorLabel(c)} stirbt${killer?' durch '+actorLabel(killer):''} bei ${c.x},${c.y}`);
@@ -750,7 +778,7 @@ function tickUnconscious(c){
   c.unconsciousTimer--;
   if(c.unconsciousTimer<=0){
     c.unconscious=false;
-    c.hp=Math.max(1, Math.round(statMaxHp(c)*0.25));
+    c.hp=Math.max(1, Math.round(statMaxHp(c)*(c.kind==='dungeonlord'?0.5:0.25)));
     logEvent(`${actorLabel(c)} kommt wieder zu sich.`, c.x, c.y);
   }
   return true;
@@ -807,7 +835,7 @@ function tickCombat(c){
   }
 
   // Ziel noch gueltig?
-  if(c.fightTarget && (c.fightTarget.removed || c.fightTarget.unconscious || c.fightTarget.held
+  if(c.fightTarget && (c.fightTarget.removed || (c.fightTarget.unconscious && c.fightTarget.kind!=='dungeonlord') || c.fightTarget.held
       || !areHostile(c, c.fightTarget))) c.fightTarget=null;
 
   if(!c.fightTarget) c.fightTarget=pickFightTarget(c);
@@ -853,7 +881,7 @@ function noticesFoe(c,o){
 }
 function pickFightTarget(c){
   let foes=state.creatures.concat(state.imps)
-    .filter(o=> !o.held && !o.unconscious && areHostile(c,o));
+    .filter(o=> !o.held && (!o.unconscious || o.kind==='dungeonlord') && areHostile(c,o));
   if(c.category==='hero') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=HERO_AGGRO_RADIUS);
   else if(c.category==='boss') foes=foes.filter(o=> Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=(c.alert?80:7));
   else foes=foes.filter(o=> noticesFoe(c,o));
@@ -1208,12 +1236,26 @@ function rollStats(kind){
 }
 
 // --- Abgeleitete Werte (Stufe, Ausruestung) ---
+// Skill points (spent on the world map) make the player's side stronger by a percentage per point: the Dungeon Lord and the dungeon's creatures.
+const SKILLS=[
+  { id:'lordHp',      group:'Dungeon Lord', label:'Leben',          step:1.06, text:'+6 % Leben pro Punkt' },
+  { id:'lordStr',     group:'Dungeon Lord', label:'Stärke',         step:1.06, text:'+6 % Stärke pro Punkt' },
+  { id:'lordReserve', group:'Dungeon Lord', label:'Lebensreserve',  step:1.10, text:'+10 % Reserve im bewusstlosen Zustand pro Punkt' },
+  { id:'creatureHp',  group:'Dungeon',      label:'Kreaturen: Leben',  step:1.05, text:'+5 % Leben für alle Kreaturen pro Punkt' },
+  { id:'creatureStr', group:'Dungeon',      label:'Kreaturen: Stärke', step:1.05, text:'+5 % Stärke für alle Kreaturen pro Punkt' },
+  { id:'impTempo',    group:'Dungeon',      label:'Imps: Eifer',       step:1.04, text:'+4 % Tempo der Imps pro Punkt' },
+  { id:'startGold',   group:'Dungeon',      label:'Startgold',         step:null, text:'+150 Gold zu Levelbeginn pro Punkt' }
+];
+function skillRank(id){ return (typeof campaign!=='undefined' && campaign && campaign.skills && campaign.skills[id]) || 0; }
+function skillMult(id){ const s=SKILLS.find(x=>x.id===id); return s&&s.step ? Math.pow(s.step, skillRank(id)) : 1; }
 function statStrength(c){
   const eq=equipmentBonus(c);
-  return Math.max(1, Math.round((c.baseStrength||1)*levelScale(c.level)+eq.strength));
+  const m = c.kind==='dungeonlord' ? skillMult('lordStr') : (factionOf(c)==='evil' ? skillMult('creatureStr') : 1);
+  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m));
 }
 function statMaxHp(c){
-  return Math.max(1, Math.round((c.baseHp||1)*levelScale(c.level)));
+  const m = c.kind==='dungeonlord' ? skillMult('lordHp') : (factionOf(c)==='evil' ? skillMult('creatureHp') : 1);
+  return Math.max(1, Math.round((c.baseHp||1)*levelScale(c.level)*m));
 }
 function statDefense(c){
   const eq=equipmentBonus(c);
@@ -1233,7 +1275,7 @@ function statSpeed(c){
 // Bewegung nutzt ihn direkt, Handlungen werden gedaempft - sonst schlaegt ein Imp
 // mehrmals pro Sekunde zu, was weder aussieht noch sich anfuehlt wie Arbeit.
 function statTempo(c){
-  return statSpeed(c);
+  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -6187,7 +6229,6 @@ function tickWar(){
   }
 
   // The good side recruits on its own from the start of the level (keep.js); its heroes dig their way to the throne themselves.
-  if(w.lordTimer>0 && --w.lordTimer===0){ spawnDungeonLord(); logEvent('Der Dungeon Lord kehrt zurück.', 2, 2); }
   if(state.keep) tickKeep();
   else if(w.wave<waveTotal(w)){
     w.timer--;
@@ -6227,6 +6268,8 @@ function updateWarUI(){
   waveEl.textContent=w.wave>0 ? `${w.wave}/${waveTotal(w)}` : '–';
   throneEl.textContent=Math.ceil(w.throneHp);
   throneEl.style.color=w.siege ? '#e06a5a' : '';
+  { const lordEl=document.getElementById('lordVal'), lord=state.creatures.find(c=>c.kind==='dungeonlord');
+    if(lordEl){ if(!lord) lordEl.textContent='–'; else if(lord.unconscious){ lordEl.textContent='bewusstlos · '+Math.max(0,Math.round(w.lordPool||0)); lordEl.style.color='#e06a5a'; } else { lordEl.textContent=`${Math.ceil(lord.hp)}/${lord.maxHp}`; lordEl.style.color=''; } } }
   const secs=Math.max(0,Math.ceil((state.keep?state.keep.timer:w.timer)*0.35/Math.max(1,gameSpeed)));
   { const box=document.getElementById('goalsBox');
     if(w.goals){
@@ -6243,7 +6286,7 @@ function updateWarUI(){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
     document.getElementById('endText').textContent = w.over==='won'
       ? (w.wonText || `Das Weltportal gehört euch. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`)
-      : `Die Helden haben euren Thronsaal eingenommen. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):'');
+      : (w.lostBy==='lord' ? 'Der Dungeon Lord ist gefallen, die Helden haben seine Reserve aufgebraucht.' : `Die Helden haben euren Thronsaal eingenommen. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):''));
     overlay.hidden=false;
   } else overlay.hidden=true;
 }
@@ -8442,6 +8485,22 @@ function owRenderStats(){
   }).join('')+`<div class="owTime">Quellen × Zeit × Alarm: Zeit <b>×${pw.tf.toFixed(2)}</b> (wächst jede Runde), Alarm <b>×${pw.alarm.toFixed(2)}</b> (je eroberte Region)</div>`;
 }
 
+// Spending skill points: a point is a small percentage on one thing, kept for the whole run
+function owSkillsHtml(){
+  const pts=campaign.skillPoints||0; let group='';
+  return `<div style="margin-bottom:8px">Offene Punkte: <b>${pts}</b>. Jeder Punkt wirkt prozentual und bleibt für den ganzen Run.</div>`+
+    SKILLS.map(s=>{ const r=skillRank(s.id), head=s.group!==group?(group=s.group,`<div class="section-title" style="margin-top:8px">${s.group}</div>`):'';
+      return head+`<div style="display:flex;align-items:center;gap:8px;margin:4px 0"><span style="flex:1"><b>${s.label}</b> <small style="opacity:.75">${s.text}</small></span><span style="min-width:24px;text-align:right">${r}</span><button data-skill="${s.id}" ${pts>0?'':'disabled'} style="padding:2px 10px">+</button></div>`; }).join('');
+}
+function owOpenSkills(){
+  owModal('Fertigkeiten', owSkillsHtml(), ()=>{ owRefresh(); saveCampaign(); });
+  document.getElementById('owModalText').onclick=e=>{
+    const id=e.target.dataset&&e.target.dataset.skill; if(!id||(campaign.skillPoints||0)<=0) return;
+    campaign.skillPoints--; campaign.skills=campaign.skills||{}; campaign.skills[id]=(campaign.skills[id]||0)+1;
+    document.getElementById('owModalText').innerHTML=owSkillsHtml(); document.getElementById('owDiff').textContent=String(campaign.skillPoints); saveCampaign();
+  };
+}
+document.getElementById('owSkills').addEventListener('click', owOpenSkills);
 function owRefresh(){
   document.getElementById('owTurn').textContent=String((campaign.round||0)+1);
   document.getElementById('owDiff').textContent=String(campaign.skillPoints||0);
@@ -8533,9 +8592,10 @@ function newCampaign(seed){
 const LORD_RESPAWN_TICKS=500;
 function spawnDungeonLord(){
   const th=tilesOfRoom('throne')[0]; if(!th) return;
-  const lvl=Math.min(MAX_LEVEL, 2+Math.floor(((campaign&&campaign.skillPoints)||0)/2));
+  const lvl=Math.min(MAX_LEVEL, 2+Math.floor(((campaign&&campaign.conquered&&campaign.conquered.length)||0)/2));
   const lord=createBoss('dungeonlord', th.x, th.y, { faction:'evil', name:'Der Dungeon Lord', level:lvl, extraHp:20, gear:['hammer_plain','heavyArmor_plain'], guard:true });
   state.creatures.push(lord);
+  state.war.lordPool=Math.round(statMaxHp(lord)*skillMult('lordReserve'));
 }
 const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
 const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot() };
@@ -8685,6 +8745,7 @@ function startLevel(nodeId){
     initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
     (campaign.allies||[]).forEach((a,ai)=>{ const throneTile=[[2,2],[1,2],[3,2],[2,1],[2,3]][ai%5]; const b=createBoss(a.kind, throneTile[0], throneTile[1], { faction:'evil', name:a.name, level:a.level, extraHp:40, gear:BOSS_GEAR[a.kind] }); state.creatures.push(b); logEvent(`${a.name} steht euch als Verbündeter zur Seite.`, 2, 2); }); }
   state.allowCorpseFeeding=document.getElementById('corpseFeedToggle').checked;
+  state.gold+=150*skillRank('startGold');
   spawnDungeonLord();
   updateFog();
   eventIdCounter=0; creatureIdCounter=0; chickenIdCounter=0; corpseIdCounter=0;

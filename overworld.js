@@ -118,7 +118,7 @@ const OW=(()=>{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
   function initCampaign(c){
-    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0; c.legends=c.legends||{}; c.champions=c.champions||[];
+    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0; c.legends=c.legends||{}; c.champions=c.champions||[]; c.skills=c.skills||{};
     c.conquered=c.conquered||[]; c.allies=c.allies||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
     return c;
   }

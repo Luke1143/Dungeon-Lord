@@ -18,7 +18,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 ## Fortschritt, Belohnungen
 | Thema | Stand | Anmerkung |
 |---|---|---|
-| Fertigkeitspunkt pro Sieg | 🟡 | wird gezählt, nur die Stufe des Dungeon Lords hängt daran, **ausgeben kann man ihn nirgends** |
+| Fertigkeitspunkt pro Sieg und Ausgeben | ✅ | Weltkarte, Knopf „Fertigkeiten einsetzen“: Lord-Leben, -Stärke, -Reserve, Kreaturen-Leben und -Stärke, Imp-Eifer, Startgold; prozentual, `SKILLS` ist eine Tabelle |
 | Perks | ❌ | |
 | Artefakte, Seltenheiten, Belohnungen | ❌ | |
 | Vault (Stase, Mitnehmen) | ❌ | |
@@ -29,7 +29,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Figur, Besessenheit, Ego-Ansicht, Aktionsanimationen | ✅ | |
-| Tod: bewusstlos im Thronsaal mit eigenem Lebenspool, Run endet erst, wenn der Pool leer ist | ❌ | heute: fällt er, kehrt er nach einer Weile zurück, ohne Risiko |
+| Tod: bewusstlos im Thronsaal mit eigenem Lebenspool, Run endet erst, wenn der Pool leer ist | ✅ | `faintLord`, `state.war.lordPool` |
 | Ausrüstung und Artefakt-Slot | 🟡 | trägt ein Inventar, es gibt keine Quelle dafür |
 
 ## Level: Räume und Kreaturen (godhand.md)
@@ -64,7 +64,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Code-Sprache einheitlich Englisch | 🟡 | ein Teil der alten Kommentare ist noch deutsch |
 
 ## Vorschlag für die Reihenfolge
-1. **Fertigkeitspunkte ausgeben** (Dungeon Lord und Dungeon) und der Tod des Lords mit Lebenspool: das macht jeden Sieg und jede Niederlage spürbar.
+1. ~~Fertigkeitspunkte ausgeben und Tod des Lords mit Lebenspool~~ (gebaut).
 2. **Belohnungen**: einfache Artefakte (Waffe, Rüstung, Zauber), die ein Nebenziel oder eine Pforte abwirft; dazu Nebenziele prüfen.
 3. **Finale** mit Boss der Hauptstadt.
 4. **Gefängnis und Bekehren** (bringt Eigenleben und Bossmechanik zusammen).
