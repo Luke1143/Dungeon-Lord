@@ -573,6 +573,8 @@ const TILEGEN=(()=>{
   const v=(name,pal)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal} });
   ZOO.goblin=v('Goblin',{ s:'#8aa83a', S:'#b0cc58', z:'#5a7a24', t:'#7a6a3a', T:'#9a8a52', u:'#4a3e22', c:'#5a3a24', C:'#7a5236', l:'#5a4a2a', L:'#7a6a3c', y:'#2e2414' });
   ZOO.troll=v('Troll',{ s:'#6a8a96', S:'#8fb0bc', z:'#445a64', t:'#6a8a96', T:'#8fb0bc', u:'#445a64', c:'#4a3a2a', C:'#6a5238', l:'#52707a', L:'#6e909a', y:'#2c3c42' });
+  ZOO.ghoul=v('Ghul',{ s:'#7e8c5e', S:'#a2b07e', z:'#566240', t:'#5a5a48', T:'#74745e', u:'#3e3e30', c:'#3a3a2c', C:'#505040', l:'#464636', L:'#5e5e4a', y:'#22221a' });
+  ZOO.priest=v('Dunkler Priester',{ s:'#b09a8a', S:'#cdb8a8', z:'#7a6658', t:'#2a1a3a', T:'#44285c', u:'#1a0e26', c:'#2a1a3a', C:'#44285c', l:'#1a0e26', L:'#30204a', y:'#120a1a' });
   // the skeleton: bones in the skeleton family's look (skull, ribs, thin legs), eyes black with white pupils like the rest of the horde
   const N=16, mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
   const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };

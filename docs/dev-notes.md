@@ -240,3 +240,8 @@ Kreaturen führen `c.bonds` (Wert −100 bis 100 je anderer Kreatur). Plaudern s
 
 ## 1.31 Boss-Fähigkeiten (`bosses.js`)
 Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange ein Feind nah ist) oder `hpBelow` (einmal bei Lebensanteil), `icon` (Sprechblase), `text` (Log) und `run(boss)`. `runBossAbilities` läuft in `tickCreature` einmal pro Tick, auch im Kampf. Wirkungen nutzen vorhandene Systeme: Flächenschlag über `resolveAttack` auf alle Feinde im Umkreis (Alberichs Beben, Herakles’ Keule), Verstärkung über `bossSpawnNear` (Zwerge, Bogenschützen, Ritter, Paladine), Fesseln (`rootedTicks`, `stepAlong` bricht ab), Schlachtruf (`rallyTicks`, +30 % Tempo), Schildwall (`tempDefense` für `tempDefenseTicks`), Heilung. Eine neue Fähigkeit ist eine neue Zeile.
+
+## 1.32 - New rooms and creatures
+- Five rooms as table entries (`ROOM_TYPES`, research topics with a seeing-trigger, textures/props in `sprites.js`, 3D models in `view3d.js`): **Taverne** (leisure `drink`, costs 2 gold), **Tempel** (leisure `pray`, +loyalty, altars every 3x3 block), **Friedhof** (imps bury every second corpse, `state.graves`; old graves release a **Ghul**), **Trainingskammer** (dummies; furniture only so far), **Wachposten** (banners; furniture only so far).
+- New evil creatures: **Ghul** (undead, from graves, max 3) and **Dunkler Priester** (lured by temples, heals evil allies within 3 tiles). Both are ork-body palette variants (`HORDE_KINDS`).
+- Open: training/guard behaviours (`goingToTraining`, `guarding`), Dunkelelf, Vampir, good Dryade and Golem.
