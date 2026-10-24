@@ -79,3 +79,11 @@ Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vo
 1. Ein gemeinsamer Mechanismus "Wirkung auf Feldern über die Zeit" (Stufe 2): Nahkampfmuster werden zum Schlagzeitpunkt aufgelöst, Geschosse wandern Feld für Feld.
 2. Projektile und Muster darauf, Würfeln je Feld.
 3. Zwei Waffen (klein, hängt an den Händen aus der Masse und am Wechselschlag).
+
+## Stand: Stufe 2 (Schläge und Schüsse als eine Regel) ist drin
+- Code: `strikeSpec`, `aimTile`, `blowTiles`, `doStrike`, `tickProjectiles` (index.html, bei `tickCombat`); `windup()` trennt das Ausholen vom Treffer.
+- **Zielfeld wird beim Ausholen festgelegt.** Wer das Feld bis zum Schlag verlässt, wird nicht getroffen: langsame Hiebe sind ausweichbar, schnelle kaum.
+- **Hieb** = Feldlinie bis zur Reichweite (Speer trifft beide Felder), Äxte und breite Köpfe decken zusätzlich die Seitenfelder ab (Breite 3 oder 5). Jedes Feld und jedes Ziel würfelt einzeln (`hitChance`, danach Ausweichen). Wände enden die Linie, Verbündete werden nie getroffen.
+- **Schuss** = Geschoss, das nach dem Ausholen losfliegt und Feld für Feld wandert (Geschwindigkeit je Waffe); pro Feld: Treffer, wenn ein Feind darauf steht, und ein Wurf, ob es hier liegen bleibt. Verfehlte Pfeile fliegen weiter. Ein Schütze zielt auf das Feld, wo das Ziel gleich sein wird: Vorhalt und Zielgenauigkeit steigen mit der Stufe und dem Geschick, sonst driftet der Schuss ein Feld.
+- Ein Nahkämpfer mit Reichweite 2 stellt sich so, dass der Feind auf seiner Linie steht (nicht diagonal).
+- Zwei Waffen und Fernkampf nach Pfeil/Bogen/Sehne sind noch offen.

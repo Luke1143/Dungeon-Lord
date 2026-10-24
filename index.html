@@ -1050,15 +1050,15 @@ function tickCombat(c){
 
   const t=c.fightTarget;
   let d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
-  const reach=reachOf(c), stance=stanceOf(c);
+  const spec=strikeSpec(c), reach=spec.reach, stance=stanceOf(c);
   // combat stance (aggressive): a foe one tile out of reach is closed in with the blow itself, so a runner is still hit
   if(stance==='aggressive' && d===reach+1 && (c.swingBudget||0)+1>=swingCostOf(c)){
-    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach && (reach<=1 || lineClear(x,y,t.x,t.y)));
+    const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
     if(res && res.path.length===1){ stanceMove(c,res.path[0]); d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y); c.lungeAt=Date.now(); }
   }
-  if(d>reach || (reach>1 && !lineClear(c.x,c.y,t.x,t.y))){
-    // Heranrücken (a shooter also steps up until no wall is in the way)
-    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach && (reach<=1 || lineClear(x,y,t.x,t.y)));
+  if(!canStrikeFrom(spec,c.x,c.y,t)){
+    // Heranrücken (a shooter also steps up until no wall is in the way, a spear until the foe is in its line)
+    const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
     if(res){ c.path=res.path; c.state='engaging'; stepAlong(c); return true; }
     c.fightTarget=null;
     return false;
@@ -1066,13 +1066,107 @@ function tickCombat(c){
 
   c.state='fighting';
   c.verb='attack'; c.actTarget={ x:t.x, y:t.y };
-  if(!swing(c)) return true;                 // Ausholen oder danebengehauen
-  if(reach>1 && ((c.inventory||[]).map(instDef).find(w=>w&&w.type==='weapon')||{}).cat!=='melee' && typeof FX!=='undefined') FX.emit('shot', c.x, c.y, { tx:t.x, ty:t.y });
-  const r=resolveAttack(c, t, c.combatContext);
-  addGrudge(t, c);                           // wer geschlagen wird, traegt Groll
-  if(r.outcome==='killed' || r.outcome==='fainted') c.fightTarget=null;
+  // the target tile is fixed when the wind-up begins: a slow blow can be dodged by stepping away, a shot is aimed ahead of a runner
+  if(!c.aim || c.aimFor!==t || state.tickCount-(c.aimTick||0)>14){ c.aim=aimTile(c,t,spec); c.aimFor=t; c.aimTick=state.tickCount; }
+  if(!windup(c)) return true;                // still raising the weapon
+  const out=doStrike(c,spec,c.aim); c.aim=null; c.aimFor=null;
+  if(out.killedTarget) c.fightTarget=null;
   else if(stance==='kite' && reach>1 && d<=1) kiteBack(c,t);       // a caster with a foe at its throat gives a step
   return true;
+}
+
+// ===== Strikes: one rule for blows and shots (docs/waffen.md) =====
+// A blow is a short strike over a few tiles in front of the wielder, a shot is a strike that flies on, tile by tile, over several ticks.
+// Both are aimed at a tile, not at a creature: whoever stands on a tile the strike crosses is rolled for. Allies are never hit.
+const PROJECTILES={ bow:{ speed:2, drop:0.03 }, crossbow:{ speed:3, drop:0.02 }, javelin:{ speed:1.5, drop:0.05 }, wandFire:{ speed:1.5, drop:0.04 }, wandBolt:{ speed:3, drop:0 }, wandIce:{ speed:1, drop:0.05 } };
+function weaponInstOf(c){ return wornItems(c).find(i=>(instDef(i)||{}).type==='weapon')||null; }
+// what the creature strikes with right now: a blow (reach, breadth, mode) or a shot (range, speed, drop-off)
+function strikeSpec(c){
+  const inst=weaponInstOf(c), w=inst&&instDef(inst), reach=reachOf(c);
+  if(!w) return { kind:'melee', reach:1, breadth:1, mode:'blade' };
+  if(w.cat==='melee'){
+    const mode=WEAPON_MODE[w.family]||'blade', pp=partsOf(inst), width=pp?pp.model.hw*creatureScale(c):2;
+    const breadth=mode==='spear'?1:(mode==='axe'?(width>=5?5:3):(width>=5?3:1));
+    return { kind:'melee', reach, breadth, mode };
+  }
+  return Object.assign({ kind:'shot', range:reach }, PROJECTILES[w.family]||{ speed:2, drop:0.04 }, { reach });
+}
+const sgn=v=>v>0?1:(v<0?-1:0);
+// can a creature at (x,y) strike the foe? a blow needs the foe on its line (or next to it), a shot needs a clear line
+function canStrikeFrom(spec,x,y,t){
+  const dx=t.x-x, dy=t.y-y, d=Math.abs(dx)+Math.abs(dy);
+  if(spec.kind==='shot') return d<=spec.range && lineClear(x,y,t.x,t.y);
+  if(d>spec.reach) return false;
+  return d<=1 || dx===0 || dy===0;
+}
+// where the strike goes: the foe's tile, led ahead for a shot by what the shooter's level can judge
+function aimTile(c,t,spec){
+  let ax=t.x, ay=t.y;
+  if(spec.kind==='shot'){
+    const skill=Math.max(0.2,Math.min(0.95,0.25+0.045*((c.level||1)-1)+statDex(c)/250));
+    const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
+    if(t.path && t.path.length && Math.random()<skill){
+      const steps=Math.min(t.path.length, Math.max(1,Math.round(d/spec.speed*0.5)), 3), p=t.path[steps-1]; ax=p.x; ay=p.y;
+    }
+    if(Math.random()>skill+0.25){ const n=neighbors(ax,ay); if(n.length){ const q=n[Math.floor(Math.random()*n.length)]; ax=q[0]; ay=q[1]; } }     // a poor aim drifts a tile
+  }
+  return { x:ax, y:ay };
+}
+function strikeDir(c,aim){
+  const dx=aim.x-c.x, dy=aim.y-c.y;
+  if(!dx && !dy) return { ux:c._faceRight?1:-1, uy:0 };
+  return Math.abs(dx)>=Math.abs(dy) ? { ux:sgn(dx), uy:0 } : { ux:0, uy:sgn(dy) };
+}
+// the tiles a blow covers: the line out to its reach, widened to the sides by its breadth; a wall ends the line
+function blowTiles(c,spec,aim){
+  const { ux, uy }=strikeDir(c,aim), out=[], px=-uy, py=ux, half=(spec.breadth-1)>>1;
+  for(let k=1;k<=spec.reach;k++){
+    const bx=c.x+ux*k, by=c.y+uy*k, t=state.grid[by]&&state.grid[by][bx];
+    if(!t || t.type==='rock' || t.type==='bedrock') break;
+    out.push({ x:bx, y:by });
+    for(let s=1;s<=half;s++){ [[bx+px*s,by+py*s],[bx-px*s,by-py*s]].forEach(([x,y])=>{ const q=state.grid[y]&&state.grid[y][x]; if(q && q.type!=='rock' && q.type!=='bedrock') out.push({ x, y }); }); }
+  }
+  return out;
+}
+const strikeFoesAt=(c,x,y)=>state.creatures.concat(state.imps).filter(o=>o!==c && !o.held && !o.removed && o.x===x && o.y===y && (!o.unconscious || o.kind==='dungeonlord') && areHostile(c,o));
+// a foe is struck: roll to hit, then the usual damage rules (dodge, defence ...)
+function strikeFoe(c,o,res){
+  if(Math.random()>hitChance(c)) return false;
+  const r=resolveAttack(c,o,c.combatContext); addGrudge(o,c); res.hit=true;
+  if(o===c.fightTarget && (r.outcome==='killed'||r.outcome==='fainted')) res.killedTarget=true;
+  return true;
+}
+function doStrike(c,spec,aim){
+  const res={ hit:false, killedTarget:false };
+  if(spec.kind==='melee'){
+    blowTiles(c,spec,aim).forEach(t=>strikeFoesAt(c,t.x,t.y).forEach(o=>strikeFoe(c,o,res)));
+    if(res.hit) grantXp(c,1);
+    return res;
+  }
+  // a shot: the line from the shooter through the aim tile out to its range; it flies on whether or not anyone is there
+  let dx=aim.x-c.x, dy=aim.y-c.y; if(!dx && !dy){ const u=strikeDir(c,aim); dx=u.ux; dy=u.uy; }
+  const len=Math.hypot(dx,dy), line=[], seen=new Set([c.x+','+c.y]);
+  for(let s=0.5;s<=spec.range+0.01;s+=0.5){ const x=Math.round(c.x+dx/len*s), y=Math.round(c.y+dy/len*s), k=x+','+y; if(seen.has(k)) continue; seen.add(k); line.push({ x, y }); }
+  if(!line.length) return res;
+  (state.projectiles||(state.projectiles=[])).push({ owner:c, line, i:0, acc:1, speed:spec.speed, drop:spec.drop, from:{ x:c.x, y:c.y } });
+  return res;
+}
+// every tick a shot flies on: each tile it crosses is rolled for a foe (hit or not) and for the shot giving out (it lands there)
+function tickProjectiles(){
+  const ps=state.projectiles; if(!ps || !ps.length) return;
+  state.projectiles=ps.filter(p=>{
+    p.acc+=p.speed;
+    while(p.acc>=1 && p.i<p.line.length){
+      p.acc-=1; const t=p.line[p.i++], g=state.grid[t.y]&&state.grid[t.y][t.x];
+      if(!g || g.type==='rock' || g.type==='bedrock') return false;
+      if(typeof FX!=='undefined') FX.emit('shot', p.from.x, p.from.y, { tx:t.x, ty:t.y });
+      p.from={ x:t.x, y:t.y };
+      const foes=strikeFoesAt(p.owner,t.x,t.y);
+      for(const o of foes){ const res={}; if(strikeFoe(p.owner,o,res)){ if(res.killedTarget) p.owner.fightTarget=null; return false; } }
+      if(Math.random()<p.drop) return false;
+    }
+    return p.i<p.line.length;
+  });
 }
 
 // stance moves are free steps taken with the blow, no path and no move cost
@@ -1938,16 +2032,18 @@ function applyRecipe(actor, rec, x, y){
 // Rueckgabe true = der Schwung sass, der Aufrufer darf Fortschritt anrechnen.
 // roomType gibt den Arbeitskontext an (optional). Jeder Schwung wirkt auf die
 // Stimmung: Treffer nach Vorliebe, Fehlschlag immer ein wenig negativ.
-function swing(actor, roomType){
-  // Ausholen: erst wenn genug Zeit vergangen ist, faellt der Schlag ueberhaupt.
-  // Pro Aufruf genau 1 - die Tempo-Skalierung steckt bereits in actionCount(),
-  // das diese Funktion bei schnellen Kreaturen mehrfach je Tick erreicht.
+// the wind-up of a blow: the budget fills tick by tick and the weapon decides how much it takes; true when the blow is made (hit or not)
+function windup(actor){
   actor.swingBudget=(actor.swingBudget||0)+1;
   const cost=swingCostOf(actor);
   if(actor.swingBudget < cost) return false;
   actor.swingBudget-=cost;
   startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
-
+  return true;
+}
+function swing(actor, roomType){
+  // Ausholen: erst wenn genug Zeit vergangen ist, faellt der Schlag ueberhaupt.
+  if(!windup(actor)) return false;
   if(Math.random() > hitChance(actor)){
     applyWorkOpinion(actor, roomType, false);   // schlechter Tag
     return false;
@@ -7058,6 +7154,7 @@ function gameTick(){
   state.tickCount++;
   state.imps.slice().forEach(i=>guard('imp '+(i.state||''),tickImp,i));
   state.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
+  guard('projectiles',tickProjectiles);
   [processDeaths,tickLures,tickArenas,tickTantrums,tickCorpses,tickEffects,tickFlySpawning,tickWarlockSpawning,tickBeetleSpawning,tickHoundSpawning,tickHatcheries,tickSmelters,pruneEventLog,tickPayday,tickWar].forEach(f=>guard(f.name,f));
   if(state.tickCount%2===0 || !state.vis) guard('fog',updateFog);
   guard('draw',draw); guard('ui',updateUI); markDirty();
@@ -7863,8 +7960,8 @@ function fpPickTarget(c){
 // one step of the held primary button: hit the target or work the tile
 function fpActStep(c){
   const tg=fpPickTarget(c);
-  if(!tg){ c.swingBudget=(c.swingBudget||0)+1; if(c.swingBudget>=SWING_COST){ c.swingBudget-=SWING_COST; c.verb='attack'; c.actTarget=null; startAnim(c,gameSpeed); } return; }   // the weapon may always be swung, a blow into the air feels like one
-  if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
+  if(!tg){ c.verb='attack'; c.actTarget=null; if(!c.aim || state.tickCount-(c.aimTick||0)>14){ const a=fpAxis(c.fpYaw), sp=strikeSpec(c); c.aimTick=state.tickCount; c.aim={ x:c.x+a.x*Math.max(1,sp.reach), y:c.y+a.y*Math.max(1,sp.reach) }; } if(!windup(c)) return; doStrike(c,strikeSpec(c),c.aim); c.aim=null; return; }   // the weapon may always be swung: a blow into the air still covers its tiles   // the weapon may always be swung, a blow into the air feels like one
+  if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!c.aim || state.tickCount-(c.aimTick||0)>14){ c.aim={ x:tg.foe.x, y:tg.foe.y }; c.aimTick=state.tickCount; } if(!windup(c)) return; doStrike(c,strikeSpec(c),c.aim); c.aim=null; return; }
   interact(c, tg.tile.x, tg.tile.y);
 }
 // the first-person bar: the learned abilities on keys 2 to 6, with their cooldowns (rebuilt only when the list changes)

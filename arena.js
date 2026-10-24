@@ -118,6 +118,7 @@ const arenaAlive=(st,ti)=>st.creatures.filter(c=>arenaTeamOf(c)===ti && !c.uncon
 function arenaStep(st){
   st.tickCount++;
   st.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
+  guard('projectiles',tickProjectiles);
   [processDeaths,tickCorpses,tickEffects,pruneEventLog].forEach(f=>guard(f.name,f));
   st.creatures.forEach(c=>{
     if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
