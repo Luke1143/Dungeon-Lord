@@ -912,6 +912,7 @@ function reachOf(c){
 function noticesFoe(c,o){
   const d=Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
   if(d<=NOTICE_RADIUS) return true;
+  if(c.state==='guarding' && d<=GUARD_NOTICE_RADIUS) return true;
   if(state.war && state.war.siege && o.category==='hero') return true;
   const t=state.grid[o.y]&&state.grid[o.y][o.x];
   if(t && t.owned && d<=NOTICE_INTRUDER_RADIUS) return true;
@@ -3838,6 +3839,50 @@ function leisureById(id){
   return LEISURE_ACTIVITIES.find(a=>a.id===id);
 }
 
+// Drill and watch: training dummies sharpen a fighter (xp), guard posts make a creature stand watch and see further.
+// Rooms are foremen: the room offers the spot, the creature takes it when it likes that kind of work (willWorkVoluntarily).
+const GUARD_TICKS=220, GUARD_NOTICE_RADIUS=14;
+function leaveDrill(c){ c.postTile=null; c.dummyTile=null; }
+function tryDrill(c){
+  if(c.drillCd>0){ c.drillCd--; return false; }
+  c.drillCd=randInt(25,60);
+  if(c.kind==='priest' || c.category==='worker') return false;
+  const dummies=dummySpots().filter(s=>!state.creatures.some(o=>o!==c && o.dummyTile && o.dummyTile.x===s.x && o.dummyTile.y===s.y));
+  if(dummies.length && willWorkVoluntarily(c,'training') && Math.random()<0.5){
+    const set=new Set(dummies.map(s=>s.x+','+s.y));
+    const res=bfsFindBeside(c,(x,y)=>set.has(x+','+y));
+    if(res){ const nb=neighbors(res.target.x,res.target.y).find(([nx,ny])=>set.has(nx+','+ny)); if(!nb) return false; c.dummyTile={ x:nb[0], y:nb[1] }; c.path=res.path; c.state='goingToTraining'; return true; }
+  }
+  const posts=[]; roomsOfType('guardpost',1).forEach(r=>r.tiles.forEach(t=>{ if(!state.creatures.some(o=>o!==c && o.postTile && o.postTile.x===t.x && o.postTile.y===t.y)) posts.push(t); }));
+  if(posts.length && willWorkVoluntarily(c,'guardpost') && Math.random()<0.5){
+    const set=new Set(posts.map(s=>s.x+','+s.y));
+    const res=bfsFind(c.x,c.y,(x,y)=>set.has(x+','+y));
+    if(res){ c.postTile={ x:res.target.x, y:res.target.y }; c.path=res.path; c.state='goingToPost'; return true; }
+  }
+  return false;
+}
+// Rueckgabe true = Tick verbraucht.
+function tickDrill(c){
+  if(c.state==='goingToTraining' || c.state==='goingToPost'){
+    stepAlong(c);
+    if(!c.path.length){ c.state=c.state==='goingToTraining'?'training':'guarding'; c.drillTimer=c.state==='training'?randInt(40,70):GUARD_TICKS; }
+    return true;
+  }
+  if(c.state==='training'){
+    if(!c.dummyTile){ c.state='wandering'; return true; }
+    c.actTarget={ x:c.dummyTile.x, y:c.dummyTile.y };
+    if(swing(c,'training')) grantXp(c,1);
+    if(--c.drillTimer<=0){ leaveDrill(c); c.state='wandering'; }
+    return true;
+  }
+  if(c.state==='guarding'){
+    if(--c.drillTimer<=0){ leaveDrill(c); c.state='wandering'; }
+    return true;
+  }
+  if(c.postTile||c.dummyTile) leaveDrill(c);
+  return false;
+}
+
 // Behandelt die beiden Freizeit-Zustaende. Rueckgabe true = Tick verbraucht.
 function tickLeisure(c, speed){
   if(c.state==='goingToLeisure'){
@@ -3931,7 +3976,8 @@ function tickSmelterWork(c, speed){
 
 function tickWarlock(w){
   if(w.category==='undead'){ w.energy=ENERGY_MAX; w.hunger=HUNGER_MAX; }      // the dead neither sleep nor eat
-  if(tickCreatureNeeds(w, WARLOCK_SPEED)){ leaveSmelter(w); leaveForge(w); return; }
+  if(tickCreatureNeeds(w, WARLOCK_SPEED)){ leaveSmelter(w); leaveForge(w); leaveDrill(w); return; }
+  if(tickDrill(w)) return;
   if(tickSmelterWork(w, WARLOCK_SPEED)) return;
   if(tickForgeWork(w)) return;
 
@@ -4037,6 +4083,7 @@ function tickWarlock(w){
       w.state = w.path.length ? 'goingToSmelter' : 'smelterWork';
       return;
     }
+    if(tryDrill(w)) return;
     // Sonst: Freizeit
     if(tryLeisure(w, WARLOCK_SPEED)) return;
     return;
@@ -6862,6 +6909,10 @@ function warlockActivityLabel(w){
     case 'examining': return 'betrachtet etwas ganz genau...';
     case 'goingToLeisure': return 'macht sich auf zu einer Freizeitbeschäftigung.';
     case 'enjoying': return (leisureById(w.leisureId)||{label:'entspannt'}).label + '.';
+    case 'goingToTraining': return 'geht zur Trainingskammer.';
+    case 'training': return 'drischt auf eine Übungspuppe ein.';
+    case 'goingToPost': return 'geht auf Wachposten.';
+    case 'guarding': return 'hält Wache.';
     case 'fleeing': return 'flieht vor einer Bedrohung!';
     case 'engaging': return 'stürmt auf einen Gegner zu.';
     case 'fighting': return 'kämpft!';

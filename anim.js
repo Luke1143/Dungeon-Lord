@@ -21,7 +21,7 @@ const ACT_ANIM={
 };
 // creature states that imply a verb when the caller did not name one
 const STATE_VERB={ digging:'dig', reinforcing:'reinforce', claiming:'claim', building:'build', buildingBridge:'build', fighting:'attack',
-  forgeWork:'tap', smelterWork:'tap', writing:'tap' };
+  forgeWork:'tap', training:'attack', smelterWork:'tap', writing:'tap' };
 const SOUND_OF={ dig:'chop', reinforce:'tap', build:'build', claim:'stomp', pull:'lift', tap:'tap' };
 const ANIM_ALIAS={ bridge:'build' };
 
