@@ -160,7 +160,7 @@ function ludusRender(){
     <div class="luTop"><span>Tag ${ludus.day}</span><span>💰 ${ludus.gold}</span><span>Ruhm ${ludus.fame}</span><span>Siege ${ludus.wins}</span></div>
     ${ludusNote?`<div class="luNote">${ludusEsc(ludusNote)}</div>`:''}
     <div class="luCols">${left}<div>${tabs}${main}${ludus.log.length?`<div class="luLog">${ludus.log.map(ludusEsc).join('<br>')}</div>`:''}</div></div>
-    <div class="arBtns"><button id="luMenu" class="menuMain">Hauptmenü</button></div>`;
+    <div class="arBtns"><button id="luMenu" class="menuMain">Hauptmenü</button><button id="luReset" class="menuMain">Neu beginnen</button></div>`;
   const stockNow=el._stock;
   el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; ludusRender(); if(ludusTab==='pit') ludusScoutOpponent(); }));
   el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.sell, inst=f.inventory[i]; ludus.gold+=ludusSellPrice(inst); f.inventory.splice(i,1); ludusNote=''; ludusSave(); ludusRender(); }));
@@ -171,6 +171,7 @@ function ludusRender(){
   on('luChicken',()=>{ if(ludus.gold<LUDUS_CHICKEN_COST) return; ludus.gold-=LUDUS_CHICKEN_COST; ludusHeal(LUDUS_CHICKEN_HEAL); ludusSave(); ludusRender(); });
   on('luSleep',()=>{ ludusHeal(LUDUS_SLEEP_HEAL); ludus.day++; ludus.opp=null; ludusLog('geschlafen'); ludusSave(); ludusRender(); });
   on('luMenu',()=>showScreen('menu'));
+  on('luReset',e=>{ const b=e.currentTarget; if(b.dataset.sure){ ludus=null; ludusNote=''; ludusSave(); ludusRender(); return; } b.dataset.sure='1'; b.textContent=Tr('Sicher? Nochmal klicken'); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent=Tr('Neu beginnen'); } },3000); });
   if(ludusTab==='pit' && !ludus.over && !ludus.opp) ludusScoutOpponent();
 }
 function ludusPaint(){

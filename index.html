@@ -8018,7 +8018,7 @@ function handlePickClick(x,y){
         creature.happiness=Math.max(0, creature.happiness-WARLOCK_PICKUP_PENALTY);
         setInspect(`Ihr haltet ${creature.name} (Warlock) in der Hand — er/sie mag das gar nicht. (Zufriedenheit: ${creature.happiness}/100)`);
       } else {
-        setInspect('Ihr haltet eine Fliege in der Hand — klickt, um sie abzusetzen.');
+        setInspect(`Ihr haltet ${actorLabel(creature)} in der Hand — klickt, um sie abzusetzen.`);
       }
       draw(); return;
     }
@@ -8183,7 +8183,7 @@ function handlePickClick(x,y){
     const imp=heldEntity.obj;
     imp.x=x; imp.y=y; imp.held=false;
     resetImp(imp);
-  } else if(heldEntity.kind==='fly' || heldEntity.kind==='warlock'){
+  } else if(heldEntity.kind==='fly' || heldEntity.kind==='warlock' || (heldEntity.obj && heldEntity.obj.kind===heldEntity.kind && state.creatures.includes(heldEntity.obj))){   // any creature can be put down again
     const c=heldEntity.obj;
     const isWarlock=heldEntity.kind==='warlock';
 
@@ -8226,15 +8226,15 @@ function handlePickClick(x,y){
     }
 
     c.x=x; c.y=y; c.held=false; c.path=[];
-    c.state='wandering'; c.foodTile=null; c.foodKind=null; c.lairTargetTile=null; c.claimProgress=0;
+    c.state=state.arena?'fighting':'wandering'; c.foodTile=null; c.foodKind=null; c.lairTargetTile=null; c.claimProgress=0;
     if(isWarlock) c.happiness=Math.max(0, c.happiness-WARLOCK_PICKUP_PENALTY);
     let acted=true;
     if(target.room==='dormitory'){
       acted=nudgeSleep(c);
-      if(!acted) setInspect(`${isWarlock?c.name:'Die Fliege'} ist nicht müde und ignoriert das Bett.`);
+      if(!acted) setInspect(`${actorLabel(c)} ist nicht müde und ignoriert das Bett.`);
     } else if(target.room==='hatchery'){
       acted=nudgeEat(c);
-      if(!acted) setInspect(`${isWarlock?c.name:'Die Fliege'} ${c.needsFood ? 'ist satt und ignoriert das Futter.' : 'braucht das Futter nicht.'}`);
+      if(!acted) setInspect(`${actorLabel(c)} ${c.needsFood ? 'ist satt und ignoriert das Futter.' : 'braucht das Futter nicht.'}`);
     }
     heldEntity=null;
     exitPickMode();
@@ -8815,6 +8815,37 @@ function updateRenderPositions(dt){
   state.creatures.forEach(ease);
 }
 
+// What the invisible hand holds hangs a little below the cursor, smaller than life, and swings after the movement like something with weight.
+const heldGhost={ x:0, y:0, vx:0, vy:0, tx:0, ty:0, tilt:0, face:false, cv:null };
+window.addEventListener('mousemove', e=>{ heldGhost.tx=e.clientX; heldGhost.ty=e.clientY; });
+function heldGhostPicture(){
+  const h=heldEntity; if(!h) return null;
+  const o=h.obj;
+  if(o && o.kind && typeof ZOO!=='undefined' && (ZOO[o.kind] || ZOO[o.kind+'_ally']) && (state.imps.includes(o)||state.creatures.includes(o))){
+    const key=(o.faction==='evil' && ZOO[o.kind+'_ally'])?o.kind+'_ally':o.kind, z=ZOO[key];
+    return { sprite:spriteCanvas(key, Math.floor(Date.now()/200), heldGhost.face, false, z.humanoid?equipLook(o):undefined), scale:creatureScale(o) };
+  }
+  const icon=h.kind==='corpse'?'💀':(h.kind==='book'?'📖':(h.kind==='chicken'?'🐔':(h.kind==='gold'?'💰':((o&&o.itemId&&ITEMS[o.itemId]&&ITEMS[o.itemId].icon)||'🎁'))));
+  return { icon };
+}
+function updateHeldGhost(dt){
+  let cv=heldGhost.cv;
+  if(!cv){ cv=heldGhost.cv=document.createElement('canvas'); cv.width=cv.height=96; cv.style.cssText='position:fixed;left:0;top:0;width:72px;height:72px;pointer-events:none;z-index:50;image-rendering:pixelated;filter:drop-shadow(0 10px 6px rgba(0,0,0,.5))'; document.body.appendChild(cv); }
+  const pic=heldGhostPicture();
+  cv.hidden=!pic; if(!pic) { heldGhost.vx=heldGhost.vy=0; return; }
+  const g=heldGhost; if(g.x===0&&g.y===0){ g.x=g.tx; g.y=g.ty; }
+  // a spring pulls the picture towards the cursor; the lag makes it trail and swing
+  const k=90, damp=9, ax=(g.tx-g.x)*k-g.vx*damp, ay=(g.ty-g.y)*k-g.vy*damp;
+  g.vx+=ax*dt; g.vy+=ay*dt; g.x+=g.vx*dt; g.y+=g.vy*dt;
+  if(Math.abs(g.vx)>20) g.face=g.vx>0;
+  const targetTilt=Math.max(-0.5,Math.min(0.5,g.vx*0.0009)); g.tilt+=(targetTilt-g.tilt)*Math.min(1,dt*10);
+  const bob=Math.sin(Date.now()/260)*3, c=cv.getContext('2d'); c.clearRect(0,0,96,96); c.imageSmoothingEnabled=false;
+  c.save(); c.translate(48,10); c.rotate(g.tilt); c.translate(-48,-10);          // hangs from the top, like held by the scruff
+  if(pic.sprite){ const s=Math.round(70*Math.min(1,pic.scale||1)*0.85); c.drawImage(pic.sprite,(96-s)/2,10+bob,s,s); }
+  else { c.font='44px serif'; c.textAlign='center'; c.fillText(pic.icon,48,62+bob); }
+  c.restore();
+  cv.style.transform=`translate(${Math.round(g.x+14)}px,${Math.round(g.y+10)}px)`;
+}
 let lastFrameTime=null, lastMinimap=0;
 function renderLoop(now){
   requestAnimationFrame(renderLoop);      // first: a failing frame must not end the loop
@@ -8824,6 +8855,7 @@ function renderFrame(now){
   if(lastFrameTime===null) lastFrameTime=now;
   const dt=Math.min(0.1, (now-lastFrameTime)/1000);
   lastFrameTime=now;
+  updateHeldGhost(dt);
   updateCamera(dt);
   fpMove(dt);
   updateRenderPositions(dt);

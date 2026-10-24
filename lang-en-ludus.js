@@ -20,5 +20,5 @@ i18nRegister({
 "{0} sinkt bewusstlos zu Boden, überlebt aber. +2 Gold Trost.":"{0} sinks unconscious to the ground but survives. +2 gold consolation.",
 "{0} verlässt die Grube. +2 Gold Trost.":"{0} leaves the pit. +2 gold consolation.",
 "Sieg über {0}":"Victory over {0}", "Niederlage gegen {0}":"Defeat against {0}", "geschlafen":"slept", "Tag {0}: {1}":"Day {0}: {1}",
-"Weiter":"Continue", "Hauptmenü":"Main Menu"
+"Neu beginnen":"Start over", "Weiter":"Continue", "Hauptmenü":"Main Menu"
 });
