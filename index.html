@@ -60,7 +60,7 @@
   .luOpts{ display:flex; gap:10px; flex-wrap:wrap; } .luOption{ flex:1 1 150px; border:1px solid #6a5233; border-radius:6px; padding:8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px; }
   .luDiff{ font-weight:700; letter-spacing:.05em; } .luDiff.d-easy{ color:#8fd05a; } .luDiff.d-fair{ color:#e8c24a; } .luDiff.d-hard{ color:#e0603a; }
   .luTrait{ color:#2a5a1c; font-weight:700; }
-  .luGift{ border-left:4px solid #888; } .luGift.r1{ border-color:#4a8ad8; } .luGift.r2{ border-color:#a050d8; } .luGift.r3{ border-color:#e8a020; } .luBoon{ color:#6c6; } .luBane{ color:#e66; } .luGiftMini{ font-size:11px; border-left:3px solid #888; padding-left:4px; margin-top:2px; } .luGiftMini.r1{ border-color:#4a8ad8; } .luGiftMini.r2{ border-color:#a050d8; } .luGiftMini.r3{ border-color:#e8a020; }
+  .luCast{ margin:6px 0 10px; opacity:.9; font-size:13px; } .luGift{ border-left:4px solid #888; } .luGift.r1{ border-color:#4a8ad8; } .luGift.r2{ border-color:#a050d8; } .luGift.r3{ border-color:#e8a020; } .luBoon{ color:#6c6; } .luBane{ color:#e66; } .luGiftMini{ font-size:11px; border-left:3px solid #888; padding-left:4px; margin-top:2px; } .luGiftMini.r1{ border-color:#4a8ad8; } .luGiftMini.r2{ border-color:#a050d8; } .luGiftMini.r3{ border-color:#e8a020; }
   .luForced{ border-color:#c8342e; } .luEvent button{ margin:4px 4px 0 0; }
   .luTabs{ flex-wrap:wrap; justify-content:center; display:flex; gap:6px; margin-bottom:8px; } .luTabs button.on{ background:var(--gold); color:#1c140f; }
   .luOpp{ display:flex; gap:12px; align-items:center; margin:8px 0; } #luPrev, #luOpp{ image-rendering:pixelated; } .luLog{ margin-top:10px; font-size:12px; opacity:.75; }
@@ -10268,6 +10268,8 @@ init();
 <script src="arena.js"></script>
 <script src="hub3d.js"></script>
 <script src="ludus.js"></script>
+<script src="ludus-world.js"></script>
+<script src="ludus-events.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();
 </script>

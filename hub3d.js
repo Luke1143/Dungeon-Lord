@@ -13,7 +13,8 @@ const Hub3D=(()=>{
     forge:   { x:-12.5, z:-0.5, r:14, door:[0,4.5], inside:[0.5,1.2] },
     library: { x:-8,    z:-10,  r:14, door:[0,4.5], inside:[0,0.8] },
     hall:    { x:7,     z:-10,  r:14, door:[0,4.5], inside:[0,0.8] },
-    training:{ x:0,     z:-19,  r:15, door:[0,5.2], inside:[0,0.4] }
+    training:{ x:0,     z:-19,  r:15, door:[0,5.2], inside:[0,0.4] },
+    event:   { x:-25,   z:-8,   r:11, door:[-5,2.5], inside:[-1.6,0.6] }
   };
 
   function load(){
@@ -105,6 +106,16 @@ const Hub3D=(()=>{
     if(t>=2){ [-3.8,3.8].forEach(px=>{ box(0.2,2,0.2,'darkwood',px,0,-3,g); box(0.3,0.3,0.3,flat(0xff7a20,0xff5a10),px,2,-3,g); }); light(g,-3.8,2.2,-3,0xff8a30,1,8); box(1.2,0.4,1.2,'stone',-2.8,0,1.8,g); }
     if(t>=3){ box(8,0.6,0.3,'stone',0,0,3.4,g); box(0.3,0.6,7,'stone',-4,0,0,g); box(0.3,0.6,7,'stone',4,0,0,g); box(2,1.4,0.15,'cloth',0,1,-3.4,g); }
   }
+  // the street scene where the events happen: a lantern, crates, a wall; the fighter stands on the left, the others come to the right
+  function buildAlley(g){
+    pad(g,11,8); box(11,0.08,8,'cobble',0,0,0,g);
+    wall(-5.5,-3.8,5.5,-3.8,3.2,'darkstone',g); wall(5.5,-3.8,5.5,2.5,3.2,'stone',g);
+    box(1.4,1.6,0.15,flat(0x1a1410),-1.2,0.9,-3.6,g); box(1.1,0.1,0.3,'darkwood',-1.2,0.7,-3.5,g);
+    box(1.1,1.0,1.1,'wood',-4.4,0,-2.6,g); box(0.9,0.8,0.9,'wood',-3.5,0,-3.0,g); box(0.8,0.7,0.8,'darkwood',-4.2,1.0,-2.7,g);
+    cyl(0.5,0.5,0.9,8,'darkwood',4.2,0,-2.8,g);
+    box(0.15,2.6,0.15,'darkwood',0.4,0,-3.2,g); box(0.5,0.5,0.5,flat(0xffcc66,0xffaa33),0.4,2.6,-3.2,g); light(g,0.4,2.7,-3,0xffcc66,1.4,12);
+    g.userData.cast=[]; g.userData.castKey='';
+  }
   // an unbought room: a bare plot with stakes and a rope, nothing inside
   function buildSite(g,w,d){
     pad(g,w,d); box(w,0.05,d,'dirt',0,0,0,g);
@@ -112,8 +123,8 @@ const Hub3D=(()=>{
     [[-w/2,d/2,w/2,d/2],[-w/2,-d/2,w/2,-d/2],[-w/2,-d/2,-w/2,d/2],[w/2,-d/2,w/2,d/2]].forEach(([a,b,c,e])=>{ wall(a,b,c,e,0.05,flat(0xc8a96a),g).position.y=0.9; });
     box(0.8,0.5,0.8,'darkwood',-w/4,0,-d/4,g); box(1.2,0.3,0.6,'wood',w/4,0,d/4,g);
   }
-  const BUILD={ inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining };
-  const SITE={ inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7] };
+  const BUILD={ event:buildAlley, inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining };
+  const SITE={ event:[10,8], inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7] };
 
   // ---- people ----
   function actorTex(kind,facingRight,frame,extra){
@@ -128,9 +139,28 @@ const Hub3D=(()=>{
   }
   const GUEST_KINDS=['goblin','ork','skeleton','dwarf','barbarian','thief','troll','darkelf'];
   function spawnGuests(g,tier){
+    g.userData.guests=[]; g.userData.guestKey='';
+    // without a world the tavern fills with strangers; the Ludus normally sends its characters through setGuests()
     const kinds=GUEST_KINDS.filter(k=>typeof ZOO!=='undefined'&&ZOO[k]), n=2+Math.min(4,tier);
-    g.userData.guests=[];
     for(let i=0;i<n;i++){ const k=kinds[Math.floor(Math.random()*kinds.length)], s=makeActor(k,-3+Math.random()*7,-2+Math.random()*4.5,k==='troll'?1.15:0.9); g.add(s); g.userData.guests.push(s); }
+  }
+  function setGuests(list){
+    const g=rooms.inn&&rooms.inn.group; if(!g||!g.userData.guests||!list||!list.length) return;
+    const key=JSON.stringify(list.map(x=>[x.kind,x.sig])); if(g.userData.guestKey===key) return; g.userData.guestKey=key;
+    g.userData.guests.forEach(s=>g.remove(s)); g.userData.guests=[];
+    list.forEach(x=>{ const s=makeActor(x.kind,-3+Math.random()*7,-2+Math.random()*4.5,x.kind==='troll'?1.15:0.9,x.extra); g.add(s); g.userData.guests.push(s); });
+  }
+  // the others of an event scene: they stand to the right of the fighter and, when the scene is over and they `exit`, walk off
+  const CAST_POS=[[2.2,0.3],[3.6,1.5],[3.4,-1.2]];
+  function setCast(list){
+    const g=rooms.event&&rooms.event.group; if(!g||!g.userData.cast) return;
+    list=list||[]; const key=JSON.stringify(list.map(x=>[x.kind,x.sig]));
+    if(g.userData.castKey!==key){
+      g.userData.cast.forEach(s=>g.remove(s)); g.userData.cast=[]; g.userData.castKey=key;
+      list.slice(0,3).forEach((x,i)=>{ const s=makeActor(x.kind,CAST_POS[i][0],CAST_POS[i][1],x.kind==='troll'?1.15:0.95,x.extra); s.userData.right=false; g.add(s); g.userData.cast.push(s); });
+    }
+    const out=list.some(x=>x.exit);
+    g.userData.cast.forEach(s=>{ if(out&&!s.userData.leaving){ s.userData.leaving=true; s.userData.tx=s.userData.x+12; s.userData.tz=s.userData.z+0.5; } });
   }
   function walk(s,dt,t,speed){
     const u=s.userData, dx=u.tx-u.x, dz=u.tz-u.z, d=Math.hypot(dx,dz); let moving=false;
@@ -141,6 +171,7 @@ const Hub3D=(()=>{
   function stepActors(dt,t){
     const inn=rooms.inn;
     if(inn&&inn.group.visible&&inn.group.userData.guests) inn.group.userData.guests.forEach(s=>{ const u=s.userData; if(Math.hypot(u.tx-u.x,u.tz-u.z)<0.1){ u.wait-=dt; if(u.wait<=0){ u.tx=-4+Math.random()*8; u.tz=-2.5+Math.random()*5.5; u.wait=1+Math.random()*3; } } walk(s,dt,t,0.7); });
+    const ev=rooms.event; if(ev&&ev.group.visible&&ev.group.userData.cast) ev.group.userData.cast.forEach(s=>walk(s,dt,t,s.userData.leaving?2.4:1));
     if(fighter){
       const u=fighter.userData, now=performance.now()/1000;
       if(u.enterAt && now>=u.enterAt){ u.tx=u.goalX; u.tz=u.goalZ; u.enterAt=0; }       // after the camera has swung over, he steps inside
@@ -171,13 +202,14 @@ const Hub3D=(()=>{
     renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
   }
   // tiers = { inn, pit, forge, library, hall, training }, 0 = not bought; the fighter is { kind, extra, sig } or null
-  function sync(tiers,fighterIn){
+  function sync(tiers,fighterIn,castIn,guestsIn){
     if(!ready) return;
     Object.keys(DEF).forEach(id=>{
       const r=rooms[id], t=tiers[id]||0, g=r.group; if(g.userData.tier===t) return;
       while(g.children.length) g.remove(g.children[0]); g.userData.lights.length=0; g.userData.guests=null; g.userData.tier=t;
       if(t>0) BUILD[id](g,t); else buildSite(g,SITE[id][0],SITE[id][1]);
     });
+    setCast(castIn); setGuests(guestsIn);
     const key=fighterIn?JSON.stringify([fighterIn.kind,fighterIn.sig]):'';
     if(key!==sig){ sig=key; setFighter(fighterIn); }
     if(!rooms[current].group.visible) focus(current,true);

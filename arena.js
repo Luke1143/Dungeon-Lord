@@ -92,6 +92,7 @@ function arenaBuild(setup,seedExtra){
           c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=arenaGear(c,grp,i);
           if(grp.ability && ABILITIES[grp.ability]) c.learned=[grp.ability];
           if(grp.name) c.name=grp.name;
+          if(grp.npc) c.npcId=grp.npc;
           if(grp.fighter) arenaApplyFighter(c,grp.fighter);
           c.state='idle'; c.path=[]; c.arenaTeam=ti; c.state='fighting';
           st.creatures.push(c); st.arena.roster[ti].push(c);
