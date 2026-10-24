@@ -80,6 +80,9 @@ const OW=(()=>{
     event:        { label:'Verlassener Ort',  playable:false, prod:{},                 local:{},                   gen:{},
       desc:'Hier gibt es nichts zu erobern, nur ein Ereignis.', side:'', suffixes:['rast','pfad','kreuz','stein'] },
     capital:      { label:'Hauptstadt des Guten', ai:'drilled', build:['dormitory','arena','hatchery','forge','library','dormitory','arena','forge','storage'], playable:true, prod:{ food:1, iron:1, magic:1, training:1, fort:1 }, local:{ waves:2 }, gen:{ bedrock:2 },
+      boss:{ name:'Herakles, Bezwinger der zwölf Mühen' }, setup:'capital_hall', spawnAt:'castle', heroPool:['paladin','knight','archer','dwarf','monk','wizard','giant'],
+      goals:[ { id:'defeat_boss', way:'frontal', bossName:'Herakles' }, { id:'steal_pelt', way:'cunning' } ],
+      paths:{ frontal:'Herakles in seiner Halle stellen. Im Löwenfell steckt er fast jeden Hieb weg, der Kampf wird lang und blutig.', cunning:'Das Löwenfell vom Altar stehlen. Dann ist er verwundbar, und du kannst ihn danach korrumpieren: der Held der Welt dient dir.' },
       desc:'Der Sitz des Heldenkönigs. Hier endet jede Kampagne.', side:'Den Boss der Welt besiegen oder unterwerfen.', suffixes:[] }
   };
 

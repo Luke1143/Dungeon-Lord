@@ -587,6 +587,9 @@ const SPECIES={
   skeleton:{ label:'Skelett',      category:'undead',   hp:20, strength:3, defense:0,  dex:14, dexGrowth:0.04, speed:1.0, tempo:1.0, plural:'Skelette',
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:1, loyalty:100, style:'fighter', icon:'💀',
              passive:'Erhebt sich aus Leichen, schläft nie, fürchtet nichts' },
+  herakles:{ label:'Herakles', category:'boss', hp:140, strength:11, defense:22, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.3,
+             needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
+             style:'fighter', icon:'🦁', passive:'Im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung' },
   oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', passive:'Schützer des Hains — jagt Frevler an seinen Wurzeln' },
@@ -686,6 +689,7 @@ function resolveAttack(attacker, defender, context){
   // Verteidigung mindert prozentual, Deckel liegt bei DEFENSE_CAP
   dmg = dmg * (1 - statDefense(defender)/100);
   dmg = Math.max(MIN_DAMAGE, Math.round(dmg));
+  if(defender.kind==='herakles' && !state.war.peltTaken) dmg=Math.max(1,Math.round(dmg*0.25));      // the lion pelt
 
   const overkill = Math.max(0, dmg - defender.hp);
   defender.hp -= dmg;
@@ -732,6 +736,7 @@ function creatureEmoji(c){
     case 'wizard': return '🧙‍♂️';
     case 'knight': return '🤺';
     case 'dwarfking': case 'arthur': return '👑';
+    case 'herakles': return '🦁';
     case 'oberon': return '🧚';
     case 'archer': case 'monk': case 'paladin': case 'dwarf': case 'giant': case 'ork': case 'goblin': case 'troll': case 'skeleton': return SPECIES[c.kind].icon;
     case 'dungeonlord': return '👿';
@@ -1467,6 +1472,7 @@ function recipeFor(actor, x, y){
 
   // Boden: Bauauftrag hat Vorrang, sonst Erobern
   if(t.type==='floor'){
+    if(t.pelt) return actor.faction==='good' ? null : { id:'take', cost:24, range:1 };          // anybody on the player's side may lift the pelt
     if(t.sword) return (actor.level>=5 || actor.isBoss) ? { id:'pull', cost:24, range:1 } : null;   // only the worthy can draw it
     if(t.queuedRoom && !t.room && t.owned) return { id:'build', cost:WORK_COST.build, range:1 };
     if(!t.owned && neighbors(x,y).some(([nx,ny])=> state.grid[ny][nx].type==='floor' && state.grid[ny][nx].owned)){
@@ -1525,6 +1531,12 @@ function interact(actor, x, y){
 
 function applyRecipe(actor, rec, x, y){
   const t=state.grid[y][x];
+  if(rec.id==='take'){
+    t.pelt=false; state.war.peltTaken=true;
+    const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
+    if(boss){ boss.alert=true; logEvent(`Das Löwenfell ist fort! ${boss.name} brüllt auf, und nun kann man ihn verwunden.`, x, y); }
+    for(let i=0;i<3;i++) emitFx('claim', x, y);
+  }
   if(rec.id==='pull'){
     t.sword=false; state.war.swordPulled=true;
     const boss=state.creatures.find(c=>c.isBoss&&c.faction==='good');
@@ -3264,6 +3276,13 @@ function tickCreatureOnce(c){
 
 // Bosses guard their home; the boss of a level hunts thieves once alerted, a corrupted one stays near its home and fights.
 function tickBoss(c){
+  // Herakles in a rage: at half life he roars, fights faster and calls the hall's heroes
+  if(c.kind==='herakles' && c.faction==='good' && !c.rage && c.hp<=c.maxHp*0.5){
+    c.rage=true; c.baseTempo=(c.baseTempo||1)*1.4; c.alert=true;
+    logEvent('Herakles brüllt vor Zorn und ruft seine Streiter!', c.x, c.y);
+    const tiles=heroSpawnTiles(), mods=waveMods(state.war);
+    ['paladin','knight','archer'].forEach((k,i)=>spawnHero(k, Math.min(MAX_LEVEL,(mods.levelBonus||0)+4), false, i, mods));
+  }
   if(c.path && c.path.length){ stepAlong(c); return; }
   if(c.faction==='good' && c.alert){
     const foes=state.creatures.concat(state.imps).filter(o=>!o.held&&!o.unconscious&&areHostile(c,o));
@@ -5357,6 +5376,7 @@ function draw2d(){
       if(t.lairOwner!=null) drawEmoji('🛏️', x, y, false);
       if(t.table) drawProp('roundtable', x, y);
       if(t.sword) drawProp('excalibur', x, y);
+      if(t.pelt) drawProp('pelt', x, y);
     }
   }
 
@@ -8477,6 +8497,7 @@ function owShowInfo(){
       const cut=!owLiveSet().has(n.id);
       html+=`<br><br><b>Liefert den Gegnern:</b> `+prod.map(k=>`<span style="color:${OW_STAT_COLORS[k]}">${OW.STATS[k].label} +${rt.prod[k]}</span>`).join(', ')+' pro Runde'+(cut?' <i>(abgeschnitten)</i>':'');
     } else if(!prod.length && rt.playable) html+=`<br><br>Liefert den Gegnern nichts.`;
+    if(rt.paths && !rt.gate) html+=`<br><br><b>Das Finale</b>: Boss: ${rt.boss.name}<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`;
     if(rt.gate){
       html+=`<br><br><b>Pforte</b>: Jeder Weg zur Hauptstadt führt hier durch.<br>Boss: ${rt.boss.name}`;
       html+=`<br><br><b>Der direkte Weg:</b> ${rt.paths.frontal}<br><b>Der listige Weg:</b> ${rt.paths.cunning}`+(rt.goals?'':'<br><i>(Sonderziel und Boss folgen noch, bis dahin gilt: Portal erobern.)</i>');
@@ -8624,8 +8645,8 @@ function spawnDungeonLord(){
   state.creatures.push(lord);
   state.war.lordPool=Math.round(statMaxHp(lord)*skillMult('lordReserve'));
 }
-const BOSS_GEAR={ dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
-const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot() };
+const BOSS_GEAR={ herakles:['hammer_epic','mediumArmor_epic'], dwarfking:['hammer_epic','heavyArmor_epic','tower_epic'], oberon:['wandBolt_epic','lightArmor_epic'], arthur:['sword_epic','heavyArmor_epic','kite_epic'] };
+const LEVEL_SETUPS={ dwarf_hoard:()=>setupDwarfHoard(), elf_grove:()=>setupElfGrove(), camelot:()=>setupCamelot(), capital_hall:()=>setupCapitalHall() };
 function setupDwarfHoard(){
   const g=state.grid, portal=tilesOfRoom('portal')[0]||{x:99,y:99};
   for(let attempt=0;attempt<600;attempt++){
@@ -8721,6 +8742,34 @@ function setupElfGrove(){
 }
 
 // Camelot: a castle with a gate facing the throne, the Round Table, King Arthur, three guards and the sword in the stone at the far end.
+// The finale: the capital's hall. A great walled hall with one gate, the world's hero at its heart, elite guards and, on an altar, the lion pelt that makes him
+// nearly invulnerable (taking it is the cunning way; he fights on, but can be hurt, and then bows to you).
+function setupCapitalHall(){
+  const g=state.grid, spot=findStructureSpot(8,6,20,8);
+  if(!spot) return false;
+  const { cx, cy }=spot, [ox,oy]=gateSide(cx,cy);
+  for(let dy=-6;dy<=6;dy++) for(let dx=-8;dx<=8;dx++){
+    const t=g[cy+dy][cx+dx], wall=Math.abs(dx)===8||Math.abs(dy)===6;
+    t.gold=false; t.ore=false; t.natural=false; t.marked=false; t.castle=true;
+    if(wall){ t.type='rock'; t.reinforced=true; t.fixed=true; }
+    else { t.type='floor'; t.owned=false; }
+  }
+  const gateX=ox?cx+ox*8:cx, gateY=oy?cy+oy*6:cy;
+  for(let k=0;k<=3;k++){
+    const x=gateX+ox*k, y=gateY+oy*k; if(x<1||y<1||x>=WORLD_COLS-1||y>=WORLD_ROWS-1) break;
+    const t=g[y][x]; if(t.type==='bedrock') break;
+    t.type='floor'; t.reinforced=false; t.fixed=false; t.owned=false; t.natural=false; t.gold=false; t.ore=false; t.castle=true;
+  }
+  const px=cx-ox*(ox?6:3), py=cy-oy*(oy?4:3);        // the altar: opposite the gate
+  g[py][px].pelt=true;
+  const hero=createBoss('herakles', cx, cy, { name:'Herakles', level:7, extraHp:60, gear:BOSS_GEAR.herakles });
+  state.creatures.push(hero);
+  [[-4,-3],[4,-3],[-4,3],[4,3]].forEach(([dx,dy])=>{
+    state.creatures.push(createBoss('paladin', cx+dx, cy+dy, { name:'Wächter der Halle', level:5, guard:true, gear:['hammer_fine','heavyArmor_fine','kite_fine'] }));
+  });
+  state.war.spawnTiles=[0,1,2].map(k=>({ x:gateX-ox*(k+1), y:gateY-oy*(k+1) }));
+  return true;
+}
 function setupCamelot(){
   const g=state.grid, spot=findStructureSpot(7,5,20,8);
   if(!spot) return false;
@@ -8806,7 +8855,7 @@ function finishLevel(){
       campaign=null; saveCampaign();
       try{ window.storage.delete(STORAGE_KEY,false); }catch(e){}
       showScreen('menu');
-      alert('Die Hauptstadt des Guten ist gefallen. Die Welt gehört euch!');
+      alert(w.ally ? `Die Hauptstadt des Guten ist gefallen, und ${w.ally.name}, der Held der Welt, dient nun dem Dunkel. Die Welt gehört euch!` : 'Die Hauptstadt des Guten ist gefallen. Der Held der Welt liegt am Boden. Die Welt gehört euch!');
       return;
     }
     owAfterMove();

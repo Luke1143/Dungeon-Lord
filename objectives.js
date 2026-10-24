@@ -36,6 +36,12 @@ const GOALS={
       return { done:n>=g.amount && !!boss && !boss.unconscious, text:`${Math.min(n,g.amount)}/${g.amount} Wurzeln` };
     }
   },
+  steal_pelt:{
+    corrupts:true,
+    corruptText:b=>`${b.name} hat sein Löwenfell verloren und mit ihm seine Unverwundbarkeit. Er beugt das Knie und dient euch.`,
+    label:()=>'Das Löwenfell vom Altar stehlen (er ist darin fast unverwundbar) und Herakles korrumpieren',
+    check:(st)=>{ const boss=st.creatures.find(c=>c.isBoss&&c.faction==='good'); return { done:!!st.war.peltTaken && !!boss && !boss.unconscious, text:st.war.peltTaken?'gestohlen':'hängt noch am Altar' }; }
+  },
   pull_sword:{
     corrupts:true,
     corruptText:b=>`${b.name} ist nur noch ein König ohne Legende. Er folgt euch nun und wird euch in den nächsten Leveln dienen.`,

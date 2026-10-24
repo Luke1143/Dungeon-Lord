@@ -335,6 +335,10 @@ function impFrame(state,t,facingRight){
   const fey=swap=>({ ...held, name:'Oberon', pal:{ ...held.pal, s:'#e2d4b4', S:'#f4ead0', F:'#e8e0a0', G:'#fff8c0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#2f5a2a', L:'#3f7a3a', m:'#1f3a1a', b:'#1f3a1a' },
     frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'leder', helm:3, chest:1, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
   ZOO.oberon=fey(false); ZOO.oberon_ally=fey(true);
+  // Herakles, the world's hero: a lion pelt for a hood, a club; the ally version has the player side's eyes
+  const hera=swap=>({ ...held, name:'Herakles', humanoid:true, pal:{ ...held.pal, F:'#c8801c', G:'#f0b040', t:'#b07a2c', T:'#d8a048', u:'#7a4a14', s:'#d09a74', S:'#e8b890' },
+    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'leder', helm:0, chest:1, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
+  ZOO.herakles=hera(false); ZOO.herakles_ally=hera(true);
   ZOO.elf=v({ s:'#e6d6b4', S:'#f6ead0', F:'#d8d090', G:'#f0eab0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#3a5a2a', L:'#4a7a3a', m:'#243a1c', b:'#243a1c' });
   // King Arthur: crowned human king in steel and blue; the ally version has the player side's eyes
   const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
@@ -419,6 +423,7 @@ function impFrame(state,t,facingRight){
   add('chick',t=>{ const f=mk(16,16), h=flick(t); ell(f,8,10,3,2.6,'f'); ell(f,10.4,7.6+h,1.9,1.9,'f'); put(f,12,8+h,'o'); put(f,11,7+h,'p'); put(f,7,13,'o'); put(f,9,13,'o'); return f; });
   add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
   add('flame',t=>{ const f=mk(16,16), k=flick(t); ell(f,8,10.5,2.6,3.8,'o'); ell(f,8,11.4,1.4,2.4,'f'); put(f,8,6-k,'o'); put(f,8,7,'o'); put(f,8,12,'F'); put(f,7+k,5,'o'); return f; });
+  add('pelt',()=>{ const f=mk(16,16); ell(f,8,9,6.4,4.2,'n'); ell(f,8,9,5.2,3.2,'o'); [[3,8],[5,12],[12,8],[10,13],[8,6]].forEach(([x,y])=>put(f,x,y,'n')); put(f,3,6,'o'); put(f,12,6,'o'); ell(f,13,10,1.6,1.4,'o'); put(f,13,9,'p'); shade(f,'o','O','n'); return f; },{ o:'#c8801c', O:'#e8a838', n:'#7a4a14' });
   add('excalibur',t=>{ const f=mk(16,16); ell(f,8,11,6,3.4,'s'); rect(f,4,9,8,4,'s'); shade(f,'s','S','z'); rect(f,7,1,2,9,'W'); put(f,7,1,'F'); rect(f,5,6,6,1,'y'); put(f,8,5-(flick(t)),'F'); return f; });
   add('roundtable',()=>{ const f=mk(16,16); ell(f,8,8,7.2,5.6,'d'); ell(f,8,8,6.2,4.8,'w'); ell(f,8,8,3.4,2.4,'W'); for(let i=0;i<12;i++){ const a=i/12*6.283; put(f,Math.round(8+Math.cos(a)*6.6),Math.round(8+Math.sin(a)*5.2),'y'); } shade(f,'w','W','d'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });

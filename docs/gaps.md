@@ -10,7 +10,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Nebenziele der Orte | ✅ | `REGION_TYPES[...].sideGoal` mit `SIDE_GOALS` (Räume erobern, Helden besiegen, Ritter stürzen, Erz lagern), Belohnung ein Artefakt; für Pforten gilt der Weg (direkt: Trophäe, listig: legendäres Artefakt) |
 | Optionale Level, die eine Pforte erleichtern | ❌ | |
 | Pforten: Zwerge, Elfen, Menschen | ✅ | Hydra und Labyrinth sind abgeschaltet |
-| Finale: Boss der Hauptstadt (besiegen oder unterwerfen) | ❌ | Hauptstadt ist ein normales Level mit Portal |
+| Finale: Boss der Hauptstadt (besiegen oder unterwerfen) | ✅ | Herakles in seiner Halle: direkt (im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung) oder listig (Fell stehlen, dann korrumpieren). Das Ende der Kampagne zeigt nur eine Meldung, kein Abspann |
 | Levellänge 10 min bis 1 h nach Entwicklungsstufe | ❌ | Kartengröße fest 48×32 |
 | Zeitdruck als Nebenziel (z. B. Atlantis) | ❌ | |
 | New Game Plus | ❌ | |
@@ -52,7 +52,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 | Thema | Stand | Anmerkung |
 |---|---|---|
 | Gegner-Burg mit Handwerkern, Rekruten, Profilen, Räumen, Technik | ✅ | |
-| Boss-Fähigkeiten und Phasen | ❌ | Bosse kämpfen nur normal |
+| Boss-Fähigkeiten und Phasen | 🟡 | Herakles hat Phase 2; Alberich, Oberon und Artus kämpfen noch nur normal |
 | Die Guten spiegeln den Spieler (Teil 24) | 🟡 | Heldenarten, Bedürfnisse der Wartenden; Zauberer/Barbar als Spiegel ja, eigene Räume-Jobs der Helden nein |
 
 ## Darstellung und Technik
@@ -66,7 +66,7 @@ Stand: nach Gegner-Burg, Zug der Guten, Ego-Ansicht, Animationen, Ton und Musik.
 ## Vorschlag für die Reihenfolge
 1. ~~Fertigkeitspunkte ausgeben und Tod des Lords mit Lebenspool~~ (gebaut).
 2. ~~Belohnungen: Artefakte aus Nebenzielen und Pforten~~ (gebaut). Offen: Artefakte, die Kreaturen betreffen, und versteckte Funde.
-3. **Finale** mit Boss der Hauptstadt.
+3. ~~Finale mit Boss der Hauptstadt~~ (gebaut).
 4. **Gefängnis und Bekehren** (bringt Eigenleben und Bossmechanik zusammen).
 5. **Eigenleben vertiefen**: Freundschaften, Streit, Rudelverhalten.
 6. Deckel entfernen, NG+, Vault.
