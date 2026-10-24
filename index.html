@@ -454,6 +454,7 @@
 <script src="objectives.js"></script>
 <script src="artifacts.js"></script>
 <script src="bosses.js"></script>
+<script src="weapons.js"></script>
 <script src="creatures.js"></script>
 <script src="terrain.js"></script>
 <script src="keep.js"></script>
@@ -1087,9 +1088,10 @@ function kiteBack(c,t){
 const NOTICE_RADIUS=8, NOTICE_INTRUDER_RADIUS=16;
 // How far a creature can strike: by the weapon it holds (a bow shoots, a wand casts), otherwise next to the foe.
 function reachOf(c){
-  const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon');
+  const inst=wornItems(c).find(i=>(instDef(i)||{}).type==='weapon'), w=inst&&instDef(inst);
   if(!w) return 1;
-  const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : (w.reach||1));
+  const pp=w.cat==='melee'?partsOf(inst):null;
+  const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : (pp?weaponReachTiles(pp.model.R,creatureScale(c),WEAPON_MODE[w.family]):(w.reach||1)));
   return base+((base>1 && hasPerk('shadow_arrows') && factionOf(c)==='evil')?1:0);
 }
 function noticesFoe(c,o){
@@ -1270,11 +1272,11 @@ const WEAPON_FAMILIES={
               names:['Stilett','Meuchler','Parierdolch','Rippenritzer'] },
   sword:    { cat:'melee',  weight:'fast',   label:'Schwert',      icon:'🗡️', hands:1, strength:5.5,  tempo:-0.10, swing:1,
               names:['Falchion','Bastardschwert','Claymore','Ork-Spalter'] },
-  spear:    { cat:'melee',  weight:'medium', label:'Speer',        icon:'🔱', hands:2, strength:5, tempo:-0.15, swing:1.15, reach:2,
+  spear:    { cat:'melee',  weight:'medium', label:'Speer',        icon:'🔱', hands:2, strength:6, tempo:-0.15, swing:1.0, reach:2,
               names:['Kriegsspeer','Lanze','Pike','Eberspieß'] },
   mace:     { cat:'melee',  weight:'medium', label:'Streitkolben', icon:'⚒️', hands:1, strength:10, tempo:-0.30, swing:1.3,
               names:['Schädelknacker','Morgenstern','Dornenkeule','Knochenbrecher'] },
-  axe:      { cat:'melee',  weight:'medium', label:'Axt',          icon:'🪓', hands:1, strength:10, tempo:-0.25, swing:1.5,
+  axe:      { cat:'melee',  weight:'medium', label:'Axt',          icon:'🪓', hands:1, strength:11, tempo:-0.25, swing:1.4,
               names:['Streitaxt','Kriegsbeil','Schädelspalter','Doppelaxt'] },
   hammer:   { cat:'melee',  weight:'heavy',  label:'Kriegshammer', icon:'🔨', hands:2, strength:20, tempo:-0.45, swing:1.9,
               names:['Knochenbrecher','Morgenstern','Amboss-Faust','Erdspalter'] },
@@ -1398,12 +1400,17 @@ function partsOf(v){
   const key=inst.id+'|'+inst.s+'|'+(inst.pp?JSON.stringify(inst.pp):'');
   if(PARTS_CACHE.has(key)) return PARTS_CACHE.get(key);
   const r=seededRng(inst.s), pick=a=>a[Math.floor(r()*a.length)];
-  const p={ head:Math.floor(r()*info.heads.length), len:Math.floor(r()*info.lens), shaft:pick(['wood','wood','bone','iron']), pommel:r()<0.5?1:0, mat:TOOLGEN.matOfTier(d.tier) };
+  const rareP=d.tier==='epic'?0.2:(d.tier==='fine'?0.12:0.06), rareHeads=info.heads.length-info.commonHeads, rareLens=info.lensAll-info.lens;
+  // mostly ordinary parts; now and then an extreme one (a giant blade, a boulder of a hammer, a very long shaft)
+  const head=(rareHeads&&r()<rareP)?info.commonHeads+Math.floor(r()*rareHeads):Math.floor(r()*info.commonHeads);
+  const len=(rareLens&&r()<rareP)?info.lens+Math.floor(r()*rareLens):Math.floor(r()*info.lens);
+  const p={ head, len, shaft:pick(['wood','wood','bone','iron']), pommel:r()<rareP*0.5?2:(r()<0.5?1:0), mat:TOOLGEN.matOfTier(d.tier) };
   if(inst.pp) Object.assign(p, inst.pp);      // chosen by a smith (smithParts) instead of rolled
   const h=info.heads[p.head], sh=TOOLGEN.shafts[p.shaft];
-  p.headName=h.n; p.shaftName=sh.n; p.lenName=['kurzer','mittlerer','langer'][Math.min(2,Math.round(p.len*2/Math.max(1,info.lens-1)))];
-  p.str=h.str*sh.str*(p.len===info.lens-1&&info.lens>1?1.04:1);
-  p.pen=h.pen*sh.pen*(p.len===0&&info.lens>1?0.9:(p.len===info.lens-1&&info.lens>1?1.1:1))*(p.pommel?0.92:1);
+  p.headName=h.n; p.shaftName=sh.n; p.lenName=p.len>=info.lens?'extremlanger':['kurzer','mittlerer','langer'][Math.min(2,Math.round(p.len*2/Math.max(1,info.lens-1)))];
+  const m=weaponModel(name,p,WEAPON_MODE[d.family]||'blade');
+  p.model=m; p.str=m.strengthF; p.swingF=m.swingF;
+  p.pen=h.pen*sh.pen*(p.pommel?0.92:1);
   PARTS_CACHE.set(key,p); return p;
 }
 function instStat(v, key){
@@ -1413,7 +1420,7 @@ function instStat(v, key){
   if(d.type==='weapon' && (key==='strength'||key==='tempo')){ const p=partsOf(v); if(p) m=key==='strength'?p.str:p.pen; }
   return d[key]*instQuality(v)*m;
 }
-function instParts(v){ const p=partsOf(v); return p?`${p.headName}, ${p.lenName} ${p.shaftName}${p.pommel?', Knauf':''}`:''; }
+function instParts(v){ const p=partsOf(v); return p?`${p.headName}, ${p.lenName} ${p.shaftName}${p.pommel?(p.pommel>1?', großer Knauf':', Knauf'):''}`:''; }
 
 // Gesamtwert eines Stuecks - danach vergleichen Kreaturen, was "besser" ist
 function instScore(v){
@@ -1443,7 +1450,7 @@ function smithParts(smith, itemId){
   const skill=Math.min(1, 0.3+(statDex(smith)/DEX_CAP)*0.4+((smith.level||1)-1)*0.06);
   if(Math.random()>skill) return null;
   let head=0, best=-Infinity;
-  info.heads.forEach((h,i)=>{ const sc=bias>=0 ? h.str*h.pen : h.str/h.pen; if(sc>best){ best=sc; head=i; } });
+  info.heads.forEach((h,i)=>{ if(h.rare) return; const sc=bias>=0 ? h.str*h.pen : h.str/h.pen; if(sc>best){ best=sc; head=i; } });
   return { head, len:bias>0?info.lens-1:(bias<0?0:Math.floor(info.lens/2)), shaft:bias>0?'iron':(bias<0?'bone':'wood'), pommel:(smith.level||1)>=HASTE_LEVEL?1:(Math.random()<0.4?1:0) };
 }
 function forgeItem(itemId, smith){
@@ -1560,6 +1567,8 @@ const SKILLS=[
 ];
 function skillRank(id){ return ((typeof campaign!=='undefined' && campaign && campaign.skills && campaign.skills[id]) || 0) + (typeof artifactRanks==='function'&&typeof campaign!=='undefined'?artifactRanks(campaign,id):0); }
 function skillMult(id){ const s=SKILLS.find(x=>x.id===id); return s&&s.step ? Math.pow(s.step, skillRank(id)) : 1; }
+// strength without equipment: what the arm brings (the weapon's own bonus comes on top)
+function wielderStrength(c){ return Math.max(1,(c.baseStrength||1)*levelScale(c.level)); }
 function statStrength(c){
   const eq=equipmentBonus(c);
   const m = c.kind==='dungeonlord' ? skillMult('lordStr') : (factionOf(c)==='evil' ? skillMult('creatureStr') : 1);
@@ -1760,7 +1769,11 @@ function grantXp(actor, amount){
 // drei Ticks lang aus, bevor der Schlag sitzt. Schnelle Kreaturen schlagen oefter.
 const SWING_COST=3;
 // a blow with a dagger comes quick, one with a war hammer slow: the weapon in hand scales the wind-up (work with tools keeps the plain cost)
-function swingFactorOf(c){ const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon'); return (w&&w.swing)||1; }
+function swingFactorOf(c){
+  const inst=wornItems(c).find(i=>(instDef(i)||{}).type==='weapon'); if(!inst) return 1;
+  const w=instDef(inst), p=partsOf(inst), strongF=Math.max(0.6,Math.min(1.8,Math.pow(WIELDER_STR_REF/Math.max(1,wielderStrength(c)),WEAPON_WIELD_EXP)));
+  return (w.swing||1)*(p?p.swingF:1)*(w.cat==='melee'?strongF:1);     // the wielder's strength: a strong arm swings the same weapon quicker
+}
 function swingCostOf(c){ return SWING_COST*((c.verb==='attack'||c.state==='fighting')?swingFactorOf(c):1); }
 const WORK_COST={ pickup:1, claim:3, rock:10, reinforce:60, build:8 };   // reinforcing is a long job: a wall is an investment, not a reflex
 
@@ -7417,10 +7430,13 @@ function itemDescription(inst){
     if(d.speed) mods.push(`Tempo ${fmt(instStat(inst,'speed'))}`);
     if(d.tempo) mods.push(`Arbeitstempo ${fmt(instStat(inst,'tempo'))}`);
     if(d.type==='weapon'){
-      if(d.swing && d.swing!==1) mods.push(d.swing<1?`schnelle Schläge (×${d.swing})`:`langsame Schläge (×${d.swing})`);
-      if(d.reach>1) mods.push(`Reichweite ${d.reach} Felder`);
+      const pp=partsOf(inst), sw=+((d.swing||1)*(pp?pp.swingF:1)).toFixed(2);
+      if(sw<0.9) mods.push(`schnelle Schläge (×${sw})`); else if(sw>1.1) mods.push(`langsame Schläge (×${sw})`);
+      const rt=pp&&d.cat==='melee'?weaponReachTiles(pp.model.R,1,WEAPON_MODE[d.family]):(d.reach||1);
+      if(rt>1) mods.push(`Reichweite ${rt} Felder`);
       else if(d.cat==='ranged') mods.push(`Reichweite ${d.family==='javelin'?3:5} Felder`);
       else if(d.cat==='magic') mods.push('Reichweite 4 Felder');
+      if(pp){ mods.push(`Balance: ${weaponBalanceLabel(pp.model)}`); mods.push(`${instParts(inst)}`); }
     }
   }
   const kindLabel = d ? (d.type==='weapon' ? ({melee:'Nahkampf',ranged:'Fernkampf',magic:'Magie'}[d.cat]||d.cat) : d.type==='shield' ? 'Schild' : 'Rüstung') : '';

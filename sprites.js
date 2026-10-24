@@ -131,7 +131,7 @@ const CREATURES={
     keule:{ lens:[4,6,8], grip:0.85, heads:[
       H('Stachelkugel',1,1,3,[[0,0,'W'],[2,0,'W'],[1,0,'K'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W']]),
       H('Flügelkopf',1.05,1.05,3,[[1,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W']]) ] },
-    speer:{ lens:[5,7,9], grip:0.6, heads:[
+    speer:{ lens:[7,9,11], grip:0.6, heads:[
       H('Blattspitze',1,1,2,[[1,0,'W'],[1,1,'W']]),
       H('Breitspitze',1.06,1.08,2,[[1,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W']]),
       H('Hakenspitze',1.03,1.04,3,[[1,0,'W'],[1,1,'W'],[0,2,'W'],[2,2,'W']]) ] },
@@ -140,6 +140,19 @@ const CREATURES={
       H('Kugel',1.04,1,3,[[1,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q']]),
       H('Hörner',0.96,0.9,3,[[0,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q']]) ] }
   };
+  // generated head shapes for the rare extremes (a giant blade, a boulder of a hammer): rows 0..hs-1 above the shaft, 'W' head, 'K' guard
+  const bladePx=(l,w)=>{ const px=[], x0=1-Math.floor((w-1)/2); for(let y=0;y<l;y++) for(let x=0;x<w;x++) px.push([x0+x,y,'W']); for(let x=0;x<w+2;x++) px.push([x0-1+x,l,'K']); return px; };
+  const axePx=(l,w)=>{ const px=[]; for(let y=0;y<l;y++) for(let x=0;x<w;x++) px.push([2+x,y,'W']); return px; };
+  const blockPx=(w,l)=>{ const px=[], x0=1-Math.floor((w-1)/2); for(let y=0;y<l;y++) for(let x=0;x<w;x++) px.push([x0+x,y,(y===0&&(x===0||x===w-1))?'K':'W']); return px; };
+  const tipPx=(l,w)=>{ const px=[]; for(let y=0;y<l;y++){ const ww=y<l/2?1:w, x0=1-Math.floor((ww-1)/2); for(let x=0;x<ww;x++) px.push([x0+x,y,'W']); } return px; };
+  const rare=(name,head,lens)=>{ const r=WEAPON_PARTS[name]; r.commonHeads=r.heads.length; r.commonLens=r.lens.length; if(head){ head.rare=true; r.heads.push(head); } if(lens) lens.forEach(l=>r.lens.push(l)); };
+  Object.keys(WEAPON_PARTS).forEach(k=>{ WEAPON_PARTS[k].commonHeads=WEAPON_PARTS[k].heads.length; WEAPON_PARTS[k].commonLens=WEAPON_PARTS[k].lens.length; });
+  rare('dolch',H('Nadel',0.8,0.8,4,bladePx(3,1)),[0]);
+  rare('schwert',H('Hünenklinge',1.5,1.6,14,bladePx(13,3)),[6]);
+  rare('axt',H('Riesenbeil',1.6,1.7,0,axePx(7,5)),[11]);
+  rare('hammer',H('Felsklotz',1.7,1.8,6,blockPx(6,6)),[11]);
+  rare('keule',H('Riesenkeule',1.5,1.6,5,blockPx(5,5)),[10]);
+  rare('speer',H('Hellebardenspitze',1.4,1.4,7,tipPx(7,3)),[14]);
   const SHAFTS={ wood:{ ch:'j', n:'Holzschaft', str:1, pen:1 }, bone:{ ch:'b', n:'Knochenschaft', str:0.95, pen:0.85 }, iron:{ ch:'i', n:'Eisenschaft', str:1.05, pen:1.15 } };
   // parts = { head:index, len:index, shaft:'wood'|'bone'|'iron', pommel:0|1, mat }; returns { px:[[x,y,ch]], grip:[x,y] } or null when the weapon has no parts
   function weaponParts(name,parts){
@@ -148,7 +161,8 @@ const CREATURES={
     const px=h.px.map(([x,y,c])=>[x,y,c==='W'?'V':(c==='K'?'v':c)]);
     const L=len+WEAPON_GROW;   // weapons are drawn a little larger than the bare plan, so they read well on a small body
     for(let i=0;i<L;i++) px.push([1,h.hs+i,sh.ch]);
-    if(parts.pommel) px.push([1,h.hs+L,'v']);
+    if(parts.pommel>=1) px.push([1,h.hs+L,'v']);
+    if(parts.pommel>=2){ px.push([0,h.hs+L,'v'],[0,h.hs+L+1,'v'],[1,h.hs+L+1,'v']); }
     return { px, grip:[1,h.hs+Math.round(rec.grip*(L-1))] };
   }
   const WEAPON_MAT={ crude:'bronze', plain:'eisen', fine:'stahl', epic:'stahl' };
@@ -206,7 +220,10 @@ const CREATURES={
     return { grip:wp.grip, px:wp.px.map(([x,y,c])=>[x,y,pal[c]||'#c4cad1']) };
   },
   // what the item roller needs: head variants and shaft lengths per weapon sprite, shaft materials
-  parts(name){ const r=WEAPON_PARTS[name]; return r?{ heads:r.heads.map(h=>({ n:h.n, str:h.str, pen:h.pen })), lens:r.lens.length }:null; },
+  parts(name){ const r=WEAPON_PARTS[name]; if(!r) return null;
+    return { heads:r.heads.map((h,i)=>{ let x0=99,x1=-99,y0=99,y1=-99; h.px.forEach(([x,y])=>{ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); });
+                 return { n:h.n, str:h.str, pen:h.pen, hl:y1-y0+1, hw:x1-x0+1, n_px:h.px.length, rare:i>=r.commonHeads }; }),
+      lens:r.commonLens, lensAll:r.lens.length, lensPx:r.lens.map(l=>l+WEAPON_GROW), commonHeads:r.commonHeads, grip:r.grip }; },
   shafts:SHAFTS, matOfTier:t=>WEAPON_MAT[t]||'eisen' };
   function frame(key,t,facingRight,moving,equip){
     const f=mk(N,N), P=CREATURES[key].parts(), k=t%4;
