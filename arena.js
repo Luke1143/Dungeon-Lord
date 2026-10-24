@@ -4,7 +4,7 @@
 // (everyone sees every foe). Team A is the dark side (faction 'evil'), team B the good side (faction 'good'), whatever the species.
 const ARENA_STORE='dungeon-lord-arena-setup-v1';
 const ARENA_MAX_TICKS=4000, ARENA_LUDUS_TICKS=700;   // a Ludus match has a time limit (about 4 minutes at normal speed)
-const ARENA_LAYOUTS=[['pit','Offene Grube'],['caverns','Höhlen'],['halls','Hallen'],['canyon','Schlucht'],['tunnels','Stollen']];
+const ARENA_LAYOUTS=[['pit','Offene Grube'],['caverns','Höhlen'],['halls','Hallen'],['canyon','Schlucht'],['tunnels','Stollen']].concat(typeof ARENA_STAGE_LIST!=='undefined'?ARENA_STAGE_LIST:[]);
 const ARENA_DIMS=[['S','klein'],['M','mittel'],['L','groß']];
 const ARENA_GEARS=[['auto','Standard'],['none','keine'],['custom','eigene']];
 
@@ -61,18 +61,19 @@ function arenaBuild(setup,seedExtra){
   if(seedWord){ const r=seededRng(arenaHash(seedWord)); Math.random=r; }
   let st;
   try{
-    const m=setup.map, layout=m.layout==='pit'?'caverns':m.layout;
+    const m=setup.map, stage=typeof ARENA_STAGE_LIST!=='undefined'&&ARENA_STAGE_LIST.some(x=>x[0]===m.layout), layout=(m.layout==='pit'||stage)?'caverns':m.layout;
     levelGen={ dims:m.dims, layout, rivers:[0,0], lakes:[m.water||0,m.water||0], lava:[m.lava||0,m.lava||0], crystal:[m.crystal||0,m.crystal||0], ruins:[0,0], vaults:[0,0], goldVeins:-6, oreVeins:-6, bedrock:-3 };
     st=makeDefaultState();
     const g=st.grid;
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.room==='throne'||t.room==='entrance'||t.room==='portal') t.room=null; }
     if(m.layout==='pit'){ arenaPit(g,m.dims); if(m.lava) growLava(g,m.lava); if(m.water){ for(let i=0;i<m.water;i++){ const x=randInt(6,WORLD_COLS-7), y=randInt(6,WORLD_ROWS-7); blobCells(x,y,randInt(8,16)).forEach(([cx,cy])=>{ g[cy][cx].type='water'; g[cy][cx].lava=false; }); } } }
+    let stageCamps=null; if(stage) stageCamps=arenaStageBuild(g,m.layout,m.dims);
     // two camps at the far ends of the biggest open cave; when there is none, carve one
     let comps=arenaComponents(g);
     if(!comps.length || comps[0].length<150){ const cx=WORLD_COLS>>1, cy=WORLD_ROWS>>1; carveRect(g,cx-12,cy-6,cx+12,cy+6); comps=arenaComponents(g); }
     const cells=comps[0], key=([x,y])=>x+y*0.8;
-    const A=cells.reduce((a,b)=>key(a)<=key(b)?a:b);
-    const B=m.near ? cells.reduce((a,b)=>Math.abs(Math.abs(b[0]-A[0])+Math.abs(b[1]-A[1])-14)<Math.abs(Math.abs(a[0]-A[0])+Math.abs(a[1]-A[1])-14)?b:a) : cells.reduce((a,b)=>key(a)>=key(b)?a:b);
+    const A=stageCamps?stageCamps.A:cells.reduce((a,b)=>key(a)<=key(b)?a:b);
+    const B=stageCamps?stageCamps.B:m.near ? cells.reduce((a,b)=>Math.abs(Math.abs(b[0]-A[0])+Math.abs(b[1]-A[1])-14)<Math.abs(Math.abs(a[0]-A[0])+Math.abs(a[1]-A[1])-14)?b:a) : cells.reduce((a,b)=>key(a)>=key(b)?a:b);
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; t.look='arena'; } }
     // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
@@ -156,7 +157,7 @@ function arenaItemDetour(c){
 // a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
 const LUDUS_HP_MULT=2;      // Ludus bouts last longer: more life for everyone, so that gear, stamina and status effects have time to matter
 function arenaApplyFighter(c,f){
-  c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.gearUser=true;
+  c.name=f.name||c.name; c.memberId=f.id; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.gearUser=true;
   const boost=typeof ludusKindBoost==='function'?ludusKindBoost(c.kind):1; c.strMult=boost; c.hpMult=LUDUS_HP_MULT*boost;
   c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice(); c.gifts=JSON.parse(JSON.stringify(f.gifts||[])); c.maxHp=statMaxHp(c);
   c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));

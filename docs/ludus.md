@@ -83,3 +83,17 @@ After a won tournament round the fighter picks one of three procedural gifts, se
 - **Ereignisse** (`ludus-events.js`, jeden Tag möglich) haben einen **eigenen 3D-Raum** (Gasse): der Kämpfer und bis zu drei andere stehen darin, mit ihrer echten Ausrüstung, sodass man die Lage lesen kann (sind die Banditen schlecht bewaffnet? kämpfen oder Schutzgeld zahlen?). Nach der Wahl kommt ein **Nachspiel** mit Beschreibung und Folgen, erst dann geht der Tag weiter.
 - **Geschichten** über Charaktere haben höheres Gewicht: der Bettler (ein Charakter, der sich ergeben hat), später der Dank vor der Taverne mit dem Angebot, Gefährte zu werden, oder die alte Rechnung (Rache für Ausrauben/Wegschicken).
 - Ereignisse sind Daten: `make()` (kann es jetzt passieren, wer spielt mit?), `text()`, `options` mit `run()`, das `{text, fight|bout, exit}` zurückgibt.
+
+## Das Team (neu)
+- Die Taverne bestimmt die **Teamplätze**: Stufe 1 ein Mitstreiter neben dem Kämpfer, Stufe 2 zwei, Stufe 3 drei. Mitstreiter werden in der Taverne **angeheuert** (Gäste mit „Anheuern", Preis nach Stufe und Bindung) oder treten über Ereignisse bei (der Bettler, dem man half). **Entlassen** gibt den Platz frei.
+- Jedes Mitglied hat eigene Ausrüstung, Wunden, Erfahrung, Fähigkeiten, Bücher und Gaben. Die Reiter im Kopf der Kämpferkarte wählen, wer gerade angezeigt und ausgerüstet wird. Schlafen heilt das ganze Team, Huhn und Training wirken auf das gewählte Mitglied.
+- **Kämpfe:** Wer allein ist, bekommt wie bisher gelegentlich einen geliehenen Mitstreiter (Tag-Team). Sobald ein Team da ist, gibt es keine Tag-Team-Kämpfe mehr: Es kämpft das ganze Team gegen gleich viele Gegner (Gruppe) oder ein größeres Rudel. Der Preis wächst mit der Teamgröße. Turnierrunden bringen ein Gefolge mit.
+- **Tod:** Fällt ein Mitglied, ist es weg (und in der Welt tot). Der Lauf endet, wenn das ganze Team gefallen ist.
+- **Gaben** nach dem Turnier: man wählt auch, wer sie bekommt.
+- Die Stufe des Teams (Durchschnitt) bestimmt, wie stark Gegner und Turnierrivalen sind.
+
+## Arenen (neu)
+Neben der offenen Grube und den Höhlen gibt es geformte Kampfplätze (`arena-stages.js`): **Engpass** (Mauer mit schmaler Lücke), **Brücke über Lava** (zwei Plattformen, zwei schmale Brücken), **Ring** (großer Block in der Mitte), **Lavainsel** (Insel in einem Lavagraben, vier Brücken), **Säulenhalle** (Deckung für Schützen) und **Gassen** (drei Bahnen mit Lücken). Jeder Pit-Kampf und jede Turnierrunde hat eine Arena; die Probekämpfe der Grube zählen sie mit, die Schwierigkeit stimmt also.
+
+## Tempo
+Die Turnierrunde kommt alle 5 Tage (Pflichtkampf nach 3 Tagen ohne Kampf), Erfahrung aus Kämpfen ×3,5, Ansehen ×1,5.

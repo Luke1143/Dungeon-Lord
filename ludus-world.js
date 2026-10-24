@@ -9,17 +9,17 @@ const ludusPower=k=>LUDUS_POWER[k]||0;
 // every kind is brought to the same strength: a weak one gets more life and strength (as many levels as it lacks, measured at level 3), a strong one less
 const ludusKindBoost=k=>{ const P=Math.max(-8,Math.min(20,ludusPower(k))); if(!P) return 1; const base=1+LEVEL_SCALE_PER_LEVEL*3; return +(P<0?(1+LEVEL_SCALE_PER_LEVEL*(3-P))/base:base/(1+LEVEL_SCALE_PER_LEVEL*(3+P))).toFixed(2); };
 // the kinds that can show up as opponents: the strong ones only once the fighter is high enough to meet them at a fair level
-const ludusFoeKinds=()=>{ const l=ludusKinds().filter(k=>ludusPower(k)<=ludus.fighter.level+1); return l.length?l:ludusKinds(); };
+const ludusFoeKinds=()=>{ const l=ludusKinds().filter(k=>ludusPower(k)<=ludusLevel()+1); return l.length?l:ludusKinds(); };
 // the level an opponent of kind `k` needs to be a match for the fighter (the fighter's own kind is already levelled by ludusKindBoost) once `edge` levels are added;
 // a kind's strength is a factor, not a number of levels, so the weak ones are raised more at high levels
 const ludusKindFactor=k=>{ const P=ludusPower(k), base=levelScale(3); return P>=0?levelScale(3+P)/base:base/levelScale(3-P); };
-const ludusMatchLevel=(k,edge)=>Math.max(1,Math.min(40,Math.round((levelScale(ludus.fighter.level)/ludusKindFactor(k)-1)/LEVEL_SCALE_PER_LEVEL+1+(edge||0))));
+const ludusMatchLevel=(k,edge)=>Math.max(1,Math.min(40,Math.round((levelScale(ludusLevel())/ludusKindFactor(k)-1)/LEVEL_SCALE_PER_LEVEL+1+(edge||0))));
 const ludusNpc=id=>(ludus&&ludus.world||[]).find(n=>n.id===id)||null;
-const ludusNpcPool=()=>(ludus.world||[]).filter(n=>n.status==='active' && !n.maimed && n.id!==ludus.companion);
+const ludusNpcPool=()=>(ludus.world||[]).filter(n=>n.status==='active' && !n.maimed);
 // what a character looks like to the arena and to the 3D view: the same fields as an anonymous opponent, plus the id
 const ludusNpcFoe=n=>({ kind:n.kind, level:n.level, tier:n.tier, seed:n.seed, name:n.name, npc:n.id });
 function ludusNpcName(r){
-  const taken=new Set((ludus.world||[]).filter(n=>n.status==='active').map(n=>n.name).concat([ludus.fighter.name]));
+  const taken=new Set((ludus.world||[]).filter(n=>n.status==='active').map(n=>n.name).concat(ludus.team.map(m=>m.name)));
   const free=LUDUS_NAMES.filter(x=>!taken.has(x)); const l=free.length?free:LUDUS_NAMES;
   return l[Math.floor(r()*l.length)];
 }
@@ -40,22 +40,21 @@ function ludusRepopulate(){
   ludus.world.forEach(n=>{
     if(n.status!=='active') return;
     n.maimed=false;
-    if(n.id===ludus.companion){ n.level++; return; }
     if(r()<0.25){ n.status='gone'; n.goneDay=ludus.day; return; }
     if(r()<0.6) n.level++;
     if(r()<0.25) n.tier=Math.min(3,n.tier+1);
   });
-  ludus.world=ludus.world.filter(n=>n.status==='active' || (n.status==='dead' && ludus.day-(n.diedDay||0)<21));
+  ludus.world=ludus.world.filter(n=>n.status==='active' || n.status==='team' || (n.status==='dead' && ludus.day-(n.diedDay||0)<21));
   ludusPopulate();
 }
 // how a character stands to the fighter, in one line (the last thing that happened between them)
 function ludusNpcStory(n){
-  const l=n.last; if(!l) return n.id===ludus.companion?'dein Gefährte':'';
+  const l=n.last; if(!l) return '';
   const d=l.d, T={
     surrender:`hat sich dir an Tag ${d} ergeben`, beaten:`wurde von dir an Tag ${d} besiegt`, beatYou:`hat dich an Tag ${d} besiegt`, ally:`kämpfte an Tag ${d} an deiner Seite`,
-    helped:`bekam von dir an Tag ${d} Münzen`, robbed:`wurde von dir an Tag ${d} ausgeraubt`, sent:`wurde von dir an Tag ${d} weggeschickt`, paid:`bekam von dir an Tag ${d} Schutzgeld`, scared:`ergriff an Tag ${d} vor dir die Flucht`, died:`fiel an Tag ${d} im Kampf`
+    helped:`bekam von dir an Tag ${d} Münzen`, robbed:`wurde von dir an Tag ${d} ausgeraubt`, sent:`wurde von dir an Tag ${d} weggeschickt`, paid:`bekam von dir an Tag ${d} Schutzgeld`, scared:`ergriff an Tag ${d} vor dir die Flucht`, died:`fiel an Tag ${d} im Kampf`, joined:`trat an Tag ${d} in dein Team ein`, left:`verließ an Tag ${d} dein Team`
   };
-  return n.id===ludus.companion?'dein Gefährte':(T[l.t]||'');
+  return T[l.t]||'';
 }
 const ludusGearWord=t=>['zerlumpt und schlecht bewaffnet','einfach ausgerüstet','gut ausgerüstet','prächtig ausgerüstet'][Math.max(0,Math.min(3,t))];
 const ludusCastLine=s=>`${s.name} — ${SPECIES[s.kind].label}, Stufe ${s.level}, ${ludusGearWord(s.tier)}`;
@@ -65,13 +64,13 @@ function ludusLookOf(s){
   const extra=typeof equipLook==='function'?equipLook(c):undefined;
   return { kind:s.kind, extra:extra||undefined, sig:JSON.stringify(extra||null) };
 }
-// who sits in the tavern today: the companion, those the fighter knows, and a few strangers (the same for the whole day)
+// who sits in the tavern today: those the fighter knows, and a few strangers (the same for the whole day)
 function ludusTavernGuests(){
   if(!ludus||ludus.over) return [];
-  const r=ludusRng('tav'+ludus.day), act=(ludus.world||[]).filter(n=>n.status==='active'), comp=ludusNpc(ludus.companion);
+  const r=ludusRng('tav'+ludus.day), act=(ludus.world||[]).filter(n=>n.status==='active');
   const shuf=l=>l.map(x=>[r(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-  const known=shuf(act.filter(n=>n.met&&n!==comp)), rest=shuf(act.filter(n=>!n.met&&n!==comp));
-  return (comp&&comp.status==='active'?[comp]:[]).concat(known.slice(0,3)).concat(rest.slice(0,2)).slice(0,5);
+  const known=shuf(act.filter(n=>n.met)), rest=shuf(act.filter(n=>!n.met));
+  return known.slice(0,3).concat(rest.slice(0,2)).slice(0,5);
 }
 // after a match: what happened to the characters who fought in it
 function ludusNpcOutcomes(st,won){
@@ -79,11 +78,32 @@ function ludusNpcOutcomes(st,won){
     const n=c.npcId&&ludusNpc(c.npcId); if(!n) return;
     n.met=1;
     const gone=c.removed||c.dead||!st.creatures.includes(c);
-    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; if(ludus.companion===n.id) ludus.companion=null; return; }
+    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; return; }
     if(ti===0){ n.last={ t:'ally', d:ludus.day }; n.bond=Math.min(3,(n.bond||0)+1); return; }
     if(won){
       if(c.surrendered){ n.last={ t:'surrender', d:ludus.day }; n.maimed=true; }
       else n.last={ t:'beaten', d:ludus.day };
     } else { n.last={ t:'beatYou', d:ludus.day }; }
   }));
+}
+
+// ---- the team: recruiting and dismissing ----
+// the level a character has as a mate: as far from a fair match for its kind as it was in the world (the kind's strength is made up for by ludusKindBoost)
+const ludusMateLevel=n=>Math.max(1,ludusLevel()+(n.level-ludusMatchLevel(n.kind,0)));
+const ludusRecruitPrice=n=>Math.round((20+22*ludusMateLevel(n))*((n.bond||0)>=2?0.5:((n.bond||0)<0?1.6:1)));
+function ludusJoinTeam(n){
+  const lv=ludusMateLevel(n), c=arenaMake(n.kind,0,0); c.level=lv;
+  const inv=arenaGear(c,ludusOppGroup(ludusNpcFoe(n)),0);
+  ludus.team.push({ id:'m'+n.id, npc:n.id, gifts:[], kind:n.kind, name:n.name, level:lv, xp:xpForLevel(lv), hp:undefined, inventory:JSON.parse(JSON.stringify(inv)), learned:[], books:[], seed:n.seed });
+  n.status='team'; n.maimed=false; n.met=1; n.last={ t:'joined', d:ludus.day };
+}
+function ludusRecruit(id){
+  const n=ludusNpc(id); if(!n||n.status!=='active'||ludusSlotsFree()<1||(n.bond||0)<=-2) return false;
+  const price=ludusRecruitPrice(n); if(ludus.gold<price) return false;
+  ludus.gold-=price; ludusJoinTeam(n); ludusNote=`${n.name} tritt in dein Team ein.`; ludusSave(); ludusRender(); return true;
+}
+function ludusDismiss(i){
+  const m=ludus.team[i]; if(!m||ludus.team.length<2) return;
+  const n=m.npc&&ludusNpc(m.npc); if(n){ n.status='active'; n.level=Math.max(1,ludusMatchLevel(n.kind,0)+(m.level-ludusLevel())); n.last={ t:'left', d:ludus.day }; }
+  ludus.team.splice(i,1); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); ludusNote=`${m.name} verlässt das Team.`; ludusSave(); ludusRender();
 }

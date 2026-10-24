@@ -6,7 +6,7 @@ const LUDUS_STORY_WEIGHT=4;
 const ludusAnon=(r,kinds,level,tier,name)=>({ kind:kinds[Math.floor(r()*kinds.length)], level:Math.max(1,level), tier, seed:Math.floor(r()*1e9), name });
 const ludusPick=(r,l)=>l[Math.floor(r()*l.length)];
 const ludusKindOf=k=>SPECIES[k].label;
-function ludusGrantXp(n){ const c=ludusCreature(), prev=state; try{ if(!state||!state.eventLog) state=makeDefaultState(); grantXp(c,n); } finally { state=prev; } ludus.fighter.level=c.level; ludus.fighter.xp=c.xp; }
+function ludusGrantXp(n){ const prev=state; try{ if(!state||!state.eventLog) state=makeDefaultState(); ludus.team.forEach(m=>{ const c=ludusMemberCreature(m); grantXp(c,n); m.level=c.level; m.xp=c.xp; }); } finally { state=prev; } }
 // the event's bout, fought against its cast
 function ludusEventBout(ev,reward){
   const foes=ev.cast.filter(s=>s.role!=='friend'), o={ variant:foes.length>1?'swarm':'duel', foes, diff:'fair', reward, kind:foes[0].kind, level:Math.max(...foes.map(x=>x.level)), name:foes[0].name };
@@ -69,10 +69,10 @@ const LUDUS_EVENTS=[
       { label:'Ausrauben', run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.helped=ludus.day; n.bond=Math.max(-3,(n.bond||0)-2); n.last={ t:'robbed', d:ludus.day }; ludus.gold+=6; ludus.fame=Math.max(0,ludus.fame-1); return { text:`Du nimmst ${n.name} die letzten Münzen ab: +6 Gold. Er sagt nichts, aber er wird es nicht vergessen. −1 Ruhm.`, exit:true }; } }
     ] },
   { id:'thanks', title:'Ein Dank vor der Taverne', story:true,
-    make:r=>{ const l=ludusNpcPoolAll().filter(n=>n.thanks&&n.thanks<=ludus.day&&(n.bond||0)>=1&&n.id!==ludus.companion); if(!l.length) return null; const n=ludusPick(r,l); return { cast:[Object.assign(ludusNpcFoe(n),{ role:'friend' })], npc:n.id }; },
+    make:r=>{ const l=ludusNpcPoolAll().filter(n=>n.thanks&&n.thanks<=ludus.day&&(n.bond||0)>=1); if(!l.length) return null; const n=ludusPick(r,l); return { cast:[Object.assign(ludusNpcFoe(n),{ role:'friend' })], npc:n.id }; },
     text:ev=>{ const n=ludusNpc(ev.npc); return `${n.name} wartet vor der Taverne. Er steht wieder aufrecht. "Du hast mir geholfen, als niemand es getan hat. Ich schulde dir etwas."`; },
     options:[
-      { label:'Als Gefährten aufnehmen', when:()=>!ludus.companion, run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.thanks=0; n.maimed=false; ludus.companion=n.id; n.last={ t:'joined', d:ludus.day }; return { text:`${n.name} schlägt ein. Von nun an kämpft er an deiner Seite, wenn im Tag-Team gekämpft wird.` }; } },
+      { label:'Ins Team aufnehmen', when:()=>ludusSlotsFree()>0, run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.thanks=0; ludusJoinTeam(n); return { text:`${n.name} schlägt ein. Von nun an kämpft er an deiner Seite, und sein Platz im Team gehört ihm.` }; } },
       { label:'Die Hand schütteln', run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.thanks=0; ludus.gold+=15; return { text:`${n.name} drückt dir 15 Gold in die Hand. "Für das nächste Huhn." Dann geht er seiner Wege.`, exit:true }; } }
     ] },
   { id:'revenge', title:'Eine alte Rechnung', story:true,
