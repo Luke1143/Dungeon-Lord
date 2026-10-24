@@ -279,6 +279,8 @@ Der Kernablauf eines Levels bleibt **immer derselbe**: graben, bauen, versorgen,
 
 **Artefakte sind Perks, wie Überraschungstüten.** Ein Artefakt kann alles Mögliche sein: ein Perk, ein Kreatureneffekt (siehe oben) oder eine Waffe. Gute Perks haben meist einen Preis, damit eine echte Entscheidung entsteht.
 
+*Umgesetzt (acht Perks):* Perks sind Artefakte mit einer Regel (`PERKS`, `hasPerk`), der Preis ist der übliche Fluch (stärkere Helden). Beispiele: Eiserner Magen (Hunger halb so schnell), Blutpakt (Vampire heilen sich stärker), Sparsame Tote (Löhne -30 %).
+
 *Hinweis zur Umsetzung:* Ein Perk soll sich als **Eigenschaft oder Ausnahme einer bestehenden Regel** ausdrücken lassen (godhand.md, Teil 18 und 20), nicht als eigener Code. Dann kostet ein neuer Perk nur einen Tabelleneintrag.
 
 ### Unendliche Skalierung

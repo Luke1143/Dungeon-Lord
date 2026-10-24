@@ -743,7 +743,7 @@ function resolveAttack(attacker, defender, context){
   defender.hitAt=Date.now();          // fuer das Treffer-Feedback
   defender.hitHard=crit;
 
-  if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*0.5)));   // the bite heals
+  if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*(hasPerk('blood_pact')?0.8:0.5))));   // the bite heals
   let outcome='hit';
   if(defender.hp<=0){
     defender.hp=0;
@@ -940,7 +940,8 @@ const NOTICE_RADIUS=8, NOTICE_INTRUDER_RADIUS=16;
 function reachOf(c){
   const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon');
   if(!w) return 1;
-  return w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : 1);
+  const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : 1);
+  return base+((base>1 && hasPerk('shadow_arrows') && factionOf(c)==='evil')?1:0);
 }
 function noticesFoe(c,o){
   const d=Math.abs(o.x-c.x)+Math.abs(o.y-c.y);
@@ -3494,7 +3495,7 @@ function nudgeSleep(c){
 function tickCreatureNeeds(c, speed){
   if(c.needsFood && c.state!=='sleeping'){
     c.hungerTick=(c.hungerTick||0)+1;
-    if(c.hungerTick>=HUNGER_DECAY_INTERVAL){
+    if(c.hungerTick>=HUNGER_DECAY_INTERVAL*(hasPerk('iron_stomach')?2:1)){
       c.hungerTick=0;
       c.hunger=Math.max(0, c.hunger-1);
     }
@@ -3872,7 +3873,7 @@ const LEISURE_ACTIVITIES=[
   {
     id:'drink', label:'trinkt in der Taverne', icon:'🍺', duration:20, happiness:24, cost:2,
     locate:(c)=>{
-      if((state.gold||0)<2) return null;
+      if((state.gold||0)<2 && !hasPerk('tavern_songs')) return null;
       const spots=new Set(); roomsOfType('tavern').forEach(r=>r.tiles.forEach(t=>spots.add(t.x+','+t.y)));
       if(!spots.size) return null;
       return bfsFind(c.x, c.y, (x,y)=> spots.has(x+','+y) && !leisureSpotTaken(x,y,c));
@@ -3997,7 +3998,7 @@ function tickDrill(c){
   if(c.state==='training'){
     if(!c.dummyTile){ c.state='wandering'; return true; }
     c.actTarget={ x:c.dummyTile.x, y:c.dummyTile.y };
-    if(swing(c,'training')) grantXp(c,1);
+    if(swing(c,'training')) grantXp(c,hasPerk('drill_sergeant')?3:1);
     if(--c.drillTimer<=0){ leaveDrill(c); c.state='wandering'; }
     return true;
   }
@@ -4021,9 +4022,9 @@ function tickLeisure(c, speed){
     if(c.leisureTimer<=0){
       const act=leisureById(c.leisureId);
       if(act && c.happiness!==undefined){
-        c.happiness=Math.min(100, c.happiness + act.happiness);
+        c.happiness=Math.min(100, c.happiness + act.happiness*(act.id==='drink'&&hasPerk('tavern_songs')?1.6:1));
       }
-      if(act && act.cost) state.gold=Math.max(0,state.gold-act.cost);
+      if(act && act.cost && !hasPerk('tavern_songs')) state.gold=Math.max(0,state.gold-act.cost);
       if(act && act.loyalty && c.loyalty!==undefined) c.loyalty=Math.min(100,c.loyalty+act.loyalty);
       rememberLeisure(c, c.leisureId);
       c.leisureId=null; c.leisureTarget=null;
@@ -4452,16 +4453,17 @@ function tickLures(){
   // graves: an old grave lets a ghoul climb out (at most one per two graves, three at most)
   if(state.tickCount%5===0 && state.graves){
     const keys=Object.keys(state.graves); keys.forEach(k=>state.graves[k].age++);
-    const old=keys.find(k=>state.graves[k].age>80), ghouls=state.creatures.filter(c=>c.kind==='ghoul').length;
-    if(old && ghouls<Math.min(3,Math.ceil(keys.length/2)) && Math.random()<0.1){
+    const gp=hasPerk('grave_whisper'), old=keys.find(k=>state.graves[k].age>(gp?40:80)), ghouls=state.creatures.filter(c=>c.kind==='ghoul').length;
+    if(old && ghouls<Math.min(gp?5:3,Math.ceil(keys.length/2)) && Math.random()<0.1){
       const [gx,gy]=old.split(',').map(Number); delete state.graves[old];
       const g=createHorde('ghoul',gx,gy); state.creatures.push(g);
       logEvent(`${g.name} steigt aus einem Grab.`, gx, gy);
     }
   }
   // trolls mend, paladins bless the heroes around them
-  if(state.tickCount%6===0) state.creatures.forEach(c=>{
-    if(c.kind==='troll' && !c.unconscious && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+1);
+  const tb=hasPerk('troll_blood');
+  if(state.tickCount%(tb?3:6)===0) state.creatures.forEach(c=>{
+    if(c.kind==='troll' && !c.unconscious && c.hp<c.maxHp) c.hp=Math.min(c.maxHp,c.hp+(tb?2:1));
     if(c.kind==='priest' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='evil' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
     if(c.kind==='dryad' && !c.unconscious) state.creatures.forEach(o=>{ if(o!==c && o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=4) o.hp=Math.min(o.maxHp,o.hp+2); });
     if(c.kind==='paladin' && !c.unconscious) state.creatures.forEach(o=>{ if(o.faction==='good' && !o.unconscious && o.hp<o.maxHp && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3) o.hp=Math.min(o.maxHp,o.hp+2); });
@@ -6774,7 +6776,7 @@ function retainerWage(c){
 
 function creatureWage(c){
   const tasks=Object.values(c.workLog||{}).reduce((s,n)=>s+n, 0);
-  return retainerWage(c) + tasks;
+  return Math.round((retainerWage(c) + tasks)*(hasPerk('thrifty_dead')?0.7:1));
 }
 
 function wageBreakdown(c){
@@ -8959,7 +8961,7 @@ function owOpenSkills(){
 document.getElementById('owSkills').addEventListener('click', owOpenSkills);
 document.getElementById('owArtifacts').addEventListener('click', ()=>{
   const list=campaign.artifacts.map(id=>ARTIFACT_BY_ID[id]).filter(Boolean);
-  const eff=a=>[a.item?`trägt der Dungeon Lord`:'', ...Object.keys(a.ranks||{}).map(k=>{ const s=SKILLS.find(x=>x.id===k); return s?`${s.group}: ${s.label} +${a.ranks[k]}`:''; }), a.curse?'Preis: '+Object.keys(a.curse).map(k=>`Heldenmacht ${OW.STATS[k].label} +${a.curse[k]}`).join(', '):''].filter(Boolean).join(' · ');
+  const eff=a=>[a.perk?`Regel: ${PERKS[a.perk].text}`:'', a.item?`trägt der Dungeon Lord`:'', ...Object.keys(a.ranks||{}).map(k=>{ const s=SKILLS.find(x=>x.id===k); return s?`${s.group}: ${s.label} +${a.ranks[k]}`:''; }), a.curse?'Preis: '+Object.keys(a.curse).map(k=>`Heldenmacht ${OW.STATS[k].label} +${a.curse[k]}`).join(', '):''].filter(Boolean).join(' · ');
   owModal('Artefakte', list.length ? list.map(a=>`<div style="margin:6px 0"><b style="color:${RARITY_COLOR[a.rarity]}">${a.name}</b> <small>(${RARITY_LABEL[a.rarity]})</small><br><small>${a.text}<br>${eff(a)}</small></div>`).join('') : 'Noch keine Artefakte. Erfülle Nebenziele und bezwinge Pforten.', ()=>{});
 });
 function owRefresh(){
