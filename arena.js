@@ -78,7 +78,7 @@ function arenaBuild(setup,seedExtra){
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
@@ -89,7 +89,9 @@ function arenaBuild(setup,seedExtra){
         for(let i=0;i<Math.max(1,Math.min(20,grp.count|0));i++){
           const at=free.shift()||anchor, c=arenaMake(grp.kind,at.x,at.y);
           c.faction=ti===0?'evil':'good'; c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.xp=xpForLevel(c.level);
-          c.maxHp=statMaxHp(c); c.hp=c.maxHp; c.inventory=arenaGear(c,grp,i);
+          if(setup.ludus||setup.gearAll) c.gearUser=true;
+          if(setup.ludus) c.hpMult=LUDUS_HP_MULT; else if(setup.hpMult) c.hpMult=setup.hpMult;
+          c.inventory=arenaGear(c,grp,i); c.maxHp=statMaxHp(c); c.hp=c.maxHp;
           if(grp.ability && ABILITIES[grp.ability]) c.learned=[grp.ability];
           if(grp.name) c.name=grp.name;
           if(grp.npc) c.npcId=grp.npc;
@@ -152,9 +154,11 @@ function arenaItemDetour(c){
   c.path=res.path; c.state='engaging'; stepAlong(c); return true;
 }
 // a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
+const LUDUS_HP_MULT=2;      // Ludus bouts last longer: more life for everyone, so that gear, stamina and status effects have time to matter
 function arenaApplyFighter(c,f){
-  c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.maxHp=statMaxHp(c);
-  c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice(); c.gifts=JSON.parse(JSON.stringify(f.gifts||[]));
+  c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.gearUser=true;
+  const boost=typeof ludusKindBoost==='function'?ludusKindBoost(c.kind):1; c.strMult=boost; c.hpMult=LUDUS_HP_MULT*boost;
+  c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice(); c.gifts=JSON.parse(JSON.stringify(f.gifts||[])); c.maxHp=statMaxHp(c);
   c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));
   if(f.energy!==undefined) c.energy=f.energy;          // how well rested: the quicker the stamina returns
 }
