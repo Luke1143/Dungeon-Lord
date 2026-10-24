@@ -67,3 +67,6 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - **Die Grube bietet Auswahl**: ein *leichter* Kampf (Siegchance etwa 80 %, 60 % Preis) und ein *fairer* (etwa 50 %); mit ausgebauter Grube (Stufe 2) kommt ein *schwerer* dazu (etwa 30 %, 170 % Preis). Die Schwierigkeit wird mit Probekämpfen gemessen, nicht geschätzt.
 - **Kampfvarianten**: Duell, **Rudel** (2 bis 3 schwächere Gegner) und **Tag-Team** (ein Verbündeter, zwei Gegner); manchmal liegt **Ausrüstung in der Grube** (wer keinen Feind in der Nähe hat, geht zuerst hin und nimmt sie auf).
 - **Ereignisse** nach Kämpfen (30 %): kurze Geschichten mit Wahlmöglichkeiten, dazu Optionen, die ein **Merkmal der Art** freischaltet (Skelett: Falle stellen, Dieb: Beutel stehlen, Troll: Armdrücken), im Stil von FTL. Heute vier Ereignisse (Fauchen im Tunnel, Händler, Gladiator, Fest); eine Wahl kann einen Pflichtkampf (Hinterhalt) auslösen.
+
+## Gaben
+After a won tournament round the fighter picks one of three procedural gifts, see `gaben.md`.

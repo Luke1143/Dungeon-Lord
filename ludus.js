@@ -65,8 +65,8 @@ const ludusRerollPrice=inst=>Math.max(3,Math.round(ludusPrice(asInstance(inst).i
 // ---- a new run ----
 function ludusNewRun(kind,name){
   const seed=String(Math.floor(Math.random()*1e9));
-  ludus={ seed, day:1, gold:LUDUS_START_GOLD, fame:0, wins:0, losses:0, over:false, cause:'', log:[], opp:null, options:null, forced:null, event:null, lastFight:1, week:ludusWeekId(),
-    fighter:{ kind, name:name||LUDUS_NAMES[Math.floor(Math.random()*LUDUS_NAMES.length)], level:1, xp:0, hp:undefined, inventory:[], learned:[], books:[], seed:Math.floor(Math.random()*1e9) } };
+  ludus={ seed, day:1, gold:LUDUS_START_GOLD, fame:0, wins:0, losses:0, over:false, cause:'', log:[], opp:null, options:null, forced:null, event:null, giftChoice:null, lastFight:1, week:ludusWeekId(),
+    fighter:{ gifts:[], kind, name:name||LUDUS_NAMES[Math.floor(Math.random()*LUDUS_NAMES.length)], level:1, xp:0, hp:undefined, inventory:[], learned:[], books:[], seed:Math.floor(Math.random()*1e9) } };
   ludusMeta.runs++; ludusTab='inn'; ludusNote='';
   ludusSave(); ludusRender();
 }
@@ -81,7 +81,7 @@ const ludusFoes=o=>o.foes||[o];
 function ludusMatchSetup(o,salt){
   const foes=ludusFoes(o);
   return { teams:[ { name:ludus.fighter.name, groups:[ludusFighterGroup()].concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
-    map:{ layout:'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day+(salt||''), lava:0, water:0, crystal:0, near:1 }, items:o.items||null, batch:1, ludus:true };
+    map:{ layout:'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day+(salt||''), lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true };
 }
 function ludusAverageTier(){
   const worn=wornItems(ludusCreature()); if(!worn.length) return 0;
@@ -100,7 +100,7 @@ function ludusCandidate(r,kinds,level,tier,variantRoll){
   else if(roll>0.55){ const k=kinds[Math.floor(r()*kinds.length)], n=2+(r()<0.4?1:0); o={ variant:'swarm', foes:Array.from({length:n},()=>foe(Math.round(level*0.55),k)) }; }
   else o={ variant:'duel', foes:[foe(level)] };
   o.kind=o.foes[0].kind; o.level=Math.max(...o.foes.map(x=>x.level)); o.name=o.foes[0].name; o.title=ludusBoutLabel(o);
-  if(r()<0.3){ const ids=Object.keys(ITEMS).filter(id=>['weapon','armor','shield'].includes(ITEMS[id].type)&&ITEMS[id].tier==='plain'&&ludusCatOwned(ITEMS[id].type,ITEMS[id].family)); if(ids.length) o.items=[ids[Math.floor(r()*ids.length)]]; }
+  if(r()<0.1){ const ids=Object.keys(ITEMS).filter(id=>['weapon','armor','shield'].includes(ITEMS[id].type)&&ITEMS[id].tier==='plain'&&ludusCatOwned(ITEMS[id].type,ITEMS[id].family)); if(ids.length) o.items=[ids[Math.floor(r()*ids.length)]]; }
   return o;
 }
 function ludusBoutReward(o,diff){ const n=ludusFoes(o).length; return Math.max(3,Math.round((12+6*ludus.fighter.level)*ludusPitMult()*LUDUS_DIFF[diff].mult*(o.variant==='swarm'?1+0.15*(n-1):(o.variant==='tag'?0.9:1))*(o.items?0.9:1))); }
@@ -179,12 +179,12 @@ function ludusResolve(st){
     f.level=c.level; f.xp=c.xp; f.inventory=JSON.parse(JSON.stringify(c.inventory||[])); f.learned=(c.learned||[]).slice();
     f.hp=c.asleep?Math.max(1,Math.round(c.hp)):(c.unconscious?1:Math.max(1,c.hp));
     if(won){
-      ludus.gold+=o.reward; ludus.fame++; ludus.wins++; if(!o.tour) ludusGainRenown(1+(ludusRoomTier('pit')>=3?1:0)+(o.diff==='hard'?1:0));
+      ludus.gold+=Math.round(o.reward*giftMul(c,'gold')); ludus.fame++; ludus.wins++; if(!o.tour) ludusGainRenown(1+(ludusRoomTier('pit')>=3?1:0)+(o.diff==='hard'?1:0));
       const loot=(st.looseItems||[]).filter(it=>it&&it.kind==='equipment'&&!it.arenaFloor);
       loot.forEach(it=>{ f.inventory.push(looseInst(it)); });
       head='Sieg'; text=`${f.name} gewinnt gegen ${o.title||o.name}. +${o.reward} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}.`;
       ludusLog(`Sieg über ${o.title||o.name}`);
-      if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; ludusGainRenown(Math.round((o.rank===1?10:2)*ludusHallMult())); if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Rangliste!'; } }
+      if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; ludusGainRenown(Math.round((o.rank===1?10:2)*ludusHallMult())); if(!f.gifts) f.gifts=[]; ludus.giftChoice=genGiftOffer(Math.random,c,ludus.fame); if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Rangliste!'; } }
     } else {
       ludus.losses++; ludus.gold+=2; head=c.surrendered?'Aufgegeben':(c.unconscious?'Bewusstlos':'Verloren');
       text=`${f.name} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
@@ -199,7 +199,7 @@ function ludusResolve(st){
 function ludusLeaveMatch(){
   if(!ludusResolved){ ludusResolve(state); }
   ludusActive=false; arenaSpell=null; document.getElementById('menu-spells').hidden=true;
-  document.body.classList.remove('arenaMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
+  document.body.classList.remove('arenaMode','ludusMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   document.getElementById('arenaResult').hidden=true; document.getElementById('ludusContinue').hidden=true;
   state=makeDefaultState(); ludusNote=ludusResultText.replace('\n',' — '); ludusTab=ludus.over?'start':'pit'; showScreen('ludus'); ludusRender();
 }
@@ -330,14 +330,16 @@ function ludusRender(){
     const pct=ludusHealPct(c,f), nextXp=xpForLevel(f.level+1), curXp=xpForLevel(f.level), xpPct=Math.max(0,Math.min(100,Math.round(100*((f.xp||0)-curXp)/Math.max(1,nextXp-curXp))));
     wornIdx=new Set(wornItems(c).map(w=>c.inventory.indexOf(w)));
     const abil=knownAbilities(c).filter(id=>ABILITIES[id]);
-    left=`<div class="luCard"><canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div><div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>
+    left=`<div class="luCard"><canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div><div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+l.text).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
       <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
       <div class="luInv">${(f.inventory||[]).some((x,i)=>wornIdx.has(i))?f.inventory.map((x,i)=>wornIdx.has(i)?`<div class="luItem worn" data-pick="${i}"><span>${ludusEsc(instLabel(x))} ✓</span></div>`:'').join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
   }
   const itemRow=(inst,i)=>`<div class="luItem${wornIdx.has(i)?' worn':''}${ludusSel===i?' sel':''}" data-pick="${i}"><span>${ludusEsc(instLabel(inst))}${wornIdx.has(i)?' ✓':''}</span></div>`;
   let main='', override='';
-  if(live && ludus.forced){
+  if(live && ludus.giftChoice){
+    override=`<div class="luPanel luGifts"><h2>Eine Gabe</h2><p>Der Sieg in der Turnierrunde wird belohnt. Wähle eine Gabe, sie bleibt für den ganzen Lauf.</p><div class="luOpts">${ludus.giftChoice.map((g,i)=>`<div class="luOption luGift r${g.rarity}"><div><b>${ludusEsc(giftTitle(g))}</b>${g.wild?' <span class="luTrait">[Wildkarte]</span>':''}<br><i>${Tr(GIFT_RARITY[g.rarity])}</i>${giftLines(g).map(l=>`<div class="${l.role==='bane'?'luBane':'luBoon'}"><span>${l.role==='bane'?'▼':'▲'}</span> <span>${ludusEsc(l.text)}</span></div>`).join('')}</div><button data-gift="${i}" class="menuMain">Wählen</button></div>`).join('')}</div></div>`;
+  } else if(live && ludus.forced){
     const fo=ludus.forced, o=ludusForcedBout();
     override=`<div class="luPanel luForced"><h2>Pflichtkampf: ${fo.type==='tour'?'Die Turnierrunde':(fo.type==='event'?'Der Hinterhalt':'Der Wirt hat genug')}</h2><p>${fo.type==='tour'?'Heute wird gekämpft: Die Runde dieser Woche ruft dich in die Grube. Wer nicht antritt, ist raus.':(fo.type==='event'?'Dem kommst du nicht aus.':'Du hast zu lange nur geschlafen und geübt. Der Wirt schickt dich in die Grube, damit du dir dein Bett verdienst.')}</p>
       <div class="luOpp"><canvas id="luForcedPrev" width="110" height="110"></canvas><div><b>${ludusEsc(o.title||o.name)}</b><br>${o.variant==='swarm'?'Rudel':(o.variant==='tag'?'Tag-Team':'Duell')} · Stufe ${o.level}<br>Preis: ${o.reward} Gold</div></div><button id="luForcedGo" class="menuMain">Antreten</button></div>`;
@@ -354,7 +356,7 @@ function ludusRender(){
     main=`<div class="luPanel"><h2>${room.label} (Stufe ${tier}/${room.cost.length})</h2><p>${room.text[tier-1]}.</p>${roomId==='forge'?`<h3>Sortiment der Schmiede</h3>${ludusCatsHTML()}`:''}${ludusRoomBox(roomId)}</div>`;
   } else if(ludusTab==='pit'){
     const opts=ludus.options;
-    main=`<div class="luPanel"><h2>Pit-Kampf</h2>`+(opts?`<div class="luOpts">${opts.map((o,i)=>`<div class="luOption"><div class="luDiff d-${o.diff}">${LUDUS_DIFF[o.diff].label}</div><canvas class="luOptPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>${o.variant==='swarm'?'Rudel':(o.variant==='tag'?'Tag-Team':'Duell')} · Stufe ${o.level}${o.items?' · Ausrüstung liegt in der Grube':''}<br>Preis: ${o.reward} Gold</div><button data-fight="${i}" class="menuMain">Kämpfen</button></div>`).join('')}</div>`
+    main=`<div class="luPanel"><h2>Pit-Kampf</h2>`+(opts?`<div class="luOpts">${opts.map((o,i)=>`<div class="luOption"><div class="luDiff d-${o.diff}">${LUDUS_DIFF[o.diff].label}</div><canvas class="luOptPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>${o.variant==='swarm'?'Rudel':(o.variant==='tag'?'Tag-Team':'Duell')} · Stufe ${o.level}${o.items?' · es geht das Gerücht, in der Grube liege etwas versteckt':''}<br>Preis: ${o.reward} Gold</div><button data-fight="${i}" class="menuMain">Kämpfen</button></div>`).join('')}</div>`
       : (ludusBusy?'<p>Der Wirt sucht Gegner … <span id="luScout"></span></p>':'<p>Kein Gegner in Sicht.</p>'))+`<p class="luHint">Jeder Kampf kostet einen Tag. Wer bewusstlos wird, überlebt; wer fällt, beendet den Lauf. Leichter Kampf, kleiner Preis; schwerer Kampf (mit ausgebauter Grube), großer Preis.</p>${ludusRoomBox('pit')}</div>`;
   } else if(ludusTab==='inn'){
     main=`<div class="luPanel"><h2>Taverne</h2><p>Ein gebratenes Huhn stärkt (${ludusChickenCost()} Gold). Im Bett schlafen ist gratis, kostet aber einen Tag.</p>
@@ -408,6 +410,7 @@ function ludusRender(){
   el.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>ludusBuyRoom(b.dataset.room)));
   el.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{ const [t,f2]=b.dataset.cat.split(':'); ludusBuyCat(t,f2); }));
   el.querySelectorAll('[data-fight]').forEach(b=>b.addEventListener('click',()=>ludusFight(ludus.options[+b.dataset.fight])));
+  el.querySelectorAll('[data-gift]').forEach(b=>b.addEventListener('click',()=>{ const g=ludus.giftChoice&&ludus.giftChoice[+b.dataset.gift]; if(!g) return; (ludus.fighter.gifts=ludus.fighter.gifts||[]).push(g); ludus.giftChoice=null; ludusNote=Tr('Gabe angenommen: {0}').replace('{0}',giftTitle(g)); ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-event]').forEach(b=>b.addEventListener('click',()=>ludusEventChoose(+b.dataset.event)));
   on('luForcedGo',()=>ludusFight(ludusForcedBout())); on('luTrain',ludusTrain);
   on('luChicken',()=>{ if(ludus.gold<ludusChickenCost()) return; ludus.gold-=ludusChickenCost(); ludusHeal(ludusChickenHeal()); ludus.fighter.energy=Math.min(100,(ludus.fighter.energy===undefined?100:ludus.fighter.energy)+10); ludusSave(); ludusRender(); });

@@ -45,6 +45,7 @@ const View3D=(()=>{
     renderer.setPixelRatio(Math.min(2,dpr||1)); renderer.setSize(cssW,cssH,false);
     camera.aspect=cssW/cssH; camera.updateProjectionMatrix();
   }
+  function setFog(near,far){ if(ready&&scene.fog){ scene.fog.near=near; scene.fog.far=far; } }
   function setActive(on){ active=on; if(ready) renderer.domElement.style.display=on?'block':'none'; }
 
   // ---- terrain ----
@@ -409,6 +410,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, setSize, resize, setActive, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, setSize, resize, setActive, setFog, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();

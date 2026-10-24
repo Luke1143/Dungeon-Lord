@@ -118,7 +118,7 @@ const STANCE_OF={ barbarian:'aggressive', ork:'aggressive', goblin:'aggressive',
   troll:'steadfast', golem:'steadfast', knight:'steadfast', paladin:'steadfast', dwarf:'steadfast', giant:'steadfast', skeleton:'steadfast', zombie:'steadfast', darkknight:'steadfast', dragon:'steadfast',
   dwarfking:'steadfast', arthur:'steadfast', herakles:'steadfast', guardian:'steadfast', angel:'steadfast', monk:'steadfast', beetle:'steadfast', ghost:'steadfast', warlock:'kite',
   archer:'kite', wizard:'kite', elf:'kite', darkelf:'kite', priest:'kite', lich:'kite', banshee:'kite', dryad:'kite', wisp:'kite', fairy:'kite', oberon:'kite' };
-function stanceOf(c){ return STANCE_OF[c.kind] || (reachOf(c)>1 ? 'kite' : 'aggressive'); }
+function stanceOf(c){ if(giftOn(c,'lunger')) return 'aggressive'; if(giftOn(c,'sniper')) return 'kite'; return STANCE_OF[c.kind] || (reachOf(c)>1 ? 'kite' : 'aggressive'); }
 
 const ABILITY_LEVELS=[5,10];
 // slots: innate abilities and learned ones share them (godhand: beasts 0-1, horde 3, undead 2, legendary 4+); two belong to the innate pair
@@ -174,7 +174,7 @@ function abilityCdMax(c,id){ if(c.kind==='imp'){ if(id==='haste') return HASTE_C
 function useAbility(c,id,ctx){
   const a=ABILITIES[id]; if(!a || a.passive || !knows(c,id) || abilityCd(c,id)>0 || c.unconscious || c.exhausted) return false;
   if(a.run(c,ctx||{})===false) return false;
-  if(c.kind!=='imp' && typeof spendStamina==='function') spendStamina(c,ABILITY_STAMINA);
+  if(c.kind!=='imp' && typeof spendStamina==='function') spendStamina(c,Math.round(ABILITY_STAMINA*giftMul(c,'staminaCost')));
   c.lastActTick=state.tickCount;
   c.abil=c.abil||{ cd:{}, used:{} }; c.abil.cd[id]=a.cooldown;
   if(!a.quiet && a.text) logEvent(`${actorLabel(c)} ${a.text}`, c.x, c.y);

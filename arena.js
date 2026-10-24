@@ -76,8 +76,9 @@ function arenaBuild(setup,seedExtra){
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; t.look='arena'; } }
     // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
+    if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
@@ -97,14 +98,34 @@ function arenaBuild(setup,seedExtra){
         }
       });
     });
-    // gear lying about: a piece or two in the middle of the yard (the fighters go for it when no foe is near)
+    // gear hidden in the yard: in a pocket between the pillars, far from both camps, never in plain sight (only someone who goes looking finds it)
     if(setup.items && setup.items.length){
-      const mid={ x:(st.arena.anchors[0].x+st.arena.anchors[1].x)>>1, y:(st.arena.anchors[0].y+st.arena.anchors[1].y)>>1 };
-      const spots=arenaFreeTiles(st,st.arena.anchors[0],400).filter(t=>Math.abs(t.x-mid.x)+Math.abs(t.y-mid.y)<=7 && st.arena.anchors.every(an=>Math.abs(an.x-t.x)+Math.abs(an.y-t.y)>=5));
-      setup.items.forEach(id=>{ if(!ITEMS[id]||!spots.length) return; const t=spots.splice(Math.floor(Math.random()*Math.min(spots.length,12)),1)[0]; const it=looseOf({ id, q:1, s:Math.floor(Math.random()*1e9) },t.x,t.y); it.arenaFloor=true; st.looseItems.push(it); });
+      const g=st.grid, nearRock=(x,y)=>{ let n=0; for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const t=g[y+dy]&&g[y+dy][x+dx]; if(t&&t.type!=='floor') n++; } return n; };
+      const spots=arenaFreeTiles(st,st.arena.anchors[0],600).filter(t=>st.arena.anchors.every(an=>Math.abs(an.x-t.x)+Math.abs(an.y-t.y)>=8)).sort((p,q)=>nearRock(q.x,q.y)-nearRock(p.x,p.y));
+      setup.items.slice(0,1).forEach(id=>{ if(!ITEMS[id]||!spots.length) return; const t=spots[Math.floor(Math.random()*Math.min(3,spots.length))]; const it=looseOf({ id, q:1, s:Math.floor(Math.random()*1e9) },t.x,t.y); it.arenaFloor=true; st.looseItems.push(it); });
     }
   } finally { state=prev; }
   return st;
+}
+// soft fog of war for the pit: the dark side's fighters see ARENA_VISION tiles around them (walls block the view); what was seen stays dimly known
+const ARENA_VISION=8;
+function arenaFog(st){
+  const g=st.grid, W=WORLD_COLS, H=WORLD_ROWS, N=W*H;
+  if(!st.vis||st.vis.length!==N) st.vis=new Uint8Array(N);
+  if(!st.fogA||st.fogA.length!==N) st.fogA=new Float32Array(N);
+  const vis=st.vis, dist=new Float32Array(N).fill(99); vis.fill(0);
+  const seers=st.creatures.filter(c=>arenaTeamOf(c)===0 && !c.removed && !c.held);
+  seers.forEach(c=>{
+    const R=ARENA_VISION;
+    for(let y=Math.max(0,c.y-R);y<=Math.min(H-1,c.y+R);y++) for(let x=Math.max(0,c.x-R);x<=Math.min(W-1,c.x+R);x++){
+      const d=Math.hypot(x-c.x,y-c.y); if(d>R) continue;
+      const t=g[y][x], solid=t.type==='rock'||t.type==='bedrock';
+      if(d>1.5 && !lineClear(c.x,c.y,x,y)) continue;
+      const k=y*W+x; vis[k]=1; if(d<dist[k]) dist[k]=d; t.seen=true;
+      if(!solid) for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const q=g[y+dy]&&g[y+dy][x+dx]; if(q&&(q.type==='rock'||q.type==='bedrock')) q.seen=true; }
+    }
+  });
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const k=y*W+x, t=g[y][x]; st.fogA[k]=vis[k]?Math.max(0,Math.min(0.5,(dist[k]-(ARENA_VISION-3))/3*0.5)):(t.seen?0.62:1); }
 }
 // a creature standing on a piece of gear takes it, if it has room; the new piece counts at once (the best per hand and body is worn)
 function arenaPickups(st){
@@ -132,7 +153,7 @@ function arenaItemDetour(c){
 // a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
 function arenaApplyFighter(c,f){
   c.name=f.name||c.name; c.level=Math.max(1,f.level|0||1); c.xp=f.xp||xpForLevel(c.level); c.maxHp=statMaxHp(c);
-  c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice();
+  c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice(); c.gifts=JSON.parse(JSON.stringify(f.gifts||[]));
   c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));
   if(f.energy!==undefined) c.energy=f.energy;          // how well rested: the quicker the stamina returns
 }
@@ -150,6 +171,7 @@ function arenaStep(st){
   st.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
   guard('projectiles',tickProjectiles);
   guard('pickups',arenaPickups,st);
+  if(st.arena.fog) guard('fog',arenaFog,st);
   [processDeaths,tickCorpses,tickEffects,pruneEventLog].forEach(f=>guard(f.name,f));
   st.creatures.forEach(c=>{
     if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
@@ -188,7 +210,8 @@ function arenaStart(setup){
   arenaLiveSetup=JSON.parse(JSON.stringify(setup)); arenaRuns++;
   const st=arenaBuild(setup,arenaRuns>1?'r'+arenaRuns:'');
   if(typeof FX!=='undefined') FX.reset();
-  state=st; document.body.classList.add('arenaMode'); debugNoFog=true;
+  state=st; document.body.classList.add('arenaMode'); debugNoFog=!setup.fog; document.body.classList.toggle('ludusMode',!!setup.ludus);
+  if(setup.fog) arenaFog(st);
   document.getElementById('levelSubtitle').textContent='Kreaturen-Arena — Dunkelheit gegen Helden';
   selectedRoomTiles=null; possessed=null; heldEntity=null;
   showScreen('level');
@@ -218,7 +241,7 @@ function arenaShowResult(){
 function arenaLeave(){
   if(ludusActive){ ludusLeaveMatch(); return; }
   arenaSpell=null; document.getElementById('menu-spells').hidden=true;
-  document.body.classList.remove('arenaMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
+  document.body.classList.remove('arenaMode','ludusMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
   state=makeDefaultState(); showScreen('arena');
 }
 function fpRestoreOnLeave(){ try{ if(typeof endPossession==='function') endPossession(); }catch(e){} }

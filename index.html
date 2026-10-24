@@ -35,6 +35,7 @@
   body.fp #minimap{ display:none; }
   #arenaPanel{ display:none; font-size:12px; }
   body.arenaMode #arenaPanel{ display:block; }
+  body.ludusMode #pickBtn{ display:none !important; }
   .spIcon{ image-rendering:pixelated; vertical-align:middle; } #combatBar .ic{ display:flex; align-items:center; justify-content:center; height:36px; } #combatBar .ic.ko img{ transform:rotate(-90deg); opacity:.7; }
   .arRow{ cursor:pointer; } .arRow:hover{ background:rgba(255,255,255,.08); }
   body.arenaMode .statGrid, body.arenaMode #status, body.arenaMode .panel .dangerBtn, body.arenaMode #warHint, body.arenaMode #goalsBox, body.arenaMode #modeToggle, body.arenaMode .toggleRow, body.arenaMode .matPreview, body.arenaMode #resetBtn, body.arenaMode .menuRow, body.arenaMode #menu-rooms, body.arenaMode #menu-creatures, body.arenaMode #summonBtn, body.arenaMode #minimap{ display:none !important; }
@@ -59,6 +60,7 @@
   .luOpts{ display:flex; gap:10px; flex-wrap:wrap; } .luOption{ flex:1 1 150px; border:1px solid #6a5233; border-radius:6px; padding:8px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px; }
   .luDiff{ font-weight:700; letter-spacing:.05em; } .luDiff.d-easy{ color:#8fd05a; } .luDiff.d-fair{ color:#e8c24a; } .luDiff.d-hard{ color:#e0603a; }
   .luTrait{ color:#2a5a1c; font-weight:700; }
+  .luGift{ border-left:4px solid #888; } .luGift.r1{ border-color:#4a8ad8; } .luGift.r2{ border-color:#a050d8; } .luGift.r3{ border-color:#e8a020; } .luBoon{ color:#6c6; } .luBane{ color:#e66; } .luGiftMini{ font-size:11px; border-left:3px solid #888; padding-left:4px; margin-top:2px; } .luGiftMini.r1{ border-color:#4a8ad8; } .luGiftMini.r2{ border-color:#a050d8; } .luGiftMini.r3{ border-color:#e8a020; }
   .luForced{ border-color:#c8342e; } .luEvent button{ margin:4px 4px 0 0; }
   .luTabs{ flex-wrap:wrap; justify-content:center; display:flex; gap:6px; margin-bottom:8px; } .luTabs button.on{ background:var(--gold); color:#1c140f; }
   .luOpp{ display:flex; gap:12px; align-items:center; margin:8px 0; } #luPrev, #luOpp{ image-rendering:pixelated; } .luLog{ margin-top:10px; font-size:12px; opacity:.75; }
@@ -461,6 +463,7 @@
 <script src="artifacts.js"></script>
 <script src="bosses.js"></script>
 <script src="weapons.js"></script>
+<script src="gifts.js"></script>
 <script src="creatures.js"></script>
 <script src="terrain.js"></script>
 <script src="keep.js"></script>
@@ -858,19 +861,22 @@ function resolveAttack(attacker, defender, context){
   // the blow is a vector of cut, pierce and blunt; each part meets the defence against its own kind, the species' and the size's factors
   const prof=attackProfile(attacker), shares=prof.map((s,i)=>{ const d=defenseVs(defender,DMG_KINDS[i]); return dmg*s*(1-d/(d+DEFENSE_K))*resistOf(defender,i); });
   const tires=sleepsLikeUs(defender) && defender.kind!=='dungeonlord';        // blunt force half bruises, half wears the victim out
-  dmg = Math.max(MIN_DAMAGE, Math.round(shares[0]+shares[1]+shares[2]*(tires?1-BLUNT_FATIGUE:1)));
-  const tiredBy=tires?shares[2]*BLUNT_FATIGUE/Math.max(1,statMaxHp(defender))*100*FATIGUE_WEIGHT:0;
+  dmg = Math.max(MIN_DAMAGE, Math.round((shares[0]+shares[1]+shares[2]*(tires?1-BLUNT_FATIGUE:1))*giftMul(defender,'damageTaken')));
+  const tiredBy=tires?shares[2]*BLUNT_FATIGUE/Math.max(1,statMaxHp(defender))*100*FATIGUE_WEIGHT*giftMul(defender,'fatigueTaken'):0;
   if(dmg>=defender.hp && factionOf(defender)==='good'){          // a guardian angel catches one deadly blow
     const ga=state.creatures.find(o=>o.kind==='guardian' && knows(o,'ward') && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
     if(ga){ ga.wardUsed=true; dmg=Math.max(0,defender.hp-1); logEvent(`${actorLabel(ga)} fängt den tödlichen Schlag für ${actorLabel(defender)} ab!`, defender.x, defender.y); }
   }
   if(defender.kind==='herakles' && !state.war.peltTaken) dmg=Math.max(1,Math.round(dmg*0.25));      // the lion pelt
 
+  if(dmg>=defender.hp && giftOn(defender,'cheatDeath') && !defender.cheatUsed){ defender.cheatUsed=true; dmg=Math.max(0,Math.round(defender.hp)-1); logEvent(`${actorLabel(defender)} entgeht knapp dem Tod!`, defender.x, defender.y); }
   const overkill = Math.max(0, dmg - defender.hp);
   defender.hp -= dmg;
   defender.hitAt=Date.now();          // fuer das Treffer-Feedback
   defender.hitHard=crit;
 
+  { const ls=giftParam(attacker,'lifesteal'); if(ls>0 && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp||statMaxHp(attacker), attacker.hp+Math.max(1,Math.round(dmg*ls))); }
+  { const th=giftParam(defender,'thorns'); if(th>0 && attacker.hp>0 && attacker!==defender){ attacker.hp-=Math.max(1,Math.round(dmg*th)); attacker.hitAt=Date.now(); if(attacker.hp<=0){ attacker.hp=0; knockOutOrKill(attacker,0,defender,null); } } }
   if(attacker.kind==='vampire' && attacker.hp>0) attacker.hp=Math.min(attacker.maxHp, attacker.hp+Math.max(1,Math.round(dmg*(hasPerk('blood_pact')?0.65:0.4))));   // the bite heals
   let outcome='hit';
   if(defender.hp<=0){
@@ -881,6 +887,7 @@ function resolveAttack(attacker, defender, context){
     defender.energy=Math.max(0,defender.energy-tiredBy);
     if(defender.energy<=0){ faintCreature(defender,true); outcome='fainted'; }       // out of strength before out of life: falls asleep, never dies of it
   }
+  if(outcome!=='hit' && attacker.hp>0){ const oh=giftParam(attacker,'onKillHeal'); if(oh>0) attacker.hp=Math.min(attacker.maxHp||statMaxHp(attacker), attacker.hp+Math.round((attacker.maxHp||statMaxHp(attacker))*oh)); if(giftOn(attacker,'onKillStamina')) attacker.stamina=STAMINA_MAX; }
   if(outcome==='hit') applyHitEffects(attacker,defender,shares,(activeWeapon(attacker)&&instDef(activeWeapon(attacker))||{}).family);
   dbg('combat', `${actorLabel(attacker)} trifft ${actorLabel(defender)} für ${dmg}${crit?' (kritisch)':''} → ${Math.max(0,Math.round(defender.hp))}/${defender.maxHp}${outcome!=='hit'?' · '+outcome:''}`);
   hitFx(attacker, defender, dmg, crit, outcome==='killed');
@@ -1013,6 +1020,7 @@ function shouldFlee(c){
   if(!sp.canFight) return true;            // Imps fliehen immer
   if(c.category==='undead') return false;  // Untote kennen keine Furcht
   if(c.category==='hero') return false;    // Helden weichen nicht
+  if(giftOn(c,'fearless')) return false;
   return moraleOf(c) < 40;
 }
 
@@ -1039,7 +1047,6 @@ function tickCombat(c){
   if(c.unconscious) return tickUnconscious(c);
   tickGrudges(c);
 
-  if(state.arena && typeof arenaItemDetour==='function' && !c.fightTarget && arenaItemDetour(c)) return true;     // gear lies about, no foe near
   // Rueckzug: Imps immer, andere je nach Moral. A fighter runs (a sprint that costs stamina) towards the tile that is farthest from the threat; with nowhere to go it turns and fights.
   if(c.desperate>0) c.desperate--;
   else if(shouldFlee(c)){
@@ -1057,7 +1064,7 @@ function tickCombat(c){
       // the run is committed to for a few steps (no shuffling back and forth); then the way is chosen anew
       if(!(c.path&&c.path.length&&c.fleeCool>0&&c.state==='fleeing'&&!tileOccupied(c.path[0].x,c.path[0].y,c))){ c.path=fleePlan(c,threat)||[]; c.fleeCool=5; } else c.fleeCool--;
       const plan=c.path.length?c.path:null;
-      if(plan){ c.state='fleeing'; if(!c.exhausted && staminaOf(c)>0){ spendStamina(c,STAMINA_SPRINT_COST,STAMINA_SPRINT_PAUSE); stepAlong(c,SPRINT_SPEED); } else stepAlong(c); return true; }
+      if(plan){ c.state='fleeing'; if(!c.exhausted && staminaOf(c)>0 && !giftOn(c,'noFlight')){ if(!giftOn(c,'sprintFree')) spendStamina(c,Math.round(STAMINA_SPRINT_COST*giftMul(c,'staminaCost')),STAMINA_SPRINT_PAUSE); stepAlong(c,SPRINT_SPEED); } else stepAlong(c); return true; }
       c.desperate=8;       // cornered: turn and fight
     } else return false;
   }
@@ -1656,9 +1663,10 @@ function wornSlots(c){
   const key=i=>instScore(i)+(dual&&(instDef(i)||{}).type==='weapon'?500:0);
   (c.inventory||[]).filter(inst=>!inst.off).sort((a,b)=>((b.pin||0)-(a.pin||0))||(key(b)-key(a))).forEach(inst=>{
     const d=instDef(inst); if(!d||d.type==='seal') return;
-    if(d.type==='armor'){ if(!s.body) s.body=inst; }
-    else if(d.type==='shield'){ if(!s.lh) s.lh=inst; }
-    else if(d.hands===2){ if(!s.rh && !s.lh){ s.rh=inst; s.lh=inst; } }
+    const hands=(d.hands===2&&giftOn(c,'twoHandOne'))?1:d.hands;
+    if(d.type==='armor'){ if(!s.body && !giftOn(c,'noArmor')) s.body=inst; }
+    else if(d.type==='shield'){ if(!s.lh && !giftOn(c,'noShield')) s.lh=inst; }
+    else if(hands===2){ if(!s.rh && !s.lh){ s.rh=inst; s.lh=inst; } }
     else if(!s.rh) s.rh=inst;
     else if(!s.lh && isDualWeapon(d) && isDualWeapon(instDef(s.rh))) s.lh=inst;
   });
@@ -1728,15 +1736,15 @@ function wielderStrength(c){ return Math.max(1,(c.baseStrength||1)*levelScale(c.
 function statStrength(c){
   const eq=equipmentBonus(c);
   const m = c.kind==='dungeonlord' ? skillMult('lordStr') : (factionOf(c)==='evil' ? skillMult('creatureStr') : 1);
-  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m*(c.weakTicks>0?0.7:1)*(c.rageTicks>0?1.4:1)));
+  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m*(c.weakTicks>0?0.7:1)*(c.rageTicks>0?1.4:1)*giftMul(c,'strength')*(1+giftParam(c,'rage')*(1-Math.max(0,c.hp)/Math.max(1,c.maxHp||c.hp||1)))));
 }
 function statMaxHp(c){
   const m = c.kind==='dungeonlord' ? skillMult('lordHp') : (factionOf(c)==='evil' ? skillMult('creatureHp') : 1);
-  return Math.max(1, Math.round((c.baseHp||1)*levelScale(c.level)*m));
+  return Math.max(1, Math.round((c.baseHp||1)*levelScale(c.level)*m*giftMul(c,'maxHp')));
 }
 function statDefense(c){
   const eq=equipmentBonus(c);
-  return Math.max(0,(c.baseDefense||0)+eq.defense+(c.tempDefense||0)); // skaliert NICHT mit Stufe
+  return Math.max(0,((c.baseDefense||0)+eq.defense+(c.tempDefense||0))*giftMul(c,'defense')*(giftOn(c,'frail')?0.5:1)); // skaliert NICHT mit Stufe
 }
 function defenseReduction(c){ const d=statDefense(c); return d/(d+DEFENSE_K);
 }
@@ -1744,7 +1752,7 @@ function statDex(c){
   const s=SPECIES[c.kind]||{dexGrowth:0.05};
   const eq=equipmentBonus(c);
   const grown=(c.baseDex||0)*(1+s.dexGrowth*((c.level||1)-1));
-  return Math.max(0, Math.min(DEX_CAP, Math.round(grown+eq.dex)));
+  return Math.max(0, Math.min(DEX_CAP, Math.round((grown+eq.dex)*giftMul(c,'dodge'))));
 }
 function statSpeed(c){
   const eq=equipmentBonus(c);
@@ -1764,8 +1772,8 @@ function staminaTempoF(c){ const s=staminaOf(c); return s>=STAMINA_SOFT?1:0.6+0.
 // Bleeding is not damage over time: every action of a bleeding creature (a step, a blow, an ability) rolls to lose some health, so resting stops it.
 const BLUNT_FATIGUE=0.5, FATIGUE_WEIGHT=2.0, STATUS_FACTOR={ bleed:1.6, slow:1.8, stun:0.8 }, STATUS_CAP=0.5;
 const STATUS_IMMUNE={ skeleton:['bleed'], zombie:['bleed'], ghoul:['bleed'], lich:['bleed'], golem:['bleed','stun'], ghost:['bleed','stun','slow'], wisp:['bleed','stun','slow'], banshee:['bleed'] };
-const immuneTo=(c,s)=>((STATUS_IMMUNE[c.kind]||[]).indexOf(s)>=0);
-const sleepsLikeUs=c=>!(c.category==='undead' || c.kind==='golem' || c.kind==='ghost' || c.kind==='wisp' || c.kind==='imp' && false);
+const immuneTo=(c,s)=>((STATUS_IMMUNE[c.kind]||[]).indexOf(s)>=0) || giftOn(c,s+'Immune');
+const sleepsLikeUs=c=>!giftOn(c,'sleepImmune') && !(c.category==='undead' || c.kind==='golem' || c.kind==='ghost' || c.kind==='wisp' || c.kind==='imp' && false);
 function tickStatuses(c){
   if(c.slowTicks>0) c.slowTicks--;
   if(c.stunImmune>0) c.stunImmune--;
@@ -1784,7 +1792,7 @@ function bleedCheck(c,px,py){
 function applyHitEffects(attacker,defender,shares,weaponFamily){
   if(defender.unconscious || defender.removed || defender.hp<=0) return;
   const maxHp=Math.max(1,statMaxHp(defender)), say=(icon)=>{ defender.shout=icon; defender.shoutTicks=6; };
-  const roll=(i,kind)=> !immuneTo(defender,kind) && Math.random()<Math.min(STATUS_CAP,shares[i]/maxHp*STATUS_FACTOR[kind]);
+  const roll=(i,kind)=> !immuneTo(defender,kind) && Math.random()<Math.min(STATUS_CAP,shares[i]/maxHp*STATUS_FACTOR[kind]*giftMul(attacker,'procMul'));
   if(roll(0,'bleed')){ defender.bleedStacks=Math.min(3,(defender.bleedStacks||0)+1); defender.bleedTicks=18; defender.bleedKind=(weaponFamily==='wandFire')?'burn':'cut'; say(defender.bleedKind==='burn'?'🔥':'🩸'); }
   if(roll(1,'slow')){ defender.slowTicks=8; say('🐌'); }
   if(!(defender.stunImmune>0) && roll(2,'stun')){ defender.stunTicks=2+(shares[2]/maxHp>0.3?1:0); defender.stunImmune=defender.stunTicks+4; defender.path=[]; defender.swingBudget=0; say('💫'); }
@@ -1793,12 +1801,12 @@ function tickStamina(c){
   if(c.kind==='imp') return; staminaOf(c);
   if(c.staminaPause>0){ c.staminaPause--; return; }
   const rest=Number.isFinite(c.energy)?0.6+0.4*Math.max(0,Math.min(1,c.energy/ENERGY_MAX)):1;      // well rested: quick recovery
-  c.stamina=Math.min(STAMINA_MAX,c.stamina+STAMINA_REGEN*rest*(c.bleedTicks>0?0.6:1)*(c.state==='fleeing'?0.25:1));      // running scared, the breath does not come back
+  c.stamina=Math.min(STAMINA_MAX,c.stamina+STAMINA_REGEN*giftMul(c,'staminaRegen')*rest*(c.bleedTicks>0?0.6:1)*(c.state==='fleeing'?0.25:1));      // running scared, the breath does not come back
   if(c.exhausted && c.stamina>=STAMINA_RECOVER) c.exhausted=false;
 }
-const attackStaminaCost=c=>Math.round(4+7*swingFactorOf(c));
+const attackStaminaCost=c=>Math.round((4+7*swingFactorOf(c))*giftMul(c,'staminaCost'));
 function statTempo(c){
-  return staminaTempoF(c)*(c.slowTicks>0?0.7:1)*statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
+  return staminaTempoF(c)*(c.slowTicks>0?0.7:1)*giftMul(c,'tempo')*statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -1811,7 +1819,7 @@ function equipmentBonus(c){
     const def=instDef(inst);
     if(!def) return;
     if(def.type==='weapon' && inst!==act) return;          // only the weapon of the striking hand counts
-    const off=def.type==='weapon' && sl.lh===inst && sl.rh!==inst && !DUAL_KINDS.has(c.kind);
+    const off=def.type==='weapon' && sl.lh===inst && sl.rh!==inst && !DUAL_KINDS.has(c.kind) && !giftOn(c,'dualNoPenalty');
     ['strength','defense','dex','speed','tempo'].forEach(k=>{
       total[k]+=instStat(inst,k)*((off&&k==='strength')?OFFHAND_FACTOR:1);
     });
@@ -1950,6 +1958,7 @@ function tickEffects(){
 
 function grantXp(actor, amount){
   if((actor.level||1)>=MAX_LEVEL) return;
+  amount=Math.round(amount*giftMul(actor,'xp'));
   actor.xp=(actor.xp||0)+amount;
   while((actor.level||1)<MAX_LEVEL && actor.xp>=xpForLevel((actor.level||1)+1)){
     actor.level=(actor.level||1)+1;
@@ -1979,7 +1988,7 @@ function swingFactorOf(c){
   const w=instDef(inst), p=partsOf(inst), strongF=Math.max(0.6,Math.min(1.8,Math.pow(WIELDER_STR_REF/Math.max(1,wielderStrength(c)),WEAPON_WIELD_EXP)));
   return (w.swing||1)*(p?p.swingF:1)*(w.cat==='melee'?strongF:1);     // the wielder's strength: a strong arm swings the same weapon quicker
 }
-function swingCostOf(c){ return SWING_COST*((c.verb==='attack'||c.state==='fighting')?swingFactorOf(c):1); }
+function swingCostOf(c){ return SWING_COST*((c.verb==='attack'||c.state==='fighting')?swingFactorOf(c)/giftMul(c,'atkSpeed'):1); }
 const WORK_COST={ pickup:1, claim:3, rock:10, reinforce:60, build:8 };   // reinforcing is a long job: a wall is an investment, not a reflex
 
 // Wieviel Wucht bringt der Akteur pro Treffer auf? Stufe und Staerke zaehlen.
@@ -6088,11 +6097,12 @@ function hitFx(attacker, defender, dmg, crit, killed){
 function blinkOn(periodMs){ return Math.floor(Date.now()/periodMs)%2===0; }
 
 // ---- 3D view: terrain info, capture of the 2D draw calls, screen overlay ----
+function fogTint3d(x,y){ const v=state.fogA?state.fogA[y*WORLD_COLS+x]:0; return v>=0.15?`rgba(5,4,3,${v>=0.8?0.9:(v>=0.45?0.6:0.3)})`:undefined; }
 function tileInfo3d(x,y){
   const t=state.grid[y][x];
   if(!fogSeen(t)) return { wall:true, color:'#050403', kind:null };
   if(isHidden(x,y)) return { wall:true, color:COLORS.rock, kind:'rock' };
-  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
+  if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:fogTint3d(x,y)||(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
     return { wall:false, water:true, color:t.lava?COLORS.lava:COLORS.water, kind:null };
@@ -6146,6 +6156,7 @@ function draw(){
   if(typeof SFX!=='undefined') SFX.listener(fpActive()?possessed.fx||possessed.x:camX+VIEW_COLS/2, fpActive()?possessed.fy||possessed.y:camY+VIEW_ROWS/2);
   fpPose=fpActive()?currentPose(possessed):null;
   View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw, kick:fpPose?fpPose.kick:0, hop:fpPose?fpPose.hop*0.6:0 }:null);
+  View3D.setFog(fpActive()?5:26, fpActive()?15:70);       // through a creature's eyes nobody sees far
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
   updateFpHud();
   drawOverlay3d();
@@ -6501,6 +6512,15 @@ function draw2d(){
     ctx.strokeStyle = dragMode==='unmark' ? 'rgba(198,90,90,0.9)' : 'rgba(212,175,55,0.9)';
     ctx.lineWidth=2;
     ctx.strokeRect(rx+1, ry+1, rw-2, rh-2);
+  }
+
+  // soft fog of war (the Ludus pit): explored ground that nobody sees is dimmed, what is seen fades out softly at the edge of sight
+  if(state.fogA && !capture){
+    const a=state.fogA; ctx.save();
+    for(let y=Math.max(0,Math.floor(camY));y<=Math.min(WORLD_ROWS-1,Math.floor(camY)+Math.ceil(VIEW_ROWS));y++) for(let x=Math.max(0,Math.floor(camX));x<=Math.min(WORLD_COLS-1,Math.floor(camX)+Math.ceil(VIEW_COLS));x++){
+      const v=a[y*WORLD_COLS+x]; if(v<0.04) continue; ctx.fillStyle=`rgba(5,4,3,${Math.min(0.97,v)})`; ctx.fillRect((x-camX)*TILE,(y-camY)*TILE,TILE+1,TILE+1);
+    }
+    ctx.restore();
   }
 }
 
