@@ -54,3 +54,10 @@ Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vo
 ## Offen
 - Soll die Schlagdauer von Wesen mit Größe 0,7 oder 1,4 mehr vom Träger oder von der Waffe abhängen?
 - Zuggewicht und Stärke: ab welcher Stärke spannt ein Träger einen schweren Bogen noch (sonst Schlagdauer ×2)?
+
+## Stand der Umsetzung
+- **Stufe 1 ist drin** (`weapons.js`, `partsOf`, `swingFactorOf`, `reachOf`, `itemDescription`): Köpfe haben echte Pixelmaße, Schäfte echte Längen, der Knauf hat die Größen 0, 1, 2. Aus Masse, Trägheitsmoment und Schwerpunkt folgen Schadensfaktor, Schlagdauer und Balance; die Reichweite in Feldern folgt aus der Gesamtlänge mal Größe des Trägers (Speer +3,5 Pixel für den Stoß). Alle Werte sind *relativ zur typischen Waffe der Familie*, deshalb behalten die Familientabellen ihre Bedeutung (Axt schwer, Dolch schnell).
+- Seltene Extreme (Hünenklinge, Riesenbeil, Felsklotz, Riesenkeule, Hellebardenspitze, extrem lange Schäfte, großer Knauf) fallen mit 6 % (normal), 12 % (fein) und 20 % (episch) pro Teil; Schmiede wählen nur gewöhnliche Teile.
+- Der Träger geht in die Schlagdauer ein ((8 / Stärke)^0,4, begrenzt auf 0,6 bis 1,8); der Schaden bleibt wie bisher additiv zur Grundstärke.
+- Duell-Test (Ork gegen Ork, 14 Waffen je Familie, 5 Läufe): alle Familien liegen zwischen 45 % und 58 % Siegen.
+- Noch offen: Fernkampf nach Pfeil/Bogen/Sehne, Hände aus der Masse, Tile-Muster und Würfeln je Feld (Stufe 2).
