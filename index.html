@@ -1097,7 +1097,8 @@ function tickCombat(c){
   }
   if(!canStrikeFrom(spec,c.x,c.y,t)){
     // Heranrücken (a shooter also steps up until no wall is in the way, a spear until the foe is in its line)
-    const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
+    // a free spot to strike from (a comrade already standing on the best one sends the others round it), else any
+    const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t) && !tileOccupied(x,y,c)) || bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
     if(res){ c.path=res.path; c.state='engaging'; stepAlong(c); return true; }
     c.fightTarget=null;
     return false;
@@ -1287,7 +1288,10 @@ function pickFightTarget(c){
     const threatening=foes.filter(o=> o.fightTarget && factionOf(o.fightTarget)===factionOf(c));
     if(threatening.length) return threatening.reduce((a,b)=> dist(a)<=dist(b)?a:b);
   }
-  return foes.reduce((a,b)=> dist(a)<=dist(b)?a:b);  // Kaempfer: das Naechste
+  // the nearest foe, but not the same one for everybody: each fighter already set on a foe by a comrade makes that foe a little less attractive, so a team spreads over the enemy
+  const crowd=o=> state.creatures.reduce((n,x)=> n+(x!==c && x.fightTarget===o && !x.removed && !x.unconscious && factionOf(x)===factionOf(c)?1:0),0);
+  const score=o=> dist(o)+2.5*crowd(o);
+  return foes.reduce((a,b)=> score(a)<=score(b)?a:b);
 }
 
 // ===== Arbeit hat Meinungen =====

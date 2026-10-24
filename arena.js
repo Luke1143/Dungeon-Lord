@@ -85,7 +85,9 @@ function arenaBuild(setup,seedExtra){
   const prev=state; state=st;
   try{
     setup.teams.forEach((team,ti)=>{
-      const anchor=st.arena.anchors[ti], free=arenaFreeTiles(st,anchor,60);
+      const anchor=st.arena.anchors[ti], other=st.arena.anchors[1-ti], tx=anchor.x+2*Math.sign(other.x-anchor.x), ty=anchor.y+2*Math.sign(other.y-anchor.y);
+      // a team stands in a loose bunch just in front of its camp (not on the diagonal a plain flood fill would give)
+      const free=arenaFreeTiles(st,anchor,70).map(t=>({ t, k:(t.x-tx)**2+(t.y-ty)**2+Math.random()*3 })).sort((p,q)=>p.k-q.k).map(p=>p.t);
       team.groups.forEach(grp=>{
         for(let i=0;i<Math.max(1,Math.min(20,grp.count|0));i++){
           const at=free.shift()||anchor, c=arenaMake(grp.kind,at.x,at.y);
