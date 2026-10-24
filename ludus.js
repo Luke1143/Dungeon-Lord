@@ -6,7 +6,7 @@ const LUDUS_START_GOLD=40, LUDUS_CHICKEN_COST=6, LUDUS_CHICKEN_HEAL=0.4, LUDUS_S
 const LUDUS_STARTER_KINDS=['ork','goblin','skeleton','barbarian','thief','troll'];   // what is known before the campaign has shown more (the debug switch opens everything)
 const LUDUS_NAMES=['Marcus','Livia','Brutus','Cassia','Titus','Varro','Nerva','Drusa','Rufus','Sabina','Cato','Valeria','Gaius','Aurelia','Lucan','Fulvia','Decimus','Octavia','Cornelius','Silvia'];
 let ludus=null, ludusMeta={ unlockAll:true, bestWins:0, bestDays:0, runs:0 };
-let ludusActive=false, ludusResolved=false, ludusResultText='', ludusTab='pit', ludusBusy=false, ludusNote='';
+let ludusSel=-1, ludusActive=false, ludusResolved=false, ludusResultText='', ludusTab='pit', ludusBusy=false, ludusNote='';
 
 // ---- persistence ----
 async function ludusSave(){ try{ await window.storage.set(LUDUS_STORE, JSON.stringify({ run:ludus, meta:ludusMeta }), false); }catch(e){} }
@@ -134,12 +134,12 @@ function ludusRender(){
   const el=document.getElementById('ludusBody'); if(!el) return;
   if(!ludus){ el.innerHTML=ludusStartHTML(); ludusWireStart(el); return; }
   const f=ludus.fighter, c=ludusCreature(), pct=ludusHealPct(c,f), nextXp=xpForLevel(f.level+1), curXp=xpForLevel(f.level), xpPct=Math.max(0,Math.min(100,Math.round(100*((f.xp||0)-curXp)/Math.max(1,nextXp-curXp))));
-  const worn=wornItems(c), wornSet=new Set(worn), abil=knownAbilities(c).filter(id=>ABILITIES[id]);
-  const itemRow=(inst,i)=>`<div class="luItem${wornSet.has(inst)?' worn':''}"><span>${ludusEsc(instLabel(inst))}${wornSet.has(inst)?' ✓':''}</span><span><button data-reroll="${i}" title="Aussehen neu würfeln">🎲 ${ludusRerollPrice(inst)}</button><button data-sell="${i}" title="Verkaufen">💰 ${ludusSellPrice(inst)}</button></span></div>`;
-  const left=`<div class="luCard"><canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div>
+  const wornIdx=new Set(wornItems(c).map(w=>c.inventory.indexOf(w))), abil=knownAbilities(c).filter(id=>ABILITIES[id]);
+  const itemRow=(inst,i)=>`<div class="luItem${wornIdx.has(i)?' worn':''}${ludusSel===i?' sel':''}" data-pick="${i}"><span>${ludusEsc(instLabel(inst))}${wornIdx.has(i)?' ✓':''}</span></div>`;
+  const left=`<div class="luCard"><canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div><div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>
     <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div>
     ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
-    <div class="luInv">${(f.inventory||[]).length?f.inventory.map(itemRow).join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
+    <div class="luInv">${(f.inventory||[]).filter((x,i)=>wornIdx.has(i)).length?f.inventory.map((x,i)=>wornIdx.has(i)?itemRow(x,i):'').join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
   let main='';
   if(ludus.over){
     main=`<div class="luPanel"><h2>Der Lauf ist zu Ende</h2><p>${ludusEsc(ludus.cause)}</p><p>Siege: ${ludus.wins} · Tage: ${ludus.day} · Ruhm: ${ludus.fame}</p><p>Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage.</p><button id="luNew" class="menuMain">Neuer Kämpfer</button></div>`;
@@ -150,20 +150,29 @@ function ludusRender(){
   } else if(ludusTab==='inn'){
     main=`<div class="luPanel"><h2>Taverne</h2><p>Ein gebratenes Huhn stärkt (${LUDUS_CHICKEN_COST} Gold). Im Bett schlafen ist gratis, kostet aber einen Tag.</p>
       <button id="luChicken" ${ludus.gold<LUDUS_CHICKEN_COST?'disabled':''}>🍗 Huhn essen (${LUDUS_CHICKEN_COST} Gold, +${Math.round(LUDUS_CHICKEN_HEAL*100)} % LP)</button> <button id="luSleep">🛏️ Schlafen (+${Math.round(LUDUS_SLEEP_HEAL*100)} % LP, ein Tag)</button></div>`;
+  } else if(ludusTab==='gear'){
+    const inv=f.inventory||[], sel=inv[ludusSel];
+    main=`<div class="luPanel"><h2>Ausrüstung</h2>${inv.length?inv.map(itemRow).join(''):'<p><i>Du besitzt noch nichts. Die Schmiede verkauft Ausrüstung.</i></p>'}
+      ${sel?`<div class="luDetail"><pre>${ludusEsc(itemDescription(sel))}</pre>
+        <button data-equip="${ludusSel}">${wornIdx.has(ludusSel)?'Ablegen':'Anlegen'}</button>
+        <button data-reroll="${ludusSel}" title="Aussehen neu würfeln">🎲 ${ludusRerollPrice(sel)}</button>
+        <button data-sell="${ludusSel}" title="Verkaufen">💰 ${ludusSellPrice(sel)}</button></div>`:(inv.length?'<p class="luHint">Wähle ein Stück, um es zu lesen, an- oder abzulegen.</p>':'')}</div>`;
   } else if(ludusTab==='smith'){
     const stock=ludusStock();
     main=`<div class="luPanel"><h2>Schmiede</h2><p>Heute im Angebot:</p>${stock.map((id,i)=>`<div class="luItem"><span>${ludusEsc(ITEMS[id].label)}</span><button data-buy="${i}" ${ludus.gold<ludusPrice(id)?'disabled':''}>${ludusPrice(id)} Gold</button></div>`).join('')}</div>`;
     el._stock=stock;
   }
-  const tabs=ludus.over?'':`<div class="luTabs">${[['pit','Grube'],['inn','Taverne'],['smith','Schmiede']].map(([k,l])=>`<button data-tab="${k}" class="${ludusTab===k?'on':''}">${l}</button>`).join('')}</div>`;
+  const tabs=ludus.over?'':`<div class="luTabs">${[['pit','Grube'],['inn','Taverne'],['smith','Schmiede'],['gear','Ausrüstung']].map(([k,l])=>`<button data-tab="${k}" class="${ludusTab===k?'on':''}">${l}</button>`).join('')}</div>`;
   el.innerHTML=`<h1 class="bigTitle" style="font-size:30px">Ludus</h1>
     <div class="luTop"><span>Tag ${ludus.day}</span><span>💰 ${ludus.gold}</span><span>Ruhm ${ludus.fame}</span><span>Siege ${ludus.wins}</span></div>
     ${ludusNote?`<div class="luNote">${ludusEsc(ludusNote)}</div>`:''}
     <div class="luCols">${left}<div>${tabs}${main}${ludus.log.length?`<div class="luLog">${ludus.log.map(ludusEsc).join('<br>')}</div>`:''}</div></div>
     <div class="arBtns"><button id="luMenu" class="menuMain">Hauptmenü</button><button id="luReset" class="menuMain">Neu beginnen</button></div>`;
   const stockNow=el._stock;
-  el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; ludusRender(); if(ludusTab==='pit') ludusScoutOpponent(); }));
-  el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.sell, inst=f.inventory[i]; ludus.gold+=ludusSellPrice(inst); f.inventory.splice(i,1); ludusNote=''; ludusSave(); ludusRender(); }));
+  el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; if(ludusTab!=='gear') ludusSel=-1; ludusRender(); if(ludusTab==='pit') ludusScoutOpponent(); }));
+  el.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>{ ludusSel=+b.dataset.pick; if(ludusTab!=='gear'){ ludusTab='gear'; } ludusRender(); }));
+  el.querySelectorAll('[data-equip]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.equip, inst=f.inventory[i]; if(wornIdx.has(i)) inst.off=true; else { const sl=slotsOfItem(inst); f.inventory.forEach((o,j)=>{ if(j!==i && slotsOfItem(o).some(s=>sl.includes(s))) o.off=true; }); delete inst.off; } ludusSave(); ludusRender(); }));
+  el.querySelectorAll('[data-sell]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.sell, inst=f.inventory[i]; ludus.gold+=ludusSellPrice(inst); f.inventory.splice(i,1); ludusSel=-1; ludusNote=''; ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-reroll]').forEach(b=>b.addEventListener('click',()=>{ const i=+b.dataset.reroll, inst=f.inventory[i], pr=ludusRerollPrice(inst); if(ludus.gold<pr) return; ludus.gold-=pr; inst.s=Math.floor(Math.random()*1e9); ludusSave(); ludusRender(); }));
   el.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{ const id=stockNow[+b.dataset.buy], pr=ludusPrice(id); if(ludus.gold<pr) return; ludus.gold-=pr; f.inventory.push({ id, q:1, s:Math.floor(Math.random()*1e9) }); ludusNote=''; ludusSave(); ludusRender(); }));
   const on=(id,fn)=>{ const b=document.getElementById(id); if(b) b.addEventListener('click',fn); };

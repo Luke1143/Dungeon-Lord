@@ -42,6 +42,9 @@ function i18nCompute(s){
   // an icon or a number in front of a known text: "🔒 Teleport (Stufe 10)"
   const lead=/^([^A-Za-zÄÖÜäöüß]+)([\s\S]+)$/.exec(s);
   if(lead && lead[2].length>1){ const t=Tr(lead[2]); if(t!==lead[2]) return lead[1]+t; }
+  // a mark behind a known text: "Funkenstab ✓"
+  const trail=/^([\s\S]*[A-Za-zÄÖÜäöüß])([^A-Za-zÄÖÜäöüß]+)$/.exec(s);
+  if(trail){ const t=Tr(trail[1]); if(t!==trail[1]) return t+trail[2]; }
   if(/[äöüßÄÖÜ]|\b(der|die|das|und|ein|eine|nicht|wird|ist|zu|mit|auf|von|den|dem)\b/i.test(s)) I18N_MISSES.add(s);
   return s;
 }

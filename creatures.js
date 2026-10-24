@@ -103,6 +103,23 @@ const BASE_ABILITIES={ yule:['pilfer'] };
 const ARCHETYPE_POOL={ fighter:['rage','sweep','guard','lunge'], assassin:['haste','lunge','curse','teleport'], support:['heal','curse','haste_others','blessing'], mage:['fireball','curse','heal','summon'] };
 const HEALERS={ paladin:{ radius:3, amount:2 }, dryad:{ radius:4, amount:2 }, fairy:{ radius:5, amount:2 }, unicorn:{ radius:3, amount:3 }, angel:{ radius:4, amount:3 }, priest:{ radius:3, amount:2 } };
 
+
+// ---- combat stances: a rule every creature follows, separate from its passive ----
+//   aggressive: a foe one tile out of reach is closed in with the blow (a lunge), so runners are still hit
+//   steadfast:  a blow moves nothing, the creature holds its ground
+//   kite:       a ranged attacker with a foe at its throat takes one step back after the shot
+const STANCES={
+  aggressive:{ label:'Angriffslustig', text:'schließt mit jedem Schlag eine Lücke von einem Feld' },
+  steadfast: { label:'Standhaft',      text:'hält die Stellung, ein Schlag bewegt nichts' },
+  kite:      { label:'Kiter',          text:'weicht nach dem Schuss einen Schritt zurück, wenn ein Feind dicht dran ist' }
+};
+const STANCE_OF={ barbarian:'aggressive', ork:'aggressive', goblin:'aggressive', werewolf:'aggressive', hound:'aggressive', thief:'aggressive', demon:'aggressive', brood:'aggressive', lizard:'aggressive',
+  griffin:'aggressive', vampire:'aggressive', ghoul:'aggressive', phoenix:'aggressive', kitsune:'aggressive', unicorn:'aggressive', fly:'aggressive', succubus:'aggressive', yule:'aggressive',
+  troll:'steadfast', golem:'steadfast', knight:'steadfast', paladin:'steadfast', dwarf:'steadfast', giant:'steadfast', skeleton:'steadfast', zombie:'steadfast', darkknight:'steadfast', dragon:'steadfast',
+  dwarfking:'steadfast', arthur:'steadfast', herakles:'steadfast', guardian:'steadfast', angel:'steadfast', monk:'steadfast', beetle:'steadfast', ghost:'steadfast', warlock:'kite',
+  archer:'kite', wizard:'kite', elf:'kite', darkelf:'kite', priest:'kite', lich:'kite', banshee:'kite', dryad:'kite', wisp:'kite', fairy:'kite', oberon:'kite' };
+function stanceOf(c){ return STANCE_OF[c.kind] || (reachOf(c)>1 ? 'kite' : 'aggressive'); }
+
 const ABILITY_LEVELS=[5,10];
 // slots: innate abilities and learned ones share them (godhand: beasts 0-1, horde 3, undead 2, legendary 4+); two belong to the innate pair
 function knowSlots(c){

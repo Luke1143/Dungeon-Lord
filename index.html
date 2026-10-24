@@ -53,6 +53,7 @@
   .luBar{ position:relative; height:16px; background:#2a2018; border-radius:3px; margin:4px 0; overflow:hidden; } .luBar i{ display:block; height:100%; } .luBar i.hp{ background:#a33; } .luBar i.xp{ background:#6a8f3a; }
   .luBar b{ position:absolute; inset:0; font-size:11px; line-height:16px; } .luAbil{ font-size:12px; margin:6px 0; } .luHint{ opacity:.7; font-size:12px; }
   .luItem{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:13px; text-align:left; } .luItem.worn{ color:var(--gold); }
+  .luItem{ cursor:pointer; } .luItem.sel{ outline:1px solid var(--gold); } .luDetail{ margin-top:8px; } .luDetail pre{ white-space:pre-wrap; font-family:inherit; font-size:13px; } .luStance{ font-size:12px; opacity:.85; }
   .luTabs{ display:flex; gap:6px; margin-bottom:8px; } .luTabs button.on{ background:var(--gold); color:#1c140f; }
   .luOpp{ display:flex; gap:12px; align-items:center; margin:8px 0; } #luPrev, #luOpp{ image-rendering:pixelated; } .luLog{ margin-top:10px; font-size:12px; opacity:.75; }
   #ludusScreen button, .luPanel select, .luPanel input[type=text], #luName{ font-family:inherit; }
@@ -1047,7 +1048,13 @@ function tickCombat(c){
   if(!c.fightTarget) return false;
 
   const t=c.fightTarget;
-  const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y), reach=reachOf(c);
+  let d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
+  const reach=reachOf(c), stance=stanceOf(c);
+  // combat stance (aggressive): a foe one tile out of reach is closed in with the blow itself, so a runner is still hit
+  if(stance==='aggressive' && d===reach+1 && (c.swingBudget||0)+1>=swingCostOf(c)){
+    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach && (reach<=1 || lineClear(x,y,t.x,t.y)));
+    if(res && res.path.length===1){ stanceMove(c,res.path[0]); d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y); c.lungeAt=Date.now(); }
+  }
   if(d>reach || (reach>1 && !lineClear(c.x,c.y,t.x,t.y))){
     // Heranrücken (a shooter also steps up until no wall is in the way)
     const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach && (reach<=1 || lineClear(x,y,t.x,t.y)));
@@ -1059,11 +1066,20 @@ function tickCombat(c){
   c.state='fighting';
   c.verb='attack'; c.actTarget={ x:t.x, y:t.y };
   if(!swing(c)) return true;                 // Ausholen oder danebengehauen
-  if(reach>1 && typeof FX!=='undefined') FX.emit('shot', c.x, c.y, { tx:t.x, ty:t.y });
+  if(reach>1 && ((c.inventory||[]).map(instDef).find(w=>w&&w.type==='weapon')||{}).cat!=='melee' && typeof FX!=='undefined') FX.emit('shot', c.x, c.y, { tx:t.x, ty:t.y });
   const r=resolveAttack(c, t, c.combatContext);
   addGrudge(t, c);                           // wer geschlagen wird, traegt Groll
   if(r.outcome==='killed' || r.outcome==='fainted') c.fightTarget=null;
+  else if(stance==='kite' && reach>1 && d<=1) kiteBack(c,t);       // a caster with a foe at its throat gives a step
   return true;
+}
+
+// stance moves are free steps taken with the blow, no path and no move cost
+function stanceMove(c,step){ c.x=step.x; c.y=step.y; c.path=[]; }
+function kiteBack(c,t){
+  let best=null, bd=Math.abs(t.x-c.x)+Math.abs(t.y-c.y);
+  neighbors(c.x,c.y).forEach(([nx,ny])=>{ if(!isWalkable(nx,ny) || tileOccupied(nx,ny,c) || (state.grid[ny][nx].water && !(SPECIES[c.kind]||{}).flies)) return; const nd=Math.abs(t.x-nx)+Math.abs(t.y-ny); if(nd>bd && lineClear(nx,ny,t.x,t.y)){ bd=nd; best={x:nx,y:ny}; } });
+  if(best) stanceMove(c,best);
 }
 
 // Perception (no more "everyone charges at once"): a creature notices a foe that is near, that stands on its owner's ground, that is
@@ -1073,7 +1089,7 @@ const NOTICE_RADIUS=8, NOTICE_INTRUDER_RADIUS=16;
 function reachOf(c){
   const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon');
   if(!w) return 1;
-  const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : 1);
+  const base=w.cat==='ranged' ? (w.family==='javelin'?3:5) : (w.cat==='magic' ? 4 : (w.reach||1));
   return base+((base>1 && hasPerk('shadow_arrows') && factionOf(c)==='evil')?1:0);
 }
 function noticesFoe(c,o){
@@ -1248,14 +1264,19 @@ const GEAR_TIERS=[
 ];
 
 // Waffen: Kategorie (melee/ranged/magic) x Tempoklasse (fast/medium/heavy)
+// swing: how long a blow takes compared to a sword (1 = three ticks of wind-up, 0.55 = a flurry, 1.9 = a slow smash); reach: tiles a melee weapon strikes
 const WEAPON_FAMILIES={
-  sword:    { cat:'melee',  weight:'fast',   label:'Schwert',      icon:'🗡️', hands:1, strength:4,  tempo:-0.10,
+  dagger:   { cat:'melee',  weight:'fast',   label:'Dolch',        icon:'🔪', hands:1, strength:2,   tempo:-0.05, swing:0.65,
+              names:['Stilett','Meuchler','Parierdolch','Rippenritzer'] },
+  sword:    { cat:'melee',  weight:'fast',   label:'Schwert',      icon:'🗡️', hands:1, strength:5.5,  tempo:-0.10, swing:1,
               names:['Falchion','Bastardschwert','Claymore','Ork-Spalter'] },
-  mace:     { cat:'melee',  weight:'medium', label:'Streitkolben', icon:'⚒️', hands:1, strength:8,  tempo:-0.30,
+  spear:    { cat:'melee',  weight:'medium', label:'Speer',        icon:'🔱', hands:2, strength:5, tempo:-0.15, swing:1.15, reach:2,
+              names:['Kriegsspeer','Lanze','Pike','Eberspieß'] },
+  mace:     { cat:'melee',  weight:'medium', label:'Streitkolben', icon:'⚒️', hands:1, strength:10, tempo:-0.30, swing:1.3,
               names:['Schädelknacker','Morgenstern','Dornenkeule','Knochenbrecher'] },
-  axe:      { cat:'melee',  weight:'medium', label:'Axt',          icon:'🪓', hands:1, strength:6,  tempo:-0.25,
+  axe:      { cat:'melee',  weight:'medium', label:'Axt',          icon:'🪓', hands:1, strength:10, tempo:-0.25, swing:1.5,
               names:['Streitaxt','Kriegsbeil','Schädelspalter','Doppelaxt'] },
-  hammer:   { cat:'melee',  weight:'heavy',  label:'Kriegshammer', icon:'🔨', hands:2, strength:10, tempo:-0.45,
+  hammer:   { cat:'melee',  weight:'heavy',  label:'Kriegshammer', icon:'🔨', hands:2, strength:20, tempo:-0.45, swing:1.9,
               names:['Knochenbrecher','Morgenstern','Amboss-Faust','Erdspalter'] },
   javelin:  { cat:'ranged', weight:'fast',   label:'Wurfspeer',    icon:'🎯', hands:1, strength:3,  tempo:-0.05,
               names:['Wurfspieß','Harpune','Speerbündel'] },
@@ -1309,7 +1330,7 @@ function buildItems(){
 
   Object.entries(WEAPON_FAMILIES).forEach(([id,fam])=>{
     GEAR_TIERS.forEach(tier=>{
-      const it=addTier(id, fam, tier, { type:'weapon', cat:fam.cat, hands:fam.hands });
+      const it=addTier(id, fam, tier, { type:'weapon', cat:fam.cat, hands:fam.hands, swing:fam.swing||1, reach:fam.reach||0 });
       it.tags=it.tags.concat([fam.cat]);
     });
   });
@@ -1481,7 +1502,7 @@ function slotsOfItem(v){
 // what a creature really wields: per slot the best piece wins, whatever else it carries is baggage
 function wornItems(c){
   const taken=new Set(), out=[];
-  (c.inventory||[]).slice().sort((a,b)=>instScore(b)-instScore(a)).forEach(inst=>{
+  (c.inventory||[]).filter(inst=>!inst.off).sort((a,b)=>instScore(b)-instScore(a)).forEach(inst=>{
     const sl=slotsOfItem(inst);
     if(!sl.length || sl.some(s=>taken.has(s))) return;
     sl.forEach(s=>taken.add(s)); out.push(inst);
@@ -1738,6 +1759,9 @@ function grantXp(actor, amount){
 // Ein Schwung dauert laenger als ein Schritt: bei Tempo 1.0 holt eine Kreatur
 // drei Ticks lang aus, bevor der Schlag sitzt. Schnelle Kreaturen schlagen oefter.
 const SWING_COST=3;
+// a blow with a dagger comes quick, one with a war hammer slow: the weapon in hand scales the wind-up (work with tools keeps the plain cost)
+function swingFactorOf(c){ const w=(c.inventory||[]).map(instDef).find(d=>d&&d.type==='weapon'); return (w&&w.swing)||1; }
+function swingCostOf(c){ return SWING_COST*((c.verb==='attack'||c.state==='fighting')?swingFactorOf(c):1); }
 const WORK_COST={ pickup:1, claim:3, rock:10, reinforce:60, build:8 };   // reinforcing is a long job: a wall is an investment, not a reflex
 
 // Wieviel Wucht bringt der Akteur pro Treffer auf? Stufe und Staerke zaehlen.
@@ -1906,8 +1930,9 @@ function swing(actor, roomType){
   // Pro Aufruf genau 1 - die Tempo-Skalierung steckt bereits in actionCount(),
   // das diese Funktion bei schnellen Kreaturen mehrfach je Tick erreicht.
   actor.swingBudget=(actor.swingBudget||0)+1;
-  if(actor.swingBudget < SWING_COST) return false;
-  actor.swingBudget-=SWING_COST;
+  const cost=swingCostOf(actor);
+  if(actor.swingBudget < cost) return false;
+  actor.swingBudget-=cost;
   startAnim(actor, gameSpeed);        // the blow is made (hit or miss): play the verb's animation
 
   if(Math.random() > hitChance(actor)){
@@ -5537,7 +5562,7 @@ function swingIconOf(c){
 
 // Die Ausholbewegung steckt bereits im Schwungkonto - keine neue Zustandsvariable.
 function swingPhase(c){
-  return Math.max(0, Math.min(1, (c.swingBudget||0)/SWING_COST));
+  return Math.max(0, Math.min(1, (c.swingBudget||0)/swingCostOf(c)));
 }
 
 // Genau EIN Gedanke ueber dem Kopf, nach fester Rangfolge.
@@ -5652,7 +5677,7 @@ function spriteCanvas(key,t,facingRight,moving,extra){
   return SPRITE_CACHE[id]=cv;
 }
 // What a humanoid wears, as sprite rules: material and tier follow the armour weight and quality, weapons and shields map to one shared sprite each.
-const WEAPON_SPRITE={ sword:'schwert', axe:'axt', hammer:'hammer', mace:'keule', javelin:'speer', bow:'bogen', crossbow:'bogen', wandFire:'stab', wandBolt:'stab', wandIce:'stab' };
+const WEAPON_SPRITE={ dagger:'dolch', spear:'speer', sword:'schwert', axe:'axt', hammer:'hammer', mace:'keule', javelin:'speer', bow:'bogen', crossbow:'bogen', wandFire:'stab', wandBolt:'stab', wandIce:'stab' };
 function equipLook(c){
   const e={}; let any=false;
   wornItems(c).forEach(inst=>{
@@ -7380,11 +7405,36 @@ function abilitiesLine(c){
   const free=learnableSlots(c)-(c.learned||[]).length;
   return 'Fähigkeiten: '+(parts.join(' · ')||'—')+(learnableSlots(c)>0?` · ${free>0?free+' Platz frei für ein Buch':'Wissen voll'}`:'');
 }
+// what a piece of equipment is and does, as text (inspector and the Ludus equipment tab)
+function itemDescription(inst){
+  const d=instDef(inst);
+  const mods=[];
+  const fmt=(v,suffix)=> `${v>0?'+':''}${(+v.toFixed(1))}${suffix||''}`;
+  if(d){
+    if(d.strength) mods.push(`Stärke ${fmt(instStat(inst,'strength'))}`);
+    if(d.defense) mods.push(`Verteidigung ${fmt(instStat(inst,'defense'),'%')}`);
+    if(d.dex) mods.push(`Geschick ${fmt(instStat(inst,'dex'))}`);
+    if(d.speed) mods.push(`Tempo ${fmt(instStat(inst,'speed'))}`);
+    if(d.tempo) mods.push(`Arbeitstempo ${fmt(instStat(inst,'tempo'))}`);
+    if(d.type==='weapon'){
+      if(d.swing && d.swing!==1) mods.push(d.swing<1?`schnelle Schläge (×${d.swing})`:`langsame Schläge (×${d.swing})`);
+      if(d.reach>1) mods.push(`Reichweite ${d.reach} Felder`);
+      else if(d.cat==='ranged') mods.push(`Reichweite ${d.family==='javelin'?3:5} Felder`);
+      else if(d.cat==='magic') mods.push('Reichweite 4 Felder');
+    }
+  }
+  const kindLabel = d ? (d.type==='weapon' ? ({melee:'Nahkampf',ranged:'Fernkampf',magic:'Magie'}[d.cat]||d.cat) : d.type==='shield' ? 'Schild' : 'Rüstung') : '';
+  const handLabel = d && d.hands===2 ? ' · Zweihand (2 Plätze)' : d && d.hands===1 ? ' · Einhand' : '';
+  const q=instQuality(inst);
+  const craft = q>=1.07 ? 'hervorragend gearbeitet' : q<=0.94 ? 'unsauber gearbeitet' : 'solide gearbeitet';
+  return `${instLabel(inst)}\n${d?d.baseLabel:''} · ${kindLabel} · Güte: ${d?d.tierLabel:''}${handLabel}\n${mods.join(' · ')||'keine Werte'}\nVerarbeitung: ${craft} (${Math.round(q*100)}%)`;
+}
 function statBlock(c){
   const lines=[];
   lines.push(`Leben ${c.hp}/${statMaxHp(c)} · ${levelLine(c)}`);
   lines.push(`Stärke ${statStrength(c)} · Verteidigung ${statDefense(c)} (${Math.round(100*defenseReduction(c))}% weniger Schaden) · Geschick ${statDex(c)}%`);
   lines.push(`Tempo ${statSpeed(c).toFixed(1)}`);
+  if((SPECIES[c.kind]||{}).canFight) lines.push(`Kampfstil: ${STANCES[stanceOf(c)].label} — ${STANCES[stanceOf(c)].text}`);
   if(c.needsFood) lines.push(`Hunger ${c.hunger}/${HUNGER_MAX} · Energie ${c.energy}/${ENERGY_MAX}`);
   else lines.push(`Energie ${c.energy}/${ENERGY_MAX}`);
   if(c.happiness!==undefined){
@@ -7440,22 +7490,7 @@ function selectCreature(sel){
   } else if(sel.kind==='looseItem'){
     const it=sel.obj;
     if(it.kind==='equipment'){
-      const inst=looseInst(it);
-      const d=instDef(inst);
-      const mods=[];
-      const fmt=(v,suffix)=> `${v>0?'+':''}${(+v.toFixed(1))}${suffix||''}`;
-      if(d){
-        if(d.strength) mods.push(`Stärke ${fmt(instStat(inst,'strength'))}`);
-        if(d.defense) mods.push(`Verteidigung ${fmt(instStat(inst,'defense'),'%')}`);
-        if(d.dex) mods.push(`Geschick ${fmt(instStat(inst,'dex'))}`);
-        if(d.speed) mods.push(`Tempo ${fmt(instStat(inst,'speed'))}`);
-        if(d.tempo) mods.push(`Arbeitstempo ${fmt(instStat(inst,'tempo'))}`);
-      }
-      const kindLabel = d ? (d.type==='weapon' ? ({melee:'Nahkampf',ranged:'Fernkampf',magic:'Magie'}[d.cat]||d.cat) : d.type==='shield' ? 'Schild' : 'Rüstung') : '';
-      const handLabel = d && d.hands===2 ? ' · Zweihand (2 Plätze)' : d && d.hands===1 ? ' · Einhand' : '';
-      const q=instQuality(inst);
-      const craft = q>=1.07 ? 'hervorragend gearbeitet' : q<=0.94 ? 'unsauber gearbeitet' : 'solide gearbeitet';
-      setInspect(`${instLabel(inst)}\n${d?d.baseLabel:''} · ${kindLabel} · Güte: ${d?d.tierLabel:''}${handLabel}\n${mods.join(' · ')||'keine Werte'}\nVerarbeitung: ${craft} (${Math.round(q*100)}%)`);
+      setInspect(itemDescription(looseInst(it)));
     }
     else if(it.kind==='book') setInspect(`Buch „${it.label}" — liegt ungeschützt am Boden. Nur in einer Bibliothek verwahrtes Wissen ist nutzbar; Imps bringen es dorthin zurück.`);
     else if(it.kind==='chicken') setInspect('Ein entlaufenes Huhn — hebt es auf, um eine Kreatur damit zu füttern oder zu heilen.');
@@ -7824,10 +7859,12 @@ function renderFpAbilities(c){
   const box=document.getElementById('fpSlots'); if(!box) return;
   if(sig!==fpAbilSig){
     fpAbilSig=sig;
-    box.innerHTML='<div class="fpSlot" id="fpSlot1"><span class="k">LMB</span><span class="ic">⚔️</span><span class="n">Zuschlagen</span></div>'
+    box.innerHTML='<div class="fpSlot" id="fpSlot1"><span class="k">LMB</span><span class="ic">⚔️</span><span class="n">Zuschlagen</span><i class="cd" id="fpAtkCd"></i></div>'
       + ids.map((id,i)=>`<div class="fpSlot" id="fpAb${i}"><span class="k">${i+2}</span><span class="ic">${ABILITIES[id].icon}</span><span class="n">${ABILITIES[id].name}</span><i class="cd" id="fpAbCd${i}"></i></div>`).join('')
       + '<div class="fpSlot" id="fpSlot3"><span class="k">Esc</span><span class="ic">🚪</span><span class="n">Verlassen</span></div>';
   }
+  { const acd=document.getElementById('fpAtkCd');   // the basic attack cools down like any skill: the time a blow takes with the weapon in hand
+    if(acd){ const total=SWING_COST*swingFactorOf(c)/Math.max(0.3,statTempo(c))*TICK_MS/Math.max(1,gameSpeed), left=1-(Date.now()-(c.lastSwingAt||0))/Math.max(1,total); acd.style.height=(left>0&&left<1?Math.round(left*100):0)+'%'; } }
   ids.forEach((id,i)=>{ const cd=document.getElementById('fpAbCd'+i); if(cd) cd.style.height=(abilityCd(c,id)>0?100*abilityCd(c,id)/abilityCdMax(c,id):0)+'%'; });
 }
 function fpUseAbility(i){

@@ -36,7 +36,9 @@ function startAnim(actor, speed){
   const motion=rule.motion[actor.animCount%rule.motion.length];
   let dx=0, dy=0;
   if(actor.actTarget){ dx=Math.sign(actor.actTarget.x-actor.x); dy=Math.sign(actor.actTarget.y-actor.y); }
-  actor.anim={ verb, motion, start:Date.now(), dur:rule.ms/Math.max(1,speed||1), dx, dy, tint:rule.tint };
+  const dur=rule.ms*(verb==='attack'&&typeof swingFactorOf==='function'?Math.max(0.6,Math.min(1.7,swingFactorOf(actor))):1)/Math.max(1,speed||1);
+  actor.anim={ verb, motion, start:Date.now(), dur, dx, dy, tint:rule.tint };
+  if(verb==='attack') actor.lastSwingAt=Date.now();
   actor.verb=null; actor.actTarget=null;
   if(typeof SFX!=='undefined'){       // the sound of the blow lands with the strike, not with the wind-up
     const snd=SOUND_OF[verb]||'tap', strike=(motion==='side'||motion==='over'?0.5:0.4)*actor.anim.dur/1000;

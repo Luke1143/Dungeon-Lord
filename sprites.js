@@ -102,6 +102,7 @@ const CREATURES={
     hacke:{ px:[[0,0,'W'],[1,0,'W'],[2,0,'W'],[3,0,'W'],[0,1,'W'],[3,1,'W'],[1,1,'j'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,7] },
     stab:{ px:[[0,0,'Q'],[1,0,'Q'],[2,0,'Q'],[0,1,'Q'],[1,1,'q'],[2,1,'Q'],[1,2,'Q'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,6] },
     keule:{ px:[[0,0,'W'],[2,0,'W'],[1,0,'K'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j']], grip:[1,7] },   // spiked mace
+    dolch:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'W'],[0,3,'K'],[1,3,'K'],[2,3,'K'],[1,4,'j'],[1,5,'j']], grip:[1,4] },
     speer:{ px:[[1,0,'W'],[1,1,'W'],[1,2,'j'],[1,3,'j'],[1,4,'j'],[1,5,'j'],[1,6,'j'],[1,7,'j'],[1,8,'j'],[1,9,'j']], grip:[1,6] },
     bogen:{ px:[[1,0,'j'],[0,1,'j'],[0,2,'j'],[0,3,'j'],[0,4,'j'],[0,5,'j'],[0,6,'j'],[1,7,'j'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[1,6,'W']], grip:[0,3] }
   };
@@ -109,7 +110,12 @@ const CREATURES={
   // heads: pixel list relative to the shaft column x=1 ('W' blade/head, 'K' guard/spike), hs = first shaft row, str/pen = stat factors (strength, tempo penalty).
   // lens: shaft lengths (rows), grip: where the carrier holds it (0 = top of the shaft, 1 = bottom).
   const H=(n,str,pen,hs,px)=>({ n,str,pen,hs,px });
+  const WEAPON_GROW=2;
   const WEAPON_PARTS={
+    dolch:{ lens:[1,2,2], grip:0, heads:[
+      H('Spitzklinge',1,1,4,[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[0,4,'K'],[1,4,'K'],[2,4,'K']]),
+      H('Breitklinge',1.06,1.08,3,[[1,0,'W'],[0,1,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W'],[1,3,'W'],[0,4,'K'],[1,4,'K'],[2,4,'K']]),
+      H('Meuchler',0.94,0.88,5,[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[0,5,'K'],[1,5,'K'],[2,5,'K']]) ] },
     schwert:{ lens:[1,2,3], grip:0, heads:[
       H('Langklinge',1,1,7,[[1,0,'W'],[1,1,'W'],[1,2,'W'],[1,3,'W'],[1,4,'W'],[1,5,'W'],[0,6,'K'],[1,6,'K'],[2,6,'K']]),
       H('Breitklinge',1.08,1.1,6,[[1,0,'W'],[1,1,'W'],[2,1,'W'],[1,2,'W'],[2,2,'W'],[1,3,'W'],[2,3,'W'],[1,4,'W'],[2,4,'W'],[0,5,'K'],[1,5,'K'],[2,5,'K'],[3,5,'K']]),
@@ -140,9 +146,10 @@ const CREATURES={
     const rec=WEAPON_PARTS[name]; if(!rec||!parts) return null;
     const h=rec.heads[(parts.head||0)%rec.heads.length], len=rec.lens[(parts.len||0)%rec.lens.length], sh=SHAFTS[parts.shaft]||SHAFTS.wood;
     const px=h.px.map(([x,y,c])=>[x,y,c==='W'?'V':(c==='K'?'v':c)]);
-    for(let i=0;i<len;i++) px.push([1,h.hs+i,sh.ch]);
-    if(parts.pommel) px.push([1,h.hs+len,'v']);
-    return { px, grip:[1,h.hs+Math.round(rec.grip*(len-1))] };
+    const L=len+WEAPON_GROW;   // weapons are drawn a little larger than the bare plan, so they read well on a small body
+    for(let i=0;i<L;i++) px.push([1,h.hs+i,sh.ch]);
+    if(parts.pommel) px.push([1,h.hs+L,'v']);
+    return { px, grip:[1,h.hs+Math.round(rec.grip*(L-1))] };
   }
   const WEAPON_MAT={ crude:'bronze', plain:'eisen', fine:'stahl', epic:'stahl' };
   const weaponPal=mat=>{ const m=MATS[mat]||MATS.eisen; return { V:m.W, v:m.K, j:'#6b4a2f', b:'#d8cdb4', i:'#4a4e56', Q:'#9a6aff', q:'#e8d8ff' }; };
@@ -153,9 +160,9 @@ const CREATURES={
   }
   // shields are drawn from the front, like the emoji 🛡️: a rim, a face with an emblem, the point below. Rows of the pattern; M light, m middle, n dark.
   const SHIELD_ROWS={
-    buckler:['.MMM.','MmMmn','MMMMn','MmMmn','.nnn.'],
-    kite:['MMMMM','MmMmn','MMMMn','MmMmn','MmMmn','.mMmn','.nMn.','..n..'],
-    tower:['MMMMM','MmMmn','MmMmn','MMMMn','MmMmn','MmMmn','MMMMn','MmMmn','nnnnn']
+    buckler:['.MMMM.','MmMMmn','MMMMMn','MmMMmn','MmmMmn','.nnnn.'],
+    kite:['MMMMMM','MmmMmn','MMMMMn','MmmMmn','MmmMmn','.mMMmn','.nMMn.','..nn..'],
+    tower:['MMMMMM','MmmMmn','MmmMmn','MMMMMn','MmmMmn','MmmMmn','MMMMMn','MmmMmn','MmmMmn','nnnnnn']
   };
   const SHIELDS={}; Object.keys(SHIELD_ROWS).forEach(k=>{ SHIELDS[k]=[]; SHIELD_ROWS[k].forEach((row,y)=>[...row].forEach((c,x)=>{ if(c!=='.') SHIELDS[k].push([x,y,c]); })); });
   globalThis.SHIELDGEN={ rows:SHIELD_ROWS, palette:mat=>MATS[mat||'eisen']||MATS.eisen };
@@ -187,7 +194,7 @@ const CREATURES={
       // no pauldrons: creatures have no arms, so armour never sticks out of the torso
     }
     if(e.legs){ for(let y=L.y0;y<=L.y1;y++) for(let x=0;x<N;x++) if(f.tag[y][x]==='L'&&y>=(e.legs===1?L.y1-1:L.y1-2)) f.g[y][x]=y===L.y1?'n':'m'; }
-    if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-4+x,sy+y,c)); }
+    if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-5+x,sy+y,c)); }
     const wp=e.weapon&&weaponShape(e.weapon,e.wparts);
     if(wp){ const ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
       wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }
