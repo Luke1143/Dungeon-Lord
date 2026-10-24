@@ -3,7 +3,7 @@
 // The mode reuses the level screen: `state.arena` marks the match, `gameTick` hands over to `arenaTick`, and the usual AI is replaced by tickCombat alone
 // (everyone sees every foe). Team A is the dark side (faction 'evil'), team B the good side (faction 'good'), whatever the species.
 const ARENA_STORE='dungeon-lord-arena-setup-v1';
-const ARENA_MAX_TICKS=4000;
+const ARENA_MAX_TICKS=4000, ARENA_LUDUS_TICKS=700;   // a Ludus match has a time limit (about 4 minutes at normal speed)
 const ARENA_LAYOUTS=[['pit','Offene Grube'],['caverns','Höhlen'],['halls','Hallen'],['canyon','Schlucht'],['tunnels','Stollen']];
 const ARENA_DIMS=[['S','klein'],['M','mittel'],['L','groß']];
 const ARENA_GEARS=[['auto','Standard'],['none','keine'],['custom','eigene']];
@@ -47,11 +47,13 @@ function arenaComponents(g){
     list.push(cells); }
   return list.sort((a,b)=>b.length-a.length);
 }
-function arenaPit(g){
-  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x], edge=x<2||y<2||x>=WORLD_COLS-2||y>=WORLD_ROWS-2;
+// the pit is a walled yard in the middle of the map: size S/M/L is half, three quarters or all of the inner space
+function arenaPit(g,dims){
+  const f={ S:0.5, M:0.75, L:1 }[dims]||0.5, w=Math.round((WORLD_COLS-4)*f), h=Math.round((WORLD_ROWS-4)*f), x0=(WORLD_COLS-w)>>1, y0=(WORLD_ROWS-h)>>1;
+  for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x], edge=x<x0||y<y0||x>=x0+w||y>=y0+h;
     if(edge){ t.type='bedrock'; } else { t.type='floor'; t.gold=false; t.ore=false; t.gem=false; t.water=false; t.lava=false; t.castle=false; t.crystal=false; t.crystalFloor=false; t.goldPile=0; t.orePile=0; t.reinforced=false; t.marked=false; }
     t.room=null; t.natural=true; }
-  for(let i=0,n=Math.round(WORLD_COLS*WORLD_ROWS/90);i<n;i++){ const x=randInt(5,WORLD_COLS-6), y=randInt(5,WORLD_ROWS-6); [[0,0],[1,0],[0,1],[1,1]].slice(0,randInt(1,4)).forEach(([dx,dy])=>{ g[y+dy][x+dx].type='bedrock'; }); }
+  for(let i=0,n=Math.round(WORLD_COLS*WORLD_ROWS/90);i<n;i++){ const x=randInt(x0+3,x0+w-5), y=randInt(y0+3,y0+h-5); [[0,0],[1,0],[0,1],[1,1]].slice(0,randInt(1,4)).forEach(([dx,dy])=>{ g[y+dy][x+dx].type='bedrock'; }); }
 }
 // everything set up for a match, returns a fresh state (the global `state` is not touched)
 function arenaBuild(setup,seedExtra){
@@ -64,7 +66,7 @@ function arenaBuild(setup,seedExtra){
     st=makeDefaultState();
     const g=st.grid;
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.room==='throne'||t.room==='entrance'||t.room==='portal') t.room=null; }
-    if(m.layout==='pit'){ arenaPit(g); if(m.lava) growLava(g,m.lava); if(m.water){ for(let i=0;i<m.water;i++){ const x=randInt(6,WORLD_COLS-7), y=randInt(6,WORLD_ROWS-7); blobCells(x,y,randInt(8,16)).forEach(([cx,cy])=>{ g[cy][cx].type='water'; g[cy][cx].lava=false; }); } } }
+    if(m.layout==='pit'){ arenaPit(g,m.dims); if(m.lava) growLava(g,m.lava); if(m.water){ for(let i=0;i<m.water;i++){ const x=randInt(6,WORLD_COLS-7), y=randInt(6,WORLD_ROWS-7); blobCells(x,y,randInt(8,16)).forEach(([cx,cy])=>{ g[cy][cx].type='water'; g[cy][cx].lava=false; }); } } }
     // two camps at the far ends of the biggest open cave; when there is none, carve one
     let comps=arenaComponents(g);
     if(!comps.length || comps[0].length<150){ const cx=WORLD_COLS>>1, cy=WORLD_ROWS>>1; carveRect(g,cx-12,cy-6,cx+12,cy+6); comps=arenaComponents(g); }
@@ -75,7 +77,7 @@ function arenaBuild(setup,seedExtra){
     // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], maxTicks:ARENA_MAX_TICKS, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
@@ -110,14 +112,25 @@ function arenaFreeTiles(st,from,n){
     for(const [nx,ny] of [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]){ const k=nx+','+ny; if(nx>=0&&ny>=0&&nx<WORLD_COLS&&ny<WORLD_ROWS&&!seen.has(k)&&g[ny][nx].type==='floor'){ seen.add(k); q.push([nx,ny]); } } }
   return out;
 }
+const ARENA_SURRENDER_TICKS=60;   // fleeing for this long (about 20 s at normal speed) counts as giving up
 const arenaAlive=(st,ti)=>st.creatures.filter(c=>arenaTeamOf(c)===ti && !c.unconscious && !c.removed && !c.dead && !c.imprisoned);
 // one tick of a match; returns true while it goes on
 function arenaStep(st){
   st.tickCount++;
   st.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
   [processDeaths,tickCorpses,tickEffects,pruneEventLog].forEach(f=>guard(f.name,f));
+  st.creatures.forEach(c=>{
+    if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
+    if(c.fleeTicks>=ARENA_SURRENDER_TICKS && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
+  });
   const a=arenaAlive(st,0).length, b=arenaAlive(st,1).length;
-  if(a===0||b===0||st.tickCount>=st.arena.maxTicks){ st.arena.over=true; st.arena.winner=(a>0&&b===0)?0:((b>0&&a===0)?1:-1); }
+  if(a===0||b===0||st.tickCount>=st.arena.maxTicks){
+    st.arena.over=true; st.arena.winner=(a>0&&b===0)?0:((b>0&&a===0)?1:-1);
+    if(st.arena.winner<0 && st.arena.hpWins){   // out of time: whoever kept more of the health wins
+      const hp=ti=>st.creatures.filter(c=>arenaTeamOf(c)===ti&&!c.removed).reduce((n,c)=>n+Math.max(0,c.hp)/Math.max(1,c.maxHp),0), h0=hp(0), h1=hp(1);
+      if(Math.abs(h0-h1)>0.05) st.arena.winner=h0>h1?0:1;
+    }
+  }
   return !st.arena.over;
 }
 // headless runs for numbers (the test bench)

@@ -47,7 +47,7 @@ function ludusLog(t){ ludus.log.unshift(`Tag ${ludus.day}: ${t}`); ludus.log=lud
 function ludusOppGroup(o){ const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; return g; }
 function ludusMatchSetup(o,salt){
   return { teams:[ { name:ludus.fighter.name, groups:[ludusFighterGroup()] }, { name:o.name, groups:[ludusOppGroup(o)] } ],
-    map:{ layout:'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day+(salt||''), lava:0, water:0, crystal:0, near:0 }, batch:1 };
+    map:{ layout:'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day+(salt||''), lava:0, water:0, crystal:0, near:1 }, batch:1, ludus:true };
 }
 function ludusAverageTier(){
   const worn=wornItems(ludusCreature()); if(!worn.length) return 0;
@@ -103,8 +103,8 @@ function ludusResolve(st){
       head='Sieg'; text=`${f.name} gewinnt gegen ${o.name}. +${o.reward} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}.`;
       ludusLog(`Sieg über ${o.name}`);
     } else {
-      ludus.losses++; ludus.gold+=2; head=c.unconscious?'Bewusstlos':'Unentschieden';
-      text=`${f.name} ${c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verlässt die Grube'}. +2 Gold Trost.`;
+      ludus.losses++; ludus.gold+=2; head=c.surrendered?'Aufgegeben':(c.unconscious?'Bewusstlos':'Verloren');
+      text=`${f.name} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
       ludusLog(`Niederlage gegen ${o.name}`);
     }
     ludus.day++; ludus.opp=null;

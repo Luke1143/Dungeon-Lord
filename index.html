@@ -239,6 +239,7 @@
   body.inLevel #levelScreen .panel{ position:absolute; right:10px; top:58px; bottom:10px; width:290px; z-index:15; background:rgba(25,18,12,.84); backdrop-filter:blur(3px); overflow-y:auto; }
   body.inLevel .boardWrap .hint{ position:absolute; left:50%; transform:translateX(-50%); bottom:6px; z-index:12; background:rgba(15,11,9,.7); padding:3px 10px; border-radius:4px; max-width:55%; text-align:center; }
   body.inLevel #combatBar{ position:absolute; left:50%; transform:translateX(-50%); bottom:38px; z-index:12; }
+  body.inLevel.fp #combatBar{ bottom:auto; top:48px; background:rgba(18,12,9,0.7); border:1px solid #6b4a32; border-radius:6px; }
   body.inLevel #levelScreen.panelHidden .panel{ display:none; }
   body.inLevel #minimap{ bottom:34px; z-index:12; }
   body.fp #levelScreen .panel, body.fp .boardWrap .hint{ display:none; }
@@ -7741,7 +7742,7 @@ function drawFpHand(c){
   const pose=fpPose||Object.assign(poseOf('tap',0),{ anim:{ verb:'idle' }, p:0 });
   const moving=keysDown['w']||keysDown['a']||keysDown['s']||keysDown['d'];
   const bob=fpPose?0:(moving?Math.sin(Date.now()/130)*0.02:Math.sin(Date.now()/600)*0.006);
-  const k=H/22;
+  const k=H/15;
   g.save(); g.imageSmoothingEnabled=false;
   g.translate(W*0.74+pose.ox*H*0.7, H*(1.02+bob)-pose.oy*H*0.6); g.rotate(pose.angle);
   if(weapon && pose.held) g.drawImage(weapon, -TOOL_S/2*k, -(TOOL_S-1)*k, TOOL_S*k, TOOL_S*k);
@@ -7750,7 +7751,7 @@ function drawFpHand(c){
   g.restore();
   // the left hand: the shield, seen from the front, tilted a little towards the middle
   const eq=equipLook(c), sc=eq&&eq.shield?shieldCanvas(eq.shield,eq.mat):null;
-  if(sc){ const ks=H/26; g.save(); g.imageSmoothingEnabled=false; g.translate(W*0.2, H*(0.95+bob*0.6)); g.rotate(0.1); g.drawImage(sc, -sc.width/2*ks, -sc.height*ks, sc.width*ks, sc.height*ks); g.restore(); }
+  if(sc){ const ks=H/15; g.save(); g.imageSmoothingEnabled=false; g.translate(W*0.2, H*(0.95+bob*0.6)); g.rotate(0.1); g.drawImage(sc, -sc.width/2*ks, -sc.height*ks, sc.width*ks, sc.height*ks); g.restore(); }
 }
 function fpActive(){ return !!possessed && view3dOn && View3D.ready; }
 // the cardinal direction a yaw angle points to (the game moves on tiles)
