@@ -41,8 +41,7 @@ function bossSpawnNear(c,kind,radius){
   state.creatures.push(h); emitFx('claim', at.x, at.y);
 }
 function runBossAbilities(c){
-  const list=BOSS_ABILITIES[c.kind]||CREATURE_ABILITIES[c.kind]; if(!list || c.unconscious) return;
-  if(BOSS_ABILITIES[c.kind] && c.faction!=='good') return;     // the bosses' summons are heroes: a corrupted boss does not use them
+  const list=BOSS_ABILITIES[c.kind]; if(!list || c.faction!=='good' || c.unconscious) return;
   const st=c.abil=c.abil||{ cd:{}, used:{} };
   if(c.shoutTicks>0) c.shoutTicks--; else c.shout=null;
   for(const a of list){
@@ -52,12 +51,12 @@ function runBossAbilities(c){
     } else {
       st.cd[a.id]=(st.cd[a.id]||0)-1;
       if(st.cd[a.id]>0) continue;
-      if(a.need ? !a.need(c) : !bossFoesNear(c,a.range).length) { st.cd[a.id]=0; continue; }
+      if(!bossFoesNear(c,a.range).length) { st.cd[a.id]=0; continue; }
       st.cd[a.id]=a.cooldown;
     }
     if(a.run(c)===false) continue;
     c.shout=a.icon; c.shoutTicks=8;
-    if(!a.quiet && a.text) logEvent(a.text, c.x, c.y);
+    logEvent(a.text, c.x, c.y);
     dbg('boss', `${actorLabel(c)}: ${a.id}`);
   }
 }

@@ -287,3 +287,10 @@ Tabelle `BOSS_ABILITIES[art]`: je Zeile `cooldown`+`range` (wiederholt, solange 
 - Guard post switch `state.guardKeep` ("Kreaturen behalten"): the guard stays despite hunger and tiredness, mood suffers. Panel in the inspector.
 - Our own unconscious creatures are carried to a dormitory (`carriable`, CARGO.prisoner for both sides) and wake sooner there.
 - Altar sacrifices (`tryOffer`): an enemy at the mercy of the player or a piece of gear dropped on an altar raises mood and loyalty of the dark side; a great offering (value 10+) heals and spurs everyone on.
+
+## 1.39 - Abilities (levels 5 and 10, books, artifacts)
+- `creatures.js` is now the ability system: `ABILITIES` (id → name, icon, target, range, cooldown, power, `auto` rule, `run`), `SPECIES_ABILITIES` (who learns what at 5 and 10), `knownAbilities`, `learnAbility` (slots: `knowSlots`), `useAbility`, `runAbilities` (AI, every tick; a possessed creature uses them when told), `abilityAim` (what the first-person crosshair targets). Bosses keep `BOSS_ABILITIES` in `bosses.js`.
+- Statuses: `hastedTicks` (tempo x1.6), `rageTicks` (strength x1.4), `weakTicks`, `charmedTicks`, `rootedTicks`.
+- The Lord's abilities come from artifacts (`abilities`); the first-person bar shows 2-6 with cooldown fills (`renderFpAbilities`).
+- Books: `libraryBooks` entries and loose books carry `ability`; `maybeWriteAbilityBook` (after research), `readAbilityBook` (leisure `read`), scrolls from fallen heroes (`dropLoot`); imps now really haul loose books to a shelf.
+- Rebirth and ward are abilities (`knows(c,'rebirth')`).

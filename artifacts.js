@@ -32,6 +32,15 @@ const ARTIFACTS=[
   { id:'shadow_quiver', name:'Köcher der Schatten',    rarity:'rare',      slot:'charm', perk:'shadow_arrows',  curse:{ training:0.6 }, text:'Seine Pfeile finden weiter, als man sieht.' },
   { id:'grave_bell',    name:'Grabglocke',             rarity:'rare',      slot:'charm', perk:'grave_whisper',  curse:{ magic:0.6 },    text:'Sie läutet, und die Erde antwortet.' },
   { id:'blood_chalice', name:'Blutkelch',              rarity:'epic',      slot:'charm', perk:'blood_pact',     curse:{ magic:0.9 },    text:'Wer daraus trinkt, will mehr.' },
+  // abilities for the Dungeon Lord (he does not level: he learns from what he finds, docs/faehigkeiten.md)
+  { id:'storm_cloak',   name:'Sturmmantel',            rarity:'uncommon',  slot:'charm', abilities:['haste'],    curse:{ training:0.4 }, text:'Er flattert, bevor man sich bewegt.' },
+  { id:'rage_bracer',   name:'Zornreif',               rarity:'uncommon',  slot:'charm', abilities:['rage'],     curse:{ training:0.4 }, text:'Heiß am Handgelenk.' },
+  { id:'heart_stone',   name:'Herzstein',              rarity:'uncommon',  slot:'charm', abilities:['heal'],     curse:{ food:0.4 },     text:'Er schlägt im Takt der Verwundeten.' },
+  { id:'reaper_hook',   name:'Schnitterhaken',         rarity:'uncommon',  slot:'charm', abilities:['sweep'],    curse:{ fort:0.4 },     text:'Alles, was nah steht, wird gemäht.' },
+  { id:'leap_boots',    name:'Sprungstiefel',          rarity:'rare',      slot:'charm', abilities:['teleport'], curse:{ magic:0.6 },    text:'Man steht, dann ist man dort.' },
+  { id:'ember_ring',    name:'Glutring',               rarity:'rare',      slot:'charm', abilities:['fireball'], curse:{ magic:0.6 },    text:'Ein Funke, der weiterwill.' },
+  { id:'tomb_key',      name:'Gruftschlüssel',         rarity:'epic',      slot:'charm', abilities:['summon'],   curse:{ magic:0.9 },    text:'Er öffnet, was lieber zubleiben sollte.' },
+  { id:'wyrm_horn',     name:'Wyrmhorn',               rarity:'epic',      slot:'charm', abilities:['breath'],   curse:{ fort:0.9 },     text:'Ein Atemzug, der brennt.' },
   // gate trophies
   { id:'alberich_hammer', name:'Alberichs Hammer',     rarity:'epic',      slot:'weapon', item:'hammer_epic', ranks:{ lordStr:2 }, text:'Die Hand des Zwergenkönigs hat ihn zuletzt gehalten.' },
   { id:'oberon_staff',    name:'Stab des Hains',       rarity:'epic',      slot:'weapon', item:'wandBolt_epic', ranks:{ lordReserve:2 }, text:'Er riecht nach Moos und Harz.' },

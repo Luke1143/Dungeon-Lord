@@ -2,7 +2,7 @@
 
 Ausgangspunkt ist GODHAND Teil 22 und der Imp, der es schon vormacht: **Eile ab Stufe 5, Teleport ab Stufe 10.** Dieses Muster verallgemeinern wir: Jede Art bekommt zwei angeborene Fähigkeiten, eine auf Stufe 5 und eine auf Stufe 10. Alles darüber hinaus (Bücher, Verzehren, Beute) kommt später auf demselben Weg dazu.
 
-Noch nichts davon ist gebaut. Das Dokument ist der Vorschlag, über den wir reden.
+**Stand: umgesetzt** (`creatures.js`, siehe Entscheidungen am Ende). Die Tabellen unten sind der Stand des Spiels, mit zwei Abweichungen vom ersten Vorschlag: Legendäre (Lich, Drache) lernen auch auf Stufe 5 und 10, und der Imp behält seine eigene Logik für Eile und Teleport.
 
 ## 1. Die Regeln (aus GODHAND, mit Anpassungen)
 
@@ -115,3 +115,13 @@ Je Art: **Stufe 5 / Stufe 10**. Die Vorschläge bauen auf dem Charakter der Art 
 4. **Der Spieler:** Soll der Dungeon Lord eine Zauberleiste mit den Fähigkeiten seiner Artefakte bekommen (z. B. Teleport auf eigenes Gebiet)? Und lernt der Lord selbst Fähigkeiten über Skillpunkte?
 5. **Gute Seite:** Sollen Heldengruppen auch Fähigkeiten mit steigender Stufe lernen (dann werden späte Wellen gefährlicher), oder nur Bosse und besondere Helden?
 6. **Bücher:** Soll die Bibliothek auch Fähigkeitsbücher erforschen (Heureka mit Zufallsbuch), oder nur Wissen wie heute?
+
+## 6. Entscheidungen und Umsetzung
+
+1. **Stufe 5 und 10 für alle Arten**, einheitlich. Bestien auch (zwei Fähigkeiten, aber kein Platz für gelernte).
+2. **Die bisherigen angeborenen Fähigkeiten wandern auf Stufe 5 und 10.** Kreaturen zu trainieren und wachsen zu lassen lohnt sich damit. Ausnahmen: Yule stiehlt von Anfang an (`BASE_ABILITIES`), Wiedergeburt (Phönix) und Schutz (Schutzengel) sind Fähigkeiten auf Stufe 10 beziehungsweise 5.
+3. **Anzeige:** im Inspektor eine Zeile mit gelernten Fähigkeiten (mit Abklingzeit), gesperrten (🔒 mit Stufe) und freien Bücherplätzen. In der Ego-Sicht die Leiste unten mit den Tasten 2 bis 6 und Abklingbalken.
+4. **Der Lord lernt über Artefakte** (acht neue, `abilities` in `artifacts.js`: Eile, Wutschrei, Heilung, Rundumhieb, Teleport, Feuerball, Beschwören, Atem), nicht über Stufen. Als Besessener benutzt der Spieler sie mit 2–6. Im Wachzustand setzt die KI sie im Kampf ein, aber ohne den Thron zu verlassen (kein Teleport, kein Ausfallschritt).
+5. **Gute Seite:** Helden lernen mit der Stufe wie alle anderen. Besiegte Helden lassen mit 30 % eine **Schriftrolle** mit einer ihrer Fähigkeiten fallen.
+6. **Bücher:** Schreiber in der Bibliothek schreiben nach einer Forschung mit 35 % eines ihrer Fähigkeiten in ein Buch und mit 8 % eine neue Idee, passend zum Archetyp (`ARCHETYPE_POOL`). Wer ein Buch liest (Freizeit), lernt mit 40 %. Wissensplätze: 5 Lord, 4 Lich und Drache, 3 Horde und Legion, 2 Bestien und Untote. Zwei davon belegen die angeborenen Fähigkeiten, der Rest ist für Bücher frei. Ist alles voll, ersetzt eine stärkere Fähigkeit die schwächste.
+7. **Nicht gebaut:** Verzehren als Lernweg für Zombie und Ghoul ist nur die Fähigkeit "Verzehren" (Leichen fressen heilt, mit 25 % lernt er etwas); eine eigene Zauberleiste für den Lord außerhalb der Besessenheit; das Vergessen auf Wunsch.

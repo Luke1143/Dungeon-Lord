@@ -286,9 +286,8 @@
         <div class="fpTop"><div class="fpName"><span id="fpName"></span> <small id="fpLevel"></small></div><div class="fpXp"><i id="fpXpFill"></i></div></div>
         <div class="fpBottom">
           <div class="fpOrb hp"><i id="fpHpFill"></i><b id="fpHpText"></b></div>
-          <div class="fpSlots">
+          <div class="fpSlots" id="fpSlots">
             <div class="fpSlot" id="fpSlot1"><span class="k">LMB</span><span class="ic">⚔️</span><span class="n">Zuschlagen</span></div>
-            <div class="fpSlot" id="fpSlot2"><span class="k">2</span><span class="ic">💨</span><span class="n">Eile</span><i class="cd" id="fpCd2"></i></div>
             <div class="fpSlot" id="fpSlot3"><span class="k">Esc</span><span class="ic">🚪</span><span class="n">Verlassen</span></div>
           </div>
           <div class="fpOrb en"><i id="fpEnFill"></i><b id="fpEnText"></b></div>
@@ -798,7 +797,7 @@ function resolveAttack(attacker, defender, context){
   dmg = dmg * (1 - defenseReduction(defender));
   dmg = Math.max(MIN_DAMAGE, Math.round(dmg));
   if(dmg>=defender.hp && factionOf(defender)==='good'){          // a guardian angel catches one deadly blow
-    const ga=state.creatures.find(o=>o.kind==='guardian' && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
+    const ga=state.creatures.find(o=>o.kind==='guardian' && knows(o,'ward') && o!==defender && !o.wardUsed && !o.unconscious && factionOf(o)==='good' && Math.abs(o.x-defender.x)+Math.abs(o.y-defender.y)<=5);
     if(ga){ ga.wardUsed=true; dmg=Math.max(0,defender.hp-1); logEvent(`${actorLabel(ga)} fängt den tödlichen Schlag für ${actorLabel(defender)} ab!`, defender.x, defender.y); }
   }
   if(defender.kind==='herakles' && !state.war.peltTaken) dmg=Math.max(1,Math.round(dmg*0.25));      // the lion pelt
@@ -870,6 +869,10 @@ function faintCreature(c){
 // A fallen creature may drop what it wore; the rest is lost. Common pieces fall more often than rare ones.
 const LOOT_CHANCE={ crude:0.6, plain:0.5, fine:0.35, epic:0.2 };
 function dropLoot(c){
+  if(c.faction==='good' && c.category==='hero' && Math.random()<0.3){          // a fallen hero may leave a scroll with one of its abilities
+    const ids=knownAbilities(c).filter(id=>!ABILITIES[id].passive);
+    if(ids.length){ const id=ids[Math.floor(Math.random()*ids.length)]; state.looseItems.push({ kind:'book', label:'Schriftrolle: '+ABILITIES[id].name, ability:id, x:c.x, y:c.y, reservedBy:null }); }
+  }
   if(c.loot){ state.gold+=c.loot; logEvent(`${actorLabel(c)} lässt ${c.loot} gestohlenes Gold fallen.`, c.x, c.y); c.loot=0; }
   if(c.kind==='imp' || !c.inventory || !c.inventory.length) return;
   const kept=[];
@@ -883,7 +886,7 @@ function dropLoot(c){
 function killCreature(c, killer){
   if(c.kind==='dungeonlord'){ if(!c.unconscious) faintLord(c); return; }
   if(c.removed) return;        // a creature dies once, however many blows were already on their way
-  if(c.kind==='phoenix' && !c.reborn){ c.reborn=true; c.hp=Math.round(c.maxHp*0.6); c.unconscious=false; logEvent(`${actorLabel(c)} verbrennt und steigt aus der Asche wieder auf!`, c.x, c.y); emitFx('claim', c.x, c.y); return; }
+  if(c.kind==='phoenix' && !c.reborn && knows(c,'rebirth')){ c.reborn=true; c.hp=Math.round(c.maxHp*0.6); c.unconscious=false; logEvent(`${actorLabel(c)} verbrennt und steigt aus der Asche wieder auf!`, c.x, c.y); emitFx('claim', c.x, c.y); return; }
   c.removed=true;
   if(c.carryingPrisoner) CARGO.prisoner.abandon(c);
   state.creatures.forEach(o=>{ if(o!==c && !o.removed && bondOf(o,c)>=BOND_FRIEND){ if(o.state!=='fighting'){ startAntic(o,'grief','😢',26); } if(o.happiness!==undefined) o.happiness=Math.max(0,o.happiness-20); if(killer) addGrudge(o, killer); logEvent(`${o.name} trauert um ${c.name}.`, o.x, o.y); } });
@@ -1474,7 +1477,7 @@ function skillMult(id){ const s=SKILLS.find(x=>x.id===id); return s&&s.step ? Ma
 function statStrength(c){
   const eq=equipmentBonus(c);
   const m = c.kind==='dungeonlord' ? skillMult('lordStr') : (factionOf(c)==='evil' ? skillMult('creatureStr') : 1);
-  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m*(c.weakTicks>0?0.7:1)));
+  return Math.max(1, Math.round(((c.baseStrength||1)*levelScale(c.level)+eq.strength)*m*(c.weakTicks>0?0.7:1)*(c.rageTicks>0?1.4:1)));
 }
 function statMaxHp(c){
   const m = c.kind==='dungeonlord' ? skillMult('lordHp') : (factionOf(c)==='evil' ? skillMult('creatureHp') : 1);
@@ -1500,7 +1503,7 @@ function statSpeed(c){
 // Bewegung nutzt ihn direkt, Handlungen werden gedaempft - sonst schlaegt ein Imp
 // mehrmals pro Sekunde zu, was weder aussieht noch sich anfuehlt wie Arbeit.
 function statTempo(c){
-  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1);
+  return statSpeed(c)*((!c.kind||c.kind==='imp')?skillMult('impTempo'):1)*(c.rallyTicks>0?1.3:1)*(c.hastedTicks>0?1.6:1);
 }
 function statLuck(c){ return Math.min(LUCK_CAP, c.luck||0); }
 
@@ -1654,8 +1657,8 @@ function grantXp(actor, amount){
     actor.hp=actor.maxHp; // Stufenaufstieg heilt vollstaendig
     spawnEffect('levelup', actor.x, actor.y);
     if(actor.category==='humanoid') logWork(actor, 'Stufenaufstieg'); // Aufstieg ist eine Leistung
-    if(actor.level===HASTE_LEVEL) logEvent(`${actorLabel(actor)} beherrscht nun "Eile"!`, actor.x, actor.y);
-    else if(actor.level===TELEPORT_LEVEL) logEvent(`${actorLabel(actor)} beherrscht nun "Teleport"!`, actor.x, actor.y);
+    const gained=ABILITY_LEVELS.indexOf(actor.level)>=0 ? (SPECIES_ABILITIES[actor.kind]||[])[ABILITY_LEVELS.indexOf(actor.level)] : null;
+    if(gained && ABILITIES[gained]) logEvent(`${actorLabel(actor)} beherrscht nun "${ABILITIES[gained].name}"!`, actor.x, actor.y);
     else logEvent(`${actorLabel(actor)} ist auf Stufe ${actor.level} aufgestiegen!`, actor.x, actor.y);
   }
 }
@@ -3511,7 +3514,9 @@ function tickCreature(c){
   if(c.weakTicks>0) c.weakTicks--;
   if(c.charmedTicks>0 && --c.charmedTicks===0){ c.faction=c.charmedFrom||'good'; c.fightTarget=null; c.path=[]; }
   if(c.tempDefenseTicks>0 && --c.tempDefenseTicks===0) c.tempDefense=0;
-  if(BOSS_ABILITIES[c.kind] || CREATURE_ABILITIES[c.kind]) runBossAbilities(c);     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
+  if(c.hastedTicks>0) c.hastedTicks--;
+  if(c.rageTicks>0) c.rageTicks--;
+  if(BOSS_ABILITIES[c.kind]) runBossAbilities(c); else runAbilities(c, isPossessed(c));     // creatures.js: the table of abilities (levels 5 and 10, books, artifacts)     // bosses.js: summons, quakes, roots, rallying cries (also while fighting)
   if(isPossessed(c)){ tickPossessed(c); return; }
   const actions=actionCount(c);
   for(let i=0;i<actions;i++){
@@ -3869,6 +3874,21 @@ function findInspirationTarget(w){
   return bfsFind(w.x, w.y, (x,y)=> openTopics.some(t=> t.trigger(x,y) || neighbors(x,y).some(([nx,ny])=>t.trigger(nx,ny))));
 }
 
+// A scribe sometimes writes down what it can do (one of its known abilities) and rarely a new idea that fits its kind: an ability book for the shelf.
+function maybeWriteAbilityBook(w){
+  const known=knownAbilities(w).filter(id=>!ABILITIES[id].passive); let id=null;
+  if(known.length && Math.random()<0.35) id=known[Math.floor(Math.random()*known.length)];
+  else if(Math.random()<0.08) id=rollNewAbility(w);
+  if(!id) return;
+  for(const room of computeRooms().filter(r=>r.type==='library' && r.tiles.length>=LIBRARY_MIN_SIZE)){
+    const free=libraryShelfSpots(room).find(s=> !state.libraryBooks[s.x+','+s.y]);
+    if(free){ state.libraryBooks[free.x+','+free.y]={ label:'Fähigkeitsbuch: '+ABILITIES[id].name, ability:id }; logEvent(`${actorLabel(w)} schreibt ein Fähigkeitsbuch: ${ABILITIES[id].name}.`, free.x, free.y); return; }
+  }
+}
+// reading one teaches it (not always: 40 %)
+function readAbilityBook(c){
+  for(const [nx,ny] of [[c.x,c.y]].concat(neighbors(c.x,c.y))){ const b=state.libraryBooks[nx+','+ny]; if(b && b.ability && !knows(c,b.ability) && Math.random()<0.4){ learnAbility(c,b.ability); return; } }
+}
 function completeResearch(w){
   const topic=RESEARCH_TOPICS.find(t=>t.id===w.pendingTopic);
   const libRooms=computeRooms().filter(r=>r.type==='library' && r.tiles.length>=LIBRARY_MIN_SIZE);
@@ -3879,6 +3899,7 @@ function completeResearch(w){
       logEvent(`Neues Wissen erforscht: ${topic?topic.label:w.pendingTopic}! Das Buch liegt jetzt in der Bibliothek.`, free.x, free.y);
       w.pendingTopic=null;
       logWork(w, 'Forschung');
+      maybeWriteAbilityBook(w);
       if(!anyResearchLeft() && !state.researchExhaustedLogged){
         state.researchExhaustedLogged=true;
         logEvent('Es gibt nichts mehr zu erforschen - eure Gelehrten widmen sich nun der Muße.', free.x, free.y);
@@ -4143,6 +4164,7 @@ function tickLeisure(c, speed){
       }
       if(act && act.cost && !hasPerk('tavern_songs')) state.gold=Math.max(0,state.gold-act.cost);
       if(act && act.loyalty && c.loyalty!==undefined) c.loyalty=Math.min(100,c.loyalty+act.loyalty);
+      if(act && act.id==='read') readAbilityBook(c);
       rememberLeisure(c, c.leisureId);
       c.leisureId=null; c.leisureTarget=null;
       c.state='wandering';
@@ -4896,23 +4918,23 @@ const CARGO={
       if(idx<0) return false;
       const it=state.looseItems[idx];
       state.looseItems.splice(idx,1);
-      imp.carryingBook={ topicId:it.topicId, label:it.label };
+      imp.carryingBook={ topicId:it.topicId, label:it.label, ability:it.ability };
       return true;
     },
     findDest(imp){ return findFreeShelfTile(imp); },
     drop(imp,x,y){
       if(!state.libraryBooks[x+','+y] && state.grid[y][x].room==='library'){
-        state.libraryBooks[x+','+y]={ topicId:imp.carryingBook.topicId, label:imp.carryingBook.label };
+        state.libraryBooks[x+','+y]={ topicId:imp.carryingBook.topicId, label:imp.carryingBook.label, ability:imp.carryingBook.ability };
         refreshRoomButtons();
         logEvent(`Ein Imp hat „${imp.carryingBook.label}" sicher in der Bibliothek verstaut.`, x, y);
       } else {
-        state.looseItems.push({ kind:'book', topicId:imp.carryingBook.topicId, label:imp.carryingBook.label, x:imp.x, y:imp.y, reservedBy:null });
+        state.looseItems.push({ kind:'book', topicId:imp.carryingBook.topicId, label:imp.carryingBook.label, ability:imp.carryingBook.ability, x:imp.x, y:imp.y, reservedBy:null });
       }
       imp.carryingBook=null;
     },
     abandon(imp){
       if(imp.carryingBook){
-        state.looseItems.push({ kind:'book', topicId:imp.carryingBook.topicId, label:imp.carryingBook.label, x:imp.x, y:imp.y, reservedBy:null });
+        state.looseItems.push({ kind:'book', topicId:imp.carryingBook.topicId, label:imp.carryingBook.label, ability:imp.carryingBook.ability, x:imp.x, y:imp.y, reservedBy:null });
         imp.carryingBook=null;
       }
     }
@@ -5240,6 +5262,7 @@ function tickImpOnce(imp){
       const item=state.looseItems.find(it=>it.x===job.target.x && it.y===job.target.y && !it.reservedBy);
       if(item) item.reservedBy=imp.id;
       if(item && item.kind==='equipment'){ beginHaul(imp, 'gear', job.target, job.path); return; }
+      if(item && item.kind==='book'){ beginHaul(imp, 'book', job.target, job.path); return; }
       imp.task='fetchItem'; imp.path=job.path; imp.itemTile=job.target;
       imp.state=imp.path.length?'walking':'atItem'; imp.digProgress=0;
       return;
@@ -7255,6 +7278,15 @@ function levelLine(actor){
 }
 
 // Einheitlicher Werteblock fuer alle Kreaturen
+// the abilities in the inspector: known ones with their cooldown, the locked innate ones with the level that opens them
+function abilitiesLine(c){
+  if(c.kind==='dungeonlord'){ const k=knownAbilities(c); return 'Fähigkeiten: '+(k.length?k.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · '):'keine — Artefakte lehren sie'); }
+  if(c.category==='boss'||!SPECIES_ABILITIES[c.kind]) return '';
+  const known=knownAbilities(c), parts=known.map(id=>{ const cd=abilityCd(c,id); return `${ABILITIES[id].icon} ${ABILITIES[id].name}${cd>0?' ('+Math.ceil(cd)+')':''}${(c.learned||[]).includes(id)?' ✎':''}`; });
+  SPECIES_ABILITIES[c.kind].forEach((id,i)=>{ if(id && !known.includes(id)) parts.push(`🔒 ${ABILITIES[id].name} (Stufe ${ABILITY_LEVELS[i]})`); });
+  const free=learnableSlots(c)-(c.learned||[]).length;
+  return 'Fähigkeiten: '+(parts.join(' · ')||'—')+(learnableSlots(c)>0?` · ${free>0?free+' Platz frei für ein Buch':'Wissen voll'}`:'');
+}
 function statBlock(c){
   const lines=[];
   lines.push(`Leben ${c.hp}/${statMaxHp(c)} · ${levelLine(c)}`);
@@ -7278,6 +7310,7 @@ function statBlock(c){
   const sp=SPECIES[c.kind];
   { const fr=friendsOf(c).map(o=>o.name), rv=rivalsOf(c).map(o=>o.name); if(fr.length) lines.push('Freunde: '+fr.join(', ')); if(rv.length) lines.push('Rivalen: '+rv.join(', ')); }
   if(sp && sp.passive) lines.push('Passiv: '+sp.passive);
+  { const al=abilitiesLine(c); if(al) lines.push(al); }
   if(sp && sp.canFight) lines.push(`Moral ${moraleOf(c)}/100 (${moraleLabel(c)})`);
   if(c.kills) lines.push(`Erledigte Gegner: ${c.kills}`);
   return lines.join('\n');
@@ -7686,6 +7719,26 @@ function fpActStep(c){
   if(tg.foe){ c.state='fighting'; c.verb='attack'; c.actTarget={ x:tg.foe.x, y:tg.foe.y }; if(!swing(c)) return; resolveAttack(c, tg.foe, c.combatContext); addGrudge(tg.foe, c); return; }
   interact(c, tg.tile.x, tg.tile.y);
 }
+// the first-person bar: the learned abilities on keys 2 to 6, with their cooldowns (rebuilt only when the list changes)
+let fpAbilSig='';
+function fpAbilityIds(c){ return knownAbilities(c).filter(id=>!ABILITIES[id].passive).slice(0,5); }
+function renderFpAbilities(c){
+  const ids=fpAbilityIds(c), sig=c.id+'|'+ids.join(',')+'|'+((c.level||1));
+  const box=document.getElementById('fpSlots'); if(!box) return;
+  if(sig!==fpAbilSig){
+    fpAbilSig=sig;
+    box.innerHTML='<div class="fpSlot" id="fpSlot1"><span class="k">LMB</span><span class="ic">⚔️</span><span class="n">Zuschlagen</span></div>'
+      + ids.map((id,i)=>`<div class="fpSlot" id="fpAb${i}"><span class="k">${i+2}</span><span class="ic">${ABILITIES[id].icon}</span><span class="n">${ABILITIES[id].name}</span><i class="cd" id="fpAbCd${i}"></i></div>`).join('')
+      + '<div class="fpSlot" id="fpSlot3"><span class="k">Esc</span><span class="ic">🚪</span><span class="n">Verlassen</span></div>';
+  }
+  ids.forEach((id,i)=>{ const cd=document.getElementById('fpAbCd'+i); if(cd) cd.style.height=(abilityCd(c,id)>0?100*abilityCd(c,id)/abilityCdMax(c,id):0)+'%'; });
+}
+function fpUseAbility(i){
+  const c=possessed; if(!c) return;
+  const id=fpAbilityIds(c)[i]; if(!id) return;
+  const ctx=abilityAim(c,id);
+  if(!useAbility(c,id,ctx)) setInspect(`${ABILITIES[id].name} ist noch nicht bereit oder findet kein Ziel.`);
+}
 function updateFpHud(){
   const c=possessed, hud=document.getElementById('fpHud'); if(!hud) return;
   const on=fpActive(); hud.hidden=!on; document.body.classList.toggle('fp', on);
@@ -7696,8 +7749,7 @@ function updateFpHud(){
   document.getElementById('fpXpFill').style.width=Math.max(0,Math.min(100,100*((c.xp||0)-lo)/Math.max(1,hi-lo)))+'%';
   set('fpHpFill', Math.max(0,100*c.hp/c.maxHp)); document.getElementById('fpHpText').textContent=Math.ceil(c.hp)+'/'+c.maxHp;
   const en=Number.isFinite(c.energy)?c.energy:100; set('fpEnFill', en); document.getElementById('fpEnText').textContent=Math.round(en);
-  const s2=document.getElementById('fpSlot2'); s2.classList.toggle('locked', lv<HASTE_LEVEL);
-  document.getElementById('fpCd2').style.height=(c.hasteCooldown>0?100*c.hasteCooldown/HASTE_COOLDOWN:0)+'%';
+  renderFpAbilities(c);
   drawFpHand(c);
   const tg=fpPickTarget(c);
   document.getElementById('fpTarget').textContent = !tg ? '' : tg.foe ? `${actorLabel(tg.foe)} · ${Math.ceil(tg.foe.hp)}/${tg.foe.maxHp}` : (FP_ACTION_LABEL[tg.tile.rec.id]||'');
@@ -7892,7 +7944,7 @@ function handlePickClick(x,y){
     if(book){
       delete state.libraryBooks[bookKey];
       refreshRoomButtons();
-      heldEntity={kind:'book', obj:{kind:'book', topicId:book.topicId, label:book.label}};
+      heldEntity={kind:'book', obj:{kind:'book', topicId:book.topicId, label:book.label, ability:book.ability}};
       setInspect(`Ihr haltet das Buch „${book.label}" in der Hand — nur in einer Bibliothek verwahrtes Wissen ist nutzbar!`);
       draw(); updateUI(); markDirty(); return;
     }
@@ -7940,7 +7992,7 @@ function handlePickClick(x,y){
   if(heldEntity.kind==='book'){
     const item=heldEntity.obj;
     if(target.room==='library' && !state.libraryBooks[x+','+y]){
-      state.libraryBooks[x+','+y]={ topicId:item.topicId, label:item.label };
+      state.libraryBooks[x+','+y]={ topicId:item.topicId, label:item.label, ability:item.ability };
       refreshRoomButtons();
       setInspect(`Das Buch „${item.label}" steht nun sicher im Regal.`);
       logEvent(`Wissen sicher verwahrt: ${item.label}.`, x, y);
@@ -8595,7 +8647,7 @@ window.addEventListener('keydown', e=>{
   const k=ARROW_ALIAS[e.key.toLowerCase()]||e.key.toLowerCase();
   if(e.key==='Escape' && (possessed||possessMode)){ endPossession(); e.preventDefault(); return; }
   // Besessen: WASD bewegt die Kreatur selbst, nicht die Kamera
-  if(fpActive() && k==='2'){ const c=possessed; if((c.level||1)>=HASTE_LEVEL && !(c.hasteCooldown>0)){ c.hasteTicks=HASTE_DURATION; c.hasteCooldown=HASTE_COOLDOWN; } e.preventDefault(); return; }
+  if(fpActive() && /^[2-6]$/.test(k)){ fpUseAbility(+k-2); e.preventDefault(); return; }
   if(fpActive() && (k==='w'||k==='a'||k==='s'||k==='d')){ keysDown[k]=true; e.preventDefault(); return; }   // first person: smooth movement, see fpMove
   if(possessed && (k==='w'||k==='a'||k==='s'||k==='d')){
     const fa=fpActive()?fpAxis(possessed.fpYaw):null;
@@ -9112,7 +9164,7 @@ function owOpenSkills(){
 document.getElementById('owSkills').addEventListener('click', owOpenSkills);
 document.getElementById('owArtifacts').addEventListener('click', ()=>{
   const list=campaign.artifacts.map(id=>ARTIFACT_BY_ID[id]).filter(Boolean);
-  const eff=a=>[a.perk?`Regel: ${PERKS[a.perk].text}`:'', a.item?`trägt der Dungeon Lord`:'', ...Object.keys(a.ranks||{}).map(k=>{ const s=SKILLS.find(x=>x.id===k); return s?`${s.group}: ${s.label} +${a.ranks[k]}`:''; }), a.curse?'Preis: '+Object.keys(a.curse).map(k=>`Heldenmacht ${OW.STATS[k].label} +${a.curse[k]}`).join(', '):''].filter(Boolean).join(' · ');
+  const eff=a=>[a.perk?`Regel: ${PERKS[a.perk].text}`:'', (a.abilities||[]).length?'Fähigkeit: '+a.abilities.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(', '):'', a.item?`trägt der Dungeon Lord`:'', ...Object.keys(a.ranks||{}).map(k=>{ const s=SKILLS.find(x=>x.id===k); return s?`${s.group}: ${s.label} +${a.ranks[k]}`:''; }), a.curse?'Preis: '+Object.keys(a.curse).map(k=>`Heldenmacht ${OW.STATS[k].label} +${a.curse[k]}`).join(', '):''].filter(Boolean).join(' · ');
   owModal('Artefakte', list.length ? list.map(a=>`<div style="margin:6px 0"><b style="color:${RARITY_COLOR[a.rarity]}">${a.name}</b> <small>(${RARITY_LABEL[a.rarity]})</small><br><small>${a.text}<br>${eff(a)}</small></div>`).join('') : 'Noch keine Artefakte. Erfülle Nebenziele und bezwinge Pforten.', ()=>{});
 });
 function owRefresh(){
