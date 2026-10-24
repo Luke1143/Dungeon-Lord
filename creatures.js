@@ -218,3 +218,15 @@ function abilityAim(c,id){
   }
   return ctx;
 }
+
+// what an ability does, in a sentence (for the character sheet); the cooldown is shown with it
+const ABILITY_DESC={
+  haste:'Wird kurz schneller, wenn Feinde in der Nähe sind.', teleport:'Springt bis zu 10 Felder weit zu einem Feind.', sweep:'Schlägt alle angrenzenden Feinde auf einmal.',
+  lunge:'Springt bis zu 3 Felder an einen Feind heran und schlägt zu.', swoop:'Stürzt aus bis zu 7 Feldern auf einen Gegner herab.', fireball:'Ein Feuerball trifft die Feinde im Umkreis eines Ziels (Reichweite 5).',
+  heal:'Heilt einen Verbündeten um ein Viertel seines Lebens (Reichweite 3).', curse:'Schwächt bis zu zwei Feinde: weniger Stärke für eine Weile.', paralyze:'Feinde in Reichweite 5 erstarren kurz.',
+  charm:'Ein Held kämpft kurz für deine Seite.', summon:'Ruft zwei Knochenwesen herbei.', rage:'Der Wutschrei gibt kurz mehr Stärke.', guard:'Die Panzerhaltung gibt kurz viel mehr Verteidigung.',
+  blessing:'Verbündete in der Nähe bekommen Verteidigung.', haste_others:'Treibt Verbündete in der Nähe an, sie werden schneller.', wallbreak:'Bricht eine Mauer auf.', thorns:'Wurzeln halten einen Feind fest.',
+  breath:'Feueratem: zwei Treffer auf alle Feinde in Reichweite 5.', smite:'Zwei heilige Treffer auf Feinde in Reichweite 4.', swarm:'Der Schwarm lenkt Feinde auf sich.', howl:'Feinde in drei Feldern werden geschwächt.',
+  burst:'Platzt in einer Feuersbrunst und verletzt alle in der Nähe.', devour:'Verzehrt eine Leiche in der Nähe und heilt sich.', revive:'Weckt einen bewusstlosen Verbündeten.', pilfer:'Stiehlt Gold aus dem Schatz.',
+  ward:'Fängt einmal einen tödlichen Schlag für einen Verbündeten ab.', rebirth:'Steigt einmal aus der Asche wieder auf.'
+};

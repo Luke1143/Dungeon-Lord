@@ -62,6 +62,8 @@
   .luTrait{ color:#2a5a1c; font-weight:700; }
   .luTeam{ display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; } .luTeam button{ font-size:12px; padding:3px 6px; } .luTeam button.on{ outline:2px solid #d4af37; } .luTeam small{ display:block; opacity:.7; } .luSlot{ border:1px dashed #6a5a3a; padding:4px 10px; opacity:.6; } .luSmall{ font-size:11px; padding:2px 6px; margin:2px 0; }
   .luGrid{ display:grid; grid-template-columns:repeat(6,48px); gap:4px; margin:6px 0; } .luCell{ position:relative; width:48px; height:48px; padding:0; background:#1a130d; border:2px solid #6a5233; border-radius:3px; } .luCell img{ width:40px; height:40px; image-rendering:pixelated; display:block; margin:2px; } .luCell.empty{ background:#120d09; border-color:#2e2418; } .luCell.sel{ outline:2px solid var(--gold); } .luCell b{ position:absolute; right:2px; bottom:0; font-size:11px; color:var(--gold); text-shadow:0 0 3px #000; } .luMini{ width:32px; height:32px; image-rendering:pixelated; cursor:pointer; background:#1a130d; border:1px solid #4a3a26; border-radius:3px; margin:2px; } .luInv{ display:flex; flex-wrap:wrap; justify-content:center; }
+  .luSlots{ display:flex; gap:6px; justify-content:center; margin:6px 0; } .luSlot2{ width:52px; text-align:center; background:#120d09; border:2px dashed #4a3a26; border-radius:3px; padding:2px 0; } .luSlot2.full{ border:2px solid #8a7040; border-style:solid; cursor:pointer; background:#1a130d; } .luSlot2 img{ width:40px; height:40px; image-rendering:pixelated; display:block; margin:2px auto; } .luSlot2 small{ display:block; font-size:9px; opacity:.7; }
+  .luSheet{ display:grid; grid-template-columns:1fr 1fr; gap:14px; } .luSheet h3{ margin:8px 0 4px; font-size:13px; color:var(--gold); } .luRow{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:1px 0; border-bottom:1px dotted #3a2e20; text-align:left; } .luRow small{ opacity:.7; font-weight:400; } .luAb{ font-size:12.5px; margin:6px 0; text-align:left; } .luAb small{ opacity:.65; }
   .luCast{ margin:6px 0 10px; opacity:.9; font-size:13px; } .luGift{ border-left:4px solid #888; } .luGift.r1{ border-color:#4a8ad8; } .luGift.r2{ border-color:#a050d8; } .luGift.r3{ border-color:#e8a020; } .luBoon{ color:#6c6; } .luBane{ color:#e66; } .luGiftMini{ font-size:11px; border-left:3px solid #888; padding-left:4px; margin-top:2px; } .luGiftMini.r1{ border-color:#4a8ad8; } .luGiftMini.r2{ border-color:#a050d8; } .luGiftMini.r3{ border-color:#e8a020; }
   .luForced{ border-color:#c8342e; } .luEvent button{ margin:4px 4px 0 0; }
   .luTabs{ flex-wrap:wrap; justify-content:center; display:flex; gap:6px; margin-bottom:8px; } .luTabs button.on{ background:var(--gold); color:#1c140f; }
@@ -299,6 +301,15 @@
   body.arenaMode .dkTabs, body.arenaMode .dkMini{ display:none; }
   body.arenaMode #arenaPanel{ flex:none; max-height:60%; overflow-y:auto; scrollbar-width:thin; }
   @media (max-width:900px){ body.inLevel #levelScreen .panel.dkPanel{ left:6px; right:6px; top:auto; width:auto; max-height:45vh; } #eventStack{ left:6px; top:60px; bottom:auto; flex-direction:row; width:auto; height:46px; } }
+
+  .cText{ position:absolute; z-index:13; transform:translate(-50%,-50%); font-family:'Cinzel',serif; font-weight:700; font-size:17px; pointer-events:none; text-shadow:0 0 3px #000,0 1px 2px #000; animation:cRise .9s ease-out forwards; }
+  .cText.own{ color:#fff4cc; } .cText.foe{ color:#ff8a7a; } .cText.crit{ font-size:26px; color:#ffd24a; } .cText.miss{ font-size:12px; font-weight:500; color:#b8b0a0; font-style:italic; font-family:'Inter',sans-serif; }
+  @keyframes cRise{ 0%{ opacity:0; margin-top:6px; } 12%{ opacity:1; } 100%{ opacity:0; margin-top:-34px; } }
+  #fpHit{ position:absolute; left:50%; top:50%; transform:translate(-50%,0); margin-top:18px; font-family:'Cinzel',serif; font-weight:700; font-size:22px; color:#fff4cc; text-shadow:0 0 4px #000; pointer-events:none; opacity:0; }
+  #fpHit.on{ animation:fpHitA .45s ease-out forwards; } #fpHit.crit{ color:#ffd24a; font-size:30px; } #fpHit.miss{ color:#aaa; font-size:13px; font-family:'Inter',sans-serif; font-weight:500; font-style:italic; }
+  @keyframes fpHitA{ 0%{ opacity:1; transform:translate(-50%,0) scale(1.5); } 60%{ opacity:1; } 100%{ opacity:0; transform:translate(-50%,10px) scale(1); } }
+  #fpHurt{ position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at center,rgba(200,10,10,0) 30%,rgba(200,10,10,.85) 100%); box-shadow:inset 0 0 120px rgba(220,0,0,.7); }
+  #fpHurt.on{ animation:fpHurtA .4s ease-out forwards; } @keyframes fpHurtA{ 0%{ opacity:var(--hurt,.5); } 100%{ opacity:0; } }
 </style>
 </head>
 <body>
@@ -380,6 +391,7 @@
         <canvas id="fpHand"></canvas>
         <div class="fpCross"></div>
         <div class="fpTarget" id="fpTarget"></div>
+        <div id="fpHit"></div><div id="fpHurt"></div>
         <div class="fpTop"><div class="fpName"><span id="fpName"></span> <small id="fpLevel"></small></div><div class="fpXp"><i id="fpXpFill"></i></div></div>
         <div class="fpBottom">
           <div class="fpOrb hp"><i id="fpHpFill"></i><b id="fpHpText"></b></div>
@@ -878,6 +890,7 @@ function resolveAttack(attacker, defender, context){
   // Ausweichen
   if(Math.random()*100 < statDex(defender)){
     defender.dodgeAt=Date.now();
+    combatText(attacker,defender,'miss');
     return { dodged:true, damage:0 };
   }
   let dmg=statStrength(attacker);
@@ -915,7 +928,7 @@ function resolveAttack(attacker, defender, context){
   } else if(tiredBy>0){
     if(!Number.isFinite(defender.energy)) defender.energy=ENERGY_MAX;
     defender.energy=Math.max(0,defender.energy-tiredBy);
-    if(defender.energy<=0){ faintCreature(defender,true); outcome='fainted'; }       // out of strength before out of life: falls asleep, never dies of it
+    if(defender.energy<=0){ if(state.arena&&state.arena.deathmatch){ killCreature(defender,attacker); outcome='killed'; } else { faintCreature(defender,true); outcome='fainted'; } }       // out of strength before out of life: falls asleep, never dies of it
   }
   if(outcome!=='hit' && attacker.hp>0){ const oh=giftParam(attacker,'onKillHeal'); if(oh>0) attacker.hp=Math.min(attacker.maxHp||statMaxHp(attacker), attacker.hp+Math.round((attacker.maxHp||statMaxHp(attacker))*oh)); if(giftOn(attacker,'onKillStamina')) attacker.stamina=STAMINA_MAX; }
   if(outcome==='hit') applyHitEffects(attacker,defender,shares,(activeWeapon(attacker)&&instDef(activeWeapon(attacker))||{}).family);
@@ -927,6 +940,7 @@ function resolveAttack(attacker, defender, context){
 // Bewusstlos oder tot? Entschieden aus Ueberschussschaden, Glueck und Kontext.
 function knockOutOrKill(victim, overkill, killer, context){
   if(victim.kind==='dungeonlord'){ faintLord(victim); return 'fainted'; }
+  if(state&&state.arena&&state.arena.deathmatch){ killCreature(victim, killer); return 'killed'; }       // life or death
   if(state&&state.arena&&state.arena.mercy&&victim.arenaTeam===0){ faintCreature(victim); return 'fainted'; }       // the first bouts of a Ludus run cannot kill
   const limit=statMaxHp(victim)*FAINT_OVERKILL_RATIO;
   if(overkill>=limit) { killCreature(victim, killer); return 'killed'; }
@@ -1047,6 +1061,7 @@ function moraleOf(c){
 
 // Wann zieht sich eine Kreatur zurueck?
 function shouldFlee(c){
+  if(state&&state.arena&&state.arena.deathmatch) return false;       // a tournament bout is to the end: nobody runs
   const sp=SPECIES[c.kind]||{};
   if(!sp.canFight) return true;            // Imps fliehen immer
   if(c.category==='undead') return false;  // Untote kennen keine Furcht
@@ -1204,7 +1219,7 @@ function blowTiles(c,spec,aim){
 const strikeFoesAt=(c,x,y)=>state.creatures.concat(state.imps).filter(o=>o!==c && !o.held && !o.removed && o.x===x && o.y===y && (!o.unconscious || o.kind==='dungeonlord') && areHostile(c,o));
 // a foe is struck: roll to hit, then the usual damage rules (dodge, defence ...)
 function strikeFoe(c,o,res){
-  if(Math.random()>hitChance(c)) return false;
+  if(Math.random()>hitChance(c)){ combatText(c,o,'miss'); return false; }
   const r=resolveAttack(c,o,c.combatContext); addGrudge(o,c); res.hit=true;
   if(o===c.fightTarget && (r.outcome==='killed'||r.outcome==='fainted')) res.killedTarget=true;
   return true;
@@ -6128,7 +6143,32 @@ if(typeof FX!=='undefined') FX.solidAt=(tx,ty)=>{ if(!state||tx<0||ty<0||tx>=WOR
 // what comes out of a creature when it is hit: blood colour per kind (null = bone chips)
 const BLOOD={ imp:'#7a2a12', hound:'#8a1212', beetle:'#6a9a2c', fly:'#a0b030', warlock:'#7a3a9a', skeleton:null, ghoul:'#4a6a2a', zombie:'#4a6a2a', banshee:null, ghost:null, lich:null, lizard:'#4a7a2a', brood:'#8a2a4a', demon:'#c43a1c', dragon:'#8a2a24', unicorn:'#e8e0f0', angel:'#f0e8c0', fairy:'#ffe27a', wisp:null, phoenix:'#ff8a30', griffin:'#a02828', kitsune:'#a02828', yule:'#a02828', guardian:'#f0e8c0', darkelf:'#7a1a1a', vampire:'#5a0a0a', dryad:'#8ab030', golem:null, priest:'#7a1a1a', barbarian:'#b01818', thief:'#b01818', worker:'#b01818', wizard:'#b01818', knight:'#b01818' };
 function bloodOf(c){ const k=c.kind||'imp'; return k in BLOOD ? BLOOD[k] : '#b01818'; }
+// ---- feedback on every blow: a number (or "daneben") over the one struck, a marker on the crosshair when you strike in first person, a red flash when you are hit ----
+function combatText(att,def,kind,val,crit){
+  try{
+    if(screen!=='level'||!state) return;
+    const vp=document.getElementById('viewport'); if(!vp) return;
+    if(att===possessed && fpActive()) fpMarker(kind,val,crit);
+    if(def===possessed && fpActive() && kind==='hit') fpHurt(val,def);
+    const wx=rx(def)+0.5, wy=ry(def)+0.5; let p;
+    if(view3dOn && View3D.ready){ p=View3D.project(wx,wy,1.3); if(p.behind) return; } else p={ x:(wx-camX)*TILE*zoom, y:(wy-camY)*TILE*zoom-8 };
+    if(p.x<0||p.y<0||p.x>vp.clientWidth||p.y>vp.clientHeight) return;
+    if(vp.querySelectorAll('.cText').length>28) return;
+    const el=document.createElement('div'); el.className='cText '+kind+(crit?' crit':'')+((att&&att.faction==='good')?' foe':' own');
+    el.textContent=kind==='miss'?'daneben':String(Math.round(val)); el.style.left=(p.x+(Math.random()*14-7))+'px'; el.style.top=p.y+'px';
+    vp.appendChild(el); setTimeout(()=>el.remove(),950);
+  }catch(e){}
+}
+function fpMarker(kind,val,crit){
+  const el=document.getElementById('fpHit'); if(!el) return;
+  el.className=''; void el.offsetWidth; el.textContent=kind==='miss'?'daneben':'✕ '+Math.round(val); el.className='on '+kind+(crit?' crit':'');
+}
+function fpHurt(dmg,def){
+  const el=document.getElementById('fpHurt'); if(!el) return;
+  el.style.setProperty('--hurt',Math.min(0.75,0.3+dmg/Math.max(1,def.maxHp)*2.5)); el.className=''; void el.offsetWidth; el.className='on';
+}
 function hitFx(attacker, defender, dmg, crit, killed){
+  combatText(attacker,defender,'hit',dmg,crit);
   const ax=rx(attacker), ay=ry(attacker), dx=rx(defender)-ax, dy=ry(defender)-ay, L=Math.hypot(dx,dy)||1;
   defender.kbx=dx/L; defender.kby=dy/L;                    // visual knockback, away from the attacker
   const col=bloodOf(defender), px=rx(defender), py=ry(defender);
@@ -8199,6 +8239,7 @@ function possessedCommand(x,y){
 
 // Wird statt der KI aufgerufen, solange die Kreatur besessen ist
 function tickPossessed(c){
+  if(c.unconscious||c.removed||c.dead){ endPossession(); return; }       // a creature that has fallen cannot be steered on
   // Bedürfnisse laufen weiter, aber der Spieler behaelt die Kontrolle
   if(c.needsFood){
     c.hungerTick=(c.hungerTick||0)+1;

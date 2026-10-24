@@ -108,7 +108,7 @@ const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.
 function ludusMatchSetup(o,salt){
   const foes=ludusFoes(o);
   return { teams:[ { name:ludus.team[0].name, groups:ludus.team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
-    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, mercy:ludus.wins+ludus.losses<3 };
+    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, deathmatch:!!o.tour, mercy:ludus.wins+ludus.losses<3 };
 }
 function ludusAverageTier(){
   const worn=ludus.team.reduce((a,m)=>a.concat(wornItems(ludusMemberCreature(m))),[]); if(!worn.length) return 0;
@@ -334,11 +334,34 @@ function ludusStock(){
   });
   return out;
 }
+// the character sheet: every number of the selected member and what its abilities and gifts do
+function ludusSheetHTML(m){
+  const c=ludusMemberCreature(m), pct=v=>Math.round(v*100), w=weaponInstOf(c), tk=takenVs(c), spec=strikeSpec(c);
+  const row=(k,v,tip)=>`<div class="luRow"${tip?` title="${ludusEsc(tip)}"`:''}><span>${k}</span><b>${v}</b></div>`;
+  const abil=knownAbilities(c).filter(id=>ABILITIES[id]);
+  const stats=[
+    row('Leben',`${Math.round(c.hp)} / ${c.maxHp}`), row('Stärke',statStrength(c),'Grundschaden eines Treffers vor der Rüstung des Gegners'),
+    row('Ausweichen',statDex(c)+' %','Chance, einem Treffer ganz zu entgehen'), row('Glück',statLuck(c)+' %','Chance auf doppelten Schaden, und auf halben beim Verteidigen'),
+    row('Tempo','× '+statTempo(c).toFixed(2),'wie schnell Schritte, Schläge und Arbeit gehen'), row('Ausdauer',STAMINA_MAX+' (Erholung '+(STAMINA_REGEN*giftMul(c,'staminaRegen')).toFixed(1)+')','Schläge, Fähigkeiten und Flucht kosten Ausdauer'),
+    row('Waffe',w?ludusEsc(instLabel(w)):'keine (natürlicher Angriff)'), row('Schadensart',profileText(attackProfile(c))||'–'), row('Reichweite',spec.reach+' Felder'),
+    row('Kampfstil',STANCES[stanceOf(c)].label,STANCES[stanceOf(c)].text)
+  ].join('');
+  const defs=DMG_KINDS.map((k,i)=>row(DMG_LABEL[k],Math.round(defenseVs(c,k))+' <small>(Schaden × '+tk[i].toFixed(2)+')</small>')).join('');
+  const ab=abil.length?abil.map(id=>`<div class="luAb"><b>${ABILITIES[id].icon} ${ABILITIES[id].name}</b> <small>Abklingzeit ${ABILITIES[id].cooldown||'–'}</small><br>${ABILITY_DESC[id]||ABILITIES[id].text||''}</div>`).join(''):'<p class="luHint">Noch keine Fähigkeiten. In der Bücherei gibt es welche, die Stufe schaltet weitere frei.</p>';
+  const gf=(m.gifts||[]).length?(m.gifts||[]).map(g=>`<div class="luAb"><b>${ludusEsc(giftTitle(g))}</b>${giftLines(g).map(l=>`<div class="${l.role==='bane'?'luBane':'luBoon'}"><span>${l.role==='bane'?'▼':'▲'}</span> <span>${ludusEsc(l.text)}</span></div>`).join('')}</div>`).join(''):'<p class="luHint">Gaben gibt es nach einem Turniersieg.</p>';
+  return `<div class="luPanel"><h2>${ludusEsc(m.name)} — Werte</h2><div class="luSheet"><div><h3>Kampfwerte</h3>${stats}<h3>Verteidigung</h3>${defs}</div><div><h3>Fähigkeiten und Zauber</h3>${ab}<h3>Gaben</h3>${gf}</div></div></div>`;
+}
+// the slots a member can fill, with what sits in them
+function ludusSlotsHTML(m){
+  const c=ludusMemberCreature(m), s=wornSlots(c), two=s.rh&&s.rh===s.lh;
+  const slot=(label,inst)=>{ const k=inst?ludusItems().findIndex(e=>e.inst===inst):-1; return `<div class="luSlot2${inst?' full':''}" ${inst?`data-item="${k}" title="${ludusEsc(instLabel(inst))}"`:''}><img ${inst?`src="${itemIconURL(inst,40)}"`:'src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="'}><small>${label}</small></div>`; };
+  return `<div class="luSlots">${slot(two?'Beide Hände':'Waffe',s.rh)}${two?'':slot('Nebenhand',s.lh)}${slot('Rüstung',s.body)}</div>`;
+}
 function ludusHealPct(c,f){ return Math.round(100*Math.max(0,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp))/c.maxHp); }
 function ludusHeal(frac,m){ m=m||ludus.fighter; const c=ludusMemberCreature(m); m.hp=Math.min(c.maxHp,(m.hp===undefined?c.maxHp:m.hp)+Math.round(c.maxHp*frac)); }
 const ludusHealAll=frac=>ludus.team.forEach(m=>ludusHeal(frac,m));
 // every building has its tab; a tab of a room that is not bought shows the empty plot and the one thing to do there: build
-const LUDUS_TABS=[['inn','Taverne','inn'],['pit','Grube','pit'],['train','Trainingsraum','training'],['smith','Schmiede','forge'],['lib','Bücherei','library'],['tour','Turnierhalle','hall'],['gear','Inventar',null]];
+const LUDUS_TABS=[['inn','Taverne','inn'],['pit','Grube','pit'],['train','Trainingsraum','training'],['smith','Schmiede','forge'],['lib','Bücherei','library'],['tour','Turnierhalle','hall'],['gear','Inventar',null],['sheet','Werte',null]];
 const ludusRoomOfTab=tab=>(LUDUS_TABS.find(t=>t[0]===tab)||[])[2]||null;
 function ludusRoomBox(id){
   const r=LUDUS_ROOMS[id], t=ludusRoomTier(id), max=r.cost.length; if(t>=max) return t?`<p class="luHint">${r.label}: voll ausgebaut.</p>`:'';
@@ -364,7 +387,7 @@ function ludusRender(){
     left=`<div class="luCard">${strip}<canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div>${ludus.team.length>1?`<button data-dismiss="${ludus.sel}" class="luSmall">Entlassen</button>`:''}<div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+Tr(l.text)).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
       <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
-      <div class="luInv">${(f.inventory||[]).length?(f.inventory||[]).map(x=>`<img class="luMini" src="${itemIconURL(x,32)}" title="${ludusEsc(instLabel(x))}" data-item="${ludusItems().findIndex(e=>e.inst===x)}">`).join(''):'<i>Keine Ausrüstung.</i>'}</div></div>`;
+      ${ludusSlotsHTML(f)}</div>`;
   }
   const itemRow=(inst,i)=>`<div class="luItem${wornIdx.has(i)?' worn':''}${ludusSel===i?' sel':''}" data-pick="${i}"><span>${ludusEsc(instLabel(inst))}${wornIdx.has(i)?' ✓':''}</span></div>`;
   let main='', override='';
@@ -372,7 +395,7 @@ function ludusRender(){
     override=`<div class="luPanel luGifts"><h2>Eine Gabe</h2><p>Der Sieg in der Turnierrunde wird belohnt. Wähle eine Gabe, sie bleibt für den ganzen Lauf.</p><div class="luOpts">${ludus.giftChoice.map((g,i)=>`<div class="luOption luGift r${g.rarity}"><div><b>${ludusEsc(giftTitle(g))}</b>${g.wild?' <span class="luTrait">[Wildkarte]</span>':''}<br><i>${Tr(GIFT_RARITY[g.rarity])}</i>${giftLines(g).map(l=>`<div class="${l.role==='bane'?'luBane':'luBoon'}"><span>${l.role==='bane'?'▼':'▲'}</span> <span>${ludusEsc(l.text)}</span></div>`).join('')}</div>${ludus.team.length>1?ludus.team.map((m,mi)=>`<button data-gift="${i}:${mi}" class="menuMain">Für ${ludusEsc(m.name)}</button>`).join(' '):`<button data-gift="${i}:0" class="menuMain">Wählen</button>`}</div>`).join('')}</div></div>`;
   } else if(live && ludus.forced){
     const fo=ludus.forced, o=ludusForcedBout();
-    override=`<div class="luPanel luForced"><h2>Pflichtkampf: ${fo.type==='tour'?'Die Turnierrunde':(fo.type==='event'?'Der Hinterhalt':'Der Wirt hat genug')}</h2><p>${fo.type==='tour'?'Heute wird gekämpft: Die Runde dieser Woche ruft dich in die Grube. Wer nicht antritt, ist raus.':(fo.type==='event'?'Dem kommst du nicht aus.':'Du hast zu lange nur geschlafen und geübt. Der Wirt schickt dich in die Grube, damit du dir dein Bett verdienst.')}</p>
+    override=`<div class="luPanel luForced"><h2>Pflichtkampf: ${fo.type==='tour'?'Die Turnierrunde':(fo.type==='event'?'Der Hinterhalt':'Der Wirt hat genug')}</h2><p>${fo.type==='tour'?'Heute wird gekämpft: Die Runde dieser Woche ruft dich in die Grube. Wer nicht antritt, ist raus. Ein Turnierkampf geht auf Leben und Tod: Aufgeben gibt es nicht, wer unterliegt, stirbt.':(fo.type==='event'?'Dem kommst du nicht aus.':'Du hast zu lange nur geschlafen und geübt. Der Wirt schickt dich in die Grube, damit du dir dein Bett verdienst.')}</p>
       <div class="luOpp"><canvas id="luForcedPrev" width="110" height="110"></canvas><div><b>${ludusEsc(o.title||o.name)}</b><br>${ludusVariantLabel(o)} · Stufe ${o.level}<br>Preis: ${o.reward} Gold</div></div><button id="luForcedGo" class="menuMain">Antreten</button></div>`;
   } else if(live && ludus.event){
     const ev=ludus.event, def=ludusEventDef(ev.id), opts=ludusEventOptions(def);
@@ -411,12 +434,14 @@ function ludusRender(){
   } else if(ludusTab==='gear'){
     const all=ludusItems(), sel=all[ludusSel], books=ludus.bookbag||[], total=Math.max(24,Math.ceil((all.length+1)/6)*6);
     const cells=all.map((e,k)=>`<button class="luCell${ludusSel===k?' sel':''}" data-item="${k}" style="border-color:${itemTierColor(e.inst)}" title="${ludusEsc(instLabel(e.inst))}"><img src="${itemIconURL(e.inst,40)}">${e.owner?`<b>${ludusEsc(e.owner.name[0])}</b>`:''}</button>`).concat(Array.from({length:total-all.length},()=>'<span class="luCell empty"></span>')).join('');
-    main=`<div class="luPanel"><h2>Inventar</h2><p class="luHint">Das ganze Team teilt sich diese Fächer. Ein Buchstabe in der Ecke zeigt, wer das Stück trägt.</p><div class="luGrid">${cells}</div>
+    main=`<div class="luPanel"><h2>Inventar</h2><h3>Ausrüstungsplätze von ${ludusEsc(f.name)}</h3>${ludusSlotsHTML(f)}<h3>Vorrat des Teams</h3><p class="luHint">Das ganze Team teilt sich diese Fächer. Ein Buchstabe in der Ecke zeigt, wer das Stück trägt.</p><div class="luGrid">${cells}</div>
       ${sel?`<div class="luDetail"><pre>${ludusEsc(itemDescription(sel.inst))}</pre>
         ${ludus.team.filter(m=>m!==sel.owner).map(m=>`<button data-give="${ludusSel}:${ludus.team.indexOf(m)}">${sel.owner?'Geben':'Anlegen'}: ${ludusEsc(m.name)}</button>`).join(' ')}${sel.owner?`<button data-give="${ludusSel}:-1">Ablegen</button>`:''}
         <button data-reroll="${ludusSel}" title="Aussehen neu würfeln">🎲 ${ludusRerollPrice(sel.inst)}</button>
         <button data-sell="${ludusSel}" title="Verkaufen">💰 ${ludusSellPrice(sel.inst)}</button></div>`:(all.length?'<p class="luHint">Wähle ein Stück, um es zu lesen, weiterzugeben oder zu verkaufen.</p>':'<p><i>Das Team besitzt noch keine Ausrüstung. Die Schmiede verkauft welche.</i></p>')}
       ${books.length?`<h3>Bücher</h3>${books.map((id,i)=>`<div class="luItem"><span>📖 ${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITIES[id].text||''}</span><span>${ludus.team.map((m,mi)=>`<button data-learn="${i}:${mi}">Lernen: ${ludusEsc(m.name)}</button>`).join(' ')}</span></div>`).join('')}`:''}</div>`;
+  } else if(ludusTab==='sheet'){
+    main=ludusSheetHTML(f);
   } else if(ludusTab==='smith'){
     const stock=ludusStock();
     main=`<div class="luPanel"><h2>Schmiede</h2><p>Heute im Angebot (${LUDUS_ROOMS.forge.text[tier-1]}):</p>${stock.length?stock.map((it,i)=>`<div class="luItem"><span>${ludusEsc(instLabel(it))}</span><button data-buy="${i}" ${ludus.gold<ludusPrice(it.id)?'disabled':''}>${ludusPrice(it.id)} Gold</button></div>`).join(''):'<p><i>Die Schmiede hat heute nichts, was du führen kannst. Kaufe unten mehr Sorten.</i></p>'}<h3>Sortiment der Schmiede</h3>${ludusCatsHTML()}${ludusRoomBox('forge')}</div>`;

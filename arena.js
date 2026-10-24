@@ -79,7 +79,7 @@ function arenaBuild(setup,seedExtra){
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, deathmatch:!!setup.deathmatch, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
@@ -171,7 +171,7 @@ function arenaFreeTiles(st,from,n){
     for(const [nx,ny] of [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]){ const k=nx+','+ny; if(nx>=0&&ny>=0&&nx<WORLD_COLS&&ny<WORLD_ROWS&&!seen.has(k)&&g[ny][nx].type==='floor'){ seen.add(k); q.push([nx,ny]); } } }
   return out;
 }
-const ARENA_SURRENDER_TICKS=60;   // fleeing for this long (about 20 s at normal speed) counts as giving up
+const ARENA_SURRENDER_TICKS=24, ARENA_ROUT_TICKS=8;   // fleeing for this long counts as giving up; when the whole side runs, it is over much sooner
 const arenaAlive=(st,ti)=>st.creatures.filter(c=>arenaTeamOf(c)===ti && !c.unconscious && !c.removed && !c.dead && !c.imprisoned);
 // one tick of a match; returns true while it goes on
 function arenaStep(st){
@@ -183,7 +183,8 @@ function arenaStep(st){
   [processDeaths,tickCorpses,tickEffects,pruneEventLog].forEach(f=>guard(f.name,f));
   st.creatures.forEach(c=>{
     if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
-    if(c.fleeTicks>=ARENA_SURRENDER_TICKS && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
+    const rout=!st.arena.deathmatch && !arenaAlive(st,arenaTeamOf(c)).some(o=>o.state!=='fleeing');
+    if(!st.arena.deathmatch && c.fleeTicks>=(rout?ARENA_ROUT_TICKS:ARENA_SURRENDER_TICKS) && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
   });
   const a=arenaAlive(st,0).length, b=arenaAlive(st,1).length;
   if(a===0||b===0||st.tickCount>=st.arena.maxTicks){
