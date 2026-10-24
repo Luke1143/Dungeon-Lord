@@ -238,6 +238,7 @@
         <div class="stat"><span class="label">Runde</span><span class="value" id="owTurn">1</span></div>
         <div class="stat"><span class="label">Fertigkeitspunkte</span><span class="value" id="owDiff">0</span></div>
         <button id="owSkills" class="menuMain" style="font-size:14px;padding:6px">Fertigkeiten einsetzen</button>
+        <button id="owArtifacts" class="menuMain" style="font-size:14px;padding:6px">Artefakte</button>
         <div class="section-title">Heldenmacht</div>
         <div id="owStats" class="owStats"></div>
         <div class="section-title">Ort</div>
@@ -389,6 +390,7 @@
 <script src="audio.js"></script>
 <script src="overworld.js"></script>
 <script src="objectives.js"></script>
+<script src="artifacts.js"></script>
 <script src="keep.js"></script>
 <script src="view3d.js"></script>
 <script>
@@ -762,6 +764,7 @@ function killCreature(c, killer){
   if(c.isBoss && c.faction==='good') state.war.bossDead=true;
   if(killer){ killer.kills=(killer.kills||0)+1; grantXp(killer, 3); }
   if(c.category==='hero'){
+    state.war.heroKills=(state.war.heroKills||0)+1; if(c.name==='Der Ritter') state.war.knightDead=true;
     const bounty=HERO_GOLD_REWARD*(c.level||1);
     state.gold+=bounty;
     logEvent(`Kopfgeld: ${bounty} Gold für ${actorLabel(c)}.`, c.x, c.y);
@@ -1246,7 +1249,7 @@ const SKILLS=[
   { id:'impTempo',    group:'Dungeon',      label:'Imps: Eifer',       step:1.04, text:'+4 % Tempo der Imps pro Punkt' },
   { id:'startGold',   group:'Dungeon',      label:'Startgold',         step:null, text:'+150 Gold zu Levelbeginn pro Punkt' }
 ];
-function skillRank(id){ return (typeof campaign!=='undefined' && campaign && campaign.skills && campaign.skills[id]) || 0; }
+function skillRank(id){ return ((typeof campaign!=='undefined' && campaign && campaign.skills && campaign.skills[id]) || 0) + (typeof artifactRanks==='function'&&typeof campaign!=='undefined'?artifactRanks(campaign,id):0); }
 function skillMult(id){ const s=SKILLS.find(x=>x.id===id); return s&&s.step ? Math.pow(s.step, skillRank(id)) : 1; }
 function statStrength(c){
   const eq=equipmentBonus(c);
@@ -1574,7 +1577,7 @@ function applyRecipe(actor, rec, x, y){
   if(rec.id==='claim'){
     const wasEntrance=t.room==='entrance';
     t.owned=true; t.enemy=false; t.reserved=null;
-    if(t.goodRoom){ t.room=t.goodRoom; t.goodRoom=null; logEvent('Ein Raum der Gegner gehört nun euch.', x, y); }   // conquered structures switch to the player's skin
+    if(t.goodRoom){ if(state.war.takenTiles) state.war.takenTiles[x+','+y]=t.goodRoom; t.room=t.goodRoom; t.goodRoom=null; logEvent('Ein Raum der Gegner gehört nun euch.', x, y); }   // conquered structures switch to the player's skin
     if(wasEntrance && entranceFullyClaimed()) logEvent('Ihr habt den Eingang erobert.', x, y);
     return;
   }
@@ -6228,6 +6231,10 @@ function tickWar(){
     }
   }
 
+  if(w.side && !w.sideDone && state.tickCount%WAR_CHECK_INTERVAL===0){
+    const r=SIDE_GOALS[w.side.id].check(state,w.side);
+    if(r.done){ w.sideDone=true; logEvent(`Nebenziel erfüllt: ${w.side.text}. Eine Beute wartet auf den Sieg.`, 2, 2); }
+  }
   // The good side recruits on its own from the start of the level (keep.js); its heroes dig their way to the throne themselves.
   if(state.keep) tickKeep();
   else if(w.wave<waveTotal(w)){
@@ -6258,6 +6265,17 @@ function tickWar(){
   }
 }
 
+// What the win pays: a gate gives its trophy (frontal) or its legendary (cunning); an ordinary level pays an artifact if its side goal was reached.
+function planReward(w){
+  if(!campaign||!world) return null;
+  const n=world.nodes[campaign.levelNode], rt=LOCATION_TYPES[n.type];
+  if(w.goals && GATE_REWARDS[n.type]) return GATE_REWARDS[n.type][w.wonBy==='cunning'?'cunning':'frontal'];
+  if(!w.sideDone) return null;
+  const rng=mulberry32(hashSeed(campaign.seed+'|reward|'+n.id+'|'+campaign.round));
+  const progress=(campaign.round||0)+(campaign.conquered.length||0)/2;
+  for(let i=0;i<6;i++){ const a=rollArtifact(rng,progress); if(!campaign.artifacts.includes(a.id)||i===5) return a.id; }
+  return null;
+}
 function updateWarUI(){
   const w=state.war;
   if(!w) return;
@@ -6275,6 +6293,9 @@ function updateWarUI(){
     if(w.goals){
       box.hidden=false;
       box.innerHTML='<b>Wege durch die Pforte</b><br>'+w.goals.map(g=>{ const r=GOALS[g.id].check(state,g); return `<span class="${r.done?'goalDone':''}">${g.way==='cunning'?'Listig':'Direkt'}: ${GOALS[g.id].label(g)} <i>(${r.text})</i></span>`; }).join('<br>');
+    } else if(w.side){
+      const r=SIDE_GOALS[w.side.id].check(state,w.side);
+      box.hidden=false; box.innerHTML=`<b>Nebenziel${w.sideDone?' ✓':''}</b><br><span class="${w.sideDone?'goalDone':''}">${SIDE_GOALS[w.side.id].label(w.side)} <i>(${r.text})</i></span><br><small>Belohnung: ein Artefakt</small>`;
     } else box.hidden=true; }
   const total=waveTotal(w), alive=state.creatures.filter(h=>h.category==='hero'&&!h.unconscious).length;
   const k=state.keep, gathering=state.creatures.filter(h=>h.category==='hero'&&h.post&&!h.unconscious).length;
@@ -6285,7 +6306,7 @@ function updateWarUI(){
   if(w.over){
     document.getElementById('endTitle').textContent = w.over==='won' ? 'Sieg!' : 'Niederlage';
     document.getElementById('endText').textContent = w.over==='won'
-      ? (w.wonText || `Das Weltportal gehört euch. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`)
+      ? (w.wonText || `Das Weltportal gehört euch. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`)+(()=>{ if(w.reward===undefined) w.reward=planReward(w); const a=w.reward&&ARTIFACT_BY_ID[w.reward]; return a?`\n\nBeute: ${a.name} (${RARITY_LABEL[a.rarity]})`:''; })()
       : (w.lostBy==='lord' ? 'Der Dungeon Lord ist gefallen, die Helden haben seine Reserve aufgebraucht.' : `Die Helden haben euren Thronsaal eingenommen. Die Gegner hatten ${w.wave} Rekruten ausgesandt.`+(campaign&&world?'\n\n'+OW.explainDefeat(world,campaign,w).join('\n'):''));
     overlay.hidden=false;
   } else overlay.hidden=true;
@@ -8501,6 +8522,11 @@ function owOpenSkills(){
   };
 }
 document.getElementById('owSkills').addEventListener('click', owOpenSkills);
+document.getElementById('owArtifacts').addEventListener('click', ()=>{
+  const list=campaign.artifacts.map(id=>ARTIFACT_BY_ID[id]).filter(Boolean);
+  const eff=a=>[a.item?`trägt der Dungeon Lord`:'', ...Object.keys(a.ranks||{}).map(k=>{ const s=SKILLS.find(x=>x.id===k); return s?`${s.group}: ${s.label} +${a.ranks[k]}`:''; }), a.curse?'Preis: '+Object.keys(a.curse).map(k=>`Heldenmacht ${OW.STATS[k].label} +${a.curse[k]}`).join(', '):''].filter(Boolean).join(' · ');
+  owModal('Artefakte', list.length ? list.map(a=>`<div style="margin:6px 0"><b style="color:${RARITY_COLOR[a.rarity]}">${a.name}</b> <small>(${RARITY_LABEL[a.rarity]})</small><br><small>${a.text}<br>${eff(a)}</small></div>`).join('') : 'Noch keine Artefakte. Erfülle Nebenziele und bezwinge Pforten.', ()=>{});
+});
 function owRefresh(){
   document.getElementById('owTurn').textContent=String((campaign.round||0)+1);
   document.getElementById('owDiff').textContent=String(campaign.skillPoints||0);
@@ -8592,8 +8618,9 @@ function newCampaign(seed){
 const LORD_RESPAWN_TICKS=500;
 function spawnDungeonLord(){
   const th=tilesOfRoom('throne')[0]; if(!th) return;
+  const ag=lordArtifactGear(campaign);
   const lvl=Math.min(MAX_LEVEL, 2+Math.floor(((campaign&&campaign.conquered&&campaign.conquered.length)||0)/2));
-  const lord=createBoss('dungeonlord', th.x, th.y, { faction:'evil', name:'Der Dungeon Lord', level:lvl, extraHp:20, gear:['hammer_plain','heavyArmor_plain'], guard:true });
+  const lord=createBoss('dungeonlord', th.x, th.y, { faction:'evil', name:'Der Dungeon Lord', level:lvl, extraHp:20, gear:[ag.weapon||'hammer_plain', ag.armor||'heavyArmor_plain'], guard:true });
   state.creatures.push(lord);
   state.war.lordPool=Math.round(statMaxHp(lord)*skillMult('lordReserve'));
 }
@@ -8740,6 +8767,7 @@ function startLevel(nodeId){
     state.war.goals = rt.goals ? rt.goals.map(g=>Object.assign({}, g)) : null;
     state.war.heroPool = rt.heroPool ? rt.heroPool.slice() : null;
     state.war.spawnAt = rt.spawnAt || 'portal';
+    state.war.side = rt.sideGoal ? Object.assign({}, rt.sideGoal) : null; state.war.takenTiles={}; state.war.heroKills=0;
     if(rt.setup && LEVEL_SETUPS[rt.setup]) LEVEL_SETUPS[rt.setup]();
     if(state.war.goals && state.war.rootsTotal) state.war.goals.forEach(g=>{ if(g.id==='undermine_roots') g.total=state.war.rootsTotal; });
     initKeep(rt, state.war.mods, !(state.war.spawnTiles&&state.war.spawnTiles.length));
@@ -8768,6 +8796,10 @@ function finishLevel(){
     campaign.skillPoints=(campaign.skillPoints||0)+1;
     if(w.ally){ campaign.allies=(campaign.allies||[]).concat([w.ally]); }
     OW.alarm(world,campaign,n.id);
+    { const a=w.reward&&ARTIFACT_BY_ID[w.reward]; if(a && !campaign.artifacts.includes(a.id)){
+        campaign.artifacts.push(a.id);
+        if(a.curse) Object.keys(a.curse).forEach(k=>{ campaign.curse[k]=(campaign.curse[k]||0)+a.curse[k]; });
+        campaign.report.push(`Beute: ${a.name} (${RARITY_LABEL[a.rarity]})${a.curse?' · Preis: die Helden werden stärker':''}.`); } }
     if(campaign.encounter){ const ar=campaign.armies.splice(campaign.encounter.idx,1)[0]; const gain=ar&&ar.legend?2:1; campaign.skillPoints+=gain; campaign.report.push(`Das Heer ${ar&&ar.legend?'von '+ar.legend+' ':''}wurde zerschlagen (+${gain} Fertigkeitspunkt${gain>1?'e':''}).`); campaign.encounter=null; }
     owSelected=null;
     if(n.type==='capital'){

@@ -26,25 +26,25 @@ const OW=(()=>{
   // local: extra for the level of this region; aura: extra for the levels of neighbouring regions
   // gen: terrain parameters for the level generator (see makeDefaultState)
   const REGION_TYPES={
-    river_village:{ label:'Flussdorf', ai:'panic', alert:'call', build:['hatchery','dormitory'],        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
+    river_village:{ label:'Flussdorf', ai:'panic', sideGoal:{ id:'take_rooms', room:'any', n:4, text:'Das Dorf untergraben: vier Felder seiner Räume erobern' }, alert:'call', build:['hatchery','dormitory'],        playable:true,  prod:{},                 local:{},                   gen:{ rivers:[2,3], lakes:[0,1] },
       desc:'Ein Dorf an vielen Flüssen. Leichte Beute.', side:'Das gesamte Dorf untergraben.', suffixes:['bach','furt','au','mühl'] },
-    village:      { label:'Handelsdorf', ai:'panic', alert:'call', build:['hatchery','dormitory','storage'],      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
+    village:      { label:'Handelsdorf', ai:'panic', sideGoal:{ id:'take_rooms', room:'hatchery', n:4, text:'Die Vorratskammern plündern' }, alert:'call', build:['hatchery','dormitory','storage'],      playable:true,  prod:{ food:1 },         local:{},                   gen:{ rivers:[1,2] },
       desc:'Ein Marktflecken an der Handelsstraße. Er füttert die Heere der Gegend.', side:'Die Vorratskammern plündern.', suffixes:['markt','stedt','heim','furt'] },
-    farmland:     { label:'Farmland', ai:'cautious', alert:'call', build:['hatchery','hatchery','dormitory','storage'],         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
+    farmland:     { label:'Farmland', ai:'cautious', sideGoal:{ id:'take_rooms', room:'hatchery', n:6, text:'Die Scheunen erobern' }, alert:'call', build:['hatchery','hatchery','dormitory','storage'],         playable:true,  prod:{ food:2 },         local:{ size:1 },          gen:{ rivers:[1,2], goldVeins:-2 },
       desc:'Weite Felder und Scheunen. Von hier kommt der Nachschub der Heere.', side:'Die Scheunen niederbrennen.', suffixes:['feld','hof','acker','au'] },
-    camp:         { label:'Trainingslager', ai:'drilled', alert:{levelBonus:1}, build:['dormitory','arena','dormitory','arena'],   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
+    camp:         { label:'Trainingslager', ai:'drilled', sideGoal:{ id:'kill_heroes', n:8, text:'Die Waffenmeister ausschalten: acht Helden besiegen' }, alert:{levelBonus:1}, build:['dormitory','arena','dormitory','arena'],   playable:true,  prod:{ training:2 },     local:{ levelBonus:1 },    gen:{},
       desc:'Hier üben die Helden. Wer es zerschlägt, bremst ihre Ausbildung.', side:'Die Waffenmeister ausschalten.', suffixes:['lager','platz','wacht','heim'] },
-    forge:        { label:'Zwergenschmiede', ai:'cautious', alert:{gearTier:1}, build:['forge','dormitory','forge','storage'],  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
+    forge:        { label:'Zwergenschmiede', ai:'cautious', sideGoal:{ id:'take_rooms', room:'forge', n:4, text:'Die Schmiede plündern' }, alert:{gearTier:1}, build:['forge','dormitory','forge','storage'],  playable:true,  prod:{ iron:2 },         local:{ gearTier:1 },      gen:{ caveDensity:0.45, oreVeins:3 },
       desc:'Tunnel und Esse im Berg. Hier wird die Rüstung der Helden geschmiedet.', side:'Die Schmiede plündern und ein Artefakt suchen.', suffixes:['fels','berg','esse','hammer'] },
-    mine:         { label:'Bergwerk', ai:'cautious', alert:{waves:1}, build:['storage','forge','dormitory'],         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
+    mine:         { label:'Bergwerk', ai:'cautious', sideGoal:{ id:'stock', good:'ore', n:12, text:'Die Erzlager leeren: zwölf Erz ins Lager bringen' }, alert:{waves:1}, build:['storage','forge','dormitory'],         playable:true,  prod:{ iron:1 },         local:{},                   gen:{ caveDensity:0.44, oreVeins:4, goldVeins:3 },
       desc:'Stollen voller Erz und Gold. Es liefert das Eisen für die Schmieden.', side:'Die Erzlager leeren.', suffixes:['stollen','grube','schacht','berg'] },
-    tower:        { label:'Magierturm', ai:'cautious', alert:{wizards:1}, build:['library','dormitory','library','hatchery'],       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
+    tower:        { label:'Magierturm', ai:'cautious', sideGoal:{ id:'take_rooms', room:'library', n:4, text:'Die Bibliothek erobern' }, alert:{wizards:1}, build:['library','dormitory','library','hatchery'],       playable:true,  prod:{ magic:2 },        local:{ wizards:1 },       gen:{ lakes:[0,1] },
       desc:'Ein Turm, in dem Zauberer lernen. Er schickt Magier ins Feld.', side:'Die Bibliothek erobern.', suffixes:['turm','warte','spitz','licht'] },
-    elf_forest:   { label:'Elfenwald', ai:'aggressive', alert:'call', build:['hatchery','dormitory','library','arena'],        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
+    elf_forest:   { label:'Elfenwald', ai:'aggressive', sideGoal:{ id:'kill_heroes', n:10, text:'Den Waldfürsten unterwerfen: zehn Streiter besiegen' }, alert:'call', build:['hatchery','dormitory','library','arena'],        playable:true,  prod:{ magic:1, food:1 }, local:{},                  gen:{ caveDensity:0.43, rivers:[1,2] },
       desc:'Ein uralter Wald, von Wurzeln durchzogen.', side:'Den Waldfürsten unterwerfen.', suffixes:['wald','hain','tann','lauf'] },
-    fortress:     { label:'Festung', ai:'fortified', alert:{waves:1}, build:['dormitory','arena','forge','dormitory','arena','forge','storage'],          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
+    fortress:     { label:'Festung', ai:'fortified', sideGoal:{ id:'kill_last', text:'Den Burgherrn stürzen: den Ritter besiegen' }, alert:{waves:1}, build:['dormitory','arena','forge','dormitory','arena','forge','storage'],          playable:true,  prod:{ fort:2 },         local:{ waves:1 }, aura:{ waves:1 }, gen:{ bedrock:2 },
       desc:'Feste Mauern. Sie verstärkt die Gebiete ringsum und liefert Wachen.', side:'Den Burgherrn stürzen.', suffixes:['burg','stein','wacht','trutz'] },
-    bog:          { label:'Moorsiedlung', ai:'panic', alert:'call', build:['hatchery'],     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
+    bog:          { label:'Moorsiedlung', ai:'panic', sideGoal:{ id:'take_rooms', room:'any', n:5, text:'Das Dorf versenken: fünf Felder erobern' }, alert:'call', build:['hatchery'],     playable:true,  prod:{},                 local:{},                   gen:{ lakes:[2,3], rivers:[1,2] },
       desc:'Nebel, Schlamm und argwöhnische Bewohner. Kaum Nutzen für die Heere, aber viel Wasser.', side:'Das Dorf versenken.', suffixes:['moor','sumpf','brück','nebel'] },
     // Gates: natural chokepoints, every road to the capital passes through them. Mythic places (free myths and sagas only), a boss each.
     // Two ways through: the frontal assault (beat the boss in an epic fight) or the cunning way (a special goal with a bigger reward).
@@ -118,7 +118,7 @@ const OW=(()=>{
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
   function initCampaign(c){
-    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0; c.legends=c.legends||{}; c.champions=c.champions||[]; c.skills=c.skills||{};
+    c.round=c.round||0; c.bonus=c.bonus||{}; c.fort=c.fort||{}; c.messengers=c.messengers||[]; c.armies=c.armies||[]; c.report=c.report||[]; c.ambush=c.ambush||0; c.legends=c.legends||{}; c.champions=c.champions||[]; c.skills=c.skills||{}; c.artifacts=c.artifacts||[]; c.curse=c.curse||{};
     c.conquered=c.conquered||[]; c.allies=c.allies||[]; c.known=c.known||[]; c.skillPoints=c.skillPoints||0; c.eventsSeen=c.eventsSeen||[]; c.log=c.log||[];
     return c;
   }
@@ -151,7 +151,7 @@ const OW=(()=>{
   // hero power right now: sources x time + event bonuses
   function power(world,c){
     const inc=income(world,c), tf=timeFactor(c), alarm=1+ALARM_PER_REGION*c.conquered.length, stats={};
-    STAT_KEYS.forEach(k=>{ stats[k]=Math.max(0, inc.out[k]*tf*alarm+(c.bonus[k]||0)); });
+    STAT_KEYS.forEach(k=>{ stats[k]=Math.max(0, inc.out[k]*tf*alarm+(c.bonus[k]||0)+((c.curse&&c.curse[k])||0)); });   // curse: the permanent price of artifacts
     return { stats, income:inc, tf, alarm };
   }
   function advanceRound(world,c){

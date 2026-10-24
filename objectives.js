@@ -43,3 +43,24 @@ const GOALS={
     check:(st)=>{ const boss=st.creatures.find(c=>c.isBoss&&c.faction==='good'); return { done:!!st.war.swordPulled && !!boss && !boss.unconscious, text:st.war.swordPulled?'gezogen':'noch im Stein' }; }
   }
 };
+
+// Side goals of ordinary levels: reaching one pays an artifact when the level is won (see artifacts.js). Progress is tracked in state.war.
+// check(state, goal) -> { done, text }
+const SIDE_GOALS={
+  take_rooms:{
+    label:g=>g.text,
+    check:(st,g)=>{ const tiles=Object.values(st.war.takenTiles||{}), n=g.room==='any'?tiles.length:tiles.filter(t=>t===g.room).length; return { done:n>=g.n, text:`${Math.min(n,g.n)}/${g.n} Felder erobert` }; }
+  },
+  kill_heroes:{
+    label:g=>g.text,
+    check:(st,g)=>{ const n=st.war.heroKills||0; return { done:n>=g.n, text:`${Math.min(n,g.n)}/${g.n} Helden besiegt` }; }
+  },
+  kill_last:{
+    label:g=>g.text,
+    check:(st)=>({ done:!!st.war.knightDead, text:st.war.knightDead?'gefallen':'noch auf freiem Fuß' })
+  },
+  stock:{
+    label:g=>g.text,
+    check:(st,g)=>{ const n=Math.floor(g.good==='gold'?st.gold:st.ore); return { done:n>=g.n, text:`${Math.min(n,g.n)}/${g.n} im Lager` }; }
+  }
+};
