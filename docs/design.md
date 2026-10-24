@@ -399,3 +399,9 @@ Die Oberwelt ist wirklich rundenbasiert: Spieler zieht und spielt das Level, dan
 - Hilferuf: ein Bote wandert pro Runde zur nächsten Festung. Dort entsteht eine Armee, die zur rufenden Region marschiert oder den Spieler jagt. Die Armee ist eine Figur auf der Karte (sichtbar, wenn bekannt), Begegnung heißt Level mit starkem Pool, Ausweichen oder Abfangen ist möglich.
 - Legendäre Helden (Oberon, Artus, Alberich) hören vom Spieler: größere Folgen (Boss kommt als Armee zu einem, Pforten werden verstärkt).
 - Rundenbericht beim Zurückkehren: was ist passiert (wer wurde alarmiert, wo marschiert wer).
+
+
+## Notiz: Kreaturen bleiben im Eroberungsmodus von Level zu Level (Idee, noch nicht gebaut)
+- Kreaturen sind **persistent**: Wer überlebt, kommt in die nächste Region mit (Stufe, Ausrüstung, Fähigkeiten, Narben). Ein Skelett namens Kevin, das sechs Karten dabei war, kann im Finale gegen Oberon den entscheidenden Schlag tun, bevor es fällt. Das nimmt dem Spiel das Roguelike-Gefühl "alles beginnt neu" und gibt ihm einen eigenen Charakter (Bindung, Verlust zählt).
+- **Der Balancing-Hebel**: Jede Region hat nur eine **begrenzte Zahl köderbarer Kreaturen**. Der Spieler muss herausfinden, welche es gibt, indem er die passenden Köder (Mechanismen für Hunger, Neugier, Schlaf, Gold, Leichen und so weiter) baut und einsetzt. Wer die richtigen Köder findet, bekommt starke Kreaturen für die ganze Kampagne; wer nicht, spielt mit dem, was er hat.
+- Folgen, die man mitdenken muss: Verluste müssen spürbar, aber nicht lähmend sein (Ohnmacht statt Tod ist schon da); die Gegner skalieren mit der Region, nicht mit dem Kader; ein Kader-Limit und das Vault (Stasis) bleiben der Ausgleich nach oben; Ludus-Kämpfer können später in die Kampagne wechseln (siehe `ludus.md`).

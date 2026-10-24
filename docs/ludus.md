@@ -61,3 +61,9 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - **Die Grube gibt es von Anfang an** (Stufe 1 kostenlos), damit niemand festsitzt. Ausbau Stufe 2 und 3 kostet Ansehen.
 - **Bücher** aus der Bücherei liegen im Inventar und müssen dort gelernt werden (mit den Regeln des Hauptspiels).
 - **Trainingsraum** (neu, 3 Stufen): eine Runde am Dummy gibt Erfahrung ohne Schaden, kostet Gold und einen Tag.
+
+## Fortschritt, Druck und Abwechslung (neu)
+- **Tage drücken**: Alle 7 Tage kommt eine **Turnierrunde als Pflichtkampf** (die nächste Rivalin der Rangliste), und wer **4 Tage nicht kämpft**, wird vom Wirt in einen Pflichtkampf geschickt (fairer Gegner, halber Preis). Oben stehen "Turnier in X Tagen" und "Pflichtkampf spätestens in Y Tagen". So lässt sich nicht endlos schlafen und üben; Training und Schlaf kosten Tage und schieben den Druck näher.
+- **Die Grube bietet Auswahl**: ein *leichter* Kampf (Siegchance etwa 80 %, 60 % Preis) und ein *fairer* (etwa 50 %); mit ausgebauter Grube (Stufe 2) kommt ein *schwerer* dazu (etwa 30 %, 170 % Preis). Die Schwierigkeit wird mit Probekämpfen gemessen, nicht geschätzt.
+- **Kampfvarianten**: Duell, **Rudel** (2 bis 3 schwächere Gegner) und **Tag-Team** (ein Verbündeter, zwei Gegner); manchmal liegt **Ausrüstung in der Grube** (wer keinen Feind in der Nähe hat, geht zuerst hin und nimmt sie auf).
+- **Ereignisse** nach Kämpfen (30 %): kurze Geschichten mit Wahlmöglichkeiten, dazu Optionen, die ein **Merkmal der Art** freischaltet (Skelett: Falle stellen, Dieb: Beutel stehlen, Troll: Armdrücken), im Stil von FTL. Heute vier Ereignisse (Fauchen im Tunnel, Händler, Gladiator, Fest); eine Wahl kann einen Pflichtkampf (Hinterhalt) auslösen.

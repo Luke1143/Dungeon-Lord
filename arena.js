@@ -97,8 +97,37 @@ function arenaBuild(setup,seedExtra){
         }
       });
     });
+    // gear lying about: a piece or two in the middle of the yard (the fighters go for it when no foe is near)
+    if(setup.items && setup.items.length){
+      const mid={ x:(st.arena.anchors[0].x+st.arena.anchors[1].x)>>1, y:(st.arena.anchors[0].y+st.arena.anchors[1].y)>>1 };
+      const spots=arenaFreeTiles(st,st.arena.anchors[0],400).filter(t=>Math.abs(t.x-mid.x)+Math.abs(t.y-mid.y)<=7 && st.arena.anchors.every(an=>Math.abs(an.x-t.x)+Math.abs(an.y-t.y)>=5));
+      setup.items.forEach(id=>{ if(!ITEMS[id]||!spots.length) return; const t=spots.splice(Math.floor(Math.random()*Math.min(spots.length,12)),1)[0]; const it=looseOf({ id, q:1, s:Math.floor(Math.random()*1e9) },t.x,t.y); it.arenaFloor=true; st.looseItems.push(it); });
+    }
   } finally { state=prev; }
   return st;
+}
+// a creature standing on a piece of gear takes it, if it has room; the new piece counts at once (the best per hand and body is worn)
+function arenaPickups(st){
+  if(!st.looseItems||!st.looseItems.length) return;
+  st.creatures.forEach(c=>{
+    if(c.unconscious||c.removed||c.kind==='imp') return;
+    const i=st.looseItems.findIndex(it=>it.kind==='equipment'&&it.x===c.x&&it.y===c.y); if(i<0) return;
+    const inst=looseInst(st.looseItems[i]); if(!hasFreeSlot(c,inst)) return;
+    giveItem(c,inst); st.looseItems.splice(i,1); logEvent(`${actorLabel(c)} hebt ${instLabel(inst)} auf.`,c.x,c.y);
+  });
+}
+// with gear on the ground and no foe within a few steps, a creature goes to pick it up (called from tickCombat)
+function arenaItemDetour(c){
+  const st=state; if(!st.arena||!st.looseItems||!st.looseItems.some(it=>it.kind==='equipment')) return false;
+  if(c.kind==='imp'||c.unconscious||!usesEquipment(c)&&c.category!=='hero') return false;
+  const foes=st.creatures.filter(o=>o!==c&&!o.unconscious&&!o.removed&&areHostile(c,o));
+  if(foes.some(o=>Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3)) return false;
+  let best=null; st.looseItems.forEach(it=>{ if(it.kind!=='equipment'||!hasFreeSlot(c,looseInst(it))) return; const d=Math.abs(it.x-c.x)+Math.abs(it.y-c.y); if(d<=9&&(!best||d<best.d)) best={ it, d }; });
+  if(!best) return false;
+  // not when a foe is closer to the gear than we are (then the fight comes first)
+  if(foes.some(o=>Math.abs(o.x-best.it.x)+Math.abs(o.y-best.it.y)<best.d)) return false;
+  const res=bfsFind(c.x,c.y,(x,y)=>x===best.it.x&&y===best.it.y); if(!res) return false;
+  c.path=res.path; c.state='engaging'; stepAlong(c); return true;
 }
 // a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
 function arenaApplyFighter(c,f){
@@ -120,6 +149,7 @@ function arenaStep(st){
   st.tickCount++;
   st.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
   guard('projectiles',tickProjectiles);
+  guard('pickups',arenaPickups,st);
   [processDeaths,tickCorpses,tickEffects,pruneEventLog].forEach(f=>guard(f.name,f));
   st.creatures.forEach(c=>{
     if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
