@@ -424,6 +424,11 @@ function impFrame(state,t,facingRight){
   add('torch',t=>{ const f=mk(16,16); rect(f,7,8,2,6,'d'); rect(f,6,7,4,2,'z'); put(f,7,6-flick(t)+1,'o'); put(f,8,6-flick(t)+1,'o'); put(f,7,5-flick(t)+1,'f'); put(f,8,5-flick(t)+1,'f'); put(f,7,4-flick(t)+1,'F'); put(f,8,6,'o'); put(f,7,6,'o'); rect(f,7,5,2,1,'f'); return f; });
   add('flame',t=>{ const f=mk(16,16), k=flick(t); ell(f,8,10.5,2.6,3.8,'o'); ell(f,8,11.4,1.4,2.4,'f'); put(f,8,6-k,'o'); put(f,8,7,'o'); put(f,8,12,'F'); put(f,7+k,5,'o'); return f; });
   add('pelt',()=>{ const f=mk(16,16); ell(f,8,9,6.4,4.2,'n'); ell(f,8,9,5.2,3.2,'o'); [[3,8],[5,12],[12,8],[10,13],[8,6]].forEach(([x,y])=>put(f,x,y,'n')); put(f,3,6,'o'); put(f,12,6,'o'); ell(f,13,10,1.6,1.4,'o'); put(f,13,9,'p'); shade(f,'o','O','n'); return f; },{ o:'#c8801c', O:'#e8a838', n:'#7a4a14' });
+  add('dummy',()=>{ const f=mk(16,16); rect(f,7,3,2,11,'w'); rect(f,3,6,10,2,'w'); ell(f,8,3.4,2.2,2.4,'a'); rect(f,5,13,6,2,'d'); put(f,6,6,'A'); put(f,10,6,'A'); shade(f,'w','W','d'); return f; });
+  add('altar',()=>{ const f=mk(16,16); rect(f,3,9,10,5,'s'); rect(f,4,7,8,2,'S'); rect(f,5,5,6,2,'v'); put(f,8,3,'y'); put(f,8,4,'y'); shade(f,'s','S','z'); return f; });
+  add('barrel',()=>{ const f=mk(16,16); ell(f,8,9,4.4,5.2,'w'); rect(f,4,6,8,1,'d'); rect(f,4,11,8,1,'d'); put(f,8,9,'y'); shade(f,'w','W','d'); return f; });
+  add('tomb',()=>{ const f=mk(16,16); rect(f,4,6,8,8,'s'); ell(f,8,6,4,3,'s'); rect(f,7,5,2,6,'z'); rect(f,5,8,6,2,'z'); shade(f,'s','S','z'); return f; });
+  add('banner',()=>{ const f=mk(16,16); rect(f,5,1,1,14,'d'); rect(f,6,2,6,6,'r'); rect(f,6,8,2,2,'r'); rect(f,10,8,2,2,'r'); put(f,8,4,'y'); put(f,9,4,'y'); return f; });
   add('excalibur',t=>{ const f=mk(16,16); ell(f,8,11,6,3.4,'s'); rect(f,4,9,8,4,'s'); shade(f,'s','S','z'); rect(f,7,1,2,9,'W'); put(f,7,1,'F'); rect(f,5,6,6,1,'y'); put(f,8,5-(flick(t)),'F'); return f; });
   add('roundtable',()=>{ const f=mk(16,16); ell(f,8,8,7.2,5.6,'d'); ell(f,8,8,6.2,4.8,'w'); ell(f,8,8,3.4,2.4,'W'); for(let i=0;i<12;i++){ const a=i/12*6.283; put(f,Math.round(8+Math.cos(a)*6.6),Math.round(8+Math.sin(a)*5.2),'y'); } shade(f,'w','W','d'); return f; });
   add('coin',()=>{ const f=mk(16,16); ell(f,8,9,4,3.6,'y'); ell(f,8,9,2.4,2.1,'Y'); put(f,6,7,'F'); put(f,7,7,'F'); shade(f,'y','F','Y'); return f; });
@@ -477,6 +482,18 @@ const TILEGEN=(()=>{
     for(let x=0;x<16;x++){ g[3][x]=P.z; g[12][x]=P.z; } [[2,3],[6,3],[10,3],[14,3],[2,12],[6,12],[10,12],[14,12]].forEach(([x,y])=>{ g[y][x]=P.W; }); return { g, pal:P }; });
   mk('hatchery',(v)=>{ const r=rng(v*29+6), P={ h:'#b8a24a', H:'#d8c468', d:'#8f7a2c' }, g=grid(P.h);
     for(let i=0;i<34;i++){ const x=Math.floor(r()*13), y=Math.floor(r()*16), c=r()<0.5?P.H:P.d; g[y][x]=c; g[y][x+1]=c; if(r()<0.5) g[y][x+2]=c; } return { g, pal:P }; });
+  mk('tavern',(v)=>{ const r=rng(v*67+19), P={ w:'#6a4426', W:'#7e5230', d:'#3a2412', s:'#8a2a2a' }, g=grid(P.w); planks(g,r,P,4); if(v%2) [[4,5],[5,5],[5,6],[10,10],[11,10]].forEach(([x,y])=>{ g[y][x]=P.s; }); return { g, pal:P }; });
+  mk('graveyard',(v)=>{ const r=rng(v*71+20), P={ d:'#3a3326', D:'#4a4232', m:'#3f5a2c', k:'#26211a' }, g=grid(P.d);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.2) g[y][x]=P.D; else if(q<0.3) g[y][x]=P.m; else if(q<0.34) g[y][x]=P.k; } return { g, pal:P }; });
+  mk('guardpost',(v)=>{ const r=rng(v*73+21), P={ s:'#5a5a62', S:'#6e6e78', k:'#2a2a30', r:'#a02a2a' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ if(r()<0.18) g[y][x]=P.S; else if(r()<0.06) g[y][x]=P.k; }
+    for(let i=2;i<14;i++){ g[2][i]=P.r; g[13][i]=P.r; g[i][2]=P.r; g[i][13]=P.r; } return { g, pal:P }; });
+  mk('training',(v)=>{ const r=rng(v*79+22), P={ s:'#b89860', S:'#cdb078', d:'#9a7c48', h:'#d8c068' }, g=grid(P.s);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.15) g[y][x]=P.S; else if(q<0.3) g[y][x]=P.d; else if(q<0.34) g[y][x]=P.h; } return { g, pal:P }; });
+  mk('temple',(v)=>{ const r=rng(v*83+23), P={ w:'#d8d4cc', W:'#eeeae2', g:'#b0aca4', y:'#d4af37' }, g=grid(P.w);
+    for(let y=0;y<16;y++) for(let x=0;x<16;x++){ if(r()<0.1) g[y][x]=P.W; else if(r()<0.06) g[y][x]=P.g; }
+    for(let i=0;i<16;i++){ g[0][i]=P.g; g[15][i]=P.g; g[i][0]=P.g; g[i][15]=P.g; }
+    [[7,4],[8,4],[7,11],[8,11],[4,7],[4,8],[11,7],[11,8]].forEach(([x,y])=>{ g[y][x]=P.y; }); return { g, pal:P }; });
   mk('prison',(v)=>{ const r=rng(v*53+17), P={ s:'#3c3c44', S:'#4c4c56', k:'#1c1c22', i:'#8d949c', y:'#6a5a3a' }, g=grid(P.s);
     for(let y=0;y<16;y++) for(let x=0;x<16;x++){ const q=r(); if(q<0.15) g[y][x]=P.S; else if(q<0.22) g[y][x]=P.k; }
     for(let x=0;x<16;x++){ g[7][x]=P.k; g[8][x]=P.k; } for(let y=0;y<16;y++){ g[y][7]=P.k; g[y][8]=P.k; }

@@ -337,6 +337,11 @@
           <button class="roomBtn" data-room="forge" id="forgeBtn" hidden>Schmiede (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="arena">Arena (100 Gold/Kachel)</button>
           <button class="roomBtn" data-room="prison">Gefängnis (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="tavern">Taverne (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="graveyard">Friedhof (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="guardpost">Wachposten (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="training">Trainingskammer (100 Gold/Kachel)</button>
+          <button class="roomBtn" data-room="temple">Tempel (100 Gold/Kachel)</button>
           <button id="demolishBtn" class="dangerBtn">Abreißen (volle Rückerstattung)</button>
         </div>
         <div id="menu-creatures" class="menuPanel" hidden>
@@ -428,6 +433,11 @@ const ROOM_TYPES={
   forge:     { label:'Schmiede',    costPerTile:1, color:'#4a3520', icon:null },
   arena:     { label:'Arena',       costPerTile:1, color:'#5a2a2a', icon:null },
   prison:    { label:'Gefängnis',   costPerTile:1, color:'#34343c', icon:null },
+  tavern:    { label:'Taverne',     costPerTile:1, color:'#4a3220', icon:null },
+  graveyard: { label:'Friedhof',    costPerTile:1, color:'#2e2a20', icon:null },
+  guardpost: { label:'Wachposten',  costPerTile:1, color:'#46464e', icon:null },
+  training:  { label:'Trainingskammer', costPerTile:1, color:'#6a5a38', icon:null },
+  temple:    { label:'Tempel',      costPerTile:1, color:'#7a766e', icon:null },
   portal:    { label:'Weltportal',  costPerTile:0, color:'#5a1a1a', icon:null }
 };
 
@@ -442,6 +452,12 @@ const RESEARCH_TOPICS=[
   { id:'forge', label:'Schmiede', unlocksRoom:'forge',
     trigger:(x,y)=> (state.storageContents||[]).some(s=>s.x===x && s.y===y && s.goodId==='iron') },
   // The sight of a fallen hero gives the idea of a prison
+  // each idea comes from seeing a reason for the room
+  { id:'graveyard', label:'Friedhof', unlocksRoom:'graveyard', trigger:(x,y)=> state.corpses.some(c=>c.x===x && c.y===y) },
+  { id:'tavern', label:'Taverne', unlocksRoom:'tavern', trigger:(x,y)=> state.creatures.some(c=>c.faction==='evil' && c.happiness!==undefined && c.happiness<45 && Math.round(c.x)===x && Math.round(c.y)===y) },
+  { id:'training', label:'Trainingskammer', unlocksRoom:'training', trigger:(x,y)=> state.creatures.some(c=>c.faction==='evil' && (c.kind==='ork'||c.kind==='troll'||c.kind==='dungeonlord') && Math.round(c.x)===x && Math.round(c.y)===y && c.state==='wandering') },
+  { id:'temple', label:'Tempel', unlocksRoom:'temple', trigger:(x,y)=> state.creatures.some(c=>c.faction==='evil' && c.loyalty!==undefined && c.loyalty<55 && Math.round(c.x)===x && Math.round(c.y)===y) },
+  { id:'guardpost', label:'Wachposten', unlocksRoom:'guardpost', trigger:(x,y)=> state.creatures.some(c=>c.faction==='good' && !c.unconscious && state.grid[Math.round(c.y)][Math.round(c.x)].owned && Math.round(c.x)===x && Math.round(c.y)===y) },
   { id:'prison', label:'Gefängnis', unlocksRoom:'prison',
     trigger:(x,y)=> state.creatures.some(c=>c.unconscious && c.faction==='good' && c.kind!=='dungeonlord' && Math.round(c.x)===x && Math.round(c.y)===y) }
 ];
@@ -3720,6 +3736,23 @@ const LEISURE_ACTIVITIES=[
     }
   },
   {
+    id:'drink', label:'trinkt in der Taverne', icon:'🍺', duration:20, happiness:24, cost:2,
+    locate:(c)=>{
+      if((state.gold||0)<2) return null;
+      const spots=new Set(); roomsOfType('tavern').forEach(r=>r.tiles.forEach(t=>spots.add(t.x+','+t.y)));
+      if(!spots.size) return null;
+      return bfsFind(c.x, c.y, (x,y)=> spots.has(x+','+y) && !leisureSpotTaken(x,y,c));
+    }
+  },
+  {
+    id:'pray', label:'betet im Tempel', icon:'🙏', duration:22, happiness:12, loyalty:3,
+    locate:(c)=>{
+      const sp=altarSpots(); if(!sp.length) return null;
+      const set=new Set(sp.map(s=>s.x+','+s.y));
+      return bfsFindBeside(c, (x,y)=> set.has(x+','+y) && !leisureSpotTaken(x,y,c));
+    }
+  },
+  {
     id:'petHound', label:'krault den Höllenhund', icon:'🐶', duration:18, happiness:16,
     locate:(c)=>{
       const hounds=state.creatures.filter(o=>o.kind==='hound' && !o.held);
@@ -3741,10 +3774,10 @@ const LEISURE_ACTIVITIES=[
 
 // Wie sehr reizt welche Beschaeftigung welche Art? 0 = kein Interesse.
 const LEISURE_PREFS={
-  warlock: { read:20, watchWork:5, watchChickens:3, watchFight:8, petHound:0 }, // Warlocks können Hunde nicht ausstehen
-  ork:     { watchFight:22, petHound:6, watchChickens:4, watchWork:3 },
-  goblin:  { watchWork:14, watchChickens:12, petHound:3, watchFight:2 },
-  troll:   { watchFight:12, watchWork:8, petHound:4 }
+  warlock: { read:20, watchWork:5, watchChickens:3, watchFight:8, petHound:0, drink:5, pray:8 }, // Warlocks können Hunde nicht ausstehen
+  ork:     { watchFight:22, petHound:6, watchChickens:4, watchWork:3, drink:26, pray:3 },
+  goblin:  { watchWork:14, watchChickens:12, petHound:3, watchFight:2, drink:22, pray:6 },
+  troll:   { watchFight:12, watchWork:8, petHound:4, drink:18, pray:4 }
 };
 
 function leisureAppeal(c, activityId){
@@ -3810,6 +3843,8 @@ function tickLeisure(c, speed){
       if(act && c.happiness!==undefined){
         c.happiness=Math.min(100, c.happiness + act.happiness);
       }
+      if(act && act.cost) state.gold=Math.max(0,state.gold-act.cost);
+      if(act && act.loyalty && c.loyalty!==undefined) c.loyalty=Math.min(100,c.loyalty+act.loyalty);
       rememberLeisure(c, c.leisureId);
       c.leisureId=null; c.leisureTarget=null;
       c.state='wandering';
@@ -4291,6 +4326,16 @@ function idleAtThrone(imp){
 // ===== Prisoners: fallen heroes are carried to a prison cell by imps and converted there =====
 const PRISON_MIN_SIZE=4, PRISON_CONVERT_BASE=420, PRISON_CONVERT_PER_LEVEL=80;
 function prisonRoomsReady(){ return computeRooms().filter(r=>r.type==='prison' && r.tiles.length>=PRISON_MIN_SIZE); }
+// ----- the added rooms: where their furniture stands (every second tile of a block) -----
+const ROOM_MIN2=6;
+function roomBlockSpots(room,step){
+  const minX=Math.min(...room.tiles.map(t=>t.x)), minY=Math.min(...room.tiles.map(t=>t.y));
+  return room.tiles.filter(t=>(t.x-minX)%step===0 && (t.y-minY)%step===0);
+}
+const roomsOfType=(type,min)=>computeRooms().filter(r=>r.type===type && r.tiles.length>=(min===undefined?ROOM_MIN2:min));
+function dummySpots(){ const out=[]; roomsOfType('training').forEach(r=>roomBlockSpots(r,2).forEach(s=>out.push(s))); return out; }
+function altarSpots(){ const out=[]; roomsOfType('temple').forEach(r=>{ const s=roomBlockSpots(r,3).map(t=>({ x:t.x+(r.tiles.some(q=>q.x===t.x+1&&q.y===t.y+1)?1:0), y:t.y+(r.tiles.some(q=>q.x===t.x+1&&q.y===t.y+1)?1:0) })); (s.length?s:[roomAnchor(r)]).forEach(a=>out.push(a)); }); return out; }
+function graveSpots(){ const out=[]; roomsOfType('graveyard').forEach(r=>roomBlockSpots(r,2).forEach(s=>out.push(s))); return out; }
 function freePrisonSpots(){
   const taken=new Set(state.creatures.filter(c=>c.imprisoned).map(c=>Math.round(c.x)+','+Math.round(c.y)));
   const spots=new Set();
@@ -4502,8 +4547,16 @@ const CARGO={
       imp.carryingCorpse=true;
       return true;
     },
-    findDest(imp){ return findAnyHatcheryTile(imp); },
+    findDest(imp){
+      // with a graveyard every second corpse is buried (the dead rise from there), the rest feeds the chickens
+      state.graves=state.graves||{};
+      const free=graveSpots().filter(s=>!state.graves[s.x+','+s.y]);
+      state.burialToggle=!state.burialToggle;
+      if(free.length && state.burialToggle){ const set=new Set(free.map(s=>s.x+','+s.y)); const r=bfsFind(imp.x,imp.y,(x,y)=>set.has(x+','+y)); if(r) return r; }
+      return findAnyHatcheryTile(imp);
+    },
     drop(imp,x,y){
+      if(state.grid[y][x].room==='graveyard'){ state.graves[x+','+y]={ age:0 }; imp.carryingCorpse=false; logEvent('Eine Leiche wurde auf dem Friedhof bestattet.', x, y); return; }
       feedHatcheryAt(hatcheryKey(x,y), true);
       imp.carryingCorpse=false;
       logEvent('Eine Leiche wurde an die Hühner verfüttert - kräftiger Wachstumsschub!', x, y);
@@ -5515,6 +5568,11 @@ function draw2d(){
   });
 
   dormitoryTorchSpots().forEach(spot=> drawEmoji('🕯️', spot.x, spot.y, false));
+  dummySpots().forEach(s=> drawProp('dummy', s.x, s.y));
+  altarSpots().forEach(s=> drawProp('altar', s.x, s.y));
+  graveSpots().forEach(s=>{ if(state.graves&&state.graves[s.x+','+s.y]) drawProp('tomb', s.x, s.y); });
+  roomsOfType('tavern').forEach(r=>roomBlockSpots(r,2).forEach(s=> drawProp('barrel', s.x, s.y)));
+  roomsOfType('guardpost',1).forEach(r=>r.tiles.forEach(s=> drawProp('banner', s.x, s.y)));
 
   allRooms.filter(r=>r.type==='library' && r.tiles.length>=LIBRARY_MIN_SIZE).forEach(room=>{
     libraryShelfSpots(room).forEach(spot=> drawEmoji(state.libraryBooks[spot.x+','+spot.y] ? '📕' : '📚', spot.x, spot.y, false));
@@ -5697,7 +5755,7 @@ function draw2d(){
 // Emojis that have a generated prop sprite (sprites.js). drawEmoji and drawSlots use the sprite instead; thoughts and effects stay emoji.
 const PROP_OF={ '🛏️':'bed', '👑':'throne', '🕯️':'candle', '📚':'shelf', '📕':'book', '🔥':'fire', '🜂':'furnace', '🗼':'kiln', '💨':'bellows', '🪵':'anvil', '🪑':'bench', '🥣':'trough', '🌾':'grain', '🐔':'chicken', '🐣':'chick', '🪙':'coin', '🪨':'ore', '🧱':'ingot', '☠️':'corpse' };
 // a prop with a back (shelf, bed) turns away from a wall next to it
-const FACING_PROPS=new Set(['bed','shelf','throne','furnace','kiln','bellows','bench','trough']);
+const FACING_PROPS=new Set(['bed','shelf','altar','banner','tomb','throne','furnace','kiln','bellows','bench','trough']);
 function propFacing(x,y){
   const tx=Math.round(x), ty=Math.round(y);
   for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
@@ -9133,7 +9191,7 @@ document.getElementById('levelMenuBtn').addEventListener('click', async ()=>{ aw
 // Minimap: one pixel block per tile; click or drag to jump
 const MM_SCALE=4;
 const MM_COLORS={ rock:'#2b2118', bedrock:'#14100c', floor:'#4a3b2d', water:'#2f5d8a' };
-const MM_ROOMS={ prison:'#6a6a78', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
+const MM_ROOMS={ prison:'#6a6a78', tavern:'#8a5a30', graveyard:'#4a5a3a', guardpost:'#8a8a98', training:'#c0a060', temple:'#e0dcd0', throne:'#8a4aa8', portal:'#3a8fd6', storage:'#a07a3c', dormitory:'#5c6fa0', library:'#4f8f7a', hatchery:'#c9b45a', arena:'#a04a3a', bridge:'#8a6d3f', smelter:'#b06a3a', forge:'#c0502a' };
 function drawMinimap(){
   if(!minimapOn || !state) return;
   const g=mmCtx;

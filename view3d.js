@@ -228,6 +228,27 @@ const View3D=(()=>{
     const leg=new T.Mesh(new T.CylinderGeometry(0.12,0.16,0.36,10), wood); leg.position.y=0.18; g.add(leg);
     const ring=new T.Mesh(new T.CylinderGeometry(0.47,0.47,0.04,16), glow(0xd4af37)); ring.position.y=0.36; g.add(ring);
     return g; };
+  MODELS.dummy=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a5230','#5a3a20')), straw=lam(null,0xc8a84a);
+    g.add(box(0.5,0.1,0.5,wood,0,0.05,0)); g.add(box(0.12,0.8,0.12,wood,0,0.5,0)); g.add(box(0.7,0.12,0.12,wood,0,0.62,0)); g.add(box(0.26,0.26,0.26,straw,0,0.95,0)); g.add(box(0.3,0.34,0.2,straw,0,0.5,0));
+    return g; };
+  MODELS.altar=()=>{
+    const g=new T.Group(), stone=lam(stoneTex('#8a8680','#5a5650')), cloth=lam(null,0x6a2a8a);
+    g.add(box(0.8,0.5,0.5,stone,0,0.25,-0.1)); g.add(box(0.84,0.06,0.54,stone,0,0.53,-0.1)); g.add(box(0.7,0.02,0.34,cloth,0,0.57,-0.1)); g.add(box(0.06,0.2,0.06,glow(0xf0e6c8),-0.2,0.68,-0.1)); g.add(box(0.06,0.2,0.06,glow(0xf0e6c8),0.2,0.68,-0.1)); g.add(box(0.04,0.05,0.04,glow(0xffd060),-0.2,0.8,-0.1)); g.add(box(0.04,0.05,0.04,glow(0xffd060),0.2,0.8,-0.1));
+    return g; };
+  MODELS.barrel=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#7a5230','#5a3a20')), iron=lam(null,0x575e66);
+    const b=new T.Mesh(new T.CylinderGeometry(0.28,0.28,0.6,12), wood); b.position.y=0.3; g.add(b);
+    [0.12,0.48].forEach(y=>{ const r=new T.Mesh(new T.CylinderGeometry(0.295,0.295,0.04,12), iron); r.position.y=y; g.add(r); });
+    return g; };
+  MODELS.tomb=()=>{
+    const g=new T.Group(), stone=lam(stoneTex('#8d8d96','#5a5a64')), dirt=lam(null,0x4a3a28);
+    g.add(box(0.6,0.06,0.9,dirt,0,0.03,0.05)); g.add(box(0.46,0.62,0.12,stone,0,0.31,-0.32)); g.add(box(0.46,0.12,0.12,stone,0,0.66,-0.32)); g.add(box(0.12,0.34,0.1,stone,0,0.78,-0.32)); g.add(box(0.3,0.1,0.1,stone,0,0.84,-0.32));
+    return g; };
+  MODELS.banner=()=>{
+    const g=new T.Group(), wood=lam(woodTex('#6a4426','#4a2e18')), red=lam(null,0xa02a2a);
+    g.add(box(0.08,1.3,0.08,wood,-0.3,0.65,0)); g.add(box(0.6,0.5,0.04,red,0,1.0,0)); g.add(box(0.12,0.3,0.04,red,-0.18,0.6,0)); g.add(box(0.12,0.3,0.04,red,0.18,0.6,0)); g.add(box(0.16,0.16,0.05,glow(0xd4af37),0,1.0,0.01));
+    return g; };
   function takeModel(key){
     const pool=modelPool[key]||(modelPool[key]=[]); const i=modelUsed[key]||0;
     let m=pool[i]; if(!m){ m=MODELS[key](); spriteGroup.add(m); pool.push(m); }
