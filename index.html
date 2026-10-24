@@ -987,6 +987,15 @@ function moraleLabel(c){
 
 // --- Zielwahl nach Kampfstil ---
 // Kaempft die Kreatur gerade? Rueckgabe true = Tick verbraucht.
+// Ranged attacks need a clear line: a wall between shooter and target stops arrows, bolts and spells (a Bresenham walk over the tiles in between).
+function lineClear(x0,y0,x1,y1){
+  const dx=Math.abs(x1-x0), dy=Math.abs(y1-y0), sx=x0<x1?1:-1, sy=y0<y1?1:-1; let err=dx-dy, x=x0, y=y0;
+  while(true){
+    const e2=2*err; if(e2>-dy){ err-=dy; x+=sx; } if(e2<dx){ err+=dx; y+=sy; }
+    if(x===x1 && y===y1) return true;
+    const t=state.grid[y]&&state.grid[y][x]; if(!t || t.type==='rock' || t.type==='bedrock') return false;
+  }
+}
 function tickCombat(c){
   if(c.unconscious) return tickUnconscious(c);
   tickGrudges(c);
@@ -1016,9 +1025,9 @@ function tickCombat(c){
 
   const t=c.fightTarget;
   const d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y), reach=reachOf(c);
-  if(d>reach){
-    // Heranrücken
-    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach);
+  if(d>reach || (reach>1 && !lineClear(c.x,c.y,t.x,t.y))){
+    // Heranrücken (a shooter also steps up until no wall is in the way)
+    const res=bfsFind(c.x, c.y, (x,y)=> Math.abs(x-t.x)+Math.abs(y-t.y)<=reach && (reach<=1 || lineClear(x,y,t.x,t.y)));
     if(res){ c.path=res.path; c.state='engaging'; stepAlong(c); return true; }
     c.fightTarget=null;
     return false;

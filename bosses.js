@@ -30,7 +30,7 @@ const BOSS_ABILITIES={
 };
 
 function bossFoesNear(c,r){
-  return state.creatures.concat(state.imps).filter(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=r);
+  return state.creatures.concat(state.imps).filter(o=>o!==c && !o.held && !o.unconscious && areHostile(c,o) && Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=r && (r<=1 || lineClear(c.x,c.y,o.x,o.y)));
 }
 // a reinforcement of the boss's side appears on a free floor tile near it
 function bossSpawnNear(c,kind,radius){
