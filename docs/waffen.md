@@ -61,3 +61,21 @@ Die Spanne im Schaden pro Sekunde ist noch etwa 3:1. Abgeglichen wird mit dem vo
 - Der Träger geht in die Schlagdauer ein ((8 / Stärke)^0,4, begrenzt auf 0,6 bis 1,8); der Schaden bleibt wie bisher additiv zur Grundstärke.
 - Duell-Test (Ork gegen Ork, 14 Waffen je Familie, 5 Läufe): alle Familien liegen zwischen 45 % und 58 % Siegen.
 - Noch offen: Fernkampf nach Pfeil/Bogen/Sehne, Hände aus der Masse, Tile-Muster und Würfeln je Feld (Stufe 2).
+
+## Projektile (entschieden, noch nicht gebaut)
+- Ein Schuss ist ein **echtes Objekt**: Es fliegt los, egal ob ein Ziel getroffen wird, und läuft Feld für Feld an einer Linie entlang (Richtung beim Abschuss festgelegt, Zielpunkt = Feld des Ziels).
+- **Pro überflogenem Feld** zwei getrennte Würfe: (1) steht dort ein Feind, würfelt der Treffer (Trefferchance, Ausweichen); (2) bleibt das Geschoss hier liegen oder fliegt es weiter (Abfall mit der Entfernung, abhängig von Pfeilkopf, Bogenzug und Sehne). Wände stoppen es.
+- Ein Gegner kann also **in einen Pfeil hineinlaufen**, und ein Schütze trifft einen Läufer nicht automatisch. Das ist die Umkehrung des Ausweichens vor langsamen Hieben und trennt Bogen mechanisch vom "besseren Speer".
+- Kein Eigenbeschuss: Verbündete werden überflogen.
+
+## Zwei Waffen (entschieden, noch nicht gebaut)
+- Einhandwaffen passen in jede Hand: **zwei Einhandwaffen = Waffe in beiden Händen statt Schild** (Stil des Diebes). Zweihandwaffen belegen beide Plätze wie bisher.
+- Die Hände schlagen **abwechselnd**; jeder Schlag benutzt die Werte (Schaden, Schlagdauer, Reichweite, Muster) der Waffe in der gerade schlagenden Hand. Das ist der Grund, zwei verschiedene Waffen zu mischen (Dolch und Axt).
+- Die Nebenhand ist etwas schwächer (Vorschlag −20 % Schaden), Diebe und andere Artisten ohne Malus (Passiv). Ein Schild bringt Verteidigung, die zweite Waffe mehr Angriffe: eine echte Wahl.
+- Technik: `slotsOfItem` kennt für Einhandwaffen 'rh' und 'lh'; `wornItems` belegt zuerst die rechte, dann die linke Hand; die Stärke aus der Ausrüstung zählt nur für die Waffe des laufenden Schlags. Im Sprite sitzt die zweite Waffe auf der Schildseite, in der Ich-Ansicht schwingt sie in der linken Hand.
+- Vorlieben der Arten (`GEAR_PREFS`) entscheiden, ob eine Kreatur Schild oder zweite Waffe nimmt.
+
+## Reihenfolge (Vorschlag)
+1. Ein gemeinsamer Mechanismus "Wirkung auf Feldern über die Zeit" (Stufe 2): Nahkampfmuster werden zum Schlagzeitpunkt aufgelöst, Geschosse wandern Feld für Feld.
+2. Projektile und Muster darauf, Würfeln je Feld.
+3. Zwei Waffen (klein, hängt an den Händen aus der Masse und am Wechselschlag).
