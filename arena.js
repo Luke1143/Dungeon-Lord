@@ -198,7 +198,7 @@ function arenaRenderPanel(){
   const st=state, box=document.getElementById('arenaPanel'); if(!st||!st.arena||!box) return;
   const names=(arenaLiveSetup||arenaSetup).teams.map(t=>t.name);
   const row=c=>{ const pct=Math.max(0,Math.round(100*c.hp/Math.max(1,c.maxHp))), out=c.unconscious||c.removed||c.dead;
-    return `<div class="arRow${out?' out':''}"><span class="arIc">${creatureEmoji(c)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
+    return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
   const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
   const spells=`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
@@ -206,6 +206,7 @@ function arenaRenderPanel(){
   const html=`<div class="arInfo">Tick ${st.tickCount}</div>${spells}${cols}`;
   if(html!==arenaPanelSig && !(box.contains(document.activeElement) && /SELECT|INPUT/.test(document.activeElement.tagName))){ arenaPanelSig=html; box.innerHTML=html; box.querySelectorAll('button[data-spell]').forEach(b=>b.addEventListener('click',()=>arenaSetSpell(b.dataset.spell)));
     const sk=box.querySelector('[data-sk]'); if(sk){ sk.addEventListener('change',()=>{ arenaSummon.kind=sk.value; }); box.querySelector('[data-sl]').addEventListener('change',e=>{ arenaSummon.level=+e.target.value; }); box.querySelector('[data-st]').addEventListener('change',e=>{ arenaSummon.team=+e.target.value; }); }
+    box.querySelectorAll('.arRow').forEach(r=>r.addEventListener('pointerdown',e=>{ if(e.target.closest('button')) return; const c=st.creatures[+r.dataset.row]; if(c) combatBarClick(c); }));
     box.querySelectorAll('button[data-pos]').forEach(b=>b.addEventListener('click',()=>{ const c=st.creatures[+b.dataset.pos]; if(c && !c.unconscious){ startPossession(c); } })); }
 }
 

@@ -35,6 +35,8 @@
   body.fp #minimap{ display:none; }
   #arenaPanel{ display:none; font-size:12px; }
   body.arenaMode #arenaPanel{ display:block; }
+  .spIcon{ image-rendering:pixelated; vertical-align:middle; } #combatBar .ic{ display:flex; align-items:center; justify-content:center; height:36px; } #combatBar .ic.ko img{ transform:rotate(-90deg); opacity:.7; }
+  .arRow{ cursor:pointer; } .arRow:hover{ background:rgba(255,255,255,.08); }
   body.arenaMode .statGrid, body.arenaMode #status, body.arenaMode .panel .dangerBtn, body.arenaMode #warHint, body.arenaMode #goalsBox, body.arenaMode #modeToggle, body.arenaMode .toggleRow, body.arenaMode .matPreview, body.arenaMode #resetBtn, body.arenaMode .menuRow, body.arenaMode #menu-rooms, body.arenaMode #menu-creatures, body.arenaMode #summonBtn, body.arenaMode #minimap{ display:none !important; }
   .arSpells{ display:flex; flex-wrap:wrap; gap:4px; margin:8px 0; } .arSpells button{ padding:3px 6px; } .arSpells button.on{ background:#8a6a2a; } .arSummon{ font-size:11px; margin-bottom:6px; } .arSummon select,.arSummon input{ background:#2a2018; color:#f0e2c0; border:1px solid #6a5233; border-radius:3px; }
   .arResult{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(10,7,5,.55); z-index:20; }
@@ -629,20 +631,20 @@ const SPECIES={
   paladin: { label:'Paladin',      category:'hero',    hp:50, strength:6,  defense:30, dex:6,  dexGrowth:0.02, speed:0.8, tempo:0.8,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'⚜️', passive:'Geweiht — heilt Verbündete in der Nähe' },
-  dwarf:   { label:'Zwerg',        category:'hero',    hp:36, strength:5,  defense:25, dex:6,  dexGrowth:0.02, speed:0.8, tempo:0.8, size:0.86,
+  dwarf:   { label:'Zwerg',        category:'hero',    hp:36, strength:5,  defense:25, dex:6,  dexGrowth:0.02, speed:0.8, tempo:0.8,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', icon:'⛏️', passive:'Zäh wie ein Berg' },
-  giant:   { label:'Riese',        category:'hero',    hp:90, strength:9,  defense:10, dex:2,  dexGrowth:0.01, speed:0.6, tempo:0.6, size:1.45,
+  giant:   { label:'Riese',        category:'hero',    hp:90, strength:9,  defense:10, dex:2,  dexGrowth:0.01, speed:0.6, tempo:0.6,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', icon:'🗿', passive:'Ein Hieb wirft Gegner zurück' },
   // ----- more of the Horde (evil side), drawn to the dungeon by what you build (see LURES) -----
   ork:     { label:'Ork',          category:'humanoid', hp:34, strength:4, defense:8,  dex:8,  dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Orks',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:60, style:'fighter', icon:'👺',
              passive:'Raufbold — liebt die Arena, hasst Schreibkram' },
-  goblin:  { label:'Goblin',       category:'humanoid', hp:12, strength:2, defense:0,  dex:22, dexGrowth:0.05, speed:1.4, tempo:1.4, size:0.78, plural:'Goblins',
+  goblin:  { label:'Goblin',       category:'humanoid', hp:12, strength:2, defense:0,  dex:22, dexGrowth:0.05, speed:1.4, tempo:1.4, plural:'Goblins',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:2, loyalty:45, style:'assassin', icon:'👹',
              passive:'Kleiner Schlitzohr — liebt Handwerk und Gesellschaft, feige im Kampf' },
-  troll:   { label:'Troll',        category:'humanoid', hp:60, strength:7, defense:15, dex:4,  dexGrowth:0.02, speed:0.7, tempo:0.7, size:1.3, plural:'Trolle',
+  troll:   { label:'Troll',        category:'humanoid', hp:60, strength:7, defense:15, dex:4,  dexGrowth:0.02, speed:0.7, tempo:0.7, plural:'Trolle',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:65, style:'fighter', icon:'🧌',
              passive:'Regeneriert langsam, liebt Schmiede und Kampf' },
   skeleton:{ label:'Skelett',      category:'undead',   hp:20, strength:3, defense:0,  dex:14, dexGrowth:0.04, speed:1.0, tempo:1.0, plural:'Skelette',
@@ -663,22 +665,22 @@ const SPECIES={
   dryad:   { label:'Dryade',       category:'hero',    hp:22, strength:3,  defense:4,  dex:18, dexGrowth:0.04, speed:1.0, tempo:1.0,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🌿', passive:'Heilt Verbündete in der Nähe, wirft Dornenblitze' },
-  golem:   { label:'Golem',        category:'hero',    hp:80, strength:7,  defense:35, dex:1,  dexGrowth:0.01, speed:0.5, tempo:0.5, size:1.5,
+  golem:   { label:'Golem',        category:'hero',    hp:80, strength:7,  defense:35, dex:1,  dexGrowth:0.01, speed:0.5, tempo:0.5,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', icon:'🪨', passive:'Fast unverwundbar, aber sehr langsam' },
-  lizard:  { label:'Echse',        category:'beast',    hp:28, strength:4, defense:12, dex:12, dexGrowth:0.04, speed:1.2, tempo:1.1, size:0.95, plural:'Echsen',
+  lizard:  { label:'Echse',        category:'beast',    hp:28, strength:4, defense:12, dex:12, dexGrowth:0.04, speed:1.2, tempo:1.1, plural:'Echsen',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'fighter', icon:'🦎',
              passive:'Liebt feuchte Gänge, frisst Hühner, kommt wo Wasser im Dungeon ist' },
-  brood:   { label:'Dämonenbrut',  category:'beast',    hp:14, strength:3, defense:3,  dex:20, dexGrowth:0.05, speed:1.6, tempo:1.5, size:0.7, plural:'Dämonenbrut',
+  brood:   { label:'Dämonenbrut',  category:'beast',    hp:14, strength:3, defense:3,  dex:20, dexGrowth:0.05, speed:1.6, tempo:1.5, plural:'Dämonenbrut',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'👿',
              passive:'Kommt im Rudel, vom Feuer der Lava gerufen' },
-  darkknight:{ label:'Dunkler Ritter', category:'humanoid', hp:70, strength:8, defense:28, dex:6, dexGrowth:0.02, speed:0.8, tempo:0.8, size:1.1, plural:'Dunkle Ritter',
+  darkknight:{ label:'Dunkler Ritter', category:'humanoid', hp:70, strength:8, defense:28, dex:6, dexGrowth:0.02, speed:0.8, tempo:0.8, plural:'Dunkle Ritter',
              needsFood:true,  avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:75, style:'fighter', icon:'🛡️',
              passive:'Schwer gepanzert, folgt dem Ruf von Wachposten und Schmiede' },
   succubus:{ label:'Succubus',     category:'humanoid', hp:30, strength:4, defense:4, dex:24, dexGrowth:0.05, speed:1.1, tempo:1.1, plural:'Succubi',
              needsFood:true,  avoidsWater:false, intellectual:true, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:50, style:'support', icon:'💋',
              passive:'Verzaubert Helden für kurze Zeit; Taverne und Tempel locken sie' },
-  demon:   { label:'Dämon',        category:'humanoid', hp:90, strength:10, defense:16, dex:8, dexGrowth:0.03, speed:0.9, tempo:0.9, size:1.35, plural:'Dämonen', noWork:true,
+  demon:   { label:'Dämon',        category:'humanoid', hp:90, strength:10, defense:16, dex:8, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Dämonen', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:60, style:'fighter', icon:'😈',
              passive:'Speit Feuer, kommt zu Lava und Tempel, arbeitet nie' },
   banshee: { label:'Banshee',      category:'undead',   hp:24, strength:3, defense:0, dex:30, dexGrowth:0.04, speed:1.1, tempo:1.1, plural:'Banshees', noWork:true,
@@ -690,43 +692,43 @@ const SPECIES={
   ghost:   { label:'Geist',        category:'undead',   hp:20, strength:3, defense:0, dex:40, dexGrowth:0.02, speed:1.4, tempo:1.3, plural:'Geister', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'👻',
              passive:'Schwer zu treffen, schwächt Gegner mit kalter Hand' },
-  werewolf:{ label:'Werwolf',      category:'undead',   hp:52, strength:7, defense:6, dex:18, dexGrowth:0.04, speed:1.4, tempo:1.3, size:1.15, plural:'Werwölfe',
+  werewolf:{ label:'Werwolf',      category:'undead',   hp:52, strength:7, defense:6, dex:18, dexGrowth:0.04, speed:1.4, tempo:1.3, plural:'Werwölfe',
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100, style:'assassin', icon:'🐺',
              passive:'Heilt sich langsam, vom Geruch vieler Hühner gelockt' },
   lich:    { label:'Lich',         category:'undead',   hp:72, strength:7, defense:12, dex:14, dexGrowth:0.03, speed:0.9, tempo:0.9, plural:'Lichs', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:true, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100, style:'support', icon:'🧙‍♂️',
              passive:'Beschwört Skelette; Bibliothek, Friedhof und Tempel locken ihn' },
-  dragon:  { label:'Drache',       category:'humanoid', hp:220, strength:14, defense:30, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.8, plural:'Drachen', noWork:true,
+  dragon:  { label:'Drache',       category:'humanoid', hp:220, strength:14, defense:30, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, plural:'Drachen', noWork:true,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:70, style:'fighter', icon:'🐉',
              passive:'Atmet Feuer; ein großer Goldhort lockt ihn an' },
-  yule:    { label:'Yule',         category:'hero',    hp:18, strength:3, defense:2, dex:34, dexGrowth:0.05, speed:1.6, tempo:1.4, size:0.85,
+  yule:    { label:'Yule',         category:'hero',    hp:18, strength:3, defense:2, dex:34, dexGrowth:0.05, speed:1.6, tempo:1.4,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'assassin', icon:'🐈‍⬛', passive:'Stiehlt Gold aus eurer Schatzkammer, gibt es her, wenn er fällt' },
-  fairy:   { label:'Fee',          category:'hero',    hp:14, strength:2, defense:0, dex:38, dexGrowth:0.05, speed:1.5, tempo:1.4, size:0.7,
+  fairy:   { label:'Fee',          category:'hero',    hp:14, strength:2, defense:0, dex:38, dexGrowth:0.05, speed:1.5, tempo:1.4,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🧚', passive:'Heilt Verbündete in der Nähe' },
-  griffin: { label:'Greif',        category:'hero',    hp:52, strength:7, defense:8, dex:20, dexGrowth:0.04, speed:1.7, tempo:1.5, size:1.4,
+  griffin: { label:'Greif',        category:'hero',    hp:52, strength:7, defense:8, dex:20, dexGrowth:0.04, speed:1.7, tempo:1.5,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'assassin', icon:'🦅', passive:'Stürzt sich aus der Ferne auf einen Gegner' },
-  unicorn: { label:'Einhorn',      category:'hero',    hp:55, strength:6, defense:10, dex:28, dexGrowth:0.04, speed:1.4, tempo:1.3, size:1.2,
+  unicorn: { label:'Einhorn',      category:'hero',    hp:55, strength:6, defense:10, dex:28, dexGrowth:0.04, speed:1.4, tempo:1.3,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🦄', passive:'Heilt und weckt Gefallene' },
-  kitsune: { label:'Kitsune',      category:'hero',    hp:28, strength:4, defense:3, dex:40, dexGrowth:0.03, speed:1.4, tempo:1.3, size:0.95,
+  kitsune: { label:'Kitsune',      category:'hero',    hp:28, strength:4, defense:3, dex:40, dexGrowth:0.03, speed:1.4, tempo:1.3,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'assassin', icon:'🦊', passive:'Verhext Gegner, sie schlagen schwächer zu' },
-  wisp:    { label:'Irrlicht',     category:'hero',    hp:10, strength:2, defense:0, dex:40, dexGrowth:0.03, speed:1.8, tempo:1.5, size:0.7,
+  wisp:    { label:'Irrlicht',     category:'hero',    hp:10, strength:2, defense:0, dex:40, dexGrowth:0.03, speed:1.8, tempo:1.5,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'🔮', passive:'Treibt Verbündete in der Nähe an' },
-  angel:   { label:'Engel',        category:'hero',    hp:90, strength:10, defense:20, dex:16, dexGrowth:0.03, speed:1.2, tempo:1.2, size:1.4,
+  angel:   { label:'Engel',        category:'hero',    hp:90, strength:10, defense:20, dex:16, dexGrowth:0.03, speed:1.2, tempo:1.2,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'👼', passive:'Heilt Verbündete und richtet mit heiligem Licht' },
-  phoenix: { label:'Phönix',       category:'hero',    hp:50, strength:7, defense:5, dex:24, dexGrowth:0.04, speed:1.6, tempo:1.4, size:1.1,
+  phoenix: { label:'Phönix',       category:'hero',    hp:50, strength:7, defense:5, dex:24, dexGrowth:0.04, speed:1.6, tempo:1.4,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', icon:'🔥', passive:'Steigt einmal aus der Asche wieder auf' },
-  guardian:{ label:'Schutzengel',  category:'hero',    hp:40, strength:3, defense:10, dex:22, dexGrowth:0.03, speed:1.1, tempo:1.1, size:1.1,
+  guardian:{ label:'Schutzengel',  category:'hero',    hp:40, strength:3, defense:10, dex:22, dexGrowth:0.03, speed:1.1, tempo:1.1,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'support', icon:'😇', passive:'Rettet einmal einen Verbündeten vor dem Tod' },
-  herakles:{ label:'Herakles', category:'boss', hp:140, strength:11, defense:22, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9, size:1.3,
+  herakles:{ label:'Herakles', category:'boss', hp:140, strength:11, defense:22, dex:8, dexGrowth:0.02, speed:0.9, tempo:0.9,
              needsFood:false, avoidsWater:false, intellectual:false, canFight:true, usesEquipment:true, inventoryBase:3, loyalty:100,
              style:'fighter', icon:'🦁', passive:'Im Löwenfell fast unverwundbar, wird bei halbem Leben zornig und ruft Verstärkung' },
   oberon:  { label:'Oberon', category:'boss', hp:70, strength:7, defense:10, dex:24, dexGrowth:0.03, speed:1.2, tempo:1.1,
@@ -1958,6 +1960,12 @@ function restoreStats(obj, data){
   return obj;
 }
 
+// Three sizes (small, normal, large): imps and flies are small, people and skeletons normal, dragons, giants and trolls large.
+const SIZE_SCALE={ small:0.7, normal:1, large:1.4 };
+const SIZE_CLASS={ imp:'small', fly:'small', goblin:'small', brood:'small', fairy:'small', wisp:'small', yule:'small',
+  dragon:'large', giant:'large', troll:'large', golem:'large', demon:'large', griffin:'large', unicorn:'large', herakles:'large' };
+const sizeClassOf=kind=> SIZE_CLASS[kind]||'normal';
+const creatureScale=c=> SIZE_SCALE[sizeClassOf(c.kind||'imp')];
 // Passives (godhand Teil 20): exceptions to the tile rules, named by flags that tileMoveCost reads. `flies` also lets a hero march over water and lava.
 Object.assign(SPECIES.troll,   { ignoresCrowding:true, passive:'Regeneriert langsam, schiebt sich durch Gedränge, liebt Schmiede und Kampf' });
 Object.assign(SPECIES.golem,   { immuneToSlow:true, passive:'Unbeirrbar — nichts bremst ihn, aber er ist von Natur aus langsam' });
@@ -5644,6 +5652,17 @@ function equipLook(c){
   return any?e:null;
 }
 
+// A creature as a small picture (for lists and the combat bar): its sprite, standing, facing left; cached per look. null when it has no sprite.
+const ICON_CACHE=new Map();
+function creatureIconURL(c){
+  if(typeof ZOO==='undefined') return null;
+  const baseKey=c.kind||'imp', key=(c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=ZOO[key]; if(!z) return null;
+  const extra=key==='imp'?null:(z.humanoid?equipLook(c):undefined), id=key+'|'+JSON.stringify(extra||null);
+  if(ICON_CACHE.has(id)) return ICON_CACHE.get(id);
+  const cv=spriteCanvas(key,0,false,false,extra), url=cv.toDataURL(); ICON_CACHE.set(id,url); return url;
+}
+function creatureIconHTML(c,px){ const u=creatureIconURL(c); return u?`<img class="spIcon" src="${u}" width="${px}" height="${px}" alt="">`:escapeHtmlText(creatureEmoji(c)); }
+function escapeHtmlText(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 // Imps are drawn smaller than the other creatures (design decision); everything else keeps the full tile scale.
 const IMP_SCALE=0.62;
 // white silhouette of a sprite canvas (for the hit flash)
@@ -5665,7 +5684,7 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?Object.assign({},equipLook(c),{ weapon:undefined }):equipLook(c)):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  const sc=key==='imp'?IMP_SCALE:(c.isBoss?1.25:((SPECIES[c.kind]||{}).size||1));
+  const sc=creatureScale(c);
   const fl=(opts&&opts.flash)||0;
   const lift=(opts&&opts.lift)||0;
   if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
@@ -6361,12 +6380,16 @@ function combatParticipants(){
   return [...fighting];
 }
 
+let combatBarSig='';
 function renderCombatBar(){
   const el=document.getElementById('combatBar');
   if(!el) return;
   const parts=combatParticipants();
-  if(!parts.length){ el.hidden=true; el.innerHTML=''; return; }
-
+  if(!parts.length){ el.hidden=true; el.innerHTML=''; combatBarSig=''; return; }
+  // rebuild only when something visible changed: a bar rebuilt every tick would swallow the clicks on its icons
+  const sig=parts.map(c=>(c.id||c.kind)+':'+c.kind+':'+Math.round(20*c.hp/Math.max(1,statMaxHp(c)))+(c.unconscious?'u':'')+(factionOf(c))).join(',');
+  if(sig===combatBarSig && !el.hidden) return;
+  combatBarSig=sig;
   el.hidden=false;
   el.innerHTML='';
   const mine=parts.filter(c=> factionOf(c)==='evil');
@@ -6382,7 +6405,7 @@ function renderCombatBar(){
       f.title=`${actorLabel(c)} — ${Math.round(c.hp)}/${statMaxHp(c)}`;
       const ic=document.createElement('div');
       ic.className='ic';
-      ic.textContent = c.unconscious ? '💫' : creatureEmoji(c);
+      ic.innerHTML=creatureIconHTML(c,34); if(c.unconscious) ic.classList.add('ko');
       const hp=document.createElement('div');
       hp.className='hp';
       const bar=document.createElement('i');
@@ -6390,7 +6413,7 @@ function renderCombatBar(){
       hp.appendChild(bar);
       f.appendChild(ic); f.appendChild(hp);
       // Das Symbol ist ein Ziel wie jede Kachel
-      f.addEventListener('click', ()=> combatBarClick(c));
+      f.addEventListener('pointerdown', ()=> combatBarClick(c));
       box.appendChild(f);
     });
     return box;
@@ -6406,9 +6429,10 @@ function renderCombatBar(){
 
 // Ein Klick auf ein Kampfsymbol verhaelt sich wie ein Klick auf die Kachel der Kreatur
 function combatBarClick(c){
+  if(state.arena && arenaSpell){ arenaCast(c.x,c.y); return; }       // arena.js: a god spell aimed at the icon
   if(pickMode){ handlePickClick(c.x, c.y); return; }
   if(possessMode){ startPossession(c); return; }
-  jumpCameraTo(c.x, c.y);
+  jumpCameraTo(c.x, c.y);       // the icon centres the camera on its creature at once
   selectCreature({ kind:c.kind, obj:c });
   draw();
 }
