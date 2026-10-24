@@ -197,7 +197,7 @@ const CREATURES={
     if(e.shield&&SHIELDS[e.shield]){ const sy=T.y0+1; SHIELDS[e.shield].forEach(([x,y,c])=>set(T.x0-5+x,sy+y,c)); }
     const wp=e.weapon&&weaponShape(e.weapon,e.wparts);
     if(wp){ const ox=T.x1+2-wp.grip[0], oy=T.y0+3-wp.grip[1];
-      wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N&&f.tag[Y][X]==='') f.g[Y][X]=c; }); }
+      wp.px.forEach(([x,y,c])=>{ const X=ox+x, Y=oy+y; if(X>=0&&X<N&&Y>=0&&Y<N) f.g[Y][X]=c; }); }   // a weapon may overlap the body
   }
   // held tools as standalone pixel art (for the swing animations): the weapon alone, with its grip point
   globalThis.TOOLGEN={ weapon(name,parts){
