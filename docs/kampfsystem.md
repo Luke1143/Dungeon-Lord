@@ -33,3 +33,10 @@ Die Art ergibt sich aus der **Kopfform** der Waffe (die Teile sind schon da), ni
 - **Ludus**: Ausgeschlafenheit (`energy`) sinkt mit jedem Kampf (−12) und Training (−15), Schlafen setzt sie auf 100, ein Huhn gibt +10; sie bestimmt, wie schnell die Ausdauer im Kampf zurückkommt.
 - Anzeige: Ausdauer als gelber Streifen unter dem Lebensbalken in der Arena-Liste, die blaue Kugel der Ich-Ansicht zeigt jetzt die Ausdauer (grün).
 - **Befund aus dem Test** (60 Duelle mit gemischten Arten): Der Krabbenlauf (Flüchtender mit Feind in zwei Feldern Nähe) ist um etwa 30 % seltener geworden; ein schnellerer Flüchtender (Echse, Werwolf) bleibt auch erschöpft schneller als sein Verfolger und wird erst durch die Aufgabe nach 60 Ticks Flucht beendet. Dafür sind die Zustände der Stufe 2 gedacht (Verlangsamung, Blutung).
+
+## Idee: Erschöpfungsschaden (Schlaf) als vierte Schadensart
+- Eine Schadensart, die **Ausgeschlafenheit (`energy`)** statt Leben abzieht. Fällt die Ausgeschlafenheit vor dem Leben auf 0, **schläft die Kreatur ein** (bewusstlos, der bestehende Zustand `unconscious`) und stirbt nicht. Nur der Verlust von Leben kann töten; Erschöpfung ist immer der gewaltlose Weg. Das passt zu Gefangenen, Bekehren, Ludus ("wer ohnmächtig wird, überlebt") und "Losing is fun".
+- **Umrechnung**: Der Schaden zählt anteilig (Schaden ÷ Maximalleben × 100), damit ein Hieb gleich schwer wiegt, egal ob er Leben oder Schlaf kostet. Das gilt für Kreaturen mit Ausgeschlafenheit; Untote, Golems und Geister sind immun (sie schlafen nicht).
+- **Quellen**: Schlafstaub (Fee, Dryade), Klagen der Banshee, Kuss der Succubus, ein Schlafzauber, vielleicht Knüppel und Netz als gewaltlose Waffen. Gegenmittel: ein Huhn gibt etwas zurück, das Bett alles.
+- **Wirkung auf Ausdauer**: Weil die Ausgeschlafenheit die Erholung der Ausdauer steuert, wird ein müdes Opfer auch schneller erschöpft: Schlafschaden hat eine eingebaute Verstärkung, aber nur bis zum Einschlafen.
+- Anzeige: zweiter, blauer Balken unter dem Lebensbalken und ein "Z" über dem Kopf kurz vor dem Einschlafen.
