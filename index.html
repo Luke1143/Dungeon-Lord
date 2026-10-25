@@ -10189,7 +10189,7 @@ document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
 document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
 document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
 document.getElementById('view3dBtn').addEventListener('click', ()=> setView3d(!view3dOn));
-function setPostLevel(n){ n=((n%3)+3)%3; View3D.setPost(n); const b=document.getElementById('postBtn'); b.classList.toggle('active',n>0); b.textContent=['🌫','🌫','🌫'][n]; b.title=['Bildeffekt: aus','Bildeffekt: weich','Bildeffekt: dunstig'][n]+' (F)'; b.dataset.level=n; try{ localStorage.setItem('dungeon-lord-post',String(n)); }catch(e){} }
+function setPostLevel(n){ n=((n%4)+4)%4; View3D.setPost(n); const b=document.getElementById('postBtn'); b.classList.toggle('active',n>0); b.textContent=['🌫','🌫','📺','📺'][n]; b.title=['Bildeffekt: aus','Bildeffekt: weich','Bildeffekt: Röhrenmonitor','Bildeffekt: Röhrenmonitor, stark'][n]+' (F)'; b.dataset.level=n; try{ localStorage.setItem('dungeon-lord-post',String(n)); }catch(e){} }
 document.getElementById('postBtn').addEventListener('click', ()=> setPostLevel((View3D.post||0)+1));
 { let n=1; try{ const s=localStorage.getItem('dungeon-lord-post'); if(s!==null) n=+s; }catch(e){} View3D.setPost(n); document.getElementById('postBtn').classList.toggle('active',n>0); document.getElementById('postBtn').dataset.level=n; }
 View3D.onLost=()=>{ reportError('3D', new Error('Die Grafikkarte hat den 3D-Kontext verloren, ich wechsle zur 2D-Ansicht')); if(possessed) endPossession(); setView3d(false); };

@@ -11,3 +11,5 @@ Die Welt füllt das ganze Fenster, links liegt das Menü (`ui-panel.js` und das 
 
 ## Bildeffekt in 3D
 Über das 3D-Bild der Level-Ansicht legt `view3d.js` einen kleinen Nachbearbeitungsschritt: Das Bild wird zuerst in eine Textur gerendert, dann weichzeichnet ein Shader es leicht (die harten Pixelkanten der Sprites verschmelzen mit der Welt), helle Stellen leuchten etwas nach, die Ecken werden dunkler. Stufen: aus, weich, dunstig (Knopf 🌫 oder Taste F, wird gemerkt). Die Stufe „weich" ist voreingestellt.
+
+Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das Bild wird klein gerendert, die Farbe verschmiert seitlich wie bei Composite-Video (Farbe breiter als Helligkeit), Scanlines lassen dunkle Lücken zwischen den Zeilen, eine feine Maske aus Rot-Grün-Blau-Streifen liegt darüber, das Glas wölbt sich leicht; Stufe 3 reduziert zusätzlich die Farben mit geordnetem Dithering.
