@@ -108,3 +108,11 @@ Die Zauber der Götterhand aus dem Hauptspiel (Heilen, Wecken, Fluch, Eile, Feue
 Späte Arten sind mit Absicht stärker (Budget, `docs/budget.md`) und seltener unter den Gegnern und in der Welt: Episch etwa ein Fünftel so oft wie Gewöhnlich, Legendär etwa ein Zwanzigstel, Lich und Drache fast nie (`budget.js`, `creatureRarity`).
 ## Seiten
 Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Seed), damit Karten ohne Gleichgewicht nicht immer dieselbe Seite begünstigen.
+
+## Pflichtkämpfe und Kartenmodus (neu)
+
+- **Wochenkampf:** Alle 5 Tage (erstmals Tag 8) ist ein Kampf Pflicht. Er ist ein normaler Kampf (kein Tod-Zwang) und bringt Gold, aber keinen Fortschritt in der Rangliste. Wer 3 Tage nicht kämpft, muss ebenfalls antreten.
+- **Rangliste (klassischer Modus):** Die Turnierhalle hat einen Knopf „Herausfordern": freiwillig, auf Leben und Tod, mit den alten Belohnungen (Gabe, Ansehen, Ruhm, Titel).
+- **Kartenmodus (`ludus-map.js`):** In der Startmaske wählbar, sobald freigeschaltet (Debug-Schalter „alle Kreaturen", 8 Siege in einem Lauf oder ein Titel). Die Welt kommt aus `buildWorld` wie in der Kampagne (aus dem Lauf-Seed neu gebaut, nicht gespeichert). Jede Reise zu einer Nachbarstadt kostet einen Tag; Wegepunkte mit Ereignis-Symbol lösen ein Ereignis oder einen Fund aus.
+- **Turnier einer Stadt:** 2 bis 4 Runden an aufeinanderfolgenden Tagen (Team wird über Nacht gepflegt), jede Runde auf Leben und Tod. Sieg = weiter, Niederlage = raus aus dem Turnier. Das Finale gibt es gegen eine Figur der Rangliste (je weiter rechts die Stadt, desto höher der Platz; die Hauptstadt hat den Meister). Finalsieg: Stadt erobert (Gold, Ansehen, Ruhm, Gabe). Hauptstadt erobert = Lauf gewonnen.
+- Schwierigkeit: wie bei allen Kämpfen per Probekämpfen an das Team angepasst; Zielquote sinkt mit der Tiefe (`ludusCupBout`). Offen: Feinabstimmung des Kartenmodus (Bot erobert bisher 1 bis 3 Städte).
