@@ -116,3 +116,9 @@ Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Se
 - **Kartenmodus (`ludus-map.js`):** In der Startmaske wählbar, sobald freigeschaltet (Debug-Schalter „alle Kreaturen", 8 Siege in einem Lauf oder ein Titel). Die Welt kommt aus `buildWorld` wie in der Kampagne (aus dem Lauf-Seed neu gebaut, nicht gespeichert). Jede Reise zu einer Nachbarstadt kostet einen Tag; Wegepunkte mit Ereignis-Symbol lösen ein Ereignis oder einen Fund aus.
 - **Turnier einer Stadt:** 2 bis 4 Runden an aufeinanderfolgenden Tagen (Team wird über Nacht gepflegt), jede Runde auf Leben und Tod. Sieg = weiter, Niederlage = raus aus dem Turnier. Das Finale gibt es gegen eine Figur der Rangliste (je weiter rechts die Stadt, desto höher der Platz; die Hauptstadt hat den Meister). Finalsieg: Stadt erobert (Gold, Ansehen, Ruhm, Gabe). Hauptstadt erobert = Lauf gewonnen.
 - Schwierigkeit: wie bei allen Kämpfen per Probekämpfen an das Team angepasst; Zielquote sinkt mit der Tiefe (`ludusCupBout`). Offen: Feinabstimmung des Kartenmodus (Bot erobert bisher 1 bis 3 Städte).
+
+## Geister: frühere Teams als Rivalen (`ludus-ghosts.js`)
+- Endet ein Lauf durch den Tod des Teams (oder durch die Eroberung der Hauptstadt), wird das ganze Team (Kreaturen, Stufen, Ausrüstung, Gaben, Fähigkeiten) in `ludusMeta.ghosts` gespeichert (höchstens 10, die ältesten fallen heraus).
+- In jedem späteren Lauf ersetzt ein Geist die Ranglistenfigur seiner Stärke (durchschnittliche Stufe → Platz; belegte Plätze rücken zum nächsten freien). Er ist in der Turnierhalle als „früheres Team" markiert.
+- Der Kampf ist Team gegen Team, mit den gespeicherten Werten und ohne Anpassung an das eigene Team (im Kartenmodus als Finale, im klassischen Modus als Herausforderung).
+- Besiegt: Das Team tritt ab (verschwindet aus der Liste), das beste Ausrüstungsstück fällt dem Sieger zu, dazu Ruhm und Ansehen.

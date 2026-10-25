@@ -104,7 +104,7 @@ function ludusLog(t){ ludus.log.unshift(`Tag ${ludus.day}: ${t}`); ludus.log=lud
 const LUDUS_DIFF={ easy:{ label:'Leicht', target:0.8, mult:0.6 }, fair:{ label:'Fair', target:0.5, mult:1 }, hard:{ label:'Schwer', target:0.3, mult:1.7 } };
 const SCOUT_RUNS=4, LUDUS_XP_MULT=3.5;       // the campaign's levels come slowly; a run is short, so a fight is worth three and a half times as much
 const LUDUS_TOUR_EVERY=5, LUDUS_IDLE_LIMIT=3;           // a tournament round every 7 days; whoever does not fight for 4 days is thrown into the pit
-function ludusOppGroup(o){ const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
+function ludusOppGroup(o){ if(o.ghost) return ludusFighterGroup(o.member); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
 const ludusFoes=o=>o.foes||[o];
 const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.variant]||'Duell');
 function ludusMatchSetup(o,salt){
@@ -210,6 +210,7 @@ function ludusAdvanceDay(){
 }
 // a bout against a figure of the ladder: to the death, a lesser kind of the same name stands in when the figure is too mighty for the team
 function ludusFigureBout(rival,beaten,reward,target){
+  if(rival.ghost) return ludusGhostBout(rival,reward);
   let rk=rival.kind; if(creatureWorth(rk)>ludusUnitWorth()*2){ const rr=ludusRng('rk'+rival.rank+':'+beaten), ks=ludusFoeKinds(); rk=ks[Math.floor(rr()*ks.length)]; }
   const rv=Object.assign({},rival,{ kind:rk, level:ludusMatchLevel(rk,0) }), esc=Array.from({ length:ludus.team.length-1 },(_,k)=>{ const r=ludusRng('esc'+beaten+':'+k), ks=ludusFoeKinds(), kk=ks[Math.floor(r()*ks.length)]; return { kind:kk, level:Math.max(1,ludusMatchLevel(kk,-2)), tier:rival.tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] }; });
   const o=Object.assign({},rv,{ variant:'duel', foes:[rv].concat(esc), title:`${rival.name} (${SPECIES[rk].label})`, reward:Math.round(reward*ludusHallMult()), diff:'hard', deathFit:true });
@@ -248,6 +249,7 @@ function ludusResolve(st){
   if(!alive.length){
     ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; text=`${fell} ${team.length>1?'sind':'ist'} in der Grube gestorben. Der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
     ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day);
+    ludusSaveGhost(team,o.title||o.name,false);
   } else {
     const lead=alive[0], who=alive.length>1?'Dein Team':lead.m.name, xp=Math.round(LUDUS_XP_MULT*(won ? 18+8*o.level+6*(foes.length-1) : 6+2*o.level));
     const prev=state; state=st;
@@ -264,6 +266,7 @@ function ludusResolve(st){
       head='Sieg'; text=`${who} gewinnt gegen ${o.title||o.name}. +${o.reward} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}.`;
       ludusLog(`Sieg über ${o.title||o.name}`);
       if(Math.random()<((o.tour||o.cup)?0.4:0.15)){ const sid=ludusGiveScroll(); text+=` Beute: Schriftrolle ${ludusScrollName(sid)}.`; }
+      if(o.ghostId) text+=ludusGhostRetire(o);
       if(o.cup) text+=ludusCupWon(o);
       if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; ludusGainRenown(Math.round((o.rank===1?40:12)*ludusHallMult())); ludus.giftChoice=genGiftOffer(Math.random,lead.c,ludus.fame); if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Rangliste!'; } }
     } else {
@@ -301,7 +304,7 @@ function ludusLadder(week){
     out.push({ kind, level:1+Math.round(strength*1.8), tier:Math.max(0,Math.min(3,Math.floor(strength/3))), seed:Math.floor(r()*1e9),
       name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], rank:i+1, layout:ludusLayoutPick(r) });
   }
-  return out;
+  return ludusLadderWithGhosts(out);
 }
 function ludusChallenge(){
   const t=ludusTour(), lad=ludusLadder(t.week), rival=lad[Math.max(0,9-t.beaten)];
@@ -334,7 +337,7 @@ function ludusBooks(){
   const cap=[0,3,4,9][ludusRoomTier('library')]||0;
   const pool=(ARCHETYPE_POOL[archetypeOf(c)]||[]).concat(['haste','guard']).filter((id,i,a)=>a.indexOf(id)===i && ABILITIES[id] && ABILITIES[id].power<=cap && !knownAbilities(c).includes(id));
   const out=[]; while(out.length<3 && pool.length) out.push(pool.splice(Math.floor(r()*pool.length),1)[0]);
-  return out;
+  return ludusLadderWithGhosts(out);
 }
 const ludusBookPrice=id=>30+22*(ABILITIES[id].power||2);
 function ludusBuyBook(id){
@@ -467,7 +470,7 @@ function ludusRender(){
     const t=ludusTour(), lad=ludusLadder(t.week), next=t.beaten<10?lad[9-t.beaten]:null;
     main=`<div class="luPanel"><h2>Turnier ${t.week}</h2><p class="luHint">Die Rangliste ist für alle, die in dieser Woche begonnen haben, gleich. ${ludus.mode==='map'?'Im Kartenmodus wartet in jedem Turnier einer dieser Kämpfer im Finale auf dich.':'Fordere die Gegner von unten nach oben heraus, bis du den Meister schlägst. Ein Herausforderungskampf geht auf Leben und Tod.'} Die Pflichtkämpfe alle ${LUDUS_TOUR_EVERY} Tage zählen nicht für die Rangliste.</p>
       <p><b>Nächster Pflichtkampf in ${ludusTourIn()} Tagen.</b></p>
-      ${lad.map((r,i)=>{ const done=(9-i)<t.beaten; return `<div class="luItem${done?' worn':''}${next&&next.rank===r.rank?' sel':''}"><span>${r.rank}. ${ludusEsc(r.name)} — ${SPECIES[r.kind].label}, Stufe ${ludusMatchLevel(r.kind,0)}</span><span>${done?'✓':''}</span></div>`; }).join('')}
+      ${lad.map((r,i)=>{ const done=(9-i)<t.beaten; return `<div class="luItem${done?' worn':''}${next&&next.rank===r.rank?' sel':''}"><span>${r.rank}. ${ludusEsc(r.name)} — ${SPECIES[r.kind].label}, Stufe ${r.ghost?r.level:ludusMatchLevel(r.kind,0)}${r.ghost?(r.ghost.members.length>1?' · früheres Team':' · früherer Kämpfer'):''}</span><span>${done?'✓':''}</span></div>`; }).join('')}
       ${ludus.mode==='map'?'':(next?`<p>Nächster Gegner: <b>${ludusEsc(next.name)}</b> (Platz ${next.rank})</p>`:'<p><b>Du bist Meister dieser Rangliste!</b></p>')+`<button id="luChallenge" class="menuMain">${next?'Herausfordern':'Den Meister erneut herausfordern'}</button>`}${ludusRoomBox('hall')}</div>`;
   } else if(ludusTab==='map'){
     main=ludusMapHTML();

@@ -36,7 +36,7 @@ function ludusCupWon(o){
   ludus.cup=null; ludus.map.done.push(n.id); ludus.fame+=3+n.col; ludusGainRenown(Math.round((15+5*n.col)*ludusHallMult())); ludus.gold+=40+30*n.col;
   ludus.giftChoice=genGiftOffer(Math.random,ludusCreature(),ludus.fame);
   let t=` ${n.name} ist erobert! +${40+30*n.col} Gold.`;
-  if(cap){ ludus.over=true; ludus.cause='Die Hauptstadt ist erobert: du bist Champion der Karte!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins+1); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
+  if(cap){ ludus.over=true; ludus.cause='Die Hauptstadt ist erobert: du bist Champion der Karte!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusSaveGhost(ludus.team,'',true); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins+1); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
   return t;
 }
 function ludusMapTravel(id){
