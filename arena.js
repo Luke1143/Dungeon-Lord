@@ -74,12 +74,12 @@ function arenaBuild(setup,seedExtra){
     const cells=comps[0], key=([x,y])=>x+y*0.8;
     const A=stageCamps?stageCamps.A:cells.reduce((a,b)=>key(a)<=key(b)?a:b);
     const B=stageCamps?stageCamps.B:m.near ? cells.reduce((a,b)=>Math.abs(Math.abs(b[0]-A[0])+Math.abs(b[1]-A[1])-14)<Math.abs(Math.abs(a[0]-A[0])+Math.abs(a[1]-A[1])-14)?b:a) : cells.reduce((a,b)=>key(a)>=key(b)?a:b);
-    for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; t.look='arena'; } }
+    for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; if(t.room!=='bridge') t.look='arena'; } }
     // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, deathmatch:!!setup.deathmatch, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, deathmatch:!!setup.deathmatch, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
@@ -284,6 +284,7 @@ function arenaCast(x,y){
       c.inventory=arenaGear(c,{ gear:'auto', tier:1 }); c.arenaTeam=arenaSummon.team; c.state='fighting'; c.path=[]; st.creatures.push(c); st.arena.roster[arenaSummon.team].push(c); emitFx('claim',x,y); }
   }
   if(!used) setInspect('Hier gibt es kein Ziel für diesen Zauber.');
+  else if(ludusActive && typeof ludusUseScroll==='function') ludusUseScroll(s);       // in the Ludus a spell is a scroll: one cast, then it is gone
   draw(); arenaPanelSig=''; arenaRenderPanel();
 }
 let arenaPanelSig='';
@@ -294,7 +295,7 @@ function arenaRenderPanel(){
     return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i><em style="width:${Math.round(staminaOf(c))}%"></em></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
   const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
-  const spells=ludusActive?'':`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
+  const spells=ludusActive?(typeof ludusScrollsHTML==='function'?ludusScrollsHTML():''):`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
     + (arenaSpell==='summon'?`<div class="arSummon"><select data-sk>${arenaOpts(kinds,arenaSummon.kind)}</select> Stufe <input data-sl type="number" min="1" max="40" value="${arenaSummon.level}" style="width:44px"> <select data-st>${arenaOpts([[0,names[0]],[1,names[1]]],arenaSummon.team)}</select></div>`:'');
   const html=`<div class="arInfo">Tick ${st.tickCount}</div>${spells}${cols}`;
   if(html!==arenaPanelSig && !(box.contains(document.activeElement) && /SELECT|INPUT/.test(document.activeElement.tagName))){ arenaPanelSig=html; box.innerHTML=html; box.querySelectorAll('button[data-spell]').forEach(b=>b.addEventListener('click',()=>arenaSetSpell(b.dataset.spell)));

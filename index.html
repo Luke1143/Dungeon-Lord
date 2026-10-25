@@ -302,6 +302,7 @@
   body.arenaMode #arenaPanel{ flex:none; max-height:60%; overflow-y:auto; scrollbar-width:thin; }
   @media (max-width:900px){ body.inLevel #levelScreen .panel.dkPanel{ left:6px; right:6px; top:auto; width:auto; max-height:45vh; } #eventStack{ left:6px; top:60px; bottom:auto; flex-direction:row; width:auto; height:46px; } }
 
+  .pxIcon{ image-rendering:pixelated; width:28px; height:28px; display:block; margin:0 auto; } .dkTab .pxIcon{ width:28px; height:28px; } .evIcon .pxIcon{ width:36px; height:36px; margin:0 auto; } .tile img.ti{ width:28px; height:28px; }
   .cText{ position:absolute; z-index:13; transform:translate(-50%,-50%); font-family:'Cinzel',serif; font-weight:700; font-size:17px; pointer-events:none; text-shadow:0 0 3px #000,0 1px 2px #000; animation:cRise .9s ease-out forwards; }
   .cText.own{ color:#fff4cc; } .cText.foe{ color:#ff8a7a; } .cText.crit{ font-size:26px; color:#ffd24a; } .cText.miss{ font-size:12px; font-weight:500; color:#b8b0a0; font-style:italic; font-family:'Inter',sans-serif; }
   @keyframes cRise{ 0%{ opacity:0; margin-top:6px; } 12%{ opacity:1; } 100%{ opacity:0; margin-top:-34px; } }
@@ -510,6 +511,7 @@
 <script src="creatures.js"></script>
 <script src="terrain.js"></script>
 <script src="keep.js"></script>
+<script src="postfx.js"></script>
 <script src="view3d.js"></script>
 <script>
 let throneAt={ x:2, y:2 };   // centre of the throne room (top-left unless the level was mirrored, see mirrorLevel)
@@ -10289,6 +10291,7 @@ async function init(){
 init();
 </script>
 <script src="budget.js"></script>
+<script src="icons.js"></script>
 <script src="ui-panel.js"></script>
 <script src="arena-stages.js"></script>
 <script src="arena.js"></script>

@@ -3,7 +3,7 @@
 // Buildings that are not bought are empty building sites: the fighter walks in, and the only thing to do there is to build. Guests and the fighter are billboards
 // of the game's own sprites. The Ludus screen tells this view which room to show and in which tier each one stands.
 const Hub3D=(()=>{
-  let T, host, renderer, scene, camera, ready=false, loading=null, running=false, last=0, sig='';
+  let T, host, renderer, post=null, scene, camera, ready=false, loading=null, running=false, last=0, sig='';
   const cam={ x:0, z:3, r:15, tx:0, tz:3, tr:15, dTheta:0, dPhi:0, theta0:0.6, phi0:0.85, idle:0 };
   const texCache=new Map(), spriteTex=new Map(), rooms={}, MAT={};
   let current='inn', previous=null, travel=0, fighter=null, fighterInfo=null;
@@ -194,12 +194,12 @@ const Hub3D=(()=>{
     el.addEventListener('pointerup',()=>{ drag=null; el.style.cursor='grab'; });
     el.addEventListener('wheel',e=>{ e.preventDefault(); const base=(DEF[current]||DEF.inn).r; cam.tr=Math.max(base*0.75,Math.min(base*1.2,cam.tr*(1+Math.sign(e.deltaY)*0.06))); cam.idle=0; },{ passive:false });
     Object.keys(DEF).forEach(id=>{ const g=new T.Group(); g.position.set(DEF[id].x,0,DEF[id].z); g.userData={ lights:[], tier:-1 }; g.visible=false; scene.add(g); rooms[id]={ group:g }; });
-    ready=true; resize(); window.addEventListener('resize',resize);
+    post=createPostFX(T); ready=true; resize(); window.addEventListener('resize',resize);
     return true;
   }
   function resize(){
     if(!ready||!host) return; const w=host.clientWidth||600, h=host.clientHeight||360;
-    renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(post) post.resize(w,h,Math.min(1.5,window.devicePixelRatio||1));
   }
   // tiers = { inn, pit, forge, library, hall, training }, 0 = not bought; the fighter is { kind, extra, sig } or null
   function sync(tiers,fighterIn,castIn,guestsIn){
@@ -248,9 +248,10 @@ const Hub3D=(()=>{
     camera.position.set(cam.x+Math.sin(th)*Math.cos(ph)*cam.r, 0.6+Math.sin(ph)*cam.r, cam.z+Math.cos(th)*Math.cos(ph)*cam.r); camera.lookAt(cam.x,0.5,cam.z);
     Object.keys(rooms).forEach(id=>{ const g=rooms[id].group; if(g.visible) g.userData.lights.forEach((l,i)=>{ l.intensity=l.userData.base*(0.85+0.2*Math.sin(t*9+i*3)+0.08*Math.sin(t*23+i)); }); });
     stepActors(dt,t);
-    renderer.render(scene,camera);
+    if(!(post&&post.render(renderer,scene,camera))) renderer.render(scene,camera);
   }
+  function setPost(n){ if(post) post.setLevel(n); }
   function start(){ if(running||!ready) return; running=true; last=performance.now(); requestAnimationFrame(frame); resize(); }
   function stop(){ running=false; }
-  return { init, sync, focus, start, stop, resize, get ready(){ return ready; }, get current(){ return current; } };
+  return { init, sync, focus, start, stop, resize, setPost, get ready(){ return ready; }, get current(){ return current; } };
 })();

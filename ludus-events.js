@@ -26,6 +26,7 @@ const LUDUS_EVENTS=[
     text:()=>'Ein Händler mit einem großen Sack baut seinen Stand im Hof auf. "Ein Buch gefällig? Nur heute, und es ist sein Geld wert!"',
     options:[
       { label:'Kaufen (25 Gold)', when:()=>ludus.gold>=25, run:()=>{ const c=ludusCreature(), pool=(ARCHETYPE_POOL[archetypeOf(c)]||[]).filter(id=>ABILITIES[id]&&!knownAbilities(c).includes(id)); if(!pool.length) return { text:'Er hat nichts, was du nicht schon kennst.' }; const id=pool[Math.floor(Math.random()*pool.length)]; ludus.gold-=25; ludus.bookbag.push(id); return { text:`Du kaufst das Buch "${ABILITIES[id].name}". Es liegt im Inventar.` }; } },
+      { label:'Schriftrolle kaufen (20 Gold)', when:()=>ludus.gold>=20, run:()=>{ ludus.gold-=20; const id=ludusGiveScroll(); return { text:`Du kaufst eine Schriftrolle: ${ludusScrollName(id)}. Sie wirkt einmal im Kampf.` }; } },
       { label:'Ablehnen', run:()=>({ text:'Du zuckst mit den Schultern. Der Händler packt wieder ein.', exit:true }) },
       { label:'Beutel stehlen', trait:['thief','goblin','kitsune'], run:()=>{ const g=30+Math.round(Math.random()*20); ludus.gold+=g; return { text:`Unauffällig verschwindet sein Beutel in deiner Tasche: +${g} Gold.` }; } }
     ] },
@@ -33,7 +34,7 @@ const LUDUS_EVENTS=[
     make:r=>{ const pool=ludusNpcPool(); const n=pool.length?ludusPick(r,pool):null; const s=n?Object.assign(ludusNpcFoe(n),{ role:'foe' }):ludusAnon(r,ludusKinds(),ludus.fighter.level,1,'Gladiator'); return { cast:[s], npc:n?n.id:null }; },
     text:ev=>`Am Rand des Hofs sitzt ${ev.cast[0].name} mit blutigem Bein. "Bitte, ich habe kein Geld mehr für einen Heiler."`,
     options:[
-      { label:'Helfen (10 Gold)', when:()=>ludus.gold>=10, run:(f,ev)=>{ ludus.gold-=10; ludusGainRenown(2); const n=ludusNpc(ev.npc); if(n){ n.bond=Math.min(3,(n.bond||0)+1); n.met=1; n.last={ t:'helped', d:ludus.day }; } return { text:`${ev.cast[0].name} verbindet das Bein, dankt dir und erzählt überall von deiner Güte. +2 Ansehen.` }; } },
+      { label:'Helfen (10 Gold)', when:()=>ludus.gold>=10, run:(f,ev)=>{ ludus.gold-=10; ludusGainRenown(2); const n=ludusNpc(ev.npc); if(n){ n.bond=Math.min(3,(n.bond||0)+1); n.met=1; n.last={ t:'helped', d:ludus.day }; } let extra=''; if(Math.random()<0.5){ const id=ludusGiveScroll(); extra=` Zum Dank schenkt er dir eine Schriftrolle: ${ludusScrollName(id)}.`; } return { text:`${ev.cast[0].name} verbindet das Bein, dankt dir und erzählt überall von deiner Güte. +2 Ansehen.${extra}` }; } },
       { label:'Ausrauben', run:(f,ev)=>{ const g=18; ludus.gold+=g; ludus.fame=Math.max(0,ludus.fame-1); const n=ludusNpc(ev.npc); if(n){ n.bond=Math.max(-3,(n.bond||0)-2); n.met=1; n.last={ t:'robbed', d:ludus.day }; } return { text:`Du nimmst ihm den letzten Beutel: +${g} Gold. Die anderen sehen es und tuscheln: −1 Ruhm.` }; } },
       { label:'Weitergehen', run:()=>({ text:'Du gehst weiter, ohne dich umzudrehen.' }) }
     ] },

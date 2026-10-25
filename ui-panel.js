@@ -39,11 +39,11 @@ function uiHintWire(){
 }
 // ---- events as falling icons ----
 const UI_EVENT_KINDS=[
-  [/aufgestiegen/i,'⭐','Stufenaufstieg'], [/gefallen|stirbt|getötet|niedergestreckt|verhungert|gestorben/i,'💀','Tod'], [/eingedrungen|Welle|Helden|Angriff|Held/i,'⚔️','Gefahr'],
-  [/Lager ist voll|nicht mehr eingelagert/i,'📦','Lager voll'], [/Bau|gebaut|fertiggestellt/i,'🏗️','Bau'], [/Grabaufgaben|gegraben|vorgegraben/i,'⛏️','Graben'],
-  [/Gold|Lohn|Beute/i,'💰','Gold'], [/Idee|erforscht|Forschung/i,'💡','Idee'], [/Debug/i,'🐞','Debug']
+  [/aufgestiegen/i,'evLevel','Stufenaufstieg'], [/gefallen|stirbt|getötet|niedergestreckt|verhungert|gestorben/i,'evDeath','Tod'], [/eingedrungen|Welle|Helden|Angriff|Held/i,'evDanger','Gefahr'],
+  [/Lager ist voll|nicht mehr eingelagert/i,'evFull','Lager voll'], [/Bau|gebaut|fertiggestellt/i,'evBuild','Bau'], [/Grabaufgaben|gegraben|vorgegraben/i,'evDig','Graben'],
+  [/Gold|Lohn|Beute/i,'evGold','Gold'], [/Idee|erforscht|Forschung/i,'evIdea','Idee'], [/Debug/i,'evDebug','Debug']
 ];
-const uiEventKind=msg=>{ for(const [re,ic,name] of UI_EVENT_KINDS) if(re.test(msg)) return { ic, name }; return { ic:'📜', name:'Meldung' }; };
+const uiEventKind=msg=>{ for(const [re,ic,name] of UI_EVENT_KINDS) if(re.test(msg)) return { ic, name }; return { ic:'evMessage', name:'Meldung' }; };
 const uiSeenEvents=new Set(); let uiEventDismissed=new Set();
 function uiRenderEvents(){
   const box=document.getElementById('eventStack'); if(!box||typeof state==='undefined'||!state) return;
@@ -54,7 +54,7 @@ function uiRenderEvents(){
     let el=box.querySelector(`[data-id="${e.id}"]`);
     const k=uiEventKind(e.msg);
     if(!el){
-      el=document.createElement('button'); el.className='evIcon'; el.dataset.id=e.id; el.innerHTML=`<span>${k.ic}</span><i></i>`;
+      el=document.createElement('button'); el.className='evIcon'; el.dataset.id=e.id; el.innerHTML=`${uiIconImg(k.ic,3)}<i></i>`;
       el.addEventListener('click',()=>{ jumpCameraTo(e.x,e.y); const box2=document.getElementById('dkHint'); if(box2){ box2.innerHTML=`<b>${k.name}</b>${e.n>1?' ×'+e.n:''}<br>${e.msg.replace(/[<>&]/g,'')}`; box2.hidden=false; clearTimeout(window.__evHint); window.__evHint=setTimeout(()=>{ box2.hidden=true; },6000); } uiEventDismissed.add(e.id); el.classList.add('gone'); setTimeout(()=>{ el.remove(); },200); });
       if(!uiSeenEvents.has(e.id)){ uiSeenEvents.add(e.id); el.classList.add('drop'); }
       box.appendChild(el);
@@ -115,3 +115,11 @@ function itemIconURL(v,px){
   ITEM_ICON_CACHE.set(key,url); return url;
 }
 const itemTierColor=v=>ITEM_TIER_COLOR[(instDef(v)||{}).tier]||ITEM_TIER_COLOR.plain;
+
+// the tiles and tabs wear the game's own pixel icons (icons.js) instead of emoji
+function uiIconsWire(){
+  document.querySelectorAll('.tile[data-hint]').forEach(b=>{ const id=b.dataset.hint, sp=b.querySelector('.ti'); if(sp&&UI_ICON_SHAPES[id]){ const im=document.createElement('img'); im.className='ti pxIcon'; im.src=uiIconURL(id,2); im.alt=''; sp.replaceWith(im); } });
+  const tabs={ info:'info', rooms:'tabRooms', spells:'tabSpells', traps:'tabTraps', creatures:'tabCreatures' };
+  document.querySelectorAll('.dkTab').forEach(b=>{ const id=tabs[b.dataset.menu]; if(id) b.innerHTML=uiIconImg(id,2); });
+}
+uiIconsWire();

@@ -24,7 +24,7 @@ function ludusNpcName(r){
 }
 function ludusNpcNew(r){
   const kinds=ludusFoeKinds();
-  const kind=kinds[Math.floor(r()*kinds.length)];
+  const kind=creaturePickWeighted(r,kinds);
   return { id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r), kind, level:ludusMatchLevel(kind,Math.floor(r()*3)-1),
     tier:Math.max(0,Math.min(3,ludusAverageTier()+Math.floor(r()*3)-1)), seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null };
 }

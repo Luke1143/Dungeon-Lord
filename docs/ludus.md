@@ -101,3 +101,10 @@ Die Turnierrunde kommt alle 5 Tage (Pflichtkampf nach 3 Tagen ohne Kampf), Erfah
 ## Gemeinsames Inventar (neu)
 Das Team teilt sich einen Vorrat (`ludus.stash` für Ausrüstung, `ludus.bookbag` für Bücher). Ein Mitglied trägt nur, was es anhat; Einkäufe, Beute und Funde landen im Vorrat. Der Reiter „Inventar" zeigt alles als Gitter mit den Pixelbildern des Spiels (Waffen aus ihren Teilen, Schilde, Rüstungen; der Rand zeigt die Güteklasse, ein Buchstabe in der Ecke den Träger). Ein Stück wird einem Mitglied angelegt, weitergegeben oder abgelegt; Würfeln und Verkaufen gelten für alle Stücke. Bücher werden von einem gewählten Mitglied gelernt.
 Die Karte eines Kampfes steht jetzt für die ganze Probe fest (`fixedMap`): Die Probekämpfe der Grube und der echte Kampf finden auf derselben Höhle statt, sonst stimmte die Schätzung nicht mit dem Kampf überein.
+
+## Schriftrollen (neu)
+Die Zauber der Götterhand aus dem Hauptspiel (Heilen, Wecken, Fluch, Eile, Feuerball, Blitz, Lähmen) gibt es im Ludus nur als **Schriftrollen zum einmaligen Gebrauch**: Sie werden in der Bücherei gekauft (zwei am Tag), liegen als Beute (15 % nach einem Kampf, 40 % nach einem Turnier) oder kommen aus Ereignissen (Händler, verwundeter Gladiator). Im Kampf zeigt der Zauberreiter nur die Rollen im Besitz; ein Zauber verbraucht eine Rolle. Herbeirufen gibt es nicht.
+## Seltenheit
+Späte Arten sind mit Absicht stärker (Budget, `docs/budget.md`) und seltener unter den Gegnern und in der Welt: Episch etwa ein Fünftel so oft wie Gewöhnlich, Legendär etwa ein Zwanzigstel, Lich und Drache fast nie (`budget.js`, `creatureRarity`).
+## Seiten
+Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Seed), damit Karten ohne Gleichgewicht nicht immer dieselbe Seite begünstigen.

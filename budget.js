@@ -25,3 +25,7 @@ const creatureWorth=k=>CREATURE_WORTH[k]||creatureBudget(k);
 const creatureWorthAt=(k,level)=>creatureWorth(k)*Math.pow(levelScale(level)/levelScale(1),2);
 // the level at which a kind is worth `w` orks (at least 1)
 const creatureLevelFor=(k,w)=>Math.max(1,Math.min(40,Math.round((Math.sqrt(Math.max(0.01,w/creatureWorth(k)))-1)/LEVEL_SCALE_PER_LEVEL+1)));
+// how often a kind shows up among opponents and in the world: the late creatures are stronger on purpose and rare, the lich and the dragon extremely rare
+const CREATURE_RARITY_TIER={ minor:1, common:1, strong:0.7, epic:0.22, legendary:0.05 }, CREATURE_RARITY_KIND={ lich:0.015, dragon:0.01 };
+const creatureRarity=k=>CREATURE_RARITY_KIND[k]!==undefined?CREATURE_RARITY_KIND[k]:(CREATURE_RARITY_TIER[creatureTier(k).id]||1);
+function creaturePickWeighted(r,kinds){ const ws=kinds.map(creatureRarity), tot=ws.reduce((a,b)=>a+b,0); let x=r()*tot; for(let i=0;i<kinds.length;i++){ x-=ws[i]; if(x<=0) return kinds[i]; } return kinds[kinds.length-1]; }
