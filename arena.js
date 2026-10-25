@@ -184,7 +184,7 @@ function arenaStep(st){
   st.creatures.forEach(c=>{
     if(c.state==='fleeing' && !c.unconscious) c.fleeTicks=(c.fleeTicks||0)+1; else if(c.fleeTicks) c.fleeTicks=Math.max(0,c.fleeTicks-2);
     const rout=!st.arena.deathmatch && !arenaAlive(st,arenaTeamOf(c)).some(o=>o.state!=='fleeing');
-    if(!st.arena.deathmatch && c.fleeTicks>=(rout?ARENA_ROUT_TICKS:ARENA_SURRENDER_TICKS) && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
+    if(!st.arena.deathmatch && !(c.berserkTicks>0) && c.fleeTicks>=(rout?ARENA_ROUT_TICKS:ARENA_SURRENDER_TICKS) && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
   });
   const a=arenaAlive(st,0).length, b=arenaAlive(st,1).length;
   if(a===0||b===0||st.tickCount>=st.arena.maxTicks){
@@ -256,7 +256,8 @@ function arenaLeave(){
 function fpRestoreOnLeave(){ try{ if(typeof endPossession==='function') endPossession(); }catch(e){} }
 // ---- god spells for the arena (the player's hand: heal, wake, curse, speed, fire, lightning, paralyse, summon) ----
 const ARENA_SPELLS=[ { id:'heal', icon:'💚', name:'Heilen' }, { id:'revive', icon:'🦄', name:'Wecken' }, { id:'curse', icon:'🥶', name:'Fluch' }, { id:'haste', icon:'💨', name:'Eile' },
-  { id:'fireball', icon:'🔥', name:'Feuerball' }, { id:'bolt', icon:'⚡', name:'Blitz' }, { id:'paralyze', icon:'😱', name:'Lähmen' }, { id:'summon', icon:'➕', name:'Herbeirufen' } ];
+  { id:'fireball', icon:'🔥', name:'Feuerball' }, { id:'bolt', icon:'⚡', name:'Blitz' }, { id:'paralyze', icon:'😱', name:'Lähmen' }, { id:'summon', icon:'➕', name:'Herbeirufen' },
+  { id:'retreat', icon:'↩', name:'Rückzug' }, { id:'berserk', icon:'💢', name:'Berserk' }, { id:'impcall', icon:'👹', name:'Imp rufen' } ];
 let arenaSpell=null, arenaSummon={ kind:'ork', level:5, team:0 };
 function arenaSetSpell(id){
   arenaSpell=(arenaSpell===id)?null:id;
@@ -278,6 +279,9 @@ function arenaCast(x,y){
   else if(s==='fireball'){ near(1).forEach(c=>arenaDamage(c,20)); emitFx('dig',x,y,{ color:'#ff7a20' }); }
   else if(s==='bolt'){ if(at) arenaDamage(at,35); else used=false; if(at) emitFx('dig',x,y,{ color:'#ffe060' }); }
   else if(s==='paralyze'){ near(2).forEach(c=>{ c.rootedTicks=20; c.path=[]; }); emitFx('claim',x,y); }
+  else if(s==='retreat'){ arenaRetreat(st); emitFx('claim',x,y); }
+  else if(s==='berserk'){ if(spellBerserk(x,y,all,1e9)===0) used=false; }
+  else if(s==='impcall'){ used=arenaCallImp(st,x,y); }
   else if(s==='summon'){
     if(st.grid[y][x].type!=='floor'||at) used=false;
     else { const c=arenaMake(arenaSummon.kind,x,y); c.faction=arenaSummon.team===0?'evil':'good'; c.level=Math.max(1,arenaSummon.level|0||1); c.xp=xpForLevel(c.level); c.maxHp=statMaxHp(c); c.hp=c.maxHp;

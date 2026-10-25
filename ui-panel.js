@@ -17,6 +17,8 @@ const UI_HINTS={
   guardpost:['Wachposten','Wer hier angestellt ist, bewacht den Posten und greift Eindringlinge an.'],
   training:['Trainingskammer','Kreaturen üben hier und sammeln Erfahrung.'],
   temple:['Tempel','Ein Ort der Andacht für die Kreaturen.'],
+  retreat:['Rückzug','Teleportiert deine Kreaturen in Reichweite 3 in den Thronsaal. Wartezeit 300 Ticks.'],
+  berserk:['Berserk','Betroffene Kreaturen in Reichweite 2 kämpfen bis in den Tod und ziehen sich nicht zurück. Wartezeit 200 Ticks. Stehen Feinde im Thronsaal, werden alle Imps von selbst berserk.'],
   demolish:['Abreißen','Reißt einen Raum ab. Die Kosten werden voll erstattet.'],
   summon:['Imp beschwören','Ein neuer Imp gräbt, baut und trägt. Jeder weitere kostet mehr.'],
   pick:['Aufheben','Hebt einen Imp, eine Kreatur oder eine Leiche auf und setzt sie anderswo ab.'],

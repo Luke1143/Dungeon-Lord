@@ -258,8 +258,8 @@ function ludusResolve(st){
       if(Math.random()<(o.tour?0.4:0.15)){ const sid=ludusGiveScroll(); text+=` Beute: Schriftrolle ${ludusScrollName(sid)}.`; }
       if(o.tour){ const t=ludusTour(); t.beaten++; ludus.fame+=o.rank===1?10:1; ludusGainRenown(Math.round((o.rank===1?40:12)*ludusHallMult())); ludus.giftChoice=genGiftOffer(Math.random,lead.c,ludus.fame); if(o.rank===1){ ludusMeta.titles=(ludusMeta.titles||0)+1; text+=' Du bist Meister dieser Rangliste!'; } }
     } else {
-      const c=lead.c; ludus.losses++; ludus.gold+=2; head=c.surrendered?'Aufgegeben':(c.unconscious?'Bewusstlos':'Verloren');
-      text=`${who} ${c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit')}. +2 Gold Trost.`;
+      const c=lead.c, ret=!!st.arena.retreated; ludus.losses++; ludus.gold+=2; head=ret?'Rückzug':(c.surrendered?'Aufgegeben':(c.unconscious?'Bewusstlos':'Verloren'));
+      text=`${who} ${ret?'zieht sich zurück und überlebt':(c.surrendered?'gibt auf und überlebt':(c.unconscious?'sinkt bewusstlos zu Boden, überlebt aber':'verliert nach Zeit'))}. +2 Gold Trost.`;
       ludusLog(`Niederlage gegen ${o.title||o.name}`);
     }
     if(fell) text+=` ${fell} ${fallen.length>1?'sind':'ist'} gefallen.`;
@@ -302,7 +302,7 @@ function ludusTavernHTML(){
 const ludusCastHTML=cast=>cast.length?`<div class="luCast">${cast.map(s=>`<div>${ludusEsc(ludusCastLine(s))}</div>`).join('')}</div>`:'';
 // ---- scrolls: the spells of the main game (the god hand of the arena) as one-time things. They are bought in the library, found as loot and given by events; in a bout the
 // spell panel shows the ones you own, and a cast uses one up.
-const LUDUS_SCROLLS={ heal:{ price:30 }, revive:{ price:60 }, curse:{ price:25 }, haste:{ price:25 }, fireball:{ price:40 }, bolt:{ price:50 }, paralyze:{ price:40 } };
+const LUDUS_SCROLLS={ retreat:{ price:50 }, berserk:{ price:35 }, impcall:{ price:25 }, heal:{ price:30 }, revive:{ price:60 }, curse:{ price:25 }, haste:{ price:25 }, fireball:{ price:40 }, bolt:{ price:50 }, paralyze:{ price:40 } };
 const ludusScrollName=id=>{ const s=ARENA_SPELLS.find(x=>x.id===id); return s?`${s.icon} ${s.name}`:id; };
 const ludusScrollCount=()=>Object.values(ludus.scrolls||{}).reduce((a,b)=>a+b,0);
 function ludusGiveScroll(id){ id=id||Object.keys(LUDUS_SCROLLS)[Math.floor(Math.random()*Object.keys(LUDUS_SCROLLS).length)]; ludus.scrolls[id]=(ludus.scrolls[id]||0)+1; return id; }

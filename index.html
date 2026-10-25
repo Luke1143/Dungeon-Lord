@@ -477,6 +477,8 @@
         </div>
         <div id="menu-spells" class="menuPanel dkPane tiles" hidden>
           <button id="summonBtn" class="tile" data-hint="summon"><span class="ti">👹</span><span class="tn">Imp</span><span class="tc" id="summonCost">frei</span></button>
+          <button id="retreatBtn" class="tile" data-hint="retreat"><span class="ti">↩</span><span class="tn">Rückzug</span><span class="tc">frei</span></button>
+          <button id="berserkBtn" class="tile" data-hint="berserk"><span class="ti">💢</span><span class="tn">Berserk</span><span class="tc">frei</span></button>
           <button id="pickBtn" class="tile" data-hint="pick"><span class="ti">✋</span><span class="tn">Aufheben</span><span class="tc">frei</span></button>
           <button id="possessBtn" class="tile" data-hint="possess"><span class="ti">👁️</span><span class="tn">Besessenheit</span><span class="tc">frei</span></button>
         </div>
@@ -1064,6 +1066,7 @@ function moraleOf(c){
 
 // Wann zieht sich eine Kreatur zurueck?
 function shouldFlee(c){
+  if(c.berserkTicks>0) return false;       // berserk: to the death
   if(state&&state.arena&&state.arena.deathmatch) return false;       // a tournament bout is to the end: nobody runs
   const sp=SPECIES[c.kind]||{};
   if(!sp.canFight) return true;            // Imps fliehen immer
@@ -1102,6 +1105,7 @@ function canReach(from,to,limit){
 }
 function tickCombat(c){
   if(c.unconscious) return tickUnconscious(c);
+  if(c.berserkTicks>0 && c.berserkTicks<1e8) c.berserkTicks--;
   tickGrudges(c);
 
   // Rueckzug: Imps immer, andere je nach Moral. A fighter runs (a sprint that costs stamina) towards the tile that is farthest from the threat; with nowhere to go it turns and fights.
@@ -7322,8 +7326,9 @@ function gameTick(){
   state.creatures.slice().forEach(c=>guard('creature '+(c.kind||'')+' '+(c.state||''),tickCreature,c));
   guard('projectiles',tickProjectiles);
   [processDeaths,tickLures,tickArenas,tickTantrums,tickCorpses,tickEffects,tickFlySpawning,tickWarlockSpawning,tickBeetleSpawning,tickHoundSpawning,tickHatcheries,tickSmelters,pruneEventLog,tickPayday,tickWar].forEach(f=>guard(f.name,f));
+  guard('impBerserk',tickImpBerserk);
   if(state.tickCount%2===0 || !state.vis) guard('fog',updateFog);
-  guard('draw',draw); guard('ui',updateUI); markDirty();
+  guard('draw',draw); guard('ui',updateUI); guard('godUI',godSpellsUI); markDirty();
 }
 
 function pruneEventLog(){
@@ -8607,6 +8612,7 @@ function handleInspectClick(x,y){
 function handleSingleClick(x,y){
   const t=state.grid[y][x];
   if(state.arena && arenaSpell){ arenaCast(x,y); return; }        // arena.js: a god spell is chosen, aim it
+  if(!state.arena && godSpell){ godCast(x,y); return; }           // spells.js: a campaign spell is chosen, aim it
 
   // Zauber ausgewaehlt: Ziel bestimmen
   if(possessMode){
@@ -8824,6 +8830,8 @@ document.querySelectorAll('.roomBtn').forEach(btn=>{
   });
 });
 
+document.getElementById('retreatBtn').addEventListener('click',()=>godSpellSet('retreat'));
+document.getElementById('berserkBtn').addEventListener('click',()=>godSpellSet('berserk'));
 document.getElementById('summonBtn').addEventListener('click', ()=>{
   const cost=summonCost();
   if(state.gold>=cost){
@@ -10293,6 +10301,7 @@ init();
 <script src="budget.js"></script>
 <script src="icons.js"></script>
 <script src="ui-panel.js"></script>
+<script src="spells.js"></script>
 <script src="arena-stages.js"></script>
 <script src="arena.js"></script>
 <script src="hub3d.js"></script>
