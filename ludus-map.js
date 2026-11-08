@@ -26,13 +26,14 @@ const ludusIsCity=n=>n.col>0&&n.type!=='event';
 // a player on the usual way (a city after the other) has by then. Whoever comes too early meets what he cannot beat, whoever trains first wins with ease; better gear, more gifts and scrolls are the margin.
 const LUDUS_CITY={
   step:1, cap:9,                   // the level grows by `step` per column of the map, up to `cap` (levels come ever slower: the experience needed doubles with each)
-  round:0.93, final:0.86, perCol:0.025, finalPerCol:0.03,       // the win rate of the reference team in a round / in the final, lower for each column
-  giftsPerCol:0.75,                // gifts of the reference team: so many for each column after the first
-  needs:5,                         // cities to conquer before the capital opens
+  round:0.99, perCol:0.012, final:0.97, finalPerCol:0.025,       // the win rate of the reference team in a round / in the final, lower for each column
+  giftsPerCol:0.6,                 // gifts of the reference team: so many for each column after the first
+  needs:6,                         // cities to conquer before the capital opens
   runs:16                          // test fights per probe (at most) when a cup bout is searched
 };
 const ludusCityLevel=col=>Math.max(1,Math.min(LUDUS_CITY.cap,Math.round(1+LUDUS_CITY.step*col)));
-const ludusCityTier=col=>col<3?0:(col<7?1:2);       // the gear a player has by then (crude at first, plain in the middle, fine at the end)
+const ludusCityTier=col=>col<3?0:(col<8?1:2);       // the gear a player has by then (crude at first, plain in the middle, fine at the end)
+const LUDUS_TIER_WORD=['grobe','schlichte','feine'];
 const ludusCityGifts=col=>Math.max(0,Math.round(LUDUS_CITY.giftsPerCol*(col-1)));
 const ludusCityTarget=(col,last)=>Math.max(0.3,last?LUDUS_CITY.final-LUDUS_CITY.finalPerCol*col:LUDUS_CITY.round-LUDUS_CITY.perCol*col);
 // what a player usually wears: a sword and a light armour of the tier (the smith's cheapest), whatever the kind
@@ -147,6 +148,7 @@ function ludusMapHTML(){
   if(city&&!done){
     const L=ludusCityLevel(n.col), risk=ludusCityRisk(n), fig=ludusMapFigure(n);
     info=`<p>Empfohlene Stufe: <b>${L}</b><br>Deine Aussichten: <b style="color:${LUDUS_RISK_COLOR[risk]}">${LUDUS_RISK_LABEL[risk]}</b><br>Turnier: ${ludusCupRoundsFor(n)} Runden</p>
+      <p class="luHint">Gegner abgestimmt auf: Stufe ${L} · ${LUDUS_TIER_WORD[ludusCityTier(n.col)]} Ausrüstung · Gaben: ${ludusCityGifts(n.col)}</p>
       <p class="luHint">Finalgegner: <b>${ludusEsc(fig.name)}</b>${fig.ghost?' · <i>'+(fig.ghost.members.length>1?'früheres Team':'früherer Kämpfer')+'</i>':''}</p>`;
     if(cap&&!ludusCapitalOpen()) info+=`<p class="luBane">Die Tore der Hauptstadt sind verschlossen: erobere zuerst ${LUDUS_CITY.needs} Städte (bisher ${ludusConquered()}).</p>`;
   }
