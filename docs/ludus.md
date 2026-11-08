@@ -133,6 +133,11 @@ Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Se
 
 Eine Stufe mehr oder weniger verschiebt die Quote also um 4 bis 8 Punkte; ein Turnier mit drei Runden gewinnt man auf der Stadtstufe etwa 7 von 10 Mal, mit einer Stufe mehr 8 von 10, mit zweien mehr 9 von 10.
 
+**Bot-Läufe** (`tools/ludus-map-bot.js`, höchstens 140 Tage, sechs Arten): Der Bot hält sich in der Grube an die Stadtstufe plus einen Abstand und erobert dann die tiefste Stadt, für die es reicht.
+- Ohne Abstand (tritt genau auf der Stadtstufe an): 1 von 6 Bots gewann (Elf, Tag 78), die anderen fielen nach 5 bis 7 eroberten Städten (Tag 31 bis 76). Rund 4,5 von 100 Kämpfen gingen verloren.
+- Mit einer Stufe Abstand (Fassung ohne Aufrüstung): 3 von 5 Bots gewannen (nach 124 bis 129 Tagen), zwei fielen. Rund 1,6 von 100 Kämpfen gingen verloren. Dieses Training ist es, das die Aufrüstung der Städte bremst.
+- Gewollt ist also: Wer genau auf der Stadtstufe antritt, schafft die Karte selten (etwa jeder Sechste), wer mit Reserve und Zeit kommt, meistens. Offen: Die Bots nutzen keine Schriftrollen und steuern nicht von Hand; Spieler dürften besser abschneiden.
+
 ## Geister: frühere Teams als Rivalen (`ludus-ghosts.js`)
 - Endet ein Lauf durch den Tod des Teams (oder durch die Eroberung der Hauptstadt), wird das ganze Team (Kreaturen, Stufen, Ausrüstung, Gaben, Fähigkeiten) in `ludusMeta.ghosts` gespeichert (höchstens 10, die ältesten fallen heraus).
 - In jedem späteren Lauf ersetzt ein Geist die Ranglistenfigur seiner Stärke (durchschnittliche Stufe → Platz; belegte Plätze rücken zum nächsten freien). Er ist in der Turnierhalle als „früheres Team" markiert.
