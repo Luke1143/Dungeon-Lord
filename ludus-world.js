@@ -6,13 +6,14 @@ const LUDUS_WORLD_SIZE=10;
 // Nobody is weakened for it: a dragon meets a swarm of orks, a goblin meets another goblin.
 // a very weak kind is lifted a little (never the other way round): life and strength grow so that it is worth at least 0.7 orks
 const ludusKindBoost=k=>+Math.max(1,Math.sqrt(0.7/creatureWorth(k))).toFixed(2);
-const ludusMemberWorth=m=>creatureWorthAt(m.kind,m.level)*Math.pow(ludusKindBoost(m.kind),2);
-const ludusTeamWorth=()=>ludus.team.reduce((a,m)=>a+ludusMemberWorth(m),0);
-const ludusUnitWorth=()=>ludusTeamWorth()/Math.max(1,ludus.team.length);
+// `lv` (optional) asks what the team would be worth if everybody stood on that level: the yardstick of a place with a level of its own (a city of the map)
+const ludusMemberWorth=(m,lv)=>creatureWorthAt(m.kind,lv||m.level)*Math.pow(ludusKindBoost(m.kind),2);
+const ludusTeamWorth=lv=>ludus.team.reduce((a,m)=>a+ludusMemberWorth(m,lv),0);
+const ludusUnitWorth=lv=>ludusTeamWorth(lv)/Math.max(1,ludus.team.length);
 // the kinds that can show up as single opponents: not far above what one member of the team is worth
-const ludusFoeKinds=()=>{ const u=ludusUnitWorth(), l=ludusKinds().filter(k=>creatureWorth(k)<=u*1.3); return l.length?l:ludusKinds().slice().sort((a,b)=>creatureWorth(a)-creatureWorth(b)).slice(0,6); };
+const ludusFoeKinds=lv=>{ const u=ludusUnitWorth(lv), l=ludusKinds().filter(k=>creatureWorth(k)<=u*1.3); return l.length?l:ludusKinds().slice().sort((a,b)=>creatureWorth(a)-creatureWorth(b)).slice(0,6); };
 // the level at which a kind is a match for one member of the team, `edge` levels more
-const ludusMatchLevel=(k,edge)=>Math.max(1,Math.min(40,creatureLevelFor(k,ludusUnitWorth())+Math.round(edge||0)));
+const ludusMatchLevel=(k,edge,lv)=>Math.max(1,Math.min(40,creatureLevelFor(k,ludusUnitWorth(lv))+Math.round(edge||0)));
 const ludusNpc=id=>(ludus&&ludus.world||[]).find(n=>n.id===id)||null;
 const ludusNpcPool=()=>(ludus.world||[]).filter(n=>n.status==='active' && !n.maimed);
 // what a character looks like to the arena and to the 3D view: the same fields as an anonymous opponent, plus the id

@@ -104,12 +104,14 @@ function ludusLog(t){ ludus.log.unshift(`Tag ${ludus.day}: ${t}`); ludus.log=lud
 const LUDUS_DIFF={ easy:{ label:'Leicht', target:0.8, mult:0.6 }, fair:{ label:'Fair', target:0.5, mult:1 }, hard:{ label:'Schwer', target:0.3, mult:1.7 } };
 const SCOUT_RUNS=4, LUDUS_XP_MULT=3.5;       // the campaign's levels come slowly; a run is short, so a fight is worth three and a half times as much
 const LUDUS_WEEK_EVERY=5, LUDUS_IDLE_LIMIT=3;           // a tournament round every 7 days; whoever does not fight for 4 days is thrown into the pit
-function ludusOppGroup(o){ if(o.ghost) return ludusFighterGroup(o.member); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
+// a ghost whose level was lowered starts with the experience of that level
+function ludusOppGroup(o){ if(o.ghost) return ludusFighterGroup(o.level===o.member.level?o.member:Object.assign({},o.member,{ level:o.level, xp:xpForLevel(o.level) })); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
 const ludusFoes=o=>o.foes||[o];
 const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.variant]||'Duell');
-function ludusMatchSetup(o,salt){
-  const foes=ludusFoes(o);
-  return { teams:[ { name:ludus.team[0].name, groups:ludus.team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
+// `team` (optional) stands in for the fighter's own team: the test fights of a place with a level of its own use a reference team
+function ludusMatchSetup(o,salt,team){
+  const foes=ludusFoes(o); team=team||ludus.team;
+  return { teams:[ { name:team[0].name, groups:team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
     map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, swapSides:(arenaHash('side'+ludus.seed+':'+ludus.day)&1)===1, deathmatch:!!(o.tour||o.cup||o.deathFit), mercy:ludus.wins+ludus.losses<3 };
 }
 function ludusAverageTier(){
@@ -124,10 +126,10 @@ function ludusBoutLabel(o){
 const LUDUS_LAYOUT_ODDS=[['pit',30],['caverns',12],['choke',12],['bridge',10],['ring',10],['island',8],['pillars',10],['lanes',8]];
 function ludusLayoutPick(r){ let x=r()*LUDUS_LAYOUT_ODDS.reduce((a,b)=>a+b[1],0); for(const [l,w] of LUDUS_LAYOUT_ODDS){ x-=w; if(x<=0) return l; } return 'pit'; }
 const ludusLayoutLabel=l=>(ARENA_LAYOUTS.find(x=>x[0]===l)||[0,'Offene Grube'])[1];
-// one candidate bout, built from the budget: `scale` makes it easier (below 1) or harder (above); `r` is a seeded random function
-function ludusCandidate(r,kinds,level,tier,variantRoll,scale){
+// one candidate bout, built from the budget: `scale` makes it easier (below 1) or harder (above); `r` is a seeded random function; `ref` (a level) builds it for what the team would be worth on that level, not for the team as it is
+function ludusCandidate(r,kinds,level,tier,variantRoll,scale,ref){
   const name=()=>{ let n; for(let i=0;i<6;i++){ n=LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]; if(!ludus.team.some(m=>m.name===n)) break; } return n; };
-  const nT=ludus.team.length, roll=variantRoll===undefined?r():variantRoll, W=ludusTeamWorth()*(scale||1);
+  const nT=ludus.team.length, roll=variantRoll===undefined?r():variantRoll, W=ludusTeamWorth(ref)*(scale||1);
   const pool=ludusNpcPool(), used=new Set();
   const pickKind=(lo,hi)=>{ const mid=(lo+hi)/2; let l=kinds.filter(k=>creatureWorth(k)>=lo&&creatureWorth(k)<=hi); if(!l.length) l=kinds.slice().sort((a,b)=>Math.abs(Math.log(creatureWorth(a)/mid))-Math.abs(Math.log(creatureWorth(b)/mid))).slice(0,3); return creaturePickWeighted(r,l); };
   // one opponent worth about `w`: a character of the world of about that worth, else a stranger of the kind (a random fitting one) at the level that makes the worth
@@ -137,7 +139,7 @@ function ludusCandidate(r,kinds,level,tier,variantRoll,scale){
     return { kind:k, level:creatureLevelFor(k,w), tier, seed:Math.floor(r()*1e9), name:name() };
   };
   let o;
-  if(nT===1 && roll>0.82 && W>=1){ const w=W/2; o={ variant:'tag', ally:slot(ludusTeamWorth()), foes:[slot(w),slot(w)] }; }
+  if(nT===1 && roll>0.82 && W>=1){ const w=W/2; o={ variant:'tag', ally:slot(ludusTeamWorth(ref)), foes:[slot(w),slot(w)] }; }
   else if(roll>0.55 && creatureWorth(kinds.slice().sort((a,b)=>creatureWorth(a)-creatureWorth(b))[0])*3<=W){
     const k=pickKind(0.05,W/3), n=3+Math.floor(r()*4);
     o={ variant:'swarm', foes:Array.from({length:n},()=>slot(W/n,k)) };
@@ -175,18 +177,27 @@ function ludusScoutOpponent(){
   };
   setTimeout(()=>step(0),30);
 }
-// a bout is made fitting: the opponent's level is searched (a few test fights) until the fighter's win rate comes near `target`
-function ludusFitLevel(o,target){
-  const f=o.foes[0], RUNS=12, rate=(l,tag)=>{ f.level=l; o.level=Math.max(...o.foes.map(x=>x.level)); try{ return arenaSimulate(ludusMatchSetup(o,tag),RUNS,null).wins[0]/RUNS; }catch(e){ return target; } };
-  let lo=1, hi=40, l=f.level, best=l, bestErr=9;
+// a bout is made fitting: the opponents' level is searched (a few test fights) until the win rate of the team (or of `team`, a reference team) comes near `target`.
+// Normally the first foe alone is moved (the others stay as they are); with `all` every foe keeps its share (a pack or a group grows together); `cap` is the highest level it may reach
+
+function ludusFitLevel(o,target,team,all,runs,cap){
+  const RUNS=runs||12, base=o.foes.map(f=>f.level), l0=base[0];
+  const set=l=>{ o.foes.forEach((f,i)=>{ if(all||i===0) f.level=Math.max(1,Math.min(40,Math.round(base[i]*l/l0))); }); o.level=Math.max(...o.foes.map(x=>x.level)); };
+  // test fights come in batches of five and stop early when the rate is clearly away from the target
+  const seen={}, rate=(l,tag)=>{
+    set(l); let w=0, n=0;
+    try{ while(n<RUNS){ const k=Math.min(5,RUNS-n); w+=arenaSimulate(ludusMatchSetup(o,tag,team),k,null).wins[0]; n+=k; const p=w/n; if(n>=10 && Math.abs(p-target)>0.08+2*Math.sqrt(Math.max(0.02,p*(1-p))/n)) break; } }catch(e){ return seen[l]=target; }
+    return seen[l]=w/n;
+  };
+  let lo=1, hi=cap||40, l=l0, best=l0, bestErr=9, last=target;
   for(let i=0;i<7;i++){
-    const rt=rate(l,'fit'+i), err=Math.abs(rt-target); if(err<bestErr){ bestErr=err; best=l; } if(err<=0.05) break;
+    const rt=last=rate(l,'fit'+i), err=Math.abs(rt-target); if(err<bestErr){ bestErr=err; best=l; } if(err<=0.05) break;
     if(rt>target) lo=Math.max(lo,l+1); else hi=Math.min(hi,l-1);
     if(lo>hi) break; l=Math.round(Math.sqrt(lo*hi));
   }
   // a second look at the pick with fresh fights: too hard for what was asked, one level down
-  for(let k=0;k<3 && best>1;k++){ const rt=rate(best,'chk'+k); if(rt>=target-0.1) break; best--; }
-  f.level=best; o.level=Math.max(...o.foes.map(x=>x.level)); return o;
+  for(let k=0;k<8 && best>1;k++){ const rt=last=rate(best,'chk'+k); if(rt>=target-0.1) break; best--; }
+  set(best); o.fitRate=seen[best]!==undefined?seen[best]:last; o.fitFloor=best<=1; return o;       // how it ended: the last win rate, and whether even the lowest level was too hard
 }
 // a quick, single bout of about the wanted difficulty (for forced fights, which cannot wait for the pit's scouting)
 function ludusQuickBout(diff,rewardMult){
@@ -208,13 +219,15 @@ function ludusAdvanceDay(){
   else if(ludus.day-(ludus.lastFight||1)>=LUDUS_IDLE_LIMIT) ludus.forced={ type:'debt' };
   if(!ludus.forced) ludusMaybeEvent();
 }
-// a bout against a figure of the ladder: to the death, a lesser kind of the same name stands in when the figure is too mighty for the team
-function ludusFigureBout(rival,beaten,reward,target){
+// a bout against a figure of the ladder, to the death: a lesser kind of the same name stands in when the figure is too mighty for the team.
+// Without `city` it matches the team and is fitted by test fights (`target` is the wanted win rate); with `city` ({ ref, ratio, tier }) it is built for a place of its own level (the map): worth `ratio` times a team of level `ref`, no fitting
+function ludusFigureBout(rival,beaten,reward,target,city){
   if(rival.ghost) return ludusGhostBout(rival,reward);
-  let rk=rival.kind; if(creatureWorth(rk)>ludusUnitWorth()*2){ const rr=ludusRng('rk'+rival.rank+':'+beaten), ks=ludusFoeKinds(); rk=ks[Math.floor(rr()*ks.length)]; }
-  const rv=Object.assign({},rival,{ kind:rk, level:ludusMatchLevel(rk,0) }), esc=Array.from({ length:ludus.team.length-1 },(_,k)=>{ const r=ludusRng('esc'+beaten+':'+k), ks=ludusFoeKinds(), kk=ks[Math.floor(r()*ks.length)]; return { kind:kk, level:Math.max(1,ludusMatchLevel(kk,-2)), tier:rival.tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] }; });
-  const o=Object.assign({},rv,{ variant:'duel', foes:[rv].concat(esc), title:`${rival.name} (${SPECIES[rk].label})`, reward:Math.round(reward*ludusHallMult()), diff:'hard', deathFit:true });
-  return ludusFitLevel(o,target);
+  const ref=city&&city.ref, unit=ludusUnitWorth(ref), mul=city?city.ratio:1, tier=city?city.tier:rival.tier, lvl=(k,w)=>Math.max(1,Math.min(40,creatureLevelFor(k,w)));
+  let rk=rival.kind; if(creatureWorth(rk)>unit*2){ const rr=ludusRng('rk'+rival.rank+':'+beaten), ks=ludusFoeKinds(ref); rk=ks[Math.floor(rr()*ks.length)]; }
+  const rv=Object.assign({},rival,{ kind:rk, level:city?lvl(rk,unit*mul):ludusMatchLevel(rk,0), tier }), esc=Array.from({ length:ludus.team.length-1 },(_,k)=>{ const r=ludusRng('esc'+beaten+':'+k), ks=ludusFoeKinds(ref), kk=ks[Math.floor(r()*ks.length)]; return { kind:kk, level:city?lvl(kk,unit*mul*0.6):Math.max(1,ludusMatchLevel(kk,-2)), tier, seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] }; });
+  const o=Object.assign({},rv,{ variant:'duel', foes:[rv].concat(esc), title:`${rival.name} (${SPECIES[rk].label})`, reward:Math.round(reward*ludusHallMult()), diff:'hard', deathFit:true, figId:'r'+rival.rank });
+  return target?ludusFitLevel(o,target,city&&city.team,false,city&&city.runs):o;
 }
 function ludusForcedBout(){
   const fo=ludus.forced; if(!fo.opp){
@@ -251,7 +264,7 @@ function ludusResolve(st){
     ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day);
     ludusSaveGhost(team,o.title||o.name,false);
   } else {
-    const lead=alive[0], who=alive.length>1?'Dein Team':lead.m.name, xp=Math.round(LUDUS_XP_MULT*(won ? 18+8*o.level+6*(foes.length-1) : 6+2*o.level));
+    const lead=alive[0], who=alive.length>1?'Dein Team':lead.m.name, lv=o.cityLevel||o.level, xp=Math.round(LUDUS_XP_MULT*(won ? 18+8*lv+6*(foes.length-1) : 6+2*lv));       // a city's bout is worth what its level says, not what a fitted foe's level happens to be
     withState(st,()=>alive.forEach(p=>grantXp(p.c,xp)));
     alive.forEach(({m,c})=>{
       m.level=c.level; m.xp=c.xp; m.inventory=JSON.parse(JSON.stringify(c.inventory||[])); m.learned=(c.learned||[]).slice(); ludusNormalizeGear(m);
@@ -296,15 +309,17 @@ function ludusWeekId(d){
   const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1)), wk=Math.ceil(((t-y0)/86400000+1)/7);
   return t.getUTCFullYear()+'-W'+String(wk).padStart(2,'0');
 }
-function ludusLadder(week){
+// the ten figures of the week without the ghosts (the map picks its finals from them)
+function ludusLadderBase(week){
   const r=seededRng(arenaHash('ladder:'+week)), pool=arenaKinds().slice(), out=[];
   for(let i=0;i<10;i++){      // i = 0 is the champion, i = 9 the weakest
     const strength=9-i, fit=pool.filter(k=>strength>=9||creatureWorth(k)<=0.6+0.5*strength), from=fit.length?fit:pool, kind=from[Math.floor(r()*from.length)]; pool.splice(pool.indexOf(kind),1);       // the lower ranks are weaker kinds
     out.push({ kind, level:1+Math.round(strength*1.8), tier:Math.max(0,Math.min(3,Math.floor(strength/3))), seed:Math.floor(r()*1e9),
       name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], rank:i+1, layout:ludusLayoutPick(r) });
   }
-  return ludusLadderWithGhosts(out);
+  return out;
 }
+const ludusLadder=week=>ludusLadderWithGhosts(ludusLadderBase(week));
 function ludusChallenge(){
   const t=ludusTour(), lad=ludusLadder(t.week), rival=lad[Math.max(0,9-t.beaten)];
   const o=ludusFigureBout(rival,t.beaten,20+12*(Math.min(t.beaten,9)+1)+(rival.rank===1?100:0),Math.max(0.6,0.95-0.04*t.beaten)); o.tour=true; o.rank=rival.rank;
@@ -437,9 +452,12 @@ function ludusRender(){
   if(live && ludus.giftChoice){
     override=`<div class="luPanel luGifts"><h2>Eine Gabe</h2><p>Der Sieg in der Turnierrunde wird belohnt. Wähle eine Gabe, sie bleibt für den ganzen Lauf.</p><div class="luOpts">${ludus.giftChoice.map((g,i)=>`<div class="luOption luGift r${g.rarity}"><div><b>${ludusEsc(giftTitle(g))}</b>${g.wild?' <span class="luTrait">[Wildkarte]</span>':''}<br><i>${Tr(GIFT_RARITY[g.rarity])}</i>${giftLines(g).map(l=>`<div class="${l.role==='bane'?'luBane':'luBoon'}"><span>${l.role==='bane'?'▼':'▲'}</span> <span>${ludusEsc(l.text)}</span></div>`).join('')}</div>${ludus.team.length>1?ludus.team.map((m,mi)=>`<button data-gift="${i}:${mi}" class="menuMain">Für ${ludusEsc(m.name)}</button>`).join(' '):`<button data-gift="${i}:0" class="menuMain">Wählen</button>`}</div>`).join('')}</div></div>`;
   } else if(live && ludus.forced){
-    const fo=ludus.forced, o=ludusForcedBout();
-    override=`<div class="luPanel luForced"><h2>Pflichtkampf: ${fo.type==='cup'?'Die Turnierrunde':(fo.type==='week'?'Der Wochenkampf':(fo.type==='event'?'Der Hinterhalt':'Der Wirt hat genug'))}</h2><p>${fo.type==='cup'?'Das Turnier ruft: Wer gewinnt, kommt weiter, wer verliert, fliegt raus. Ein Turnierkampf geht auf Leben und Tod: Aufgeben gibt es nicht, wer unterliegt, stirbt. Die Nacht davor wird das Team gepflegt: es tritt ausgeruht und gesund an.':(fo.type==='week'?'Der Wochenkampf ist Pflicht: Die Gruben verlangen ihren Preis. Er bringt Gold, aber keinen Ruhm im Turnier.':(fo.type==='event'?'Dem kommst du nicht aus.':'Du hast zu lange nur geschlafen und geübt. Der Wirt schickt dich in die Grube, damit du dir dein Bett verdienst.'))}</p>
-      <div class="luOpp"><canvas id="luForcedPrev" width="110" height="110"></canvas><div><b>${ludusEsc(o.title||o.name)}</b><br>${ludusVariantLabel(o)} · Stufe ${o.level}<br>Preis: ${o.reward} Gold</div></div><button id="luForcedGo" class="menuMain">Antreten</button></div>`;
+    const fo=ludus.forced;
+    // a cup round's foes are searched with many test fights: the page shows that first, then works
+    if(fo.type==='cup'&&!fo.opp){ const run=ludus; override=`<div class="luPanel luForced"><h2>Pflichtkampf: Die Turnierrunde</h2><p>Der nächste Gegner wird gesucht …</p></div>`; setTimeout(()=>{ if(ludus===run&&ludus.forced===fo){ ludusForcedBout(); ludusSave(); ludusRender(); } },40); }
+    else { const o=ludusForcedBout();
+    override=`<div class="luPanel luForced"><h2>Pflichtkampf: ${fo.type==='cup'?'Die Turnierrunde':(fo.type==='week'?'Der Wochenkampf':(fo.type==='event'?'Der Hinterhalt':'Der Wirt hat genug'))}</h2>${fo.type==='cup'&&ludus.cup?`<p class="luHint">${ludusEsc(ludusCupNode().name)} · Runde ${ludus.cup.round+1} von ${ludus.cup.rounds}</p>`:''}<p>${fo.type==='cup'?'Das Turnier ruft: Wer gewinnt, kommt weiter, wer verliert, fliegt raus. Ein Turnierkampf geht auf Leben und Tod: Aufgeben gibt es nicht, wer unterliegt, stirbt. Die Nacht davor wird das Team gepflegt: es tritt ausgeruht und gesund an.':(fo.type==='week'?'Der Wochenkampf ist Pflicht: Die Gruben verlangen ihren Preis. Er bringt Gold, aber keinen Ruhm im Turnier.':(fo.type==='event'?'Dem kommst du nicht aus.':'Du hast zu lange nur geschlafen und geübt. Der Wirt schickt dich in die Grube, damit du dir dein Bett verdienst.'))}</p>
+      <div class="luOpp"><canvas id="luForcedPrev" width="110" height="110"></canvas><div><b>${ludusEsc(o.title||o.name)}</b><br>${ludusVariantLabel(o)} · Stufe ${o.level}<br>Preis: ${o.reward} Gold</div></div><button id="luForcedGo" class="menuMain">Antreten</button></div>`; }
   } else if(live && ludus.event){
     const ev=ludus.event, def=ludusEventDef(ev.id), opts=ludusEventOptions(def);
     override=`<div class="luPanel luEvent"><h2>${def.title}</h2><p>${ludusEsc(def.text(ev))}</p>${ludusCastHTML(ev.cast)}${opts.map((o,i)=>`<button data-event="${i}" class="menuMain" ${o.when&&!o.when(ev)?'disabled':''}>${o.trait?'<span class="luTrait">['+SPECIES[ludus.fighter.kind].label+']</span> ':''}${ludusEsc(typeof o.label==='function'?o.label(ev):o.label)}</button>`).join(' ')}</div>`;
@@ -466,9 +484,9 @@ function ludusRender(){
       <button id="luTrain" class="menuMain" ${ludus.gold<cost?'disabled':''}>Trainieren · ${cost} Gold · +${ludusTrainXp()} Erfahrung</button>${ludusRoomBox('training')}</div>`;
   } else if(ludusTab==='tour'){
     const t=ludusTour(), lad=ludusLadder(t.week), next=t.beaten<10?lad[9-t.beaten]:null;
-    main=`<div class="luPanel"><h2>Turnier ${t.week}</h2><p class="luHint">Die Rangliste ist für alle, die in dieser Woche begonnen haben, gleich. ${ludus.mode==='map'?'Im Kartenmodus wartet in jedem Turnier einer dieser Kämpfer im Finale auf dich.':'Fordere die Gegner von unten nach oben heraus, bis du den Meister schlägst. Ein Herausforderungskampf geht auf Leben und Tod.'} Die Pflichtkämpfe alle ${LUDUS_WEEK_EVERY} Tage zählen nicht für die Rangliste.</p>
+    main=`<div class="luPanel"><h2>Turnier ${t.week}</h2><p class="luHint">Die Rangliste ist für alle, die in dieser Woche begonnen haben, gleich. ${ludus.mode==='map'?'Im Kartenmodus wartet in jedem Turnier einer dieser Kämpfer im Finale auf dich, hier steht, wer in welcher Stadtstufe.':'Fordere die Gegner von unten nach oben heraus, bis du den Meister schlägst. Ein Herausforderungskampf geht auf Leben und Tod.'} Die Pflichtkämpfe alle ${LUDUS_WEEK_EVERY} Tage zählen nicht für die Rangliste.</p>
       <p><b>Nächster Pflichtkampf in ${ludusWeekIn()} Tagen.</b></p>
-      ${lad.map((r,i)=>{ const done=(9-i)<t.beaten; return `<div class="luItem${done?' worn':''}${next&&next.rank===r.rank?' sel':''}"><span>${r.rank}. ${ludusEsc(r.name)} — ${SPECIES[r.kind].label}, Stufe ${r.ghost?r.level:ludusMatchLevel(r.kind,0)}${r.ghost?(r.ghost.members.length>1?' · früheres Team':' · früherer Kämpfer'):''}</span><span>${done?'✓':''}</span></div>`; }).join('')}
+      ${ludus.mode==='map'?ludusMapHallHTML():lad.map((r,i)=>{ const done=(9-i)<t.beaten; return `<div class="luItem${done?' worn':''}${next&&next.rank===r.rank?' sel':''}"><span>${r.rank}. ${ludusEsc(r.name)} — ${SPECIES[r.kind].label}, Stufe ${r.ghost?r.level:ludusMatchLevel(r.kind,0)}${r.ghost?(r.ghost.members.length>1?' · früheres Team':' · früherer Kämpfer'):''}</span><span>${done?'✓':''}</span></div>`; }).join('')}
       ${ludus.mode==='map'?'':(next?`<p>Nächster Gegner: <b>${ludusEsc(next.name)}</b> (Platz ${next.rank})</p>`:'<p><b>Du bist Meister dieser Rangliste!</b></p>')+`<button id="luChallenge" class="menuMain">${next?'Herausfordern':'Den Meister erneut herausfordern'}</button>`}${ludusRoomBox('hall')}</div>`;
   } else if(ludusTab==='map'){
     main=ludusMapHTML();

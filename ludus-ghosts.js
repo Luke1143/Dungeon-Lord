@@ -7,21 +7,22 @@ function ludusSaveGhost(team,killer,champion){
   if(ludusMeta.ghosts.length>LUDUS_GHOST_MAX){ const weakest=ludusMeta.ghosts.reduce((a,b)=>(ludusGhostLevel(b)+(b.champion?99:0)<ludusGhostLevel(a)+(a.champion?99:0)?b:a)); ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==weakest); }       // the list is full: the weakest goes, champions stay
 }
 const ludusGhostLevel=g=>Math.round(g.members.reduce((a,m)=>a+m.level,0)/g.members.length);
+// a ghost as a figure of the ladder (in place of `base`)
+const ludusGhostFigure=(g,base)=>Object.assign({},base,{ kind:g.members[0].kind, level:g.members[0].level, name:g.name, ghost:g });
 // the ladder with the ghosts put in: each takes the place of its strength (a taken place goes to the next free one)
 function ludusLadderWithGhosts(lad){
   const out=lad.slice(), taken=new Set();
   (ludusMeta.ghosts||[]).slice().sort((a,b)=>ludusGhostLevel(b)-ludusGhostLevel(a)).forEach(g=>{
     const want=Math.max(0,Math.min(9,9-Math.round((ludusGhostLevel(g)-1)/1.8)));
     let i=want; for(let d=0;d<10;d++){ const c=[want-d,want+d].find(x=>x>=0&&x<10&&!taken.has(x)); if(c!==undefined){ i=c; break; } }
-    taken.add(i); const lead=g.members[0];
-    out[i]=Object.assign({},lad[i],{ kind:lead.kind, level:lead.level, name:g.name, ghost:g, rank:i+1 });
+    taken.add(i); out[i]=Object.assign(ludusGhostFigure(g,lad[i]),{ rank:i+1 });
   });
   return out;
 }
 const ludusGhostFoes=g=>g.members.map(m=>({ kind:m.kind, level:m.level, tier:0, seed:m.seed, name:m.name, ghost:true, member:Object.assign({},m,{ hp:undefined, energy:100 }) }));
 function ludusGhostBout(rival,reward){
   const g=rival.ghost, foes=ludusGhostFoes(g);
-  return { kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), foes, variant:foes.length>1?'group':'duel', title:`${g.name}${g.champion?' (Champion)':''}`, reward:Math.round(reward*ludusHallMult()), diff:'hard', ghostId:g.id, ghostName:g.name, ghostKiller:g.killer, rank:rival.rank };
+  return { kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), foes, variant:foes.length>1?'group':'duel', title:`${g.name}${g.champion?' (Champion)':''}`, reward:Math.round(reward*ludusHallMult()), diff:'hard', deathFit:true, ghostId:g.id, ghostName:g.name, ghostKiller:g.killer, rank:rival.rank };
 }
 // beaten: the team retires; one piece of its gear falls to the winner
 function ludusGhostRetire(o){
