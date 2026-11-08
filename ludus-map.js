@@ -116,9 +116,12 @@ function ludusCupSearch(fo){
   if(!fo||fo.opp||(ludusCupJob&&ludusCupJob.fo===fo)||!ludus.cup) return;
   const run=ludus, job=ludusCupJob={ fo };
   const alive=()=>ludus===run&&ludus.forced===fo&&!fo.opp&&ludus.cup;
+  // a search that failed falls back on a plain bout that still counts as the round
+  const fallback=()=>Object.assign(ludusQuickBout('fair',1),{ cup:true, final:ludus.cup.round===ludus.cup.rounds-1 });
+  const done=o=>{ if(ludusCupJob===job) ludusCupJob=null; if(!alive()) return; fo.opp=o||fallback(); ludusSave(); if(screen==='ludus') ludusRender(); };
+  const abort=()=>{ if(alive()) return false; if(ludusCupJob===job) ludusCupJob=null; return true; };
   ludusSims=0;
-  ludusStepper(ludusCupBoutG(),o=>{ if(ludusCupJob===job) ludusCupJob=null; if(!alive()) return; fo.opp=o||ludusQuickBout('fair',1); ludusSave(); if(screen==='ludus') ludusRender(); },()=>{ if(alive()) return false; if(ludusCupJob===job) ludusCupJob=null; return true; },
-    ()=>{ const el=document.getElementById('luSearchN'); if(el) el.textContent=ludusSims; });
+  ludusStepper(ludusCupBoutG(),done,abort,()=>{ const el=document.getElementById('luSearchN'); if(el) el.textContent=ludusSims; });
 }
 function ludusCupWon(o){
   const cup=ludus.cup, n=ludusCupNode();
