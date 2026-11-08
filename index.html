@@ -1945,7 +1945,6 @@ const WRITE_TICKS=4*SPEED_FACTOR;
 const LOOK_AROUND_TICKS_MIN=8, LOOK_AROUND_TICKS_MAX=16;
 const HATCHERY_FEED_INTERVAL=45; // Ticks zwischen nötigen Fütterungen
 const FEED_TICKS=2*SPEED_FACTOR;
-const CHICKEN_GROW_TICKS=60;
 const CHICK_MEALS_NEEDED=4;     // so oft muss ein Kueken fressen, um erwachsen zu werden
 const CHICK_MEAL_COOLDOWN=18;   // Pause zwischen zwei Mahlzeiten
 const CHICK_MEAL_COOLDOWN_T3=10;// Stufe 3: die Tiere gedeihen schneller
@@ -1962,7 +1961,7 @@ const CHICKEN_HAPPINESS_BONUS=8;
 const CHICKEN_FULL_THRESHOLD=85; // ab hier gilt die Kreatur als (fast) satt -> Heilung statt Sättigung
 const GOLD_HAPPINESS_BONUS=35; // Humanoide freuen sich sehr über Gold
 
-const WAGE_PER_LEVEL=1; // Grundlohn je Stufe - bewusst niedrig, damit es nicht explodiert
+ // Grundlohn je Stufe - bewusst niedrig, damit es nicht explodiert
 const WAGE_PAID_HAPPINESS=12; // Freude über den erhaltenen Lohn
 const WAGE_UNPAID_HAPPINESS=8; // stapelnder Malus, solange Lohn aussteht
 const WAGE_NOTHING_EARNED_HAPPINESS=2; // kleiner Dämpfer, wenn es nichts zu verdienen gab
@@ -2453,53 +2452,6 @@ function growGemSeam(g,x,y,size){
   return placed>0;
 }
 
-function growCave(g,x,y,size){
-  if(x<0||x>=WORLD_COLS||y<0||y>=WORLD_ROWS) return;
-  const visited=new Set([x+','+y]);
-  const cells=[{x,y}];
-  const frontier=[{x,y}];
-  while(cells.length<size && frontier.length){
-    const idx=Math.floor(Math.random()*frontier.length);
-    const cur=frontier[idx];
-    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-    const [dx,dy]=dirs[Math.floor(Math.random()*4)];
-    const nx=cur.x+dx, ny=cur.y+dy;
-    const key=nx+','+ny;
-    if(nx>=0&&nx<WORLD_COLS&&ny>=0&&ny<WORLD_ROWS&&!visited.has(key)){
-      visited.add(key); cells.push({x:nx,y:ny}); frontier.push({x:nx,y:ny});
-    } else {
-      frontier.splice(idx,1);
-    }
-  }
-  cells.forEach(c=>{
-    const t=g[c.y][c.x];
-    if(t.type==='rock' && !t.room){ t.type='floor'; t.owned=false; t.natural=true; }
-  });
-
-  // Manche größeren Höhlen haben ein Wasserbecken im Inneren - passierbar, aber nicht erobbar
-  if(cells.length>=6 && Math.random()<0.5){
-    const caveSet=new Set(cells.map(c=>c.x+','+c.y));
-    const seed=cells[Math.floor(Math.random()*cells.length)];
-    const waterSize=Math.max(2, Math.floor(cells.length*0.3));
-    const waterVisited=new Set([seed.x+','+seed.y]);
-    const waterCells=[seed];
-    const waterFrontier=[seed];
-    while(waterCells.length<waterSize && waterFrontier.length){
-      const idx=Math.floor(Math.random()*waterFrontier.length);
-      const cur=waterFrontier[idx];
-      const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
-      const [dx,dy]=dirs[Math.floor(Math.random()*4)];
-      const nx=cur.x+dx, ny=cur.y+dy;
-      const key=nx+','+ny;
-      if(caveSet.has(key) && !waterVisited.has(key)){
-        waterVisited.add(key); waterCells.push({x:nx,y:ny}); waterFrontier.push({x:nx,y:ny});
-      } else {
-        waterFrontier.splice(idx,1);
-      }
-    }
-    waterCells.forEach(c=>{ g[c.y][c.x].type='water'; });
-  }
-}
 
 function growBedrock(g,x,y,size){
   if(x<0||x>=WORLD_COLS||y<0||y>=WORLD_ROWS) return;
@@ -2879,9 +2831,6 @@ function computeStorageSlots(goodId){
   return slots;
 }
 
-function computeStorageCapacity(){
-  return computeStorageSlots().reduce((sum,s)=>sum+s.cap,0);
-}
 // Braucht eine Schmelze Nachschub? Imps holen Erz aus dem Lager.
 function findSmelterSupplyJob(imp){
   if((state.ore||0)<=0) return null;
@@ -5845,32 +5794,8 @@ function heldSlotIcons(c, skipGear){
 }
 
 // Welches Werkzeug schwingt die Kreatur gerade? Kontext entscheidet.
-function swingIconOf(c){
-  switch(c.state){
-    case 'digging':      return '⛏️';
-    case 'reinforcing':  return '🧱';
-    case 'claiming':     return '🚩';
-    case 'building':
-    case 'buildingBridge': return '🔨';
-    case 'forgeWork':    return '🔨';
-    case 'smelterWork':  return c.smelterStation==='anvil' ? '🔨' : '💨';
-    case 'writing':      return '✒️';
-    case 'seekingInspiration':
-    case 'examining':    return '🔍';
-    case 'feeding':      return '🌾';
-    case 'fighting': {
-      // Im Kampf zaehlt die getragene Waffe
-      const weapon=(c.inventory||[]).map(instDef).find(d=> d && d.type==='weapon');
-      return weapon ? weapon.icon : '✊';
-    }
-    default: return null;
-  }
-}
 
 // Die Ausholbewegung steckt bereits im Schwungkonto - keine neue Zustandsvariable.
-function swingPhase(c){
-  return Math.max(0, Math.min(1, (c.swingBudget||0)/swingCostOf(c)));
-}
 
 // Genau EIN Gedanke ueber dem Kopf, nach fester Rangfolge.
 function thoughtOf(c){
@@ -6017,7 +5942,6 @@ function creatureIconURL(c){
 function creatureIconHTML(c,px){ const u=creatureIconURL(c); return u?`<img class="spIcon" src="${u}" width="${px}" height="${px}" alt="">`:escapeHtmlText(creatureEmoji(c)); }
 function escapeHtmlText(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 // Imps are drawn smaller than the other creatures (design decision); everything else keeps the full tile scale.
-const IMP_SCALE=0.62;
 // white silhouette of a sprite canvas (for the hit flash)
 const SILHOUETTES=new WeakMap();
 function silhouetteOf(cv){
@@ -6828,7 +6752,7 @@ function combatBarClick(c){
 
 function renderEventLog(){ if(typeof uiRenderEvents==='function') uiRenderEvents(); }       // the events fall in as icons (ui-panel.js)
 
-let creatureMenuOpen=null; // aufgeklappte Oberkategorie
+ // aufgeklappte Oberkategorie
 const creatureCycle={};    // merkt sich, bei welcher Kreatur der Kamera-Durchlauf steht
 
 function creatureGroups(){
@@ -6849,16 +6773,6 @@ function creatureGroups(){
   return groups;
 }
 
-function memberDisplayName(m, groupKey){
-  const lvl=`Stufe ${m.level||1}`;
-  if(groupKey==='imp') return `👹 ${m.name} (${lvl})`;
-  if(groupKey==='warlock') return `🧙 ${m.name} (${lvl})`;
-  if(groupKey==='fly') return `🪰 Fliege (${lvl})`;
-  if(groupKey==='beetle') return `🪲 Käfer (${lvl})`;
-  if(groupKey==='hound') return `🐕 Höllenhund (${lvl})`;
-  { const sp=SPECIES[groupKey]; if(sp) return `${sp.icon||''} ${m.name} (${lvl})`; }
-  return `${groupKey} (${lvl})`;
-}
 
 // Springt reihum zur naechsten Kreatur der gewuenschten Auswahl
 function cycleCameraTo(cycleKey, members){

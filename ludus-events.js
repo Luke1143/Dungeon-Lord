@@ -6,7 +6,7 @@ const LUDUS_STORY_WEIGHT=4;
 const ludusAnon=(r,kinds,level,tier,name)=>({ kind:kinds[Math.floor(r()*kinds.length)], level:Math.max(1,level), tier, seed:Math.floor(r()*1e9), name });
 const ludusPick=(r,l)=>l[Math.floor(r()*l.length)];
 const ludusKindOf=k=>SPECIES[k].label;
-function ludusGrantXp(n){ const prev=state; try{ if(!state||!state.eventLog) state=makeDefaultState(); ludus.team.forEach(m=>{ const c=ludusMemberCreature(m); grantXp(c,n); m.level=c.level; m.xp=c.xp; }); } finally { state=prev; } }
+function ludusGrantXp(n){ withState(null,()=>ludus.team.forEach(m=>{ const c=ludusMemberCreature(m); grantXp(c,n); m.level=c.level; m.xp=c.xp; })); }
 // the event's bout, fought against its cast
 function ludusEventBout(ev,reward){
   const foes=ev.cast.filter(s=>s.role!=='friend'), o={ variant:foes.length>1?'swarm':'duel', foes, diff:'fair', reward, kind:foes[0].kind, level:Math.max(...foes.map(x=>x.level)), name:foes[0].name };

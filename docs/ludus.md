@@ -66,7 +66,7 @@ Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus 
 - **Trainingsraum** (neu, 3 Stufen): eine Runde am Dummy gibt Erfahrung ohne Schaden, kostet Gold und einen Tag.
 
 ## Fortschritt, Druck und Abwechslung (neu)
-- **Tage drücken**: Alle 7 Tage kommt eine **Turnierrunde als Pflichtkampf** (die nächste Rivalin der Rangliste), und wer **4 Tage nicht kämpft**, wird vom Wirt in einen Pflichtkampf geschickt (fairer Gegner, halber Preis). Oben stehen "Turnier in X Tagen" und "Pflichtkampf spätestens in Y Tagen". So lässt sich nicht endlos schlafen und üben; Training und Schlaf kosten Tage und schieben den Druck näher.
+- **Tage drücken**: Alle 5 Tage kommt ein **Wochenkampf als Pflichtkampf** (fairer Gegner, ohne Rangliste, siehe unten), und wer **3 Tage nicht kämpft**, wird vom Wirt in einen Pflichtkampf geschickt (fairer Gegner, halber Preis). Oben stehen "Wochenkampf in X Tagen" und "Pflichtkampf spätestens in Y Tagen". So lässt sich nicht endlos schlafen und üben; Training und Schlaf kosten Tage und schieben den Druck näher.
 - **Die Grube bietet Auswahl**: ein *leichter* Kampf (Siegchance etwa 80 %, 60 % Preis) und ein *fairer* (etwa 50 %); mit ausgebauter Grube (Stufe 2) kommt ein *schwerer* dazu (etwa 30 %, 170 % Preis). Die Schwierigkeit wird mit Probekämpfen gemessen, nicht geschätzt.
 - **Kampfvarianten**: Duell, **Rudel** (2 bis 3 schwächere Gegner) und **Tag-Team** (ein Verbündeter, zwei Gegner); manchmal liegt **Ausrüstung in der Grube** (wer keinen Feind in der Nähe hat, geht zuerst hin und nimmt sie auf).
 - **Ereignisse** nach Kämpfen (30 %): kurze Geschichten mit Wahlmöglichkeiten, dazu Optionen, die ein **Merkmal der Art** freischaltet (Skelett: Falle stellen, Dieb: Beutel stehlen, Troll: Armdrücken), im Stil von FTL. Heute vier Ereignisse (Fauchen im Tunnel, Händler, Gladiator, Fest); eine Wahl kann einen Pflichtkampf (Hinterhalt) auslösen.
@@ -96,7 +96,7 @@ After a won tournament round the fighter picks one of three procedural gifts, se
 Neben der offenen Grube und den Höhlen gibt es geformte Kampfplätze (`arena-stages.js`): **Engpass** (Mauer mit schmaler Lücke), **Brücke über Lava** (zwei Plattformen, zwei schmale Brücken), **Ring** (großer Block in der Mitte), **Lavainsel** (Insel in einem Lavagraben, vier Brücken), **Säulenhalle** (Deckung für Schützen) und **Gassen** (drei Bahnen mit Lücken). Jeder Pit-Kampf und jede Turnierrunde hat eine Arena; die Probekämpfe der Grube zählen sie mit, die Schwierigkeit stimmt also.
 
 ## Tempo
-Die Turnierrunde kommt alle 5 Tage (Pflichtkampf nach 3 Tagen ohne Kampf), Erfahrung aus Kämpfen ×3,5, Ansehen ×1,5.
+Der Wochenkampf kommt alle 5 Tage (Pflichtkampf nach 3 Tagen ohne Kampf), Erfahrung aus Kämpfen ×3,5, Ansehen ×1,5.
 
 ## Gemeinsames Inventar (neu)
 Das Team teilt sich einen Vorrat (`ludus.stash` für Ausrüstung, `ludus.bookbag` für Bücher). Ein Mitglied trägt nur, was es anhat; Einkäufe, Beute und Funde landen im Vorrat. Der Reiter „Inventar" zeigt alles als Gitter mit den Pixelbildern des Spiels (Waffen aus ihren Teilen, Schilde, Rüstungen; der Rand zeigt die Güteklasse, ein Buchstabe in der Ecke den Träger). Ein Stück wird einem Mitglied angelegt, weitergegeben oder abgelegt; Würfeln und Verkaufen gelten für alle Stücke. Bücher werden von einem gewählten Mitglied gelernt.

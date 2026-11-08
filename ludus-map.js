@@ -1,10 +1,10 @@
 // Ludus map mode: a campaign-style world of cities. Each city holds a cup (several rounds, a loss throws you out, the final is against a figure of the ladder); winning conquers the city.
 // State: ludus.mode==='map', ludus.map={ at, done[] }, ludus.cup={ node, round, rounds } while a cup runs. The world itself is rebuilt from the run seed (never saved).
-let ludusMapCache=null, ludusMapTerrain=null;
+let ludusMapCache=null, ludusMapTerrain=null, ludusMapSeed=null;
 function ludusMapWorld(){
-  if(!ludusMapCache||ludusMapCache.seed!==ludus.seed){
+  if(!ludusMapCache||ludusMapSeed!==ludus.seed){
     const prev=world, prevT=owTerrainCache;
-    try{ world=buildWorld('lm'+ludus.seed); owTerrainCache=null; owRenderTerrain(); ludusMapTerrain=owTerrainCache; ludusMapCache=world; ludusMapCache.seed=ludus.seed; }
+    try{ world=buildWorld('lm'+ludus.seed); owTerrainCache=null; owRenderTerrain(); ludusMapTerrain=owTerrainCache; ludusMapCache=world; ludusMapSeed=ludus.seed; }
     finally{ world=prev; owTerrainCache=prevT; }
   }
   return ludusMapCache;

@@ -144,18 +144,8 @@ function arenaPickups(st){
   });
 }
 // with gear on the ground and no foe within a few steps, a creature goes to pick it up (called from tickCombat)
-function arenaItemDetour(c){
-  const st=state; if(!st.arena||!st.looseItems||!st.looseItems.some(it=>it.kind==='equipment')) return false;
-  if(c.kind==='imp'||c.unconscious||!usesEquipment(c)&&c.category!=='hero') return false;
-  const foes=st.creatures.filter(o=>o!==c&&!o.unconscious&&!o.removed&&areHostile(c,o));
-  if(foes.some(o=>Math.abs(o.x-c.x)+Math.abs(o.y-c.y)<=3)) return false;
-  let best=null; st.looseItems.forEach(it=>{ if(it.kind!=='equipment'||!hasFreeSlot(c,looseInst(it))) return; const d=Math.abs(it.x-c.x)+Math.abs(it.y-c.y); if(d<=9&&(!best||d<best.d)) best={ it, d }; });
-  if(!best) return false;
-  // not when a foe is closer to the gear than we are (then the fight comes first)
-  if(foes.some(o=>Math.abs(o.x-best.it.x)+Math.abs(o.y-best.it.y)<best.d)) return false;
-  const res=bfsFind(c.x,c.y,(x,y)=>x===best.it.x&&y===best.it.y); if(!res) return false;
-  c.path=res.path; c.state='engaging'; stepAlong(c); return true;
-}
+// run fn with `state` swapped (the game code reads the global); with no state given, a throw-away one stands in when none with an event log is current (hub screens)
+function withState(st,fn){ const prev=state; try{ state=st||((prev&&prev.eventLog)?prev:makeDefaultState()); return fn(); } finally { state=prev; } }
 // a persistent fighter (the Ludus mode) steps into the match with its own level, gear, abilities and wounds
 const LUDUS_HP_MULT=2;      // Ludus bouts last longer: more life for everyone, so that gear, stamina and status effects have time to matter
 function arenaApplyFighter(c,f){

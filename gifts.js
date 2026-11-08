@@ -49,7 +49,6 @@ const BANE_FLAGS=['noArmor','noShield','noFlight','frail'];
 const ln13=Math.log(1.3);
 const mulPower=(k,v)=>{ const d=GIFT_MUL[k]; return d.w*Math.abs(Math.log(v))/ln13; };
 const mulValue=(k,power,boon)=>{ const d=GIFT_MUL[k], dir=(d.good>0)===boon?1:-1; return +Math.min(3,Math.max(0.35,Math.exp(dir*power/d.w*ln13))).toFixed(2); };
-function giftFxList(g){ return g.fx; }
 // a rule is on when any gift names it (as a boon or as a bane)
 function giftOn(c,key){ return !!(c.gifts&&c.gifts.some(g=>g.fx.some(f=>f.k===key))); }
 // multiplier of all gifts for a stat (1 when none)
