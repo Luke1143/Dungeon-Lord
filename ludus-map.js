@@ -29,10 +29,13 @@ const LUDUS_CITY={
   round:0.99, perCol:0.012, final:0.97, finalPerCol:0.025,       // the win rate of the reference team in a round / in the final, lower for each column
   giftsPerCol:0.6,                 // gifts of the reference team: so many for each column after the first
   needs:6,                         // cities to conquer before the capital opens
+  driftStart:90, driftEvery:20,    // the cities arm themselves: from this day on their level rises by one, and by one more every so many days (whoever trains for ever falls behind)
   maxOver:4,                       // foes are at most this many levels above the city's (a weak kind made a monster of a level plays unevenly: rather a stronger kind)
   runs:16                          // test fights per probe (at most) when a cup bout is searched
 };
-const ludusCityLevel=col=>Math.max(1,Math.min(LUDUS_CITY.cap,Math.round(1+LUDUS_CITY.step*col)));
+const ludusCityBase=col=>Math.max(1,Math.min(LUDUS_CITY.cap,Math.round(1+LUDUS_CITY.step*col)));
+const ludusCityDrift=()=>ludus&&ludus.day>=LUDUS_CITY.driftStart?1+Math.floor((ludus.day-LUDUS_CITY.driftStart)/LUDUS_CITY.driftEvery):0;
+const ludusCityLevel=col=>ludusCityBase(col)+ludusCityDrift();
 const ludusCityTier=col=>col<3?0:(col<8?1:2);       // the gear a player has by then (crude at first, plain in the middle, fine at the end)
 const LUDUS_TIER_WORD=['grobe','schlichte','feine'];
 const ludusCityGifts=col=>Math.max(0,Math.round(LUDUS_CITY.giftsPerCol*(col-1)));
@@ -54,7 +57,7 @@ const ludusCapitalOpen=()=>ludusConquered()>=LUDUS_CITY.needs;
 const ludusCanEnter=n=>ludusIsCity(n)&&!ludus.map.done.includes(n.id)&&(n.col<ludusMapLastCol(ludusMapWorld())||ludusCapitalOpen());
 
 // ---- the finals: a ghost whose level fits the city, else the figure of the ladder for its column (one already beaten makes room for the next weaker) ----
-const ludusGhostCol=(g,last)=>{ const lv=ludusGhostLevel(g); let best=1; for(let c=1;c<=last;c++) if(Math.abs(ludusCityLevel(c)-lv)<=Math.abs(ludusCityLevel(best)-lv)) best=c; return best; };       // the first column whose level is nearest to the ghost's (the highest of equals: the deepest)
+const ludusGhostCol=(g,last)=>{ const lv=ludusGhostLevel(g); let best=1; for(let c=1;c<=last;c++) if(Math.abs(ludusCityBase(c)-lv)<=Math.abs(ludusCityBase(best)-lv)) best=c; return best; };       // the first column whose level is nearest to the ghost's (the highest of equals: the deepest)
 const ludusMapBaseIdx=(col,last)=>Math.max(0,Math.min(9,9-Math.round(col*9/last)));
 function ludusMapFigureAt(col,beaten){
   const w=ludusMapWorld(), last=ludusMapLastCol(w), lad=ludusLadderBase(ludus.week), base=ludusMapBaseIdx(col,last), done=beaten||[];
@@ -180,6 +183,7 @@ function ludusMapHTML(){
     if(cap&&!ludusCapitalOpen()) info+=`<p class="luBane">Die Tore der Hauptstadt sind verschlossen: erobere zuerst ${LUDUS_CITY.needs} Städte (bisher ${ludusConquered()}).</p>`;
   }
   return `<div class="luPanel"><h2>Karte</h2><p class="luHint">Jede Reise kostet einen Tag. In jeder Stadt wartet ein Turnier: wer gewinnt, kommt weiter, wer verliert, fliegt raus. Im Finale steht einer der Besten der Rangliste. Wer die Hauptstadt erobert, gewinnt. Die Zahl an einer Stadt ist die empfohlene Stufe: Die Gegner richten sich nach der Stadt, nicht nach dir.</p>
+    <p class="${ludusCityDrift()?'luBane':'luHint'}">${ludusCityDrift()?`Die Städte haben aufgerüstet: +${ludusCityDrift()} Stufen.`:`Die Städte rüsten auf: ab Tag ${LUDUS_CITY.driftStart} steigt ihre Stufe, danach alle ${LUDUS_CITY.driftEvery} Tage um 1.`}</p>
     <canvas id="luMapCanvas" width="${OW_COLS*OW_TILE}" height="${OW_ROWS*OW_TILE}" style="width:100%;max-width:960px;border:1px solid #5a4a30"></canvas>
     <p><b>${ludusEsc(n.name)}</b>${lt?' — '+Tr(lt.label):''}${done&&city?' · erobert':''}</p>${info}
     ${city&&!done?`<button id="luCupGo" class="menuMain" ${busy||!ludusCanEnter(n)?'disabled':''}>Turnier betreten</button>`:''}
