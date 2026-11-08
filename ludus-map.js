@@ -29,6 +29,7 @@ const LUDUS_CITY={
   round:0.99, perCol:0.012, final:0.97, finalPerCol:0.025,       // the win rate of the reference team in a round / in the final, lower for each column
   giftsPerCol:0.6,                 // gifts of the reference team: so many for each column after the first
   needs:6,                         // cities to conquer before the capital opens
+  maxOver:4,                       // foes are at most this many levels above the city's (a weak kind made a monster of a level plays unevenly: rather a stronger kind)
   runs:16                          // test fights per probe (at most) when a cup bout is searched
 };
 const ludusCityLevel=col=>Math.max(1,Math.min(LUDUS_CITY.cap,Math.round(1+LUDUS_CITY.step*col)));
@@ -65,30 +66,55 @@ const ludusMapFigure=n=>ludusMapFigureAt(n.col,ludus.map.beaten);
 
 // ---- the cup ----
 // the round's foes: of a few candidates (some easier, some harder than the budget says) the one nearest to the wanted win rate against the reference team; its level is fitted after
-function ludusCupCandidate(rng,L,tier,target,team){
-  const kinds=ludusFoeKinds(L); let best=null;
-  [0.6,0.8,1,1,1.3,1.7].forEach((scale,i)=>{
+function* ludusCupCandidateG(rng,L,tier,target,team,minWorth){
+  let kinds=ludusFoeKinds(L); const strong=kinds.filter(k=>creatureWorth(k)>=minWorth); if(strong.length>=3) kinds=strong;
+  let best=null;
+  for(const [i,scale] of [0.6,0.8,1,1,1.3,1.7].entries()){
     const o=ludusCandidate(rng,kinds,L,tier,rng()*0.8,scale,L); o.cup=true;
-    let rate=0.5; try{ rate=arenaSimulate(ludusMatchSetup(o,'cs'+i,team),5,null).wins[0]/5; }catch(e){}
+    let rate=0.5; try{ rate=arenaSimulate(ludusMatchSetup(o,'cs'+i,team),5,null).wins[0]/5; ludusSims+=5; }catch(e){}
     const sc=Math.abs(rate-target)+rng()*0.05; if(!best||sc<best.sc) best={ sc, o };
-  });
+    yield i;
+  }
   return best.o;
 }
-function ludusCupBout(){
+// the bout of the cup's current round (a generator, see ludusStepper; ludusCupBout runs it to the end)
+function* ludusCupBoutG(){
   const n=ludusCupNode(), cup=ludus.cup, r=cup.round, last=r===cup.rounds-1, L=ludusCityLevel(n.col), tier=ludusCityTier(n.col), target=ludusCityTarget(n.col,last), team=ludusRefTeam(n.col,ludusRng('ref'+n.id+':'+r));
+  const cap=L+LUDUS_CITY.maxOver, runs=LUDUS_CITY.runs;
   let o;
   if(last){
-    const fig=ludusMapFigure(n), city={ ref:L, ratio:1, tier, team, runs:LUDUS_CITY.runs }, reward=Math.round(14+9*L)*2, rng=ludusRng('fig'+n.id);
-    o=ludusFigureBout(fig,n.col,reward,target,city);
-    // a figure that is too mighty even on the lowest level makes way for a lesser kind of the same name
-    for(let a=0;a<3&&!fig.ghost&&o.fitFloor&&o.fitRate<target-0.2;a++){ const lesser=ludusFoeKinds(L).filter(k=>creatureWorth(k)<creatureWorth(o.foes[0].kind)); if(!lesser.length) break; o=ludusFigureBout(Object.assign({},fig,{ kind:lesser[Math.floor(rng()*lesser.length)] }),n.col,reward,target,city); }
-    if(fig.ghost) ludusFitLevel(o,target,team,true,LUDUS_CITY.runs,o.foes[0].level);       // a former team stands as it was, but is never stronger than the city allows: its levels only go down
+    const fig=ludusMapFigure(n), city={ ref:L, ratio:1, tier, team, runs, cap }, reward=Math.round(14+9*L)*2, rng=ludusRng('fig'+n.id);
+    o=yield* ludusFigureBoutG(fig,n.col,reward,target,city);
+    // a figure that is too mighty even on the lowest level makes way for a lesser kind of the same name, one too weak even on the highest for a stronger one
+    for(let a=0;a<4&&!fig.ghost;a++){
+      const cur=creatureWorth(o.foes[0].kind), tooStrong=o.fitFloor&&o.fitRate<target-0.2, tooWeak=o.foes[0].level>=cap&&o.fitRate>target+0.1;
+      const pool=ludusFoeKinds(L).filter(k=>tooStrong?creatureWorth(k)<cur:(tooWeak?creatureWorth(k)>cur*1.3:false)); if(!pool.length) break;
+      o=yield* ludusFigureBoutG(Object.assign({},fig,{ kind:pool[Math.floor(rng()*pool.length)] }),n.col,reward,target,city);
+    }
+    if(fig.ghost) yield* ludusFitLevelG(o,target,team,true,runs,o.foes[0].level);       // a former team stands as it was, but is never stronger than the city allows: its levels only go down
     o.final=true; o.rank=fig.rank;
   } else {
-    o=ludusFitLevel(ludusCupCandidate(ludusRng('cup'+n.id+':'+r),L,tier,target,team),target,team,true,LUDUS_CITY.runs);
+    // a candidate that needs the highest level allowed and still is too easy has too weak a kind: the next try takes only stronger kinds
+    const rng=ludusRng('cup'+n.id+':'+r), unit=ludusUnitWorth(L);
+    for(let a=0;a<3;a++){
+      const cand=yield* ludusCupCandidateG(rng,L,tier,target,team,unit*[0.3,0.6,0.9][a]);
+      o=yield* ludusFitLevelG(cand,target,team,true,runs,cap);
+      if(o.foes[0].level<cap||o.fitRate<=target+0.1) break;
+    }
     o.reward=Math.round((10+6*L)*ludusPitMult()*(1+0.5*(ludus.team.length-1))*1.2); o.title=`Runde ${r+1}: ${o.title||o.name}`;
   }
   o.cup=true; o.diff='hard'; o.cityLevel=L; return o;
+}
+const ludusCupBout=()=>ludusDrain(ludusCupBoutG());
+// the search for the foes of a cup round runs in the background (already while the result of the round before is shown) and stores the bout in the forced fight
+let ludusCupJob=null;
+function ludusCupSearch(fo){
+  if(!fo||fo.opp||(ludusCupJob&&ludusCupJob.fo===fo)||!ludus.cup) return;
+  const run=ludus, job=ludusCupJob={ fo };
+  const alive=()=>ludus===run&&ludus.forced===fo&&!fo.opp&&ludus.cup;
+  ludusSims=0;
+  ludusStepper(ludusCupBoutG(),o=>{ if(ludusCupJob===job) ludusCupJob=null; if(!alive()) return; fo.opp=o||ludusQuickBout('fair',1); ludusSave(); if(screen==='ludus') ludusRender(); },()=>{ if(alive()) return false; if(ludusCupJob===job) ludusCupJob=null; return true; },
+    ()=>{ const el=document.getElementById('luSearchN'); if(el) el.textContent=ludusSims; });
 }
 function ludusCupWon(o){
   const cup=ludus.cup, n=ludusCupNode();
@@ -114,7 +140,7 @@ function ludusCupEnter(){
   const n=ludusCupNode(); if(ludus.over||ludus.forced||ludus.cup||!ludusCanEnter(n)) return;
   ludus.cup={ node:n.id, round:0, rounds:ludusCupRoundsFor(n) }; ludus.forced={ type:'cup' };
   ludus.team.forEach(m=>{ m.hp=undefined; m.energy=100; });
-  ludusSave(); ludusRender();
+  ludusCupSearch(ludus.forced); ludusSave(); ludusRender();
 }
 
 // ---- the map on screen ----
