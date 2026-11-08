@@ -45,9 +45,10 @@ function ludusRefTeam(col,rng){
   for(let k=0;k<ludusCityGifts(col);k++){ const m=team[k%team.length], offer=genGiftOffer(rng,ludusMemberCreature(m),4*k); m.gifts.push(offer.sort((a,b)=>b.power-a.power)[0]); }       // each takes the strongest of the offer, as a player would
   return team;
 }
-// how the team stands against a city: 0 easy, 1 feasible, 2 risky, 3 hopeless (by the levels alone)
-function ludusCityRisk(n){ const d=ludusLevel()-ludusCityLevel(n.col); return d>=2?0:(d>=0?1:(d>=-2?2:3)); }
-const LUDUS_RISK_LABEL=['Leicht','Machbar','Riskant','Aussichtslos'], LUDUS_RISK_COLOR=['#7fd36b','#e8d870','#f09a40','#e05040'];
+// how the team stands against a city, by the levels alone: 0 easy, 1 feasible, 2 balanced, 3 risky, 4 hopeless
+// (measured: a team at the city's level clears a cup about 7 times in 10, one level more about 8, two more about 9; two less about 3, and fewer from there)
+function ludusCityRisk(n){ const d=ludusLevel()-ludusCityLevel(n.col); return d>=2?0:(d===1?1:(d===0?2:(d>=-2?3:4))); }
+const LUDUS_RISK_LABEL=['Leicht','Machbar','Ausgeglichen','Riskant','Aussichtslos'], LUDUS_RISK_COLOR=['#7fd36b','#b6dc5a','#e8d870','#f09a40','#e05040'];
 const ludusConquered=()=>ludus.map.done.filter(id=>ludusMapWorld().nodes[id].col>0).length;
 const ludusCapitalOpen=()=>ludusConquered()>=LUDUS_CITY.needs;
 const ludusCanEnter=n=>ludusIsCity(n)&&!ludus.map.done.includes(n.id)&&(n.col<ludusMapLastCol(ludusMapWorld())||ludusCapitalOpen());

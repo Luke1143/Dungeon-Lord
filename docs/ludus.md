@@ -117,11 +117,20 @@ Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Se
 - **Turnier einer Stadt:** 2 bis 4 Runden an aufeinanderfolgenden Tagen (Team wird über Nacht gepflegt), jede Runde auf Leben und Tod. Sieg = weiter, Niederlage = raus aus dem Turnier. Das Finale gibt es gegen eine Figur der Rangliste (je weiter rechts die Stadt, desto höher der Platz; die Hauptstadt hat den Meister) oder gegen ein Geisterteam, dessen Stufe zur Stadt passt. Finalsieg: Stadt erobert (Gold, Ansehen, Ruhm, Gabe). Hauptstadt erobert = Lauf gewonnen.
 
 ### Stärke der Städte (Balancing des Kartenmodus)
-- Jede Stadt hat eine **Stufe** (`ludusCityLevel`): 1 + 1 je Spalte der Karte, höchstens 9 (die Erfahrung für die nächste Stufe verdoppelt sich je Stufe, über 9 kommt man im Lauf kaum). Die Zahl steht an der Stadt, gefärbt nach deinen Aussichten (Leicht / Machbar / Riskant / Aussichtslos, nach dem Stufenunterschied).
-- Die Gegner hängen **nicht von deinem Team**, sondern von der Stadt ab: Probekämpfe gegen ein **Referenzteam** (`ludusRefTeam`) suchen die Gegnerstufe, bei der das Referenzteam eine Zielquote gewinnt. Das Referenzteam sind deine Kreaturenarten auf der Stufe der Stadt, mit Schwert und leichter Rüstung der Güte, die man dort üblicherweise trägt (grob, schlicht, fein), und den Gaben, die man auf dem üblichen Weg bis dahin hat (0,6 je Spalte). Wer stärker ist (mehr Stufen, bessere Ausrüstung, mehr Gaben, Schriftrollen, Steuerung von Hand), gewinnt sicherer; wer zu früh kommt, verliert.
-- Zielquoten: `LUDUS_CITY` (Runde 0,99 − 0,012 je Spalte, Finale 0,97 − 0,025 je Spalte). Die Gegnerstufe wird nie unter 1 gedrückt; Arten werden nicht abgeschwächt (`ludusCupCandidate` wählt unter sechs Kandidaten den, der der Quote am nächsten kommt; ein zu mächtiger Figurenart weicht einer geringeren).
+- Jede Stadt hat eine **Stufe** (`ludusCityLevel`): 1 + 1 je Spalte der Karte, höchstens 9 (die Erfahrung für die nächste Stufe verdoppelt sich je Stufe, über 9 kommt man im Lauf kaum). Die Zahl steht an der Stadt, gefärbt nach deinen Aussichten (Leicht / Machbar / Ausgeglichen / Riskant / Aussichtslos, nach dem Stufenunterschied). Im Stadtfeld steht außerdem, worauf die Gegner abgestimmt sind: Stufe, Güte der Ausrüstung und Zahl der Gaben.
+- Die Gegner hängen **nicht von deinem Team**, sondern von der Stadt ab: Probekämpfe gegen ein **Referenzteam** (`ludusRefTeam`) suchen die Gegnerstufe, bei der das Referenzteam eine Zielquote gewinnt. Das Referenzteam sind deine Kreaturenarten auf der Stufe der Stadt, mit Schwert und leichter Rüstung der Güte, die man dort üblicherweise trägt (grob bis Spalte 2, schlicht bis 7, danach fein), und den Gaben, die man auf dem üblichen Weg bis dahin hat (0,6 je Spalte nach der ersten). Wer stärker ist (mehr Stufen, bessere Ausrüstung, mehr Gaben, Schriftrollen, Steuerung von Hand), gewinnt sicherer; wer zu früh kommt, verliert.
+- Zielquoten für das Referenzteam (`LUDUS_CITY`): Runde 0,99 − 0,012 je Spalte, Finale 0,97 − 0,025 je Spalte. Weder Art noch Stufe werden zurechtgebogen: Die Gegnerstufe liegt höchstens 4 über der Stadtstufe (`maxOver`); braucht eine schwache Art mehr, nimmt eine stärkere ihren Platz (`ludusCupCandidateG` wählt unter sechs Kandidaten den, der der Quote am nächsten kommt; eine Figur, die selbst auf Stufe 1 zu mächtig ist, weicht einer geringeren Art, eine zu schwache einer stärkeren). Geisterteams werden nur schwächer, nie stärker, als die Stadt erlaubt.
 - Erfahrung aus einem Stadtkampf richtet sich nach der Stadtstufe, nicht nach der (angepassten) Gegnerstufe.
-- Messen: `tools`-Läufe mit einem Bot (Stufe halten, in der Grube üben, Gegner erobern) und Auswertung gespeicherter Teams gegen die Stadtkämpfe; Stufe ±1 verschiebt die Siegquote um etwa 5 bis 8 Punkte.
+- Die Suche nach den Gegnern ist ein Generator (`ludusFitLevelG`, `ludusCupBoutG`): Sie läuft in kleinen Schritten, die Seite bleibt bedienbar, und schon beim Ergebnisbild der Runde davor wird die nächste Runde gesucht (`ludusCupSearch`).
+
+**Gemessen** (`tools/ludus-map-bot.js` spielt Läufe, `tools/ludus-map-eval.js` testet gespeicherte Teams gegen die Stadtkämpfe, 65 Teams aus Bot-Läufen):
+
+| Stufenunterschied zur Stadt | −2 | −1 | 0 | +1 | +2 |
+|---|---|---|---|---|---|
+| Runde gewonnen | 0,70 | 0,83 | 0,90 | 0,94 | 0,96 |
+| Finale gewonnen | 0,63 | 0,78 | 0,86 | 0,92 | 0,96 |
+
+Eine Stufe mehr oder weniger verschiebt die Quote also um 4 bis 8 Punkte; ein Turnier mit drei Runden gewinnt man auf der Stadtstufe etwa 7 von 10 Mal, mit einer Stufe mehr 8 von 10, mit zweien mehr 9 von 10.
 
 ## Geister: frühere Teams als Rivalen (`ludus-ghosts.js`)
 - Endet ein Lauf durch den Tod des Teams (oder durch die Eroberung der Hauptstadt), wird das ganze Team (Kreaturen, Stufen, Ausrüstung, Gaben, Fähigkeiten) in `ludusMeta.ghosts` gespeichert (höchstens 10, die ältesten fallen heraus).
