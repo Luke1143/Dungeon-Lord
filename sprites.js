@@ -241,6 +241,8 @@ const CREATURES={
     if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
     return f;
   }
+  // what the creature kit (sprite-kit.js) builds on
+  globalThis.SPRITEBASE={ mk, put, ell, cap, shade, blit, eyes, eyesGood2, armour, weaponPal, MATS };
   const HUM={ held:true, ork:true, warlock:false };
   Object.keys(HUM).forEach(key=>{ ZOO[key]={ name:CREATURES[key].name, humanoid:HUM[key], pal:{...BASEPAL,...CREATURES[key].pal}, frame:(t,fr,mv,eq)=>frame(key,t,fr,mv,eq) }; });
 })();
@@ -399,32 +401,8 @@ function impFrame(state,t,facingRight){
   ZOO.imp={ name:'Imp', pal:{...IMP_PAL}, frame:(t,fr,mv,carry)=>{ const st=carry==='gold'?'gold':carry?'erz':(mv?'laufen':'stehen'); return impFrame(st,(carry&&!mv)?0:(st==='stehen'?(Math.floor(t/2)%2?2:0):t),fr); } };
 })();
 
-// ---- hero classes: the humanoid hero with palette variants (equipment rules will change silhouettes later) ----
+// ---- the Dungeon Lord (the hero classes, the bosses and the horde are recipes of the creature kit: sprite-kit.js) ----
 (()=>{
-  const held=ZOO.held, v=pal=>({ ...held, pal:{...held.pal,...pal} });
-  // a boss keeps the look of its armour, but what it holds comes from its inventory like for everybody else (nothing is baked into the sprite)
-  const bossEq=(base,eq)=>Object.assign({},base,eq?{ weapon:eq.weapon, shield:eq.shield }:{});
-  ZOO.barbarian=v({ t:'#8a4a28',T:'#b06a3c',u:'#5a2c14',F:'#b0561e',G:'#d8782e' });
-  ZOO.thief=v({ t:'#3a3a46',T:'#555566',u:'#22222a',F:'#2a2218',G:'#3c3224',l:'#2a2a32',L:'#3c3c46',m:'#1c1c22',b:'#1c1c22' });
-  ZOO.worker=v({ t:'#7a6a4a',T:'#9a8a62',u:'#4a3e28',F:'#6a4a2a',G:'#8a6a3a',l:'#5a4a30',L:'#6a5a3c',m:'#3a2c1a',b:'#3a2c1a' });
-  ZOO.wizard=v({ t:'#4a5ab0',T:'#6a7ad0',u:'#2e3a80',F:'#d0d0d8',G:'#eeeef4' });
-  // the dwarf king (a boss that can be corrupted): the hero body, red beard, heavy armour; the ally version has the player side's eyes
-  const dwarf=swap=>({ ...held, name:'Zwergenkönig', pal:{ ...held.pal, F:'#b8561e', G:'#d8782e', t:'#5a2c14', T:'#7a4a2a', u:'#3a1c0c' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'bronze', helm:1, chest:3, legs:2 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
-  ZOO.dwarfking=dwarf(false); ZOO.dwarfking_ally=dwarf(true);
-  // Oberon, lord of the sacred grove: pale fey king, silver-gold hair, green robes, a feathered crown (helm tier 3) and a staff
-  const fey=swap=>({ ...held, name:'Oberon', pal:{ ...held.pal, s:'#e2d4b4', S:'#f4ead0', F:'#e8e0a0', G:'#fff8c0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#2f5a2a', L:'#3f7a3a', m:'#1f3a1a', b:'#1f3a1a' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'leder', helm:3, chest:1, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
-  ZOO.oberon=fey(false); ZOO.oberon_ally=fey(true);
-  // Herakles, the world's hero: a lion pelt for a hood, a club; the ally version has the player side's eyes
-  const hera=swap=>({ ...held, name:'Herakles', humanoid:true, pal:{ ...held.pal, F:'#c8801c', G:'#f0b040', t:'#b07a2c', T:'#d8a048', u:'#7a4a14', s:'#d09a74', S:'#e8b890' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'leder', helm:0, chest:1, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
-  ZOO.herakles=hera(false); ZOO.herakles_ally=hera(true);
-  ZOO.elf=v({ s:'#e6d6b4', S:'#f6ead0', F:'#d8d090', G:'#f0eab0', t:'#2f7a3a', T:'#4fa05a', u:'#1f5a2a', l:'#3a5a2a', L:'#4a7a3a', m:'#243a1c', b:'#243a1c' });
-  // King Arthur: crowned human king in steel and blue; the ally version has the player side's eyes
-  const arthur=swap=>({ ...held, name:'Artus', pal:{ ...held.pal, F:'#c8a030', G:'#e8c850', t:'#2a4a9a', T:'#4a6ad0', u:'#1a2a6a' },
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,fr,mv,bossEq({ mat:'stahl', helm:2, chest:2, legs:1 },eq)); if(swap) f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } });
-  ZOO.arthur=arthur(false); ZOO.arthur_ally=arthur(true);
   // The Dungeon Lord: not a man but a haunted suit of black plate, closed spiked helm, two burning eyes in the slit, a spiked mace.
   // Drawn by hand (no skin anywhere); native facing left like the other humanoids.
   const LORD_TOP=[
@@ -459,19 +437,6 @@ function impFrame(state,t,facingRight){
       if(fr) g=g.map(r=>r.slice().reverse());
       return { g, pal:wpal };
     } };
-  // variants of the hero body: tweak(frame) changes pixels in native (left-facing) orientation
-  const vary=(name,pal,tweak,base)=>({ ...held, name, humanoid:true, pal:{...held.pal,...pal},
-    frame:(t,fr,mv,eq)=>{ const f=held.frame(t,false,mv,base?Object.assign({},base,eq?{ weapon:eq.weapon, shield:eq.shield }:{}):eq); if(tweak) tweak(f); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } });
-  const headRows=f=>{ let y0=99; f.tag.forEach((r,y)=>r.forEach(c=>{ if(c==='H'&&y<y0) y0=y; })); return y0; };
-  const beard=col=>f=>{ const y0=headRows(f); [[4,6],[5,6],[6,6],[7,6],[4,7],[5,7],[6,7],[5,8]].forEach(([x,dy])=>{ const y=y0+dy; if(y<15&&(f.g[y][x]==='.'||f.tag[y][x]==='T'||f.tag[y][x]==='H')) f.g[y][x]=col; }); };
-  ZOO.archer=vary('Bogenschütze',{ F:'#3a6a3a', G:'#5a9a5a', t:'#5a6a3a', T:'#7a8a52', u:'#3a4a24', l:'#4a3a24', L:'#6a5a3a' });
-  ZOO.monk=vary('Mönch',{ t:'#c8741c', T:'#e89a3c', u:'#8a4a10', F:'#e0b48c', G:'#f2cfa8', l:'#c8741c', L:'#e89a3c', m:'#8a4a10', b:'#5a3a20' },f=>{ f.g.forEach((r,y)=>r.forEach((c,x)=>{ if(f.tag[y][x]==='H'&&(c==='F'||c==='G')) f.g[y][x]=c==='G'?'S':'s'; })); });
-  ZOO.paladin=vary('Paladin',{ t:'#e8e4d8', T:'#ffffff', u:'#a8a498', F:'#f0d060', G:'#fff0a0', y:'#f0d060' },null,{ mat:'stahl', helm:2, chest:3, legs:1 });
-  ZOO.dwarf=vary('Zwerg',{ F:'#b8561e', G:'#d8782e', t:'#6a4a30', T:'#8a6a4a', u:'#3a2a1a', l:'#5a3a24', L:'#7a5a3a', m:'#2e1e12', b:'#2e1e12' },beard('F'),{ mat:'bronze', helm:1, chest:2, legs:1 });
-  ZOO.giant=vary('Riese',{ t:'#8a6a4a', T:'#a8886a', u:'#5a4026', F:'#6a4a2a', G:'#8a6a3a', s:'#d09a74', S:'#e8b890', l:'#6a5238', L:'#8a7050' });
-  ZOO.dryad=vary('Dryade',{ t:'#3f8a4a', T:'#6ac06a', u:'#265a30', F:'#7a5a3a', G:'#9a7a52', l:'#3f8a4a', L:'#6ac06a', y:'#2a6a34' });
-  ZOO.golem=vary('Golem',{ t:'#7c7c84', T:'#a4a4ac', u:'#505058', F:'#8a8a92', G:'#b0b0b8', s:'#8a8a92', S:'#b0b0b8', l:'#6a6a72', L:'#8a8a92', y:'#50505a' });
-  ZOO.knight=v({ t:'#8d949c',T:'#c4cad1',u:'#575e66',F:'#8d949c',G:'#c4cad1' });
 })();
 
 // ---- props: furniture, goods and small things (ZOO['prop_*'], drawn like creatures; t only drives flicker) ----
@@ -650,16 +615,9 @@ const TILEGEN=(()=>{
   return { gen, full, has, crack };
 })();
 
-// ---- the horde: variants of the ork body, and the risen skeleton ----
+// ---- the risen skeleton ----
 (()=>{
   const ork=ZOO.ork; if(!ork) return;
-  const v=(name,pal)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal} });
-  ZOO.goblin=v('Goblin',{ s:'#8aa83a', S:'#b0cc58', z:'#5a7a24', t:'#7a6a3a', T:'#9a8a52', u:'#4a3e22', c:'#5a3a24', C:'#7a5236', l:'#5a4a2a', L:'#7a6a3c', y:'#2e2414' });
-  ZOO.troll=v('Troll',{ s:'#6a8a96', S:'#8fb0bc', z:'#445a64', t:'#6a8a96', T:'#8fb0bc', u:'#445a64', c:'#4a3a2a', C:'#6a5238', l:'#52707a', L:'#6e909a', y:'#2c3c42' });
-  ZOO.darkelf=v('Dunkelelf',{ s:'#5a5a8a', S:'#7a7aaa', z:'#3a3a60', t:'#1e1a2e', T:'#34304a', u:'#120e1c', c:'#1e1a2e', C:'#34304a', l:'#161224', L:'#2a2640', y:'#0e0a18' });
-  ZOO.vampire=v('Vampir',{ s:'#d8d0d0', S:'#f0e8e8', z:'#a89898', t:'#6a0f1a', T:'#8f1a28', u:'#3a060c', c:'#1a1014', C:'#2c1a20', l:'#1a1014', L:'#2c1a20', y:'#0e080a' });
-  ZOO.ghoul=v('Ghul',{ s:'#7e8c5e', S:'#a2b07e', z:'#566240', t:'#5a5a48', T:'#74745e', u:'#3e3e30', c:'#3a3a2c', C:'#505040', l:'#464636', L:'#5e5e4a', y:'#22221a' });
-  ZOO.priest=v('Dunkler Priester',{ s:'#b09a8a', S:'#cdb8a8', z:'#7a6658', t:'#2a1a3a', T:'#44285c', u:'#1a0e26', c:'#2a1a3a', C:'#44285c', l:'#1a0e26', L:'#30204a', y:'#120a1a' });
   // the skeleton: bones in the skeleton family's look (skull, ribs, thin legs), eyes black with white pupils like the rest of the horde
   const N=16, mk=(w,h)=>({w,h,g:Array.from({length:h},()=>Array(w).fill('.'))});
   const put=(p,x,y,c)=>{ if(x>=0&&y>=0&&x<p.w&&y<p.h) p.g[y][x]=c; };
@@ -679,15 +637,6 @@ const TILEGEN=(()=>{
     return f; } };
 })();
 
-// ---- converted heroes: the same body on the player's side (player-side eyes, darker clothes) ----
-(()=>{
-  const dark=hex=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16), f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k))); return '#'+[f((n>>16)&255,0.62),f((n>>8)&255,0.55),f(n&255,0.72)].map(v=>v.toString(16).padStart(2,'0')).join(''); };
-  ['barbarian','thief','wizard','knight','elf','archer','monk','paladin','dwarf','giant','dryad','golem'].forEach(k=>{
-    const z=ZOO[k]; if(!z||ZOO[k+'_ally']) return;
-    const pal={}; Object.keys(z.pal).forEach(c=>{ pal[c]=(c==='e'||c==='p'||c==='k')?z.pal[c]:dark(z.pal[c]); });
-    ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,fr,mv,eq); f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; } };
-  });
-})();
 
 // ---- the rest of the roster (godhand Teil 16): bodies built from a few archetypes: four-legged, bird, ghost, orb, and recoloured humanoids ----
 (()=>{
@@ -797,38 +746,14 @@ const TILEGEN=(()=>{
   Z.wisp=wisp; Z.fairy=fairy;
   Object.keys(Z).forEach(k=>{ ZOO[k]=Z[k]; });
 
-  // humanoids: recoloured bodies of the ork (evil) and the hero (good), with a few pixels of extra shape
-  const ork=ZOO.ork, held=ZOO.held;
-  if(ork){
-    const v=(name,pal,tweak)=>({ ...ork, name, humanoid:true, pal:{...ork.pal,...pal}, frame:(t,fr,mv,eq)=>{ const f=ork.frame(t,false,mv,eq); if(tweak) tweak(f,t,mv); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } });
-    const tag=(f,c)=>{ let x0=99,x1=-1,y0=99,y1=-1; f.tag.forEach((r,y)=>r.forEach((q,x)=>{ if(q===c){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } })); return {x0,x1,y0,y1}; };
-    const setIf=(f,x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16&&(f.g[y][x]==='.')) f.g[y][x]=c; };
-    const horns=col=>f=>{ const H=tag(f,'H'); setIf(f,H.x0,H.y0-1,col); setIf(f,H.x0+1,H.y0-2,col); setIf(f,H.x1-1,H.y0-1,col); setIf(f,H.x1,H.y0-2,col); };
-    const wingsBehind=(col,col2)=>(f,t)=>{ const T=tag(f,'T'), up=Math.floor(t/2)%2; for(let j=0;j<4;j++){ setIf(f,T.x1+1+(j>>1),T.y0-1+j+(up?-1:0),col); setIf(f,T.x1+2+(j>>1),T.y0+j+(up?-1:0),col2); } };
-    ZOO.darkknight=v('Dunkler Ritter',{ s:'#6a6a7a', S:'#8a8a9a', z:'#44444e', t:'#25252f', T:'#41414f', u:'#0e0e14', c:'#25252f', C:'#41414f', l:'#1c1c24', L:'#2e2e3a', y:'#0a0a10' },(f)=>{ const H=tag(f,'H'); setIf(f,H.x0+2,H.y0-1,'R'); });
-    ZOO.succubus=v('Succubus',{ s:'#c88aa0', S:'#e8a8c0', z:'#8a5068', t:'#5a1a4a', T:'#8a2a70', u:'#34102c', c:'#5a1a4a', C:'#8a2a70', l:'#44163a', L:'#6a2058', y:'#2a0c24', g:'#34102c', A:'#5a1a4a', a:'#8a2a70' },(f,t)=>{ horns('g')(f); wingsBehind('A','a')(f,t); });
-    ZOO.demon=v('Dämon',{ s:'#c43a1c', S:'#e85a30', z:'#8a2410', t:'#6a1610', T:'#8a2418', u:'#3a0a08', c:'#4a0e0c', C:'#6a1812', l:'#4a0e0c', L:'#6a1812', y:'#2a0605', g:'#f0e0c0', A:'#5a0e0c', a:'#7a1a14' },(f,t)=>{ horns('g')(f); wingsBehind('A','a')(f,t); });
-    ZOO.zombie=v('Zombie',{ s:'#7a9a6a', S:'#9ab88a', z:'#506a44', t:'#5a5a46', T:'#74745a', u:'#34342a', c:'#4a4a38', C:'#5e5e48', l:'#3a3a2c', L:'#4c4c3a', y:'#22221a' },(f)=>{ const T=tag(f,'T'); setIf(f,T.x0,T.y0+2,'z'); setIf(f,T.x1-1,T.y0+4,'z'); });
-    ZOO.werewolf=v('Werwolf',{ s:'#6a4a34', S:'#8a6448', z:'#44301f', t:'#5a3e2a', T:'#765238', u:'#321f12', c:'#5a3e2a', C:'#765238', l:'#4a3220', L:'#6a4a32', y:'#241608' },(f)=>{ const H=tag(f,'H'); setIf(f,H.x0+1,H.y0-1,'u'); setIf(f,H.x1-1,H.y0-1,'u'); setIf(f,H.x0-1,H.y0+3,'S'); setIf(f,H.x0-1,H.y0+4,'S'); });
-    ZOO.lich=v('Lich',{ s:'#e8e0d0', S:'#faf4e8', z:'#b0a894', t:'#3a1a5a', T:'#5a2a8a', u:'#1c0c30', c:'#3a1a5a', C:'#5a2a8a', l:'#2a1244', L:'#401e66', y:'#120820' },(f)=>{ const H=tag(f,'H'); [H.x0,H.x0+1,H.x0+2,H.x0+3].forEach((x,i)=>setIf(f,x,H.y0-1-(i%2),'g')); });
-    ZOO.lich.pal.g='#f0c040';
-    ZOO.brood=null; delete ZOO.brood;
-  }
+  const held=ZOO.held;
+  delete ZOO.brood;
   if(ZOO.imp){
     const imp=ZOO.imp, rc=(m)=>{ const pal={}; Object.keys(imp.pal).forEach(c=>{ pal[c]=m(imp.pal[c],c); }); return pal; };
     const tint=(hex,r,g,b)=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16), f=(v,k)=>Math.max(0,Math.min(255,Math.round(v*k))); return '#'+[f((n>>16)&255,r),f((n>>8)&255,g),f(n&255,b)].map(v=>v.toString(16).padStart(2,'0')).join(''); };
     ZOO.brood={ ...imp, name:'Dämonenbrut', pal:rc((c,k)=>(k==='k'||k==='e'||k==='p'||/rgba/.test(c))?c:tint(c,0.75,0.55,1.35)) };
   }
   if(held){
-    const base=name=>ZOO[name];
-    const v=(name,pal,tweak,eqBase)=>{ const z=ZOO.knight||held; return { ...z, name, humanoid:true, pal:{...z.pal,...pal}, frame:(t,fr,mv,eq)=>{ const f=z.frame(t,false,mv,eqBase?Object.assign({},eqBase,eq?{weapon:eq.weapon,shield:eq.shield,wparts:eq.wparts,wmat:eq.wmat}:{}):eq); if(tweak) tweak(f,t); if(fr) f.g=f.g.map(r=>r.slice().reverse()); return f; } }; };
-    const tag=(f,c)=>{ let x0=99,x1=-1,y0=99,y1=-1; f.tag.forEach((r,y)=>r.forEach((q,x)=>{ if(q===c){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } })); return {x0,x1,y0,y1}; };
-    const setIf=(f,x,y,c)=>{ if(x>=0&&y>=0&&x<16&&y<16&&(f.g[y][x]==='.')) f.g[y][x]=c; };
-    const wings=(a,b)=>(f,t)=>{ const T=tag(f,'T'), up=Math.floor(t/2)%2; for(let j=0;j<5;j++){ setIf(f,T.x1+1+(j>>1),T.y0-2+j+(up?-1:0),a); setIf(f,T.x1+2+(j>>1),T.y0-1+j+(up?-1:0),b); } };
-    ZOO.angel=v('Engel',{ t:'#f4f0e4', T:'#ffffff', u:'#c8c0a8', F:'#f0d8b8', G:'#ffe8cc', A:'#ffffff', a:'#d8d0c0', Hh:'#ffe27a' },(f,t)=>{ wings('A','a')(f,t); const H=tag(f,'H'); [H.x0+1,H.x0+2,H.x0+3].forEach(x=>setIf(f,x,H.y0-1,'y')); },{ mat:'stahl', helm:0, chest:2, legs:1 });
-    ZOO.angel.pal.y='#ffe27a';
-    ZOO.guardian=v('Schutzengel',{ t:'#cfe4f4', T:'#eaf6ff', u:'#8aa8c0', F:'#f0d8b8', G:'#ffe8cc', A:'#eaf6ff', a:'#a8c4dc' },(f,t)=>{ wings('A','a')(f,t); const H=tag(f,'H'); [H.x0+1,H.x0+2].forEach(x=>setIf(f,x,H.y0-1,'y')); },{ mat:'stahl', helm:0, chest:1, legs:0 });
-    ZOO.guardian.pal.y='#bfe8ff';
-    ['angel','guardian','unicorn','kitsune','yule','griffin','phoenix','wisp','fairy'].forEach(k=>{ const z=ZOO[k]; if(z&&!ZOO[k+'_ally']) ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal:{...z.pal, e:z.pal.p, p:z.pal.e} }; });
+    ['unicorn','kitsune','yule','griffin','phoenix','wisp','fairy'].forEach(k=>{ const z=ZOO[k]; if(z&&!ZOO[k+'_ally']) ZOO[k+'_ally']={ ...z, name:z.name+' (bekehrt)', pal:{...z.pal, e:z.pal.p, p:z.pal.e} }; });
   }
 })();
