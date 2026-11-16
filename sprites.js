@@ -325,21 +325,6 @@ function hound(t){
   return f;
 }
 // Beetle: domed shell with a seam and a gloss highlight; tripod gait
-function beetle(t){
-  const f=mk(N,N), k=t%4;
-  shadow(f,2,14);
-  const b=mk(N,N);
-  ell(b,7,8.2,5.6,3.6,'s');
-  ell(b,13,9.6,2,1.8,'h');                                         // head
-  shade(b,'s','S','z'); shade(b,'h','H','Z');
-  for(let x=3;x<=11;x++) put(b,x,8,'u');                          // seam between wing cases
-  [[4,6],[5,6],[4,7]].forEach(([x,y])=>put(b,x,y,'w'));          // gloss
-  eye(b,13,8,14,8); put(b,15,11,'z'); put(b,15,12,'z');           // eye, mandible
-  for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(b.g[y][x]!=='.') put(f,x,y,b.g[y][x]);
-  const lx=[[4,k===0||k===2],[7,k===1||k===3],[10,k===0||k===2]];
-  lx.forEach(([x,up])=>{ put(f,x,12,'z'); put(f,x,13,'s'); if(!up) put(f,x,14,'s'); });
-  return f;
-}
 // Fly: tiny body, huge eye, two wing beats; hovers
 function fly(t){
   const f=mk(N,N), k=t%4, up=(k%2)===0, hov=[0,-1,0,1][k];
@@ -356,7 +341,6 @@ function fly(t){
 }
 const BEASTS=[
  { name:'Höllenhund', note:'Kohlerot, Glut auf dem Rücken. Läuft in diagonalen Beinpaaren.', make:hound, pal:{s:'#7a3a2e',S:'#a85a44',z:'#4a1f1a',y:'#ffb02e',Y:'#ff7a1a'} },
- { name:'Käfer', note:'Gewölbter Panzer mit Naht und Glanzpunkt. Läuft im Dreibeingang.', make:beetle, pal:{s:'#3f7a5a',S:'#6cc08e',z:'#244a38',u:'#173025',w:'#d6ffe6',h:'#2f5a44',H:'#4f8a68',Z:'#1b3a2c'} },
  { name:'Fliege', note:'Winzig, riesiges Auge, flirrende Flügel. Schwebt über dem Boden.', make:fly, pal:{s:'#4d4a56',S:'#7a7788',z:'#2a2831',W:'rgba(150,185,205,0.85)'} }
 ];
 

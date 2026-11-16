@@ -215,7 +215,14 @@ Object.keys(KIT_LOOKS).forEach(k=>{ const z=entry(KIT_LOOKS[k]); ZOO[k]=z; if(KI
 // ================= the beasts: four-legged creatures from the same idea (body, head, legs, tail, extras; one colour per part) =================
 // Everything is drawn facing left straight into the 16x16 frame. Letters: b B d body, h H q head, l L legs, n snout/beak/claws, c C accent, v V wings, x horn.
 const BEAST_BODIES={       // the box of the trunk; the head sits at its front (left), the tail at its back
-  barrel:{ x0:4, x1:12, y0:6, y1:10 }, lean:{ x0:5, x1:12, y0:7, y1:10 }, low:{ x0:4, x1:11, y0:8, y1:11 }, big:{ x0:3, x1:12, y0:5, y1:11 }
+  barrel:{ x0:4, x1:12, y0:6, y1:10 }, lean:{ x0:5, x1:12, y0:7, y1:10 }, low:{ x0:4, x1:11, y0:8, y1:11 }, big:{ x0:3, x1:12, y0:5, y1:11 },
+  // a domed shell with a seam between the wing cases and a gloss spot (beetles); flat underneath
+  shell:{ x0:3, x1:13, y0:5, y1:11, draw(P,B){ const cx=(B.x0+B.x1)/2, rx=(B.x1-B.x0)/2+0.5, h=B.y1-B.y0;
+    for(let y=B.y0;y<=B.y1;y++) for(let x=B.x0;x<=B.x1;x++){ const dx=(x-cx)/rx, dy=(B.y1-y)/(h+0.6); if(dx*dx+dy*dy<=1) P(x,y,y===B.y1?'d':((dx*dx+dy*dy>0.72&&dx>0)?'d':(dy>0.7?'B':'b'))); }
+    for(let x=B.x0+3;x<=B.x1-1;x++) P(x,B.y0+3,'q'); P(B.x0+3,B.y0+1,'e'); P(B.x0+4,B.y0+1,'e'); P(B.x0+3,B.y0+2,'e'); } },
+  // two parts: a small chest in front, a big round abdomen behind with a mark on it (spiders)
+  orb:{ x0:4, x1:13, y0:5, y1:11, draw(P,B){ const disc=(cx,cy,rx,ry,light)=>{ for(let y=Math.floor(cy-ry);y<=Math.ceil(cy+ry);y++) for(let x=Math.floor(cx-rx);x<=Math.ceil(cx+rx);x++){ const dx=(x-cx)/rx, dy=(y-cy)/ry, r=dx*dx+dy*dy; if(r<=1) P(x,y,(dy>0.45||dx>0.6)?'d':(dy<-0.5&&light?'B':'b')); } };
+    disc(B.x0+2.5,B.y1-2,2.4,2.2,false); disc(B.x1-3,B.y0+3,3.6,3.3,true); [[0,-1],[-1,0],[1,0],[0,1],[0,0]].forEach(([dx,dy])=>P(B.x1-3+dx,B.y0+3+dy,dx===0&&dy===0?'C':'c')); } }
 };
 // eyes of two pixels: the horde looks out of a dark eye with a white glint in front, the good ones out of a white eye with a dark pupil in front
 const beye=(P,evil,front,y)=>{ P(front+1,y,evil?'p':'e'); P(front,y,evil?'e':'p'); };
@@ -227,6 +234,10 @@ const BEAST_HEADS={       // (P, ax, ay, evil, t): ax = the trunk's front column
   lizard:(P,ax,ay,evil,t)=>{ for(let x=ax-3;x<=ax;x++) P(x,ay-1,'H'); for(let x=ax-5;x<=ax;x++) P(x,ay,'h'); for(let x=ax-4;x<=ax;x++) P(x,ay+1,'n'); beye(P,evil,ax-3,ay-1); if(t%4===2){ P(ax-6,ay,'c'); P(ax-7,ay-1,'c'); } return { x:ax-2, y:ay-2 }; },
   dragon:(P,ax,ay,evil)=>{ P(ax,ay+1,'h'); P(ax+1,ay,'h'); for(let y=ay-3;y<=ay;y++) for(let x=ax-3;x<=ax;x++) P(x,y,y===ay-3?'H':'h'); for(let x=ax-5;x<=ax-4;x++){ P(x,ay-1,'h'); P(x,ay,'q'); } P(ax-5,ay-2,'h'); P(ax-5,ay-1,'n');
     P(ax-4,ay+1,'e'); P(ax-2,ay+1,'e'); P(ax-1,ay-4,'c'); P(ax,ay-4,'c'); P(ax,ay-5,'C'); P(ax+1,ay-5,'c'); beye(P,evil,ax-3,ay-2); return { x:ax-2, y:ay-4 }; },
+  // a small head low in front: feelers, an eye, mandibles
+  bug:(P,ax,ay,evil)=>{ const y=ay+3; for(let yy=y-1;yy<=y+1;yy++) for(let x=ax-3;x<=ax-1;x++) P(x,yy,yy===y-1?'H':'h'); beye(P,evil,ax-3,y-1); P(ax-4,y+1,'n'); P(ax-4,y+2,'n'); P(ax-3,y+2,'n'); P(ax-2,y-2,'c'); P(ax-3,y-3,'c'); P(ax-4,y-3,'c'); return { x:ax-2, y:y-2 }; },
+  // the spider's face: a row of eyes, fangs below
+  spider:(P,ax,ay,evil)=>{ const y=ay+4; for(let yy=y-1;yy<=y+1;yy++) for(let x=ax-2;x<=ax;x++) P(x,yy,yy===y-1?'H':'h'); P(ax-2,y-1,evil?'e':'p'); P(ax,y-1,evil?'e':'p'); P(ax-2,y,'x'); P(ax-1,y,'x'); P(ax-3,y+1,'n'); P(ax-3,y+2,'n'); P(ax-1,y+2,'n'); return { x:ax-1, y:y-2 }; },
   eagle:(P,ax,ay,evil)=>{ P(ax,ay,'H'); P(ax+1,ay,'h'); for(let y=ay-4;y<=ay-1;y++) for(let x=ax-2;x<=ax;x++) P(x,y,'H'); P(ax+1,ay-2,'h'); P(ax+1,ay-1,'h'); P(ax-3,ay-2,'n'); P(ax-4,ay-2,'n'); P(ax-4,ay-1,'n'); P(ax-3,ay-1,'n'); beye(P,evil,ax-2,ay-3); P(ax,ay-5,'h'); return { x:ax-2, y:ay-5 }; }
 };
 const BEAST_LEGS={       // (P, x, yTop, step, near, front): one leg from the trunk down to the ground (row 14)
@@ -234,9 +245,18 @@ const BEAST_LEGS={       // (P, x, yTop, step, near, front): one leg from the tr
   thick:(P,x,y0,d,near)=>{ for(let y=y0;y<=14;y++){ P(x+d,y,near?'l':'L'); P(x+d+1,y,'L'); } P(x+d-1,14,'n'); },
   paws:(P,x,y0,d,near)=>{ for(let y=y0;y<14;y++) P(x+d,y,near?'l':'L'); P(x+d-1,14,near?'n':'L'); P(x+d,14,near?'l':'L'); },
   splay:(P,x,y0,d,near,front)=>{ for(let y=y0;y<=13;y++) P(x+d,y,near?'l':'L'); const s=front?-1:1; P(x+d+s,13,'L'); P(x+d+s,14,'L'); P(x+d+2*s,14,'l'); },
+  // six legs in a tripod gait: on each side three bent legs under the shell
+  insect:{ group(P,T,B,near,k,moving){ [T.x0+2,Math.round((T.x0+T.x1)/2),T.x1-2].forEach((x,i)=>{ const lift=moving&&((i%2===0)===(k%2===0))!==near, c=near?'l':'L', o=near?0:1;
+      P(x+o,B.y1+1,c); P(x+o-1,B.y1+2,c); if(!near) return; if(!lift){ P(x+o-1,B.y1+3,c); if(B.y1+3<14) P(x+o-1,14,c); P(x+o-2,14,'n'); } else P(x+o-2,B.y1+2,c); }); } },
+  // eight legs: four on each side arch high over the body and come down far outside
+  spider:{ group(P,T,B,near,k,moving){ const c=near?'l':'L', sx=T.x0+3, sy=B.y1-2+(near?0:-1), s=moving?[0,1,0,-1][k]:0;
+      (near?[[-6,-4,-9],[-3,-8,-5],[6,-8,8],[10,-4,13]]:[[-5,-7,-7],[8,-7,11]]).forEach(([kx,ky,fx],i)=>{ const st=(i%2?s:-s)*(near?1:-1), K=[sx+kx,sy+ky+(near?0:1)], F=[sx+fx+st,14];
+        const seg=(a,b)=>{ const n=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); for(let j=0;j<=n;j++) P(Math.round(a[0]+(b[0]-a[0])*j/n),Math.round(a[1]+(b[1]-a[1])*j/n),c); };
+        seg([sx+(near?[-1,0,3,4][i]:[0,3][i]),sy],K); seg(K,F); }); } },
   talons:(P,x,y0,d,near,front)=>{ const c=front?'n':(near?'l':'L'); for(let y=y0;y<14;y++) P(x+d,y,c); P(x+d-1,14,front?'n':'L'); P(x+d,14,c); if(front) P(x+d-2,14,'n'); }
 };
 const BEAST_TAILS={       // (P, x, y, t, n): from the trunk's back column outwards
+  none:()=>{},
   stub:(P,x,y)=>{ P(x,y,'b'); P(x+1,y-1,'c'); },
   drag:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'b'); P(x,y+1,'b'); P(x+1,y+1,'b'); P(x+1,y+2,'d'); P(x+2,y+2,'b'); P(x+3,y+2+s,'d'); P(x+4,y+2+s,'d'); },
   up:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'b'); P(x+1,y-1,'b'); P(x+1,y-2,'b'); P(x+2,y-3,'b'); P(x+2,y-4,'b'); P(x+1+s,y-5,'c'); },
@@ -274,11 +294,12 @@ function beastFrame(look,t,facingRight,moving){
   const ex=look.extras||[], leg=BEAST_LEGS[look.legs||'thin'];
   ex.filter(e=>/wings/.test(e)).forEach(e=>BEAST_EXTRAS[e](P,B,null,t));       // wings lie behind the trunk
   // far legs, the tail, the trunk, near legs, the head
-  leg(P,T.x0+3,T.y1,fb,false,true); leg(P,T.x1-3,T.y1,ff,false,false);
+  const grouped=typeof leg!=='function';       // insects and spiders bring all their legs at once: the far side behind the trunk, the near side in front
+  if(grouped) leg.group(P,T,B,false,k,moving); else { leg(P,T.x0+3,T.y1,fb,false,true); leg(P,T.x1-3,T.y1,ff,false,false); }
   BEAST_TAILS[look.tail||'stub'](P,T.x1+1,B.y0+1,t,look.tails);
   const cx=(T.x0+T.x1)/2, cy=(B.y0+B.y1)/2, rx=(T.x1-T.x0)/2+0.4, ry=(T.y1-T.y0)/2+0.45;
-  for(let y=B.y0;y<=B.y1;y++) for(let x=T.x0;x<=T.x1;x++){ const dx=(x-cx)/rx, dy=(y-cy)/ry; if(dx*dx+dy*dy<=1) P(x,y,y===B.y0?'B':(y===B.y1?'d':'b')); }
-  leg(P,T.x0+1,T.y1,ff,true,true); leg(P,T.x1-1,T.y1,fb,true,false);
+  if(T.draw) T.draw(P,B); else for(let y=B.y0;y<=B.y1;y++) for(let x=T.x0;x<=T.x1;x++){ const dx=(x-cx)/rx, dy=(y-cy)/ry; if(dx*dx+dy*dy<=1) P(x,y,y===B.y0?'B':(y===B.y1?'d':'b')); }
+  if(grouped) leg.group(P,T,B,true,k,moving); else { leg(P,T.x0+1,T.y1,ff,true,true); leg(P,T.x1-1,T.y1,fb,true,false); }
   const top=BEAST_HEADS[look.head](P,T.x0+1,B.y0+(look.headDy===undefined?1:look.headDy),evil,t);
   ex.filter(e=>!/wings/.test(e)).forEach(e=>BEAST_EXTRAS[e](P,B,top,t));
   // nothing reaches out of the cell: the picture is the cell alone
@@ -294,6 +315,8 @@ const BEAST_LOOKS={
   unicorn:Q('Einhorn','barrel','horse','thin','hair',{ body:'#f0ecf4', snout:'#f0d8e8', accent:'#e87ad0', horn:'#f0d060', legs:'#d8d0e0' },{ good:true, extras:['horn'] }),
   kitsune:Q('Kitsune','lean','fox','paws','bushy',{ body:'#e08a3a', snout:'#fff4e0', accent:'#fff4e0', legs:'#8a4a20' },{ good:true, tails:3 }),
   yule:Q('Yule','barrel','cat','paws','up',{ body:'#3a3e54', snout:'#e8a0b0', accent:'#f2e8d5', horn:'#c43a3a', legs:'#2e3246' },{ good:true, extras:['cap','stripes'], box:{ y0:7 } }),
+  beetle:Q('Käfer','shell','bug','insect','none',{ body:'#3f7a5a', head:'#2f5a44', legs:'#244a38', snout:'#1b3a2c', accent:'#2f5a44' },{ box:{ y0:5, y1:10 } }),
+  spider:Q('Spinne','orb','spider','spider','none',{ body:'#6a4a8a', head:'#4a3068', legs:'#2a1c3a', snout:'#e8e0d0', accent:'#c43a3a', horn:'#c43a3a' },{ box:{ y0:6, y1:12 } }),
   griffin:Q('Greif','big','eagle','talons','lion',{ body:'#b08840', head:'#f0e8d0', snout:'#e8a830', accent:'#6a4a20', wing:'#d8c090', legs:'#8a6830' },{ good:true, extras:['featherwings'], box:{ y0:6 } })
 };
 Object.assign(globalThis.SPRITEKIT||(globalThis.SPRITEKIT={}),{ BEAST_BODIES, BEAST_HEADS, BEAST_LEGS, BEAST_TAILS, BEAST_EXTRAS, BEASTS:BEAST_LOOKS });

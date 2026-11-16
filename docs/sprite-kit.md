@@ -20,17 +20,17 @@ Die Figur wird vom Boden nach oben gestapelt (Beine, Körper, Kopf), dadurch erg
 
 ## Tiere (derselbe Gedanke für Vierbeiner)
 Rezept: `Q(Name, Rumpf, Kopf, Beine, Schwanz, Farben, mehr)` in `BEAST_LOOKS`.
-- **Rumpf** (`BEAST_BODIES`): `barrel`, `lean`, `low`, `big`; `box` im Rezept verschiebt oder streckt ihn.
-- **Kopf** (`BEAST_HEADS`): `cat`, `fox`, `horse`, `lizard`, `dragon`, `eagle`.
-- **Beine** (`BEAST_LEGS`): `thin`, `thick`, `paws`, `splay` (gespreizt, Echsen), `talons` (vorn Vogelklauen).
+- **Rumpf** (`BEAST_BODIES`): `barrel`, `lean`, `low`, `big`, `shell` (gewölbter Panzer), `orb` (Brust und runder Hinterleib); `box` im Rezept verschiebt oder streckt ihn.
+- **Kopf** (`BEAST_HEADS`): `cat`, `fox`, `horse`, `lizard`, `dragon`, `eagle`, `bug`, `spider`.
+- **Beine** (`BEAST_LEGS`): `thin`, `thick`, `paws`, `splay` (gespreizt, Echsen), `talons` (vorn Vogelklauen), `insect` (sechs Beine im Dreibeingang), `spider` (acht hoch gewölbte Beine).
 - **Schwanz** (`BEAST_TAILS`): `stub`, `drag`, `up`, `bushy` (mit `tails:3` drei Stück), `hair`, `spade`, `lion`.
 - **Extras** (`BEAST_EXTRAS`): `ridge`, `featherwings`, `batwings`, `horn`, `cap`, `belly`, `stripes`.
 - Farben: `body`, `head`, `legs`, `snout`, `accent`, `wing`, `horn`.
 
-Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif. Ein neues Tier ist eine Zeile, zum Beispiel ein Wolf: `Q('Wolf','lean','fox','paws','bushy',{ body:'#6a6a72' })`.
+Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif, Käfer, und als Bild ohne Spielwerte die Spinne (`ZOO.spider`). Ein neues Tier ist eine Zeile, zum Beispiel ein Wolf: `Q('Wolf','lean','fox','paws','bushy',{ body:'#6a6a72' })`.
 
 ## Noch nicht im Baukasten
-Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen), Höllenhund, Käfer und Fliege (eigene Zeichnungen, sie waren schon gut) sowie Phönix, Geist, Banshee, Irrlicht und Fee (eigene Grundformen in `sprites.js`). Für Käfer und Spinnen fehlt dem Tier-Baukasten noch ein Panzer-Rumpf und Beine in Sechser- und Achtergruppen.
+Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen), Höllenhund und Fliege (eigene Zeichnungen, sie waren schon gut) sowie Phönix, Geist, Banshee, Irrlicht und Fee (eigene Grundformen in `sprites.js`).
 
 ## Platz: jedes Teil hat ein eigenes Feld
 Die Figur selbst (Kopf, Körper, Beine) steht in einem Feld von 16 × 16 Pixeln. Was darüber hinausreicht (Flügel, Schwänze, Umhänge, Hüte, Hörner), wird nicht mehr abgeschnitten und nicht mehr in die Figur gequetscht: Das Bild wächst dann auf 32 × 32, das Feld der Figur liegt unten in der Mitte. `spriteCanvas` liefert beide Größen; `spriteK(cv)` sagt, wie viele Felder das Bild breit ist, `spriteCell(cv)` gibt nur das Feld (für Symbole und Porträts). Alle Zeichenstellen (2D, 3D, Arena-Leiste, Ludus-Halle) stellen die Figur mit ihrem Feld auf die Kachel, das Übrige ragt hinaus.
