@@ -26,13 +26,21 @@ const View3D=(()=>{
     host.insertBefore(renderer.domElement, host.firstChild);
     scene=new T.Scene(); scene.background=new T.Color(0x0f0b09); scene.fog=new T.Fog(0x0f0b09,26,70);
     camera=new T.PerspectiveCamera(FOV,1,0.1,200);
-    scene.add(new T.AmbientLight(0xa8a0b8,1.7));
-    const sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
+    ambient=new T.AmbientLight(0xa8a0b8,1.7); scene.add(ambient);
+    sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
+    applyMood();
     tileGroup=new T.Group(); spriteGroup=new T.Group(); scene.add(tileGroup, spriteGroup);
     post=createPostFX(T); post.setLevel(postLevel);
     ready=true;
   }
   let post=null;
+  // Mood light: the even daylight is turned down and cooled, so that torches and fires make warm pools (the sprites are unlit and stay clear)
+  let ambient=null, sun=null, mood=true, shadows=true;
+  function applyMood(){ if(!ambient) return; ambient.color.setHex(mood?0x8088b0:0xa8a0b8); ambient.intensity=mood?1.0:1.7; sun.intensity=mood?0.4:0.75; }
+  function setMood(on){ mood=!!on; applyMood(); }
+  function setShadows(on){ shadows=!!on; }
+  let shadowTex=null;
+  function blobTex(){ if(!shadowTex){ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,2,16,16,15); gr.addColorStop(0,'rgba(0,0,0,0.55)'); gr.addColorStop(0.6,'rgba(0,0,0,0.3)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); shadowTex=texOfCanvas(c); } return shadowTex; }
   function setPost(level){ postLevel=Math.max(0,Math.min(3,level|0)); if(post) post.setLevel(postLevel); }
   // another region, another map size: drop the old tile meshes
   function setSize(worldCols, worldRows){
@@ -275,6 +283,7 @@ const View3D=(()=>{
   function place(it){
     if(it.kind==='prop' && MODELS[it.key]){ placeModel(it); return; }
     if(it.kind==='stain'){ placeStain(it); return; }
+    if(it.kind==='light') return;       // a light source without a picture (see updateLights)
     if(it.kind==='wallTorch'){ placeTorch(it); return; }
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
@@ -289,7 +298,8 @@ const View3D=(()=>{
     if(it.wx!==undefined){ const t2=takeSprite(); t2.material.map=tex; t2.material.opacity=1; t2.material.rotation=0; t2.center.set(0.5,0.5); const sz=0.9*(it.scale||1); t2.scale.set(sz,sz,1); t2.position.set(it.wx,it.wy,it.wz); return; }
     const s=takeSprite(); s.material.map=tex; s.material.opacity=alpha; s.material.rotation=it.kind==='creature'?(it.rotation||0):0; s.material.needsUpdate=true;
     let size, base, anchorY=0, py=0;
-    if(it.kind==='creature'){ size=0.78*(it.scale||1); }
+    if(it.kind==='creature'){ size=0.88*(it.scale||1);
+      if(shadows){ const d=takeDecal(), w=0.62*(it.scale||1)/(it.cells||1); d.material.map=blobTex(); d.material.opacity=alpha; d.material.needsUpdate=true; d.scale.set(w,1,w*0.7); d.position.set(it.x+0.5,0.025,it.y+0.5); d.rotation.y=0; } }       // a soft shadow on the floor: the figure stands instead of floating
     else if(it.kind==='prop'){ size=0.78*(it.scale||1); }
     else { size=0.5*(it.scale||1)*1.25; }
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
@@ -372,16 +382,16 @@ const View3D=(()=>{
     camera.lookAt(cx,0,cy);
     camera.updateMatrixWorld();
   }
-  const LIGHT_KEYS={ torch:[0xff9a40,3.4,5.5], candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
-  const MAX_LIGHTS=10;
+  const LIGHT_KEYS={ torch:[0xff9a40,3.4,5.5], throne:[0xc060ff,3,6], lava:[0xff5a18,4,5], candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
+  const MAX_LIGHTS=14;
   function updateLights(items,cx,cy,now){
     while(lights.length<MAX_LIGHTS){ const l=new T.PointLight(0xffa040,0,6,1.6); scene.add(l); lights.push(l); }
     const lp=it=>it.wx!==undefined?[it.wx,it.wz]:[it.x+0.5,it.y+0.5];
-    const cand=items.filter(it=>(it.kind==='prop'||it.kind==='wallTorch')&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
+    const cand=items.filter(it=>(it.kind==='prop'||it.kind==='wallTorch'||it.kind==='light')&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
     cand.forEach(({it},i)=>{
       const l=lights[i];
       const [col,inten,dist]=LIGHT_KEYS[it.key];
-      l.color.setHex(col); l.distance=dist; l.intensity=inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15;
+      l.color.setHex(col); l.distance=dist*(mood?1.25:1); l.intensity=(inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15)*(mood?1.5:1);
       { const [lx,lz]=lp(it); l.position.set(lx, it.wy!==undefined?it.wy:0.8, lz); }
     });
     for(let i=cand.length;i<lights.length;i++) lights[i].intensity=0;   // keep all lights alive: toggling them would recompile the shaders
@@ -414,6 +424,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();

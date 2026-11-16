@@ -611,7 +611,7 @@ const TILEGEN=(()=>{
     for(let x=4;x<=12;x++) put(f,x,15,'k');
     const skull=mk(7,7); for(let y=0;y<7;y++) for(let x=0;x<7;x++){ const dx=(x+.5-3.5)/3.3, dy=(y+.5-3.2)/3.2; if(dx*dx+dy*dy<=1) put(skull,x,y,'s'); }
     [[1,2],[2,2],[1,3],[2,3],[4,2],[5,2],[4,3],[5,3]].forEach(([x,y],i)=>put(skull,x,y,(i%4===0)?'e':'p')); put(skull,3,4,'p'); [2,3,4].forEach((x,i)=>put(skull,x,6,i%2?'p':'w'));
-    const ribs=mk(8,6); for(let y=0;y<6;y++){ const w=y===5?4:8-(y>>1); const x0=Math.floor((8-w)/2); for(let x=0;x<w;x++) put(ribs,x0+x,y,(y%2===0||x===0||x===w-1)?'s':'p'); } for(let y=0;y<6;y++) put(ribs,3,y,'u');
+    const ribs=mk(8,6); for(let y=0;y<6;y++){ const w=y===5?4:8-(y>>1); const x0=Math.floor((8-w)/2); for(let x=0;x<w;x++) if(y%2===0||x===0||x===w-1) put(ribs,x0+x,y,'s'); }       // between the ribs one sees through for(let y=0;y<6;y++) put(ribs,3,y,'u');
     const leg=(x,y)=>{ for(let j=0;j<3;j++) put(f,x,y+j,'z'); put(f,x,y+2,'s'); put(f,x+1,y+2,'s'); };
     leg(6+fb,12); leg(9+ff,12);
     const blit=(p,ox,oy)=>{ for(let y=0;y<p.h;y++) for(let x=0;x<p.w;x++) if(p.g[y][x]!=='.') put(f,ox+x,oy+y,p.g[y][x]); };

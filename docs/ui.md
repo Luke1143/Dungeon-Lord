@@ -16,3 +16,9 @@ Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das 
 
 ## Eigene Pixelsymbole
 `icons.js` zeichnet alle Symbole des Menüs selbst (12 × 12, aus Rechtecken, Kreisen und Linien, mit dunklem Rand): Gebäude, Zauber, Reiter und die Meldungen. Die Brücke in den Arenen hat jetzt die Bohlen der Kampagnenbrücke. Der Bildeffekt liegt in `postfx.js` und gilt auch für den Ludus-Hof.
+
+## Optionen und Bildstimmung
+- **Optionen** (`options.js`, Zahnrad in der Leiste, Knopf im Hauptmenü, Taste O): Ansicht 3D/2D, Stimmungslicht, Schatten unter Kreaturen, Tiefe der Figuren, Bildeffekt. Eine neue Einstellung ist eine neue Zeile in `OPTION_ROWS`. Gespeichert im Browser (`dungeon-lord-options`, dazu wie bisher `dungeon-lord-3d` und `dungeon-lord-post`).
+- **3D ist die Standardansicht**; 2D bleibt in den Optionen und auf Taste V.
+- **Stimmungslicht** (`View3D.setMood`): das gleichmäßige Tageslicht ist gedämpft und kühler, Fackeln und Feuer leuchten stärker und weiter, der Bildrand dunkelt ab (`#vignette`). Fackeln hängen jetzt an jeder Wand eines Raums, nicht nur an verstärkten Wänden; Thronsaal und Lava leuchten selbst.
+- **Schatten**: ein weicher Fleck unter jeder Kreatur (`View3D.setShadows`); Kreaturen sind in 3D etwas größer.
