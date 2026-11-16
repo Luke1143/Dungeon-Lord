@@ -88,7 +88,7 @@ const ABILITIES={
 };
 // Who learns what at level 5 and level 10 (docs/faehigkeiten.md). Bosses keep their own list (BOSS_ABILITIES), the Dungeon Lord learns from artifacts.
 const SPECIES_ABILITIES={
-  imp:['haste','teleport'], fly:['haste','swarm'], beetle:['sweep','guard'], hound:['haste','howl'], lizard:['haste','lunge'], brood:['rage','burst'],
+  imp:['haste','teleport'], fly:['haste','swarm'], beetle:['sweep','guard'], hound:['haste','howl'], lizard:['haste','lunge'], spider:['paralyze','lunge'], brood:['rage','burst'],
   ork:['rage','sweep'], goblin:['haste','lunge'], troll:['sweep','wallbreak'], warlock:['fireball','curse'], darkelf:['lunge','teleport'], priest:['heal','curse'],
   darkknight:['rage','sweep'], succubus:['curse','charm'], demon:['fireball','breath'], skeleton:['sweep',null], ghoul:['lunge','devour'], zombie:['sweep','devour'],
   banshee:['paralyze','curse'], ghost:['curse','teleport'], vampire:['lunge','charm'], werewolf:['rage','lunge'], lich:['fireball','summon'], dragon:['breath','sweep'],
@@ -113,7 +113,7 @@ const STANCES={
   steadfast: { label:'Standhaft',      text:'hält die Stellung, ein Schlag bewegt nichts' },
   kite:      { label:'Kiter',          text:'weicht nach dem Schuss einen Schritt zurück, wenn ein Feind dicht dran ist' }
 };
-const STANCE_OF={ barbarian:'aggressive', ork:'aggressive', goblin:'aggressive', werewolf:'aggressive', hound:'aggressive', thief:'aggressive', demon:'aggressive', brood:'aggressive', lizard:'aggressive',
+const STANCE_OF={ barbarian:'aggressive', ork:'aggressive', goblin:'aggressive', werewolf:'aggressive', hound:'aggressive', thief:'aggressive', demon:'aggressive', brood:'aggressive', lizard:'aggressive', spider:'aggressive',
   griffin:'aggressive', vampire:'aggressive', ghoul:'aggressive', phoenix:'aggressive', kitsune:'aggressive', unicorn:'aggressive', fly:'aggressive', succubus:'aggressive', yule:'aggressive',
   troll:'steadfast', golem:'steadfast', knight:'steadfast', paladin:'steadfast', dwarf:'steadfast', giant:'steadfast', skeleton:'steadfast', zombie:'steadfast', darkknight:'steadfast', dragon:'steadfast',
   dwarfking:'steadfast', arthur:'steadfast', herakles:'steadfast', guardian:'steadfast', angel:'steadfast', monk:'steadfast', beetle:'steadfast', ghost:'steadfast', warlock:'kite',

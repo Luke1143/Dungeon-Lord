@@ -250,9 +250,11 @@ const BEAST_LEGS={       // (P, x, yTop, step, near, front): one leg from the tr
       P(x+o,B.y1+1,c); P(x+o-1,B.y1+2,c); if(!near) return; if(!lift){ P(x+o-1,B.y1+3,c); if(B.y1+3<14) P(x+o-1,14,c); P(x+o-2,14,'n'); } else P(x+o-2,B.y1+2,c); }); } },
   // eight legs: four on each side arch high over the body and come down far outside
   spider:{ group(P,T,B,near,k,moving){ const c=near?'l':'L', sx=T.x0+3, sy=B.y1-2+(near?0:-1), s=moving?[0,1,0,-1][k]:0;
-      (near?[[-6,-4,-9],[-3,-8,-5],[6,-8,8],[10,-4,13]]:[[-5,-7,-7],[8,-7,11]]).forEach(([kx,ky,fx],i)=>{ const st=(i%2?s:-s)*(near?1:-1), K=[sx+kx,sy+ky+(near?0:1)], F=[sx+fx+st,14];
+      (near?[[-5,-3,-9],[-3,-7,-5],[6,-7,8],[9,-3,13]]:[]).forEach(([kx,ky,fx],i)=>{ const st=(i%2?s:-s)*(near?1:-1), K=[sx+kx,sy+ky+(near?0:1)], F=[sx+fx+st,14];
         const seg=(a,b)=>{ const n=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); for(let j=0;j<=n;j++) P(Math.round(a[0]+(b[0]-a[0])*j/n),Math.round(a[1]+(b[1]-a[1])*j/n),c); };
-        seg([sx+(near?[-1,0,3,4][i]:[0,3][i]),sy],K); seg(K,F); }); } },
+        seg([sx+[-1,0,3,4][i],sy],K); seg(K,F); });
+      // the far side: only the knees show over the back
+      if(!near) [[-4,-6],[-1,-8],[5,-8],[8,-6]].forEach(([kx,ky])=>{ P(sx+kx,sy+ky+2,c); P(sx+kx+(kx<2?1:-1),sy+ky+3,c); }); } },
   talons:(P,x,y0,d,near,front)=>{ const c=front?'n':(near?'l':'L'); for(let y=y0;y<14;y++) P(x+d,y,c); P(x+d-1,14,front?'n':'L'); P(x+d,14,c); if(front) P(x+d-2,14,'n'); }
 };
 const BEAST_TAILS={       // (P, x, y, t, n): from the trunk's back column outwards

@@ -5,7 +5,7 @@ Jede Art gehört zu einer **Stufe** (`budget.js`), und jede Stufe ist eine Anzah
 | Stufe | Budget | Arten |
 |---|---|---|
 | Gering | 0,5 | Kobold, Warlock, Priester, Skelett, Dieb, Irrlicht, Fee, Höllenhund, Dämonenbrut |
-| Gewöhnlich | 1 | Ork, Barbar, Zombie, Echse, Yule, Sukkubus, Zauberer, Banshee, Geist, Mönch, Bogenschütze, Dunkelelf, Dryade, Elf |
+| Gewöhnlich | 1 | Ork, Barbar, Zombie, Echse, Spinne, Yule, Sukkubus, Zauberer, Banshee, Geist, Mönch, Bogenschütze, Dunkelelf, Dryade, Elf |
 | Stark | 1,7 | Käfer, Ghul, Troll, Ritter, Zwerg, Golem, Kitsune, Paladin, Riese, Schutzengel |
 | Episch | 2,8 | Dunkler Ritter, Werwolf, Vampir, Phönix, Einhorn, Greif, Lich, Dämon |
 | Legendär | 5 | Engel, Drache |

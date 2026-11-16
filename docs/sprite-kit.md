@@ -27,7 +27,7 @@ Rezept: `Q(Name, Rumpf, Kopf, Beine, Schwanz, Farben, mehr)` in `BEAST_LOOKS`.
 - **Extras** (`BEAST_EXTRAS`): `ridge`, `featherwings`, `batwings`, `horn`, `cap`, `belly`, `stripes`.
 - Farben: `body`, `head`, `legs`, `snout`, `accent`, `wing`, `horn`.
 
-Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif, Käfer, und als Bild ohne Spielwerte die Spinne (`ZOO.spider`). Ein neues Tier ist eine Zeile, zum Beispiel ein Wolf: `Q('Wolf','lean','fox','paws','bushy',{ body:'#6a6a72' })`.
+Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif, Käfer und Spinne. Ein neues Tier ist eine Zeile, zum Beispiel ein Wolf: `Q('Wolf','lean','fox','paws','bushy',{ body:'#6a6a72' })`.
 
 ## Noch nicht im Baukasten
 Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen), Höllenhund und Fliege (eigene Zeichnungen, sie waren schon gut) sowie Phönix, Geist, Banshee, Irrlicht und Fee (eigene Grundformen in `sprites.js`).
