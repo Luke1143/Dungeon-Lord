@@ -38,7 +38,8 @@ const TOPS={
   long:(p)=>{ hairMask(p,(x,y)=>y<=2||x>=p.w-3); px(p,[[1,2],[2,2],[3,2]],'g'); return [[p.w-1,p.h,'F'],[p.w-2,p.h,'F'],[p.w-1,p.h+1,'F']]; },
   mohawk:(p)=>{ hairMask(p,(x,y)=>y<=1&&x>=2&&x<=p.w-2); return [[3,-1,'G'],[4,-1,'F'],[5,-1,'F'],[4,-2,'G'],[5,-2,'F']]; },
   tonsure:(p)=>{ hairMask(p,(x,y)=>x>=p.w-3&&y>=2&&y<=4); return []; },
-  lionhood:(p)=>{ hairMask(p,(x,y)=>!(x<=4&&y>=2&&y<=6)); return [[p.w-3,-1,'F'],[p.w-2,-1,'G'],[p.w-2,-2,'F'],[2,-1,'F'],[2,-2,'G'],[p.w-1,p.h,'F'],[p.w-2,p.h,'F'],[p.w-1,p.h+1,'g']]; },
+  // a lion's pelt worn as a hood: the mane stands in tufts around the face and falls on the shoulders
+  lionhood:(p)=>{ hairMask(p,(x,y)=>!(x<=4&&y>=2&&y<=6)); const o=[]; for(let x=0;x<p.w;x++) o.push([x,-1,x%2?'F':'g']); [1,3,5,7].forEach(x=>o.push([x,-2,'F'])); for(let y=0;y<=p.h+1;y++){ o.push([p.w,y,y%2?'g':'F']); if(y%2===0) o.push([p.w+1,y,'F']); } o.push([p.w-1,p.h,'F'],[p.w-2,p.h,'g'],[p.w-1,p.h+1,'F'],[-1,1,'F'],[-1,0,'g']); return o; },
   hood:(p)=>{ hairMask(p,(x,y)=>!(x<=4&&y>=2&&y<=6)); return [[p.w-2,-1,'F'],[p.w-3,-1,'G']]; },
   cowl:(p)=>{ hairMask(p,(x,y)=>y<=1||x>=p.w-4); return []; },
   wizhat:(p)=>{ hairMask(p,(x,y)=>y<=1); const o=[]; for(let x=-1;x<=p.w;x++) o.push([x,0,'F']); [[1,-1,6],[2,-2,4],[3,-3,3],[4,-4,2]].forEach(([x0,y,w])=>{ for(let i=0;i<w;i++) o.push([x0+i,y,i===0?'G':'F']); }); o.push([5,-5,'F']); return o; },
@@ -193,7 +194,7 @@ const KIT_LOOKS={
   // the bosses
   dwarfking:L('Zwergenkönig','human','crown','stout','short',{ skin:TAN, hair:'#b8561e', body:'#5a2c14', legs:'#4a2410', trim:'#f0d060', back:'#8a1a1a' },{ good:true, marks:['beard'], back:['cape'] }),
   oberon:L('Oberon','fine','leaves','robe',null,{ skin:'#e2d4b4', hair:'#e8e0a0', body:'#2f7a3a', trim:'#f0d060', extra:'#b02a2a', feet:'#1f3a1a' },{ good:true, back:['cape'] }),
-  herakles:L('Herakles','human','lionhood','bulk','boots',{ skin:TAN, hair:'#d8a048', body:'#c08a62', legs:'#7a4a14', trim:'#5a3410', back:'#c8801c', feet:'#4a2c0c' },{ good:true, back:['cape'] }),
+  herakles:L('Herakles','human','lionhood','bulk','boots',{ skin:TAN, hair:'#d8a048', body:'#c08a62', legs:'#7a4a14', trim:'#5a3410', back:'#c8801c', extra:'#5a3410', feet:'#4a2c0c' },{ good:true, back:['cape'], marks:['sash'] }),
   arthur:L('Artus','human','crown','tunic','boots',{ skin:SKIN, hair:'#c8a030', body:'#2a4a9a', legs:'#8d949c', trim:'#f0d060', extra:'#b02a2a' },{ good:true, marks:['beard'], back:['cape'] }),
   // the horde
   ork:L('Ork','ork','none','broad','stumps',{ skin:'#5f8f3a', body:'#5f8f3a', legs:'#4e6b30', trim:'#6b4a35' }),
@@ -205,7 +206,7 @@ const KIT_LOOKS={
   darkelf:L('Dunkelelf','fine','ears','slim','thin',{ skin:'#6a6a9a', hair:'#e8e8f0', body:'#1e1a2e', legs:'#161224', trim:'#8a2a8a' }),
   vampire:L('Vampir','fine','hair','slim','thin',{ skin:'#d8d0d0', hair:'#1a1014', body:'#1a1014', legs:'#1a1014', trim:'#8f1a28', extra:'#6a0f1a' },{ back:['cape'], marks:['fangs','collar'] }),
   darkknight:L('Dunkler Ritter','helm','horns','tunic','boots',{ skin:'#3a3a48', body:'#25252f', legs:'#1c1c24', trim:'#8a1a1a', extra:'#e02818', back:'#6a0f1a', feet:'#0e0e14' },{ back:['cape'] }),
-  succubus:L('Succubus','fine','hornsHair','slim','thin',{ skin:'#e0a0b8', hair:'#34102c', body:'#8a2a70', legs:'#44163a', trim:'#f0d060', extra:'#f0e0c0', back:'#b03a5a' },{ back:['batwings'] }),
+  succubus:L('Succubus','fine','hornsHair','slim','thin',{ skin:'#e0a0b8', hair:'#34102c', body:'#8a2a70', legs:'#44163a', trim:'#f0d060', extra:'#f0e0c0', back:'#6a1838' },{ back:['batwings'] }),
   demon:L('Dämon','brute','horns','broad','stumps',{ skin:'#c43a1c', body:'#8a2418', legs:'#4a0e0c', trim:'#2a0605', extra:'#f0e0c0', back:'#3a0a14' },{ back:['batwings'] }),
   werewolf:L('Werwolf','wolf','wolfears','broad','paws',{ skin:'#6a4a34', body:'#5a3e2a', legs:'#4a3220', trim:'#765238', extra:'#6a4a34' },{ back:['wolftail'] }),
   lich:L('Lich','skull','bonecrown','robe',null,{ skin:'#e8e0d0', body:'#3a1a5a', trim:'#f0c040', extra:'#6ad0ff', feet:'#120820' })
@@ -247,7 +248,7 @@ const BEAST_LEGS={       // (P, x, yTop, step, near, front): one leg from the tr
   splay:(P,x,y0,d,near,front)=>{ for(let y=y0;y<=13;y++) P(x+d,y,near?'l':'L'); const s=front?-1:1; P(x+d+s,13,'L'); P(x+d+s,14,'L'); P(x+d+2*s,14,'l'); },
   // six legs in a tripod gait: on each side three bent legs under the shell
   insect:{ group(P,T,B,near,k,moving){ [T.x0+2,Math.round((T.x0+T.x1)/2),T.x1-2].forEach((x,i)=>{ const lift=moving&&((i%2===0)===(k%2===0))!==near, c=near?'l':'L', o=near?0:1;
-      P(x+o,B.y1+1,c); P(x+o-1,B.y1+2,c); if(!near) return; if(!lift){ P(x+o-1,B.y1+3,c); if(B.y1+3<14) P(x+o-1,14,c); P(x+o-2,14,'n'); } else P(x+o-2,B.y1+2,c); }); } },
+      if(!near) return; P(x+o,B.y1+1,c); P(x+o-1,B.y1+2,c); if(!lift){ P(x+o-1,B.y1+3,c); if(B.y1+3<14) P(x+o-1,14,c); P(x+o-2,14,'n'); } else P(x+o-2,B.y1+2,c); }); } },
   // eight legs: four on each side arch high over the body and come down far outside
   spider:{ group(P,T,B,near,k,moving){ const c=near?'l':'L', sx=T.x0+3, sy=B.y1-2+(near?0:-1), s=moving?[0,1,0,-1][k]:0;
       (near?[[-5,-3,-9],[-3,-7,-5],[6,-7,8],[9,-3,13]]:[]).forEach(([kx,ky,fx],i)=>{ const st=(i%2?s:-s)*(near?1:-1), K=[sx+kx,sy+ky+(near?0:1)], F=[sx+fx+st,14];
@@ -273,9 +274,9 @@ const BEAST_EXTRAS={      // (P, B, top, t): B = trunk box (with the bob), top =
   featherwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x0=B.x0+2, y0=B.y0;
     const rows=up?[[6,8],[5,9],[4,9],[3,9],[2,8],[1,7],[1,6],[0,5],[0,4]]:[[0,3],[0,5],[1,7],[1,9],[2,10],[3,10],[5,11],[7,11]];
     rows.forEach(([a,b],i)=>{ const y=y0-(up?9:3)+i; for(let x=a;x<=b;x++) P(x0+x,y,(x===b||(x+i)%3===0)?'v':'V'); }); },
-  batwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x0=B.x0+2, y0=B.y0;
-    const rows=up?[[5,7],[4,9],[3,10],[2,10],[2,10],[1,10],[1,9],[0,3],[0,2]]:[[1,4],[0,7],[0,9],[1,10],[2,11],[4,11],[6,11],[9,11]];
-    rows.forEach(([a,b],i)=>{ const y=y0-(up?9:4)+i; for(let x=a;x<=b;x++) P(x0+x,y,(i===0||x===a||(x-a)%4===3)?'V':'v'); }); },
+  batwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x0=B.x0+3, y0=B.y0;       // three fingers and the skin between; at rest half open above the back
+    const rows=up?[[5,7],[4,9],[3,10],[2,10],[2,10],[1,10],[1,9],[0,3],[0,2]]:[[3,5],[2,8],[1,10],[1,10],[0,10],[0,4],[0,2]];
+    rows.forEach(([a,b],i)=>{ const y=y0-(up?9:6)+i; for(let x=a;x<=b;x++) P(x0+x,y,(i===0||x===a||x===b||(x-a)%4===3)?'V':'v'); }); },
   horn:(P,B,top)=>{ P(top.x-1,top.y,'x'); P(top.x-2,top.y-1,'x'); P(top.x-3,top.y-2,'x'); },
   cap:(P,B,top)=>{ for(let x=top.x-1;x<=top.x+2;x++) P(x,top.y+1,'e'); P(top.x,top.y,'x'); P(top.x+1,top.y,'x'); P(top.x+2,top.y,'x'); P(top.x+2,top.y-1,'x'); P(top.x+3,top.y-1,'x'); P(top.x+4,top.y,'e'); },
   belly:(P,B)=>{ for(let x=B.x0+2;x<=B.x1-2;x++) P(x,B.y1,'n'); },
@@ -313,7 +314,7 @@ const beastEntry=look=>({ name:look.name, humanoid:false, beast:look, pal:beastP
 const Q=(name,body,head,legs,tail,colors,more)=>Object.assign({ name, body, head, legs, tail, colors },more||{});
 const BEAST_LOOKS={
   lizard:Q('Echse','low','lizard','splay','drag',{ body:'#4f8a3a', snout:'#a8d070', accent:'#e8c040', legs:'#3f7a30' },{ extras:['ridge','belly'], box:{ y0:8, y1:12 }, headDy:2 }),
-  dragon:Q('Drache','big','dragon','thick','spade',{ body:'#9a2a24', snout:'#e8a840', accent:'#f0c050', wing:'#5a1220', legs:'#7a1e1a' },{ extras:['batwings','ridge','belly'], box:{ x0:3, x1:13, y0:5 } }),
+  dragon:Q('Drache','big','dragon','thick','spade',{ body:'#9a2a24', snout:'#e8a840', accent:'#f0c050', wing:'#6a1a2c', legs:'#7a1e1a' },{ extras:['batwings','belly'], box:{ x0:3, x1:13, y0:5 } }),
   unicorn:Q('Einhorn','barrel','horse','thin','hair',{ body:'#f0ecf4', snout:'#f0d8e8', accent:'#e87ad0', horn:'#f0d060', legs:'#d8d0e0' },{ good:true, extras:['horn'] }),
   kitsune:Q('Kitsune','lean','fox','paws','bushy',{ body:'#e08a3a', snout:'#fff4e0', accent:'#fff4e0', legs:'#8a4a20' },{ good:true, tails:3 }),
   yule:Q('Yule','barrel','cat','paws','up',{ body:'#3a3e54', snout:'#e8a0b0', accent:'#f2e8d5', horn:'#c43a3a', legs:'#2e3246' },{ good:true, extras:['cap','stripes'], box:{ y0:7 } }),
