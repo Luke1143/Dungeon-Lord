@@ -5904,14 +5904,22 @@ const SPRITE_CACHE={};
 const SPRITE_FLAT=new Set(['wisp','ghost','banshee']);       // lights and spirits have no body to give depth to
 const SPRITE_DEPTH=0.45;       // how dark the copy behind a figure is (1 = the figure's own colour)
 function spriteDark(c){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return '#000000'; const n=parseInt(m[1],16); return 'rgb('+[(n>>16)&255,(n>>8)&255,n&255].map(v=>Math.round(v*SPRITE_DEPTH)).join(',')+')'; }
+// A creature's picture. Most are one cell (16x16); a figure with parts that reach beyond it (wings, tails, hats) comes on a bigger square
+// with its cell in the bottom middle: spriteK(cv) says how many cells wide the picture is, spriteCell(cv) gives the cell alone (for icons).
+const spriteK=cv=>cv.width/16;
+function spriteCell(cv){
+  if(cv.width===16) return cv;
+  if(!cv._cell){ const c=document.createElement('canvas'); c.width=c.height=16; c.getContext('2d').drawImage(cv,-(cv.width-16)/2,-(cv.height-16)); cv._cell=c; }
+  return cv._cell;
+}
 function spriteCanvas(key,t,facingRight,moving,extra){
   const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0)+'|'+(extra?JSON.stringify(extra):'');
   if(SPRITE_CACHE[id]) return SPRITE_CACHE[id];
-  const z=ZOO[key], f=z.frame(t,facingRight,moving,extra), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
+  const z=ZOO[key], f=z.frame(t,facingRight,moving,extra), H=f.g.length, W=f.g[0].length, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
   const g=cv.getContext('2d'), pal=f.pal?{...z.pal,...f.pal}:z.pal;
   // depth: a dark copy of the figure lies one pixel behind it (away from where it looks), so it reads as a thick cut-out; props, lights and spirits stay flat
-  if(!z.prop&&!SPRITE_FLAT.has(key.replace('_ally',''))){ const back=facingRight?-1:1, solid=(x,y)=>x>=0&&x<16&&f.g[y][x]!=='.'&&f.g[y][x]!=='k';
-    for(let y=0;y<15;y++) for(let x=0;x<16;x++) if(solid(x,y)&&!solid(x+back,y)&&x+back>=0&&x+back<16){ g.fillStyle=spriteDark(pal[f.g[y][x]]||'#000000'); g.fillRect(x+back,y,1,1); } }
+  if(!z.prop&&!SPRITE_FLAT.has(key.replace('_ally',''))){ const back=facingRight?-1:1, solid=(x,y)=>x>=0&&x<W&&f.g[y][x]!=='.'&&f.g[y][x]!=='k';
+    for(let y=0;y<H-1;y++) for(let x=0;x<W;x++) if(solid(x,y)&&!solid(x+back,y)&&x+back>=0&&x+back<W){ g.fillStyle=spriteDark(pal[f.g[y][x]]||'#000000'); g.fillRect(x+back,y,1,1); } }
   f.g.forEach((row,y)=>row.forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=pal[ch]||'#f0f'; g.fillRect(x,y,1,1); }));
   return SPRITE_CACHE[id]=cv;
 }
@@ -5944,7 +5952,7 @@ function creatureIconURL(c){
   const baseKey=c.kind||'imp', key=(c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=ZOO[key]; if(!z) return null;
   const extra=key==='imp'?null:(z.humanoid?equipLook(c):undefined), id=key+'|'+JSON.stringify(extra||null);
   if(ICON_CACHE.has(id)) return ICON_CACHE.get(id);
-  const cv=spriteCanvas(key,0,false,false,extra), url=cv.toDataURL(); ICON_CACHE.set(id,url); return url;
+  const cv=spriteCell(spriteCanvas(key,0,false,false,extra)), url=cv.toDataURL(); ICON_CACHE.set(id,url); return url;
 }
 function creatureIconHTML(c,px){ const u=creatureIconURL(c); return u?`<img class="spIcon" src="${u}" width="${px}" height="${px}" alt="">`:escapeHtmlText(creatureEmoji(c)); }
 function escapeHtmlText(s){ return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
@@ -5968,18 +5976,19 @@ function drawCreatureSprite(c,px,py,opts){
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?(()=>{ const eq=equipLook(c); return eq&&eq.weapon2&&c.lastHand?Object.assign({},eq,{ weapon2:undefined }):Object.assign({},eq,{ weapon:undefined }); })():equipLook(c)):undefined);
   const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
-  const sc=creatureScale(c);
+  const k=spriteK(cv), sc=creatureScale(c);
   const fl=(opts&&opts.flash)||0;
   const lift=(opts&&opts.lift)||0;
-  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
+  if(capture){ capture.push({ kind:'creature', canvas:cv, x:px, y:py, lift, scale:sc*k, rotation:(opts&&opts.rotation)||0, alpha:opts&&opts.alpha, flash:fl, flashCanvas:fl>0?silhouetteOf(cv):null }); return true; }
   const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size)-lift*TILE, o=opts||{};
   if(c.arenaTeam!==undefined){ ctx.save(); ctx.fillStyle=c.arenaTeam?'rgba(70,130,255,0.6)':'rgba(230,60,50,0.6)'; ctx.beginPath(); ctx.ellipse(sx+size/2, sy+size-2, size*0.34, size*0.11, 0, 0, 7); ctx.fill(); ctx.restore(); }
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
-  if(o.rotation){ ctx.translate(sx+size/2, sy+size/2); ctx.rotate(o.rotation); ctx.drawImage(cv,-size/2,-size/2,size,size); }
-  else ctx.drawImage(cv,sx,sy,size,size);
-  if(fl>0){ ctx.globalAlpha=Math.min(1,fl)*0.9; ctx.drawImage(silhouetteOf(cv),sx,sy,size,size); }
+  const big=size*k, bx=sx-(big-size)/2, by=sy-(big-size);       // a picture wider than one cell stands with its cell on the tile
+  if(o.rotation){ ctx.translate(sx+size/2, sy+size/2); ctx.rotate(o.rotation); ctx.drawImage(cv,bx-sx-size/2,by-sy-size/2,big,big); }
+  else ctx.drawImage(cv,bx,by,big,big);
+  if(fl>0){ ctx.globalAlpha=Math.min(1,fl)*0.9; ctx.drawImage(silhouetteOf(cv),o.rotation?bx-sx-size/2:bx,o.rotation?by-sy-size/2:by,big,big); }
   ctx.restore();
   return true;
 }
@@ -9093,7 +9102,7 @@ function updateHeldGhost(dt){
   const targetTilt=Math.max(-0.5,Math.min(0.5,g.vx*0.0009)); g.tilt+=(targetTilt-g.tilt)*Math.min(1,dt*10);
   const bob=Math.sin(Date.now()/260)*3, c=cv.getContext('2d'); c.clearRect(0,0,96,96); c.imageSmoothingEnabled=false;
   c.save(); c.translate(48,10); c.rotate(g.tilt); c.translate(-48,-10);          // hangs from the top, like held by the scruff
-  if(pic.sprite){ const s=Math.round(70*Math.min(1,pic.scale||1)*0.85); c.drawImage(pic.sprite,(96-s)/2,10+bob,s,s); }
+  if(pic.sprite){ const s=Math.round(70*Math.min(1,pic.scale||1)*0.85), k=spriteK(pic.sprite); c.drawImage(pic.sprite,(96-s*k)/2,10+bob-s*(k-1),s*k,s*k); }
   else { c.font='44px serif'; c.textAlign='center'; c.fillText(pic.icon,48,62+bob); }
   c.restore();
   cv.style.transform=`translate(${Math.round(g.x+14)}px,${Math.round(g.y+10)}px)`;

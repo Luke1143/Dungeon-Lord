@@ -77,15 +77,21 @@ const LEGS={
   paws:()=>{ const p=mk(3,4); rect(p,1,0,2,2,'l'); put(p,2,1,'d'); rect(p,0,3,2,3,'l'); put(p,0,3,'L'); return p; },
   bones:()=>{ const p=mk(2,4); rect(p,1,0,1,3,'l'); put(p,0,3,'L'); return p; }
 };
-// ---- extras behind the body: (set, B, t) with B = { x0,x1,y0,y1 } of the body; letters o O (colour `back`) ----
+// ---- extras behind the body: (set, B, t) with B = { x0,x1,y0,y1 } of the body; letters o O (colour `back`); they may reach far out of the cell ----
 const BACKS={
-  cape:(set,B)=>{ for(let y=B.y0+1;y<=13;y++){ set(B.x1+1,y,'o'); if(y>B.y0+3) set(B.x1+2,y,y%2?'o':'O'); } set(B.x1,B.y0,'o'); },
-  tail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,5],[2,4],[3,3],[4,2+w],[4,1+w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+5,B.y0+w,'O'); },
-  wolftail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,4],[2,3+w],[3,3+w],[2,4+w],[3,2+w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); },
-  batwings:(set,B,t)=>{ const up=Math.floor(t/2)%2?-1:0; [[1,-2,'O'],[2,-3,'O'],[3,-3,'O'],[4,-2,'O'],[2,-2,'o'],[3,-2,'o'],[1,-1,'o'],[2,-1,'o'],[3,-1,'o'],[4,-1,'O'],[1,0,'o'],[2,0,'o'],[3,0,'o'],[4,0,'O'],[2,1,'o'],[4,1,'O']].forEach(([dx,dy,c])=>set(B.x1+dx-1,B.y0+1+dy+up,c)); },
-  wings:(set,B,t)=>{ const up=Math.floor(t/2)%2?-1:0; [[0,-1],[1,-2],[2,-3],[3,-3],[1,-1],[2,-2],[3,-2],[1,0],[2,-1],[3,-1],[2,0],[3,0],[2,1],[3,1],[3,2],[3,3]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+1+dy+up,(dx+dy)%2?'O':'o')); },
-  pack:(set,B)=>{ rectSet(set,B.x1,B.y0+1,B.x1+1,B.y0+4,'o'); set(B.x1+1,B.y0+1,'O'); },
-  quiver:(set,B)=>{ [[0,-1],[1,-2],[0,0],[1,-1],[1,0]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+1,B.y0-3,'O'); set(B.x1+2,B.y0-3,'O'); }
+  cape:(set,B)=>{ for(let y=B.y0;y<=13;y++){ const w=1+Math.floor((y-B.y0)/3); for(let i=0;i<=w;i++) set(B.x1+i,y,i===w?'O':'o'); } },
+  tail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,5],[2,5],[3,4],[4,3],[5,2],[5,1-w],[6,0-w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+7,B.y0-1-w,'O'); set(B.x1+6,B.y0-1-w,'O'); set(B.x1+7,B.y0-2-w,'O'); },
+  wolftail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,4],[2,3],[3,3+w],[4,3+w],[2,4],[3,4+w],[4,2+w],[5,3+w],[5,2+w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+6,B.y0+2+w,'O'); },
+  // a bat wing: three fingers and the skin between them
+  batwings:(set,B,t)=>{ const up=Math.floor(t/2)%2, y0=B.y0+1, x0=B.x1-1;
+    const rows=up?[[1,2],[1,4],[2,6],[2,7],[3,8],[3,8],[4,8],[6,8]]:[[1,3],[1,6],[1,8],[2,8],[2,8],[3,8],[4,5],[7,8]];
+    rows.forEach(([a,b],i)=>{ const y=y0-(up?7:4)+i; for(let x=a;x<=b;x++) set(x0+x,y,(x===b||i===0||(x-a)%3===0)?'O':'o'); }); },
+  // a feathered wing: a rounded shoulder, long feathers falling behind
+  wings:(set,B,t)=>{ const up=Math.floor(t/2)%2, y0=B.y0+1, x0=B.x1-1;
+    const rows=up?[[4,6],[3,7],[2,8],[1,8],[1,7],[1,6],[1,4],[1,3]]:[[1,3],[1,5],[1,7],[2,8],[2,8],[3,8],[4,8],[5,8],[6,8],[7,8]];
+    rows.forEach(([a,b],i)=>{ const y=y0-(up?8:3)+i; for(let x=a;x<=b;x++) set(x0+x,y,(x===b||(x+i)%3===0)?'o':'O'); }); },
+  pack:(set,B)=>{ rectSet(set,B.x1,B.y0+1,B.x1+2,B.y0+4,'o'); set(B.x1+2,B.y0+1,'O'); set(B.x1+1,B.y0,'O'); },
+  quiver:(set,B)=>{ [[0,-1],[1,-2],[0,0],[1,-1],[1,0],[2,-2],[2,-1]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+2,B.y0-3,'O'); set(B.x1+3,B.y0-4,'O'); set(B.x1+1,B.y0-3,'O'); }
 };
 const rectSet=(set,x0,y0,x1,y1,c)=>{ for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++) set(x,y,c); };
 // ---- marks in front: (f, H, B) boxes of head and body; drawn over the finished figure ----
@@ -115,27 +121,49 @@ function palette(c){
 }
 
 // ---- the figure ----
+// Every part has a cell of its own (16x16) to spend: what reaches out of the figure's cell (wings, tails, capes, hats) is kept, and the picture grows to 32x32
+// with the cell in its bottom middle (see spriteCanvas in index.html). `back` and `front` are pixel lists [x,y,letter] in cell coordinates.
+const BIG=32, OX=8, OY=16;
+function compose(f,back,front,facingRight){
+  const inCell=([x,y])=>x>=0&&x<N&&y>=0&&y<15;
+  let g;
+  if(back.every(inCell)&&front.every(inCell)){
+    g=f.g.map(r=>r.slice());
+    back.forEach(([x,y,c])=>{ if(g[y][x]==='.') g[y][x]=c; }); front.forEach(([x,y,c])=>{ g[y][x]=c; });
+  } else {
+    g=Array.from({length:BIG},()=>Array(BIG).fill('.'));
+    const P=(x,y,c)=>{ const X=x+OX, Y=y+OY; if(X>=0&&X<BIG&&Y>=0&&Y<BIG-1) g[Y][X]=c; };
+    back.forEach(([x,y,c])=>P(x,y,c));
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++) if(f.g[y][x]!=='.') g[y+OY][x+OX]=f.g[y][x];
+    front.forEach(([x,y,c])=>P(x,y,c));
+  }
+  if(facingRight) g=g.map(r=>r.slice().reverse());
+  return { g, pal:f.pal };
+}
 function build(look,t,facingRight,moving,equip){
   const f=mk(N,N), k=t%4; f.tag=Array.from({length:N},()=>Array(N).fill(''));
   const evil=!look.good, head=HEADS[look.head].draw(evil), extra=(TOPS[look.top||'none'])(head)||[], body=BODIES[look.body](), leg=body.robe?null:LEGS[look.legs||'boots']();
   const bob=moving?[0,-1,0,-1][k]:0, ff=moving?[-1,0,1,0][k]:0, fb=-ff, nod=moving?[0,0,1,0][k]:(Math.floor(t/2)%2?1:0);
   // the stack, from the ground up
   const legTop=leg?15-leg.h:15, by=(body.robe?15-body.h:legTop-body.h+1)+(look.bodyDy||0), bx=Math.round(7.5-body.w/2+0.01)+(look.bodyDx||0);
-  const hx=Math.round(7.5-head.w/2)-HEADS[look.head].fwd+(look.headDx||0), room=Math.max(0,...extra.map(e=>-e[1])), hy=Math.max(look.headMin||0,room,by-head.h+(look.neck===undefined?3:look.neck));       // what grows above the head (a hat, horns) pushes it down into the shoulders
+  const hx=Math.round(7.5-head.w/2)-HEADS[look.head].fwd+(look.headDx||0), hy=Math.max(look.headMin||0,by-head.h+(look.neck===undefined?3:look.neck));
   const tb=(part,ox,oy,tag)=>{ for(let y=0;y<part.h;y++) for(let x=0;x<part.w;x++){ const c=part.g[y][x]; if(c!=='.'&&ox+x>=0&&oy+y>=0&&ox+x<N&&oy+y<N){ f.g[oy+y][ox+x]=c; f.tag[oy+y][ox+x]=tag; } } };
   const set=(x,y,c)=>{ if(x>=0&&y>=0&&x<N&&y<15) f.g[y][x]=c; };
   for(let x=4;x<=12;x++) put(f,x,15,'k');
   const B={ x0:bx, x1:bx+body.w-1, y0:by+bob, y1:by+bob+body.h-1 }, H={ x0:hx, x1:hx+head.w-1, y0:hy+bob+nod, y1:hy+bob+nod+head.h-1 };
-  (look.back||[]).forEach(b=>BACKS[b](set,B,t));
+  const back=[], front=[];
+  (look.back||[]).forEach(b=>BACKS[b]((x,y,c)=>{ if(y<15) back.push([x,y,c]); },B,t));
   if(leg){ const span=2*leg.w+1, lx=bx+Math.round((body.w-span)/2+0.5); tb(leg,lx+leg.w+1+fb,legTop,'L'); tb(body,bx,by+bob,'T'); tb(leg,lx+ff,legTop,'L'); }
   else { tb(body,bx,by+bob,'T'); set(bx+2+ff,14,'f'); set(bx+body.w-3+fb,14,'f'); }
   tb(head,H.x0,H.y0,'H');
-  extra.forEach(([x,y,c])=>{ const X=H.x0+x, Y=H.y0+y; if(X>=0&&X<N&&Y>=0&&Y<15&&(f.g[Y][X]==='.'||f.tag[Y][X]==='H'||y<0)){ f.g[Y][X]=c; f.tag[Y][X]=y>=0&&y<head.h&&x>=0&&x<head.w?'H':''; } });
+  // what a top adds: inside the head it is part of the head (a helm covers it), outside it rides along in front
+  extra.forEach(([x,y,c])=>{ const X=H.x0+x, Y=H.y0+y, inHead=y>=0&&y<head.h&&x>=0&&x<head.w; if(inHead){ if(X>=0&&X<N&&Y>=0&&Y<15){ f.g[Y][X]=c; f.tag[Y][X]='H'; } } else if(Y<15) front.push([X,Y,c]); });
   (look.marks||[]).forEach(m=>MARKS[m](f,H,B));
   const wear=look.wear?Object.assign({},look.wear,equip?{ weapon:equip.weapon, shield:equip.shield, weapon2:equip.weapon2, wparts:equip.wparts, wparts2:equip.wparts2, wmat:equip.wmat }:{}):equip;
   if(wear){ armour(f,wear); f.pal={ R:'#b02a2a', ...weaponPal(wear.wmat), ...(MATS[wear.mat||'eisen']) }; }
-  if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
-  return f;
+  // extras that only hang below the head's top row inside the cell must not cover it (a long ear, hair on the neck): they yield to the figure
+  const yielding=front.filter(([x,y])=>x>=0&&x<N&&y>=0&&y<15&&f.g[y][x]!=='.'&&f.tag[y][x]!=='H');
+  return compose(f,back,front.filter(q=>!yielding.includes(q)),facingRight);
 }
 const swapEyes=f=>{ f.g=f.g.map(r=>r.map(c=>c==='e'?'p':(c==='p'?'e':c))); return f; };
 function entry(look){ return { name:look.name, humanoid:true, kit:look, pal:palette(look.colors), frame:(t,fr,mv,eq)=>build(look,t,fr,mv,eq) }; }
@@ -212,15 +240,20 @@ const BEAST_TAILS={       // (P, x, y, t, n): from the trunk's back column outwa
   stub:(P,x,y)=>{ P(x,y,'b'); P(x+1,y-1,'c'); },
   drag:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'b'); P(x,y+1,'b'); P(x+1,y+1,'b'); P(x+1,y+2,'d'); P(x+2,y+2,'b'); P(x+3,y+2+s,'d'); P(x+4,y+2+s,'d'); },
   up:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'b'); P(x+1,y-1,'b'); P(x+1,y-2,'b'); P(x+2,y-3,'b'); P(x+2,y-4,'b'); P(x+1+s,y-5,'c'); },
-  bushy:(P,x,y,t,n)=>{ for(let i=0;i<(n||1);i++){ const ty=y-1+i*2-(n>1?1:0); P(x,ty,'b'); P(x+1,ty,'b'); P(x+1,ty-1,'B'); P(x+2,ty-1,'b'); P(x+2,ty,'b'); P(x+3,ty-1,'c'); P(x+3,ty,'c'); } },
+  bushy:(P,x,y,t,n)=>{ const s=Math.floor(t/2)%2, fan=n>1?[[-1,-1],[0,0],[1,1]].slice(0,n):[[0,-1]];       // each tail: thick, five long, a pale tip; several fan out
+    fan.forEach(([dy,slope],i)=>{ for(let j=0;j<5;j++){ const yy=y+dy*2+Math.round(slope*j*0.7)+(i===0&&j>2?-s:0); P(x+j,yy,j>=4?'c':'b'); P(x+j,yy+1,j>=4?'c':(j===0?'b':'d')); if(j>=1&&j<=3) P(x+j,yy-1,j===3?'c':'B'); } }); },
   hair:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'c'); P(x,y+1,'c'); P(x+1,y+1,'c'); P(x+1,y+2,'C'); P(x+1+s,y+3,'c'); P(x+1+s,y+4,'C'); },
-  spade:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y+1,'b'); P(x+1,y,'b'); P(x+1,y+1,'d'); P(x+2,y-1,'b'); P(x+2,y-2-s,'b'); P(x+1,y-3-s,'c'); P(x+2,y-3-s,'c'); P(x+3,y-3-s,'c'); P(x+2,y-4-s,'C'); },
+  spade:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; [[0,1],[1,1],[2,0],[3,0],[4,-1],[5,-2],[5,-3-s],[4,-4-s]].forEach(([dx,dy])=>{ P(x+dx,y+dy,'b'); P(x+dx,y+dy+1,'d'); }); [[3,-6],[4,-6],[5,-6],[4,-7],[4,-5],[3,-5],[5,-5]].forEach(([dx,dy])=>P(x+dx,y+dy-s,dy===-7?'C':'c')); },
   lion:(P,x,y,t)=>{ const s=Math.floor(t/2)%2; P(x,y,'b'); P(x+1,y+1,'b'); P(x+2,y+1,'b'); P(x+2,y-s,'b'); P(x+2,y-1-s,'c'); P(x+3,y-1-s,'c'); P(x+2,y-2-s,'C'); }
 };
 const BEAST_EXTRAS={      // (P, B, top, t): B = trunk box (with the bob), top = the head's top-front corner
   ridge:(P,B)=>{ for(let x=B.x0+2;x<=B.x1-1;x+=2) P(x,B.y0-1,'c'); },
-  featherwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x=B.x0+3, y=B.y0; (up?[[0,-1],[1,-2],[2,-3],[3,-4],[4,-4],[1,-1],[2,-2],[3,-3],[4,-3],[5,-3],[2,-1],[3,-2],[4,-2],[3,-1]]:[[0,-1],[1,-1],[2,-1],[3,-1],[4,-1],[5,0],[1,0],[2,0],[3,0],[4,0],[2,1],[3,1],[4,1],[5,1],[4,2],[5,2]]).forEach(([dx,dy],i)=>P(x+dx,y+dy,i%3===0?'V':'v')); },
-  batwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x=B.x0+2, y=B.y0; (up?[[0,-1],[1,-2],[2,-3],[3,-4],[4,-5],[5,-5],[6,-4],[1,-1],[2,-2],[3,-3],[4,-4],[5,-4],[2,-1],[3,-2],[4,-3],[6,-3],[4,-2],[6,-2]]:[[0,-1],[1,-2],[2,-3],[3,-3],[4,-3],[5,-2],[6,-1],[1,-1],[2,-2],[3,-2],[4,-2],[2,-1],[3,-1],[4,-1],[5,-1],[6,0]]).forEach(([dx,dy],i)=>P(x+dx,y+dy,i<7?'V':'v')); },
+  featherwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x0=B.x0+2, y0=B.y0;
+    const rows=up?[[6,8],[5,9],[4,9],[3,9],[2,8],[1,7],[1,6],[0,5],[0,4]]:[[0,3],[0,5],[1,7],[1,9],[2,10],[3,10],[5,11],[7,11]];
+    rows.forEach(([a,b],i)=>{ const y=y0-(up?9:3)+i; for(let x=a;x<=b;x++) P(x0+x,y,(x===b||(x+i)%3===0)?'v':'V'); }); },
+  batwings:(P,B,top,t)=>{ const up=Math.floor(t/2)%2, x0=B.x0+2, y0=B.y0;
+    const rows=up?[[5,7],[4,9],[3,10],[2,10],[2,10],[1,10],[1,9],[0,3],[0,2]]:[[1,4],[0,7],[0,9],[1,10],[2,11],[4,11],[6,11],[9,11]];
+    rows.forEach(([a,b],i)=>{ const y=y0-(up?9:4)+i; for(let x=a;x<=b;x++) P(x0+x,y,(i===0||x===a||(x-a)%4===3)?'V':'v'); }); },
   horn:(P,B,top)=>{ P(top.x-1,top.y,'x'); P(top.x-2,top.y-1,'x'); P(top.x-3,top.y-2,'x'); },
   cap:(P,B,top)=>{ for(let x=top.x-1;x<=top.x+2;x++) P(x,top.y+1,'e'); P(top.x,top.y,'x'); P(top.x+1,top.y,'x'); P(top.x+2,top.y,'x'); P(top.x+2,top.y-1,'x'); P(top.x+3,top.y-1,'x'); P(top.x+4,top.y,'e'); },
   belly:(P,B)=>{ for(let x=B.x0+2;x<=B.x1-2;x++) P(x,B.y1,'n'); },
@@ -233,10 +266,11 @@ function beastPalette(c){
   return P;
 }
 function beastFrame(look,t,facingRight,moving){
-  const f=mk(N,N), k=t%4, bob=moving?[0,-1,0,-1][k]:0, ff=moving?[-1,0,1,0][k]:0, fb=-ff, evil=!look.good;
-  const P=(x,y,c)=>{ if(x>=0&&y>=0&&x<N&&y<15) f.g[y][x]=c; };
+  const g=Array.from({length:BIG},()=>Array(BIG).fill('.')), k=t%4, bob=moving?[0,-1,0,-1][k]:0, ff=moving?[-1,0,1,0][k]:0, fb=-ff, evil=!look.good;
+  let out=false;
+  const P=(x,y,c)=>{ const X=x+OX, Y=y+OY; if(X<0||X>=BIG||Y<0||y>=15) return; g[Y][X]=c; if(x<0||x>=N||y<0) out=true; };
   const T=Object.assign({},BEAST_BODIES[look.body],look.box||{}), B={ x0:T.x0, x1:T.x1, y0:T.y0+bob, y1:T.y1+bob };
-  for(let x=T.x0;x<=T.x1;x++) put(f,x,15,'k');
+  for(let x=T.x0;x<=T.x1;x++) g[15+OY][x+OX]='k';
   const ex=look.extras||[], leg=BEAST_LEGS[look.legs||'thin'];
   ex.filter(e=>/wings/.test(e)).forEach(e=>BEAST_EXTRAS[e](P,B,null,t));       // wings lie behind the trunk
   // far legs, the tail, the trunk, near legs, the head
@@ -247,14 +281,16 @@ function beastFrame(look,t,facingRight,moving){
   leg(P,T.x0+1,T.y1,ff,true,true); leg(P,T.x1-1,T.y1,fb,true,false);
   const top=BEAST_HEADS[look.head](P,T.x0+1,B.y0+(look.headDy===undefined?1:look.headDy),evil,t);
   ex.filter(e=>!/wings/.test(e)).forEach(e=>BEAST_EXTRAS[e](P,B,top,t));
-  if(facingRight) f.g=f.g.map(r=>r.slice().reverse());
-  return f;
+  // nothing reaches out of the cell: the picture is the cell alone
+  let grid=out?g:g.slice(OY).map(r=>r.slice(OX,OX+N));
+  if(facingRight) grid=grid.map(r=>r.slice().reverse());
+  return { g:grid };
 }
 const beastEntry=look=>({ name:look.name, humanoid:false, beast:look, pal:beastPalette(look.colors), frame:(t,fr,mv)=>beastFrame(look,t,fr,mv) });
 const Q=(name,body,head,legs,tail,colors,more)=>Object.assign({ name, body, head, legs, tail, colors },more||{});
 const BEAST_LOOKS={
   lizard:Q('Echse','low','lizard','splay','drag',{ body:'#4f8a3a', snout:'#a8d070', accent:'#e8c040', legs:'#3f7a30' },{ extras:['ridge','belly'], box:{ y0:8, y1:12 }, headDy:2 }),
-  dragon:Q('Drache','big','dragon','thick','spade',{ body:'#9a2a24', snout:'#e8a840', accent:'#f0c050', wing:'#5a1220', legs:'#7a1e1a' },{ extras:['batwings'], box:{ x0:5, x1:13, y0:6 } }),
+  dragon:Q('Drache','big','dragon','thick','spade',{ body:'#9a2a24', snout:'#e8a840', accent:'#f0c050', wing:'#5a1220', legs:'#7a1e1a' },{ extras:['batwings','ridge','belly'], box:{ x0:3, x1:13, y0:5 } }),
   unicorn:Q('Einhorn','barrel','horse','thin','hair',{ body:'#f0ecf4', snout:'#f0d8e8', accent:'#e87ad0', horn:'#f0d060', legs:'#d8d0e0' },{ good:true, extras:['horn'] }),
   kitsune:Q('Kitsune','lean','fox','paws','bushy',{ body:'#e08a3a', snout:'#fff4e0', accent:'#fff4e0', legs:'#8a4a20' },{ good:true, tails:3 }),
   yule:Q('Yule','barrel','cat','paws','up',{ body:'#3a3e54', snout:'#e8a0b0', accent:'#f2e8d5', horn:'#c43a3a', legs:'#2e3246' },{ good:true, extras:['cap','stripes'], box:{ y0:7 } }),

@@ -133,9 +133,11 @@ const Hub3D=(()=>{
     const cv=spriteCanvas(kind,frame,facingRight,true,extra), t=new T.CanvasTexture(cv); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
     spriteTex.set(key,t); return t;
   }
+  // a picture wider than one cell (wings, tails) is shown as much bigger, its feet stay on the floor
+  function actorFit(s,scale){ const k=s.material.map.image.width/16; s.center.set(0.5,0.12/k); s.scale.set(1.5*scale*k,1.5*scale*k,1); }
   function makeActor(kind,x,z,scale,extra){
-    const s=new T.Sprite(new T.SpriteMaterial({ map:actorTex(kind,false,0,extra), transparent:true, alphaTest:0.05 })); s.center.set(0.5,0.12); s.scale.set(1.5*scale,1.5*scale,1); s.position.set(x,0,z);
-    s.userData={ kind, extra, x, z, tx:x, tz:z, wait:Math.random()*2, right:false, phase:Math.random()*10 }; return s;
+    const s=new T.Sprite(new T.SpriteMaterial({ map:actorTex(kind,false,0,extra), transparent:true, alphaTest:0.05 })); s.position.set(x,0,z); actorFit(s,scale);
+    s.userData={ scale, kind, extra, x, z, tx:x, tz:z, wait:Math.random()*2, right:false, phase:Math.random()*10 }; return s;
   }
   const GUEST_KINDS=['goblin','ork','skeleton','dwarf','barbarian','thief','troll','darkelf'];
   function spawnGuests(g,tier){
@@ -165,7 +167,7 @@ const Hub3D=(()=>{
   function walk(s,dt,t,speed){
     const u=s.userData, dx=u.tx-u.x, dz=u.tz-u.z, d=Math.hypot(dx,dz); let moving=false;
     if(d>0.05){ const st=Math.min(d,speed*dt); u.x+=dx/d*st; u.z+=dz/d*st; if(Math.abs(dx)>0.05) u.right=dx>0; moving=true; }
-    s.material.map=actorTex(u.kind,u.right,moving?Math.floor(t*6+u.phase)%4:Math.floor(t*1.6+u.phase)%2,u.extra);
+    s.material.map=actorTex(u.kind,u.right,moving?Math.floor(t*6+u.phase)%4:Math.floor(t*1.6+u.phase)%2,u.extra); actorFit(s,u.scale||1);
     s.position.set(u.x,0.02+(moving?Math.abs(Math.sin(t*9+u.phase))*0.05:0),u.z); return moving;
   }
   function stepActors(dt,t){

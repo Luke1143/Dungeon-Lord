@@ -70,7 +70,7 @@ function uiRenderEvents(){
 // ---- creatures as portraits ----
 function uiPortrait(kind,size){
   const c=document.createElement('canvas'); c.width=c.height=size; c.className='portrait';
-  try{ const cv=spriteCanvas(kind,0,true,true); const g=c.getContext('2d'); g.imageSmoothingEnabled=false; const s=Math.min(size/cv.width,size/cv.height); g.drawImage(cv,(size-cv.width*s)/2,(size-cv.height*s)/2,cv.width*s,cv.height*s); }catch(e){ const g=c.getContext('2d'); g.font=(size*0.7)+'px serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText((SPECIES[kind]||{}).icon||'❔',size/2,size/2); }
+  try{ const cv=spriteCell(spriteCanvas(kind,0,true,true)); const g=c.getContext('2d'); g.imageSmoothingEnabled=false; const s=Math.min(size/cv.width,size/cv.height); g.drawImage(cv,(size-cv.width*s)/2,(size-cv.height*s)/2,cv.width*s,cv.height*s); }catch(e){ const g=c.getContext('2d'); g.font=(size*0.7)+'px serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText((SPECIES[kind]||{}).icon||'❔',size/2,size/2); }
   return c;
 }
 

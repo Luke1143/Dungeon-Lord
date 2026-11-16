@@ -363,7 +363,7 @@ function arenaPaintCreature(cv,c,ti,unit){
   const extra=z.humanoid?equipLook(c):undefined, t=Math.floor(Date.now()/260)+(c.id||0), img=spriteCanvas(key,t,ti===0,false,extra);
   const size=Math.round((unit||64)*creatureScale(c)), x=(cv.width-size)>>1, y=cv.height-size-4;
   g.fillStyle=ti===0?'rgba(230,60,50,0.55)':'rgba(70,130,255,0.55)'; g.beginPath(); g.ellipse(cv.width/2,cv.height-8,size*0.34,size*0.11,0,0,7); g.fill();
-  g.imageSmoothingEnabled=false; g.drawImage(img,x,y,size,size);
+  const k=spriteK(img); g.imageSmoothingEnabled=false; g.drawImage(img,x-size*(k-1)/2,y-size*(k-1),size*k,size*k);
 }
 function arenaDrawPreviews(){
   document.querySelectorAll('#arenaSetupBody canvas[data-prev]').forEach(cv=>{

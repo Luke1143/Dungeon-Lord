@@ -32,5 +32,8 @@ Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif. Ein neues Tier i
 ## Noch nicht im Baukasten
 Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen), Höllenhund, Käfer und Fliege (eigene Zeichnungen, sie waren schon gut) sowie Phönix, Geist, Banshee, Irrlicht und Fee (eigene Grundformen in `sprites.js`). Für Käfer und Spinnen fehlt dem Tier-Baukasten noch ein Panzer-Rumpf und Beine in Sechser- und Achtergruppen.
 
+## Platz: jedes Teil hat ein eigenes Feld
+Die Figur selbst (Kopf, Körper, Beine) steht in einem Feld von 16 × 16 Pixeln. Was darüber hinausreicht (Flügel, Schwänze, Umhänge, Hüte, Hörner), wird nicht mehr abgeschnitten und nicht mehr in die Figur gequetscht: Das Bild wächst dann auf 32 × 32, das Feld der Figur liegt unten in der Mitte. `spriteCanvas` liefert beide Größen; `spriteK(cv)` sagt, wie viele Felder das Bild breit ist, `spriteCell(cv)` gibt nur das Feld (für Symbole und Porträts). Alle Zeichenstellen (2D, 3D, Arena-Leiste, Ludus-Halle) stellen die Figur mit ihrem Feld auf die Kachel, das Übrige ragt hinaus.
+
 ## Tiefe
 Jede Kreatur (nicht nur die aus dem Baukasten) bekommt beim Zeichnen eine dunkle Kopie, die einen Pixel nach hinten versetzt ist (`spriteCanvas` in `index.html`, Stärke `SPRITE_DEPTH`). So wirkt die Figur wie ein dicker Ausschnitt. Möbel, Irrlicht, Geist und Banshee bleiben flach (`SPRITE_FLAT`).
