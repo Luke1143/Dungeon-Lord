@@ -18,8 +18,19 @@ Beispiel: `goblin:L('Goblin','imp','bigears','small','short',{ skin:'#8aa83a', b
 ## Wie es zusammengesetzt wird
 Die Figur wird vom Boden nach oben gestapelt (Beine, Körper, Kopf), dadurch ergeben sich die Größen von selbst: Goblin und Zwerg sind klein, Troll, Riese und Golem breit und massig. Laufbewegung (Wippen, Schritte, Nicken) ist für alle gleich. Die Pixel sind markiert (Kopf, Körper, Beine), deshalb passen die Ausrüstungsregeln aus `sprites.js` (Helm, Brust, Beinschienen, Waffe, Schild) auf jede Kombination.
 
+## Tiere (derselbe Gedanke für Vierbeiner)
+Rezept: `Q(Name, Rumpf, Kopf, Beine, Schwanz, Farben, mehr)` in `BEAST_LOOKS`.
+- **Rumpf** (`BEAST_BODIES`): `barrel`, `lean`, `low`, `big`; `box` im Rezept verschiebt oder streckt ihn.
+- **Kopf** (`BEAST_HEADS`): `cat`, `fox`, `horse`, `lizard`, `dragon`, `eagle`.
+- **Beine** (`BEAST_LEGS`): `thin`, `thick`, `paws`, `splay` (gespreizt, Echsen), `talons` (vorn Vogelklauen).
+- **Schwanz** (`BEAST_TAILS`): `stub`, `drag`, `up`, `bushy` (mit `tails:3` drei Stück), `hair`, `spade`, `lion`.
+- **Extras** (`BEAST_EXTRAS`): `ridge`, `featherwings`, `batwings`, `horn`, `cap`, `belly`, `stripes`.
+- Farben: `body`, `head`, `legs`, `snout`, `accent`, `wing`, `horn`.
+
+Damit gebaut: Echse, Drache, Einhorn, Kitsune, Julkatze, Greif. Ein neues Tier ist eine Zeile, zum Beispiel ein Wolf: `Q('Wolf','lean','fox','paws','bushy',{ body:'#6a6a72' })`.
+
 ## Noch nicht im Baukasten
-Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen) und die Tiere und Geister (Vierbeiner, Vögel, Geist, Irrlicht, Fee; sie haben in `sprites.js` eigene Grundformen). Offen aus der Durchsicht: Julkatze, Echse, Geist gegen Banshee.
+Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen), Höllenhund, Käfer und Fliege (eigene Zeichnungen, sie waren schon gut) sowie Phönix, Geist, Banshee, Irrlicht und Fee (eigene Grundformen in `sprites.js`). Für Käfer und Spinnen fehlt dem Tier-Baukasten noch ein Panzer-Rumpf und Beine in Sechser- und Achtergruppen.
 
 ## Tiefe
 Jede Kreatur (nicht nur die aus dem Baukasten) bekommt beim Zeichnen eine dunkle Kopie, die einen Pixel nach hinten versetzt ist (`spriteCanvas` in `index.html`, Stärke `SPRITE_DEPTH`). So wirkt die Figur wie ein dicker Ausschnitt. Möbel, Irrlicht, Geist und Banshee bleiben flach (`SPRITE_FLAT`).
