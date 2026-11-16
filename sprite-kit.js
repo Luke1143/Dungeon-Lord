@@ -38,6 +38,7 @@ const TOPS={
   long:(p)=>{ hairMask(p,(x,y)=>y<=2||x>=p.w-3); px(p,[[1,2],[2,2],[3,2]],'g'); return [[p.w-1,p.h,'F'],[p.w-2,p.h,'F'],[p.w-1,p.h+1,'F']]; },
   mohawk:(p)=>{ hairMask(p,(x,y)=>y<=1&&x>=2&&x<=p.w-2); return [[3,-1,'G'],[4,-1,'F'],[5,-1,'F'],[4,-2,'G'],[5,-2,'F']]; },
   tonsure:(p)=>{ hairMask(p,(x,y)=>x>=p.w-3&&y>=2&&y<=4); return []; },
+  lionhood:(p)=>{ hairMask(p,(x,y)=>!(x<=4&&y>=2&&y<=6)); return [[p.w-3,-1,'F'],[p.w-2,-1,'G'],[p.w-2,-2,'F'],[2,-1,'F'],[2,-2,'G'],[p.w-1,p.h,'F'],[p.w-2,p.h,'F'],[p.w-1,p.h+1,'g']]; },
   hood:(p)=>{ hairMask(p,(x,y)=>!(x<=4&&y>=2&&y<=6)); return [[p.w-2,-1,'F'],[p.w-3,-1,'G']]; },
   cowl:(p)=>{ hairMask(p,(x,y)=>y<=1||x>=p.w-4); return []; },
   wizhat:(p)=>{ hairMask(p,(x,y)=>y<=1); const o=[]; for(let x=-1;x<=p.w;x++) o.push([x,0,'F']); [[1,-1,6],[2,-2,4],[3,-3,3],[4,-4,2]].forEach(([x0,y,w])=>{ for(let i=0;i<w;i++) o.push([x0+i,y,i===0?'G':'F']); }); o.push([5,-5,'F']); return o; },
@@ -81,7 +82,7 @@ const BACKS={
   cape:(set,B)=>{ for(let y=B.y0+1;y<=13;y++){ set(B.x1+1,y,'o'); if(y>B.y0+3) set(B.x1+2,y,y%2?'o':'O'); } set(B.x1,B.y0,'o'); },
   tail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,5],[2,4],[3,3],[4,2+w],[4,1+w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+5,B.y0+w,'O'); },
   wolftail:(set,B,t)=>{ const w=Math.floor(t/2)%2; [[1,4],[2,3+w],[3,3+w],[2,4+w],[3,2+w]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); },
-  batwings:(set,B,t)=>{ const up=Math.floor(t/2)%2?-1:0; [[1,0],[2,-1],[3,-2],[4,-2],[2,0],[3,0],[4,-1],[3,1],[4,0],[4,2]].forEach(([dx,dy])=>set(B.x1+dx-1,B.y0+dy+up,dy<=-1?'O':'o')); },
+  batwings:(set,B,t)=>{ const up=Math.floor(t/2)%2?-1:0; [[1,-2,'O'],[2,-3,'O'],[3,-3,'O'],[4,-2,'O'],[2,-2,'o'],[3,-2,'o'],[1,-1,'o'],[2,-1,'o'],[3,-1,'o'],[4,-1,'O'],[1,0,'o'],[2,0,'o'],[3,0,'o'],[4,0,'O'],[2,1,'o'],[4,1,'O']].forEach(([dx,dy,c])=>set(B.x1+dx-1,B.y0+1+dy+up,c)); },
   wings:(set,B,t)=>{ const up=Math.floor(t/2)%2?-1:0; [[0,-1],[1,-2],[2,-3],[3,-3],[1,-1],[2,-2],[3,-2],[1,0],[2,-1],[3,-1],[2,0],[3,0],[2,1],[3,1],[3,2],[3,3]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+1+dy+up,(dx+dy)%2?'O':'o')); },
   pack:(set,B)=>{ rectSet(set,B.x1,B.y0+1,B.x1+1,B.y0+4,'o'); set(B.x1+1,B.y0+1,'O'); },
   quiver:(set,B)=>{ [[0,-1],[1,-2],[0,0],[1,-1],[1,0]].forEach(([dx,dy])=>set(B.x1+dx,B.y0+dy,'o')); set(B.x1+1,B.y0-3,'O'); set(B.x1+2,B.y0-3,'O'); }
@@ -156,7 +157,7 @@ const KIT_LOOKS={
   knight:L('Ritter','helm','plume','tunic','boots',{ skin:'#8d949c', body:'#8d949c', legs:'#6a7078', trim:'#d4af37', extra:'#b02a2a', feet:'#3a3e44' },{ good:true }),
   paladin:L('Paladin','helm','halo','stout','pillars',{ skin:'#e8e4d8', body:'#e8e4d8', legs:'#c8c4b8', trim:'#f0d060', extra:'#f0d060', back:'#2a4a9a', feet:'#8a8678' },{ good:true, back:['cape'] }),
   dwarf:L('Zwerg','human','hair','stout','short',{ skin:TAN, hair:'#b8561e', body:'#6a4a30', legs:'#5a3a24', trim:'#d4af37' },{ good:true, marks:['beard'] }),
-  giant:L('Riese','brute','hair','bulk','pillars',{ skin:TAN, hair:'#6a4a2a', body:'#8a6a4a', legs:'#6a5238', trim:'#4a3420' },{ good:true }),
+  giant:L('Riese','brute','hair','bulk','pillars',{ skin:TAN, hair:'#3a2a1a', body:'#7a8a5e', legs:'#5a4a36', trim:'#c9a36a', feet:'#3a2c1c' },{ good:true, marks:['beard'] }),
   dryad:L('Dryade','fine','leaves','gown',null,{ skin:'#b8d090', hair:'#3f8a4a', body:'#6a4a2a', trim:'#e86ad0', feet:'#4a3420' },{ good:true }),
   golem:L('Golem','block','none','stone','pillars',{ skin:'#8a8a92', body:'#7c7c84', legs:'#6a6a72', trim:'#6ad0ff', extra:'#6ad0ff', feet:'#4a4a52' },{ good:true, marks:['moss'], neck:1 }),
   angel:L('Engel','human','halo','gown',null,{ skin:SKIN, hair:'#f0d8a0', body:'#f4f0e4', trim:'#f0d060', extra:'#ffffff', feet:'#c8c0a8' },{ good:true, back:['wings'] }),
@@ -164,7 +165,7 @@ const KIT_LOOKS={
   // the bosses
   dwarfking:L('Zwergenkönig','human','crown','stout','short',{ skin:TAN, hair:'#b8561e', body:'#5a2c14', legs:'#4a2410', trim:'#f0d060', back:'#8a1a1a' },{ good:true, marks:['beard'], back:['cape'] }),
   oberon:L('Oberon','fine','leaves','robe',null,{ skin:'#e2d4b4', hair:'#e8e0a0', body:'#2f7a3a', trim:'#f0d060', extra:'#b02a2a', feet:'#1f3a1a' },{ good:true, back:['cape'] }),
-  herakles:L('Herakles','human','hair','bulk','boots',{ skin:TAN, hair:'#c8801c', body:'#b07a2c', legs:'#7a4a14', trim:'#5a3410', extra:'#d8a048' },{ good:true, marks:['pelt'] }),
+  herakles:L('Herakles','human','lionhood','bulk','boots',{ skin:TAN, hair:'#d8a048', body:'#c08a62', legs:'#7a4a14', trim:'#5a3410', back:'#c8801c', feet:'#4a2c0c' },{ good:true, back:['cape'] }),
   arthur:L('Artus','human','crown','tunic','boots',{ skin:SKIN, hair:'#c8a030', body:'#2a4a9a', legs:'#8d949c', trim:'#f0d060', extra:'#b02a2a' },{ good:true, marks:['beard'], back:['cape'] }),
   // the horde
   ork:L('Ork','ork','none','broad','stumps',{ skin:'#5f8f3a', body:'#5f8f3a', legs:'#4e6b30', trim:'#6b4a35' }),
@@ -176,8 +177,8 @@ const KIT_LOOKS={
   darkelf:L('Dunkelelf','fine','ears','slim','thin',{ skin:'#6a6a9a', hair:'#e8e8f0', body:'#1e1a2e', legs:'#161224', trim:'#8a2a8a' }),
   vampire:L('Vampir','fine','hair','slim','thin',{ skin:'#d8d0d0', hair:'#1a1014', body:'#1a1014', legs:'#1a1014', trim:'#8f1a28', extra:'#6a0f1a' },{ back:['cape'], marks:['fangs','collar'] }),
   darkknight:L('Dunkler Ritter','helm','horns','tunic','boots',{ skin:'#3a3a48', body:'#25252f', legs:'#1c1c24', trim:'#8a1a1a', extra:'#e02818', back:'#6a0f1a', feet:'#0e0e14' },{ back:['cape'] }),
-  succubus:L('Succubus','fine','hornsHair','slim','thin',{ skin:'#e0a0b8', hair:'#5a1a4a', body:'#8a2a70', legs:'#44163a', trim:'#f0d060', extra:'#34102c', back:'#5a1a4a' },{ back:['batwings'] }),
-  demon:L('Dämon','brute','horns','broad','stumps',{ skin:'#c43a1c', body:'#8a2418', legs:'#4a0e0c', trim:'#2a0605', extra:'#f0e0c0', back:'#5a0e0c' },{ back:['batwings','tail'] }),
+  succubus:L('Succubus','fine','hornsHair','slim','thin',{ skin:'#e0a0b8', hair:'#34102c', body:'#8a2a70', legs:'#44163a', trim:'#f0d060', extra:'#f0e0c0', back:'#b03a5a' },{ back:['batwings'] }),
+  demon:L('Dämon','brute','horns','broad','stumps',{ skin:'#c43a1c', body:'#8a2418', legs:'#4a0e0c', trim:'#2a0605', extra:'#f0e0c0', back:'#3a0a14' },{ back:['batwings'] }),
   werewolf:L('Werwolf','wolf','wolfears','broad','paws',{ skin:'#6a4a34', body:'#5a3e2a', legs:'#4a3220', trim:'#765238', extra:'#6a4a34' },{ back:['wolftail'] }),
   lich:L('Lich','skull','bonecrown','robe',null,{ skin:'#e8e0d0', body:'#3a1a5a', trim:'#f0c040', extra:'#6ad0ff', feet:'#120820' })
 };
