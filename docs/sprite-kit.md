@@ -20,3 +20,6 @@ Die Figur wird vom Boden nach oben gestapelt (Beine, Körper, Kopf), dadurch erg
 
 ## Noch nicht im Baukasten
 Imp, Dämonenbrut, Warlock, Skelett, Dungeon Lord (eigene Zeichnungen) und die Tiere und Geister (Vierbeiner, Vögel, Geist, Irrlicht, Fee; sie haben in `sprites.js` eigene Grundformen). Offen aus der Durchsicht: Julkatze, Echse, Geist gegen Banshee.
+
+## Tiefe
+Jede Kreatur (nicht nur die aus dem Baukasten) bekommt beim Zeichnen eine dunkle Kopie, die einen Pixel nach hinten versetzt ist (`spriteCanvas` in `index.html`, Stärke `SPRITE_DEPTH`). So wirkt die Figur wie ein dicker Ausschnitt. Möbel, Irrlicht, Geist und Banshee bleiben flach (`SPRITE_FLAT`).

@@ -5901,11 +5901,17 @@ function tileOverlay(kind,x,y){
 }
 // Code-generated creature sprites (sprites.js). Falls back to the emoji for kinds without a sprite.
 const SPRITE_CACHE={};
+const SPRITE_FLAT=new Set(['wisp','ghost','banshee']);       // lights and spirits have no body to give depth to
+const SPRITE_DEPTH=0.45;       // how dark the copy behind a figure is (1 = the figure's own colour)
+function spriteDark(c){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return '#000000'; const n=parseInt(m[1],16); return 'rgb('+[(n>>16)&255,(n>>8)&255,n&255].map(v=>Math.round(v*SPRITE_DEPTH)).join(',')+')'; }
 function spriteCanvas(key,t,facingRight,moving,extra){
   const id=key+'|'+(t%4)+'|'+(facingRight?1:0)+'|'+(moving?1:0)+'|'+(extra?JSON.stringify(extra):'');
   if(SPRITE_CACHE[id]) return SPRITE_CACHE[id];
   const z=ZOO[key], f=z.frame(t,facingRight,moving,extra), cv=document.createElement('canvas'); cv.width=16; cv.height=16;
   const g=cv.getContext('2d'), pal=f.pal?{...z.pal,...f.pal}:z.pal;
+  // depth: a dark copy of the figure lies one pixel behind it (away from where it looks), so it reads as a thick cut-out; props, lights and spirits stay flat
+  if(!z.prop&&!SPRITE_FLAT.has(key.replace('_ally',''))){ const back=facingRight?-1:1, solid=(x,y)=>x>=0&&x<16&&f.g[y][x]!=='.'&&f.g[y][x]!=='k';
+    for(let y=0;y<15;y++) for(let x=0;x<16;x++) if(solid(x,y)&&!solid(x+back,y)&&x+back>=0&&x+back<16){ g.fillStyle=spriteDark(pal[f.g[y][x]]||'#000000'); g.fillRect(x+back,y,1,1); } }
   f.g.forEach((row,y)=>row.forEach((ch,x)=>{ if(ch==='.') return; g.fillStyle=pal[ch]||'#f0f'; g.fillRect(x,y,1,1); }));
   return SPRITE_CACHE[id]=cv;
 }
