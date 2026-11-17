@@ -55,6 +55,20 @@ function arenaPit(g,dims){
     t.room=null; t.natural=true; }
   for(let i=0,n=Math.round(WORLD_COLS*WORLD_ROWS/90);i<n;i++){ const x=randInt(x0+3,x0+w-5), y=randInt(y0+3,y0+h-5); [[0,0],[1,0],[0,1],[1,1]].slice(0,randInt(1,4)).forEach(([dx,dy])=>{ g[y+dy][x+dx].type='bedrock'; }); }
 }
+// the look of the bedrock (3D and 2D only, the rules do not change): the outer bedrock along the yard is the arena's wall (torches and banners hang on it);
+// a block of bedrock standing free inside the yard is a low stone obstacle (in the pillar hall it stays a tall column)
+function arenaDressWalls(g,lowBlocks){
+  const W=WORLD_COLS, H=WORLD_ROWS, seen=Array.from({length:H},()=>Array(W).fill(false)), open=t=>t.type==='floor'||t.type==='water';
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    if(seen[y][x]||g[y][x].type!=='bedrock') continue;
+    const cells=[], q=[[x,y]]; let outer=false; seen[y][x]=true;
+    while(q.length){ const [cx,cy]=q.pop(); cells.push([cx,cy]); if(cx===0||cy===0||cx===W-1||cy===H-1) outer=true;
+      for(const [nx,ny] of [[cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]]) if(nx>=0&&ny>=0&&nx<W&&ny<H&&!seen[ny][nx]&&g[ny][nx].type==='bedrock'){ seen[ny][nx]=true; q.push([nx,ny]); } }
+    cells.forEach(([cx,cy])=>{ const t=g[cy][cx];
+      if(!outer){ t.arenaWall=true; t.low=lowBlocks; t.discovered=true; }
+      else{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const n=g[cy+dy]&&g[cy+dy][cx+dx]; if(n&&open(n)){ t.arenaWall=true; t.discovered=true; } } } });   // corners too
+  }
+}
 // everything set up for a match, returns a fresh state (the global `state` is not touched)
 function arenaBuild(setup,seedExtra){
   const keepRandom=Math.random, seedWord=(setup.map.seed||'')+(seedExtra||'');
@@ -77,6 +91,7 @@ function arenaBuild(setup,seedExtra){
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='floor'){ t.owned=true; t.discovered=true; t.seen=true; t.enemy=false; if(t.room!=='bridge') t.look='arena'; } }
     // the walls around the floor are dressed like the arena building's (a reinforced wall wears the look of the room it faces)
     for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=g[y][x]; if(t.type==='rock' && neighbors(x,y).some(([nx,ny])=>g[ny][nx].type==='floor')) t.reinforced=true; }
+    arenaDressWalls(g,m.layout!=='pillars');
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
     st.arena={ over:false, winner:null, anchors:setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, deathmatch:!!setup.deathmatch, roster:[[],[]] };

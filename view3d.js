@@ -132,6 +132,11 @@ const View3D=(()=>{
   }
   function updateLiquids(now){ [0,1].forEach(i=>{ const L=liquids[i]; if(L&&now-L.last>140) drawLiquid(i===1,now); }); }
   const boxGeo=()=>boxGeo.g||(boxGeo.g=new T.BoxGeometry(1,WALL,1));
+  // a low block (an obstacle in the arena): its sides show the lower part of the wall texture, so bricks keep their size
+  const LOW=0.42;
+  const lowGeo=()=>{ if(lowGeo.g) return lowGeo.g; const g=new T.BoxGeometry(1,WALL*LOW,1), uv=g.attributes.uv;
+    for(const face of [0,1,4,5]) for(let k=0;k<4;k++){ const i=face*4+k; uv.setY(i,uv.getY(i)*LOW); }
+    return (lowGeo.g=g); };
   const flatGeo=()=>flatGeo.g||(flatGeo.g=(()=>{ const g=new T.PlaneGeometry(1,1); g.rotateX(-Math.PI/2); return g; })());
   // info = { wall, color, kind, top, water, hidden } from the game
   function buildTile(x,y,info){
@@ -142,7 +147,8 @@ const View3D=(()=>{
       const base=info.fullWall?{ full:info.fullWall }:{ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
       const top=material(wc(Object.assign(info.fullWall?{ full:info.fullWall }:{ color:info.top||shadeHex(info.color,38), kind:info.kind }, info.rim?{ rim:info.rim }:{}, info.mass?{ mass:true }:{}, info.cap?{ cap:true }:{})),v);
       const m=i=>material(wc(f[i]||base),v);
-      mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
+      const hgt=info.low?WALL*LOW:WALL;
+      mesh=new T.Mesh(info.low?lowGeo():boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,hgt/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
       mesh=new T.Mesh(flatGeo(), info.water?liquidMat(!!info.lava,x,y):material(Object.assign(info.full?{ full:info.full }:{ color:info.color, kind:info.kind }, info.tint?{ tint:info.tint }:{}),v,'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
     }
@@ -151,7 +157,7 @@ const View3D=(()=>{
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.rim||0)+(info.mass?'m':'')+(info.cap?'k':'')+(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
+      const info=tileInfo(x,y), sig=(info.rim||0)+(info.mass?'m':'')+(info.cap?'k':'')+(info.low?'l':'')+(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       ceilDirty=true;
@@ -304,13 +310,32 @@ const View3D=(()=>{
     const g=new T.Group(), wood=lam(woodTex('#6a4426','#4a2e18')), red=lam(null,0xa02a2a);
     g.add(box(0.08,1.3,0.08,wood,-0.3,0.65,0)); g.add(box(0.6,0.5,0.04,red,0,1.0,0)); g.add(box(0.12,0.3,0.04,red,-0.18,0.6,0)); g.add(box(0.12,0.3,0.04,red,0.18,0.6,0)); g.add(box(0.16,0.16,0.05,glow(0xd4af37),0,1.0,0.01));
     return g; };
+  // a team banner hanging on the arena wall: cloth with a swallowtail end and a gold emblem (horns for the dark side, a crown for the heroes); front faces +z
+  const bannerModel=(cloth,dark,emblem)=>()=>{
+    const g=new T.Group(), wood=lam(woodTex('#6a4426','#4a2e18'));
+    const tex=pixTex(12,16,(c)=>{
+      c.fillStyle=dark; c.fillRect(0,0,12,16); c.fillStyle=cloth; c.fillRect(1,0,10,15);
+      c.clearRect(4,14,4,2); c.clearRect(5,13,2,1); c.fillStyle=dark; c.fillRect(4,13,1,1); c.fillRect(7,13,1,1); c.fillRect(5,12,2,1);   // the swallowtail
+      c.fillStyle='#d4af37'; c.fillRect(1,2,10,1);
+      c.fillStyle='#e8c860'; emblem.forEach(([x,y])=>c.fillRect(x,y,1,1));
+    });
+    const front=new T.MeshLambertMaterial({ map:tex, transparent:true, alphaTest:0.5, side:T.DoubleSide, emissive:0xffffff, emissiveMap:tex, emissiveIntensity:0.3 });   // a little self-lit, so the colours read in the dim yard
+    const cl=new T.Mesh(new T.PlaneGeometry(0.54,0.72),front); cl.position.set(0,0.46,0.035); g.add(cl);
+    g.add(box(0.66,0.05,0.05,wood,0,0.83,0.045)); g.add(box(0.05,0.05,0.07,wood,-0.3,0.83,0.02)); g.add(box(0.05,0.05,0.07,wood,0.3,0.83,0.02));
+    return g; };
+  const HORNS=[[3,5],[8,5],[3,6],[8,6],[4,7],[7,7],[4,8],[5,8],[6,8],[7,8],[5,9],[6,9],[5,10],[6,10]];
+  const CROWN=[[3,6],[5,5],[6,5],[8,6],[3,7],[4,7],[5,6],[6,6],[7,7],[8,7],[3,8],[4,8],[5,8],[6,8],[7,8],[8,8],[3,10],[4,10],[5,10],[6,10],[7,10],[8,10]];
+  MODELS.wallBanner0=bannerModel('#9a2424','#5a1414',HORNS);
+  MODELS.wallBanner1=bannerModel('#2a4a9a','#16285a',CROWN);
   function takeModel(key){
     const pool=modelPool[key]||(modelPool[key]=[]); const i=modelUsed[key]||0;
     let m=pool[i]; if(!m){ m=MODELS[key](); spriteGroup.add(m); pool.push(m); }
     modelUsed[key]=i+1; m.visible=true; return m;
   }
   function placeModel(it){
-    const m=takeModel(it.key), f=it.face||{ dx:0, dz:1 };
+    const m=takeModel(it.key);
+    if(it.wall){ m.position.set(it.x+0.5+it.wall.dx*0.5,0,it.y+0.5+it.wall.dy*0.5); m.rotation.y=Math.atan2(-it.wall.dx,-it.wall.dy); return; }   // hung on the wall face (dx,dy point to the wall)
+    const f=it.face||{ dx:0, dz:1 };
     m.position.set(it.x+0.5,0,it.y+0.5); m.rotation.y=Math.atan2(f.dx,f.dz);
   }
   const pendingFlash=[];

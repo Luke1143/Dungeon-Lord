@@ -5883,7 +5883,7 @@ function floorSpec(t){
 function tileLook2d(x,y,t){
   if(t.type==='floor') return floorSpec(t);
   if(t.type==='water') return t.room==='bridge'&&TILEGEN.has('bridge') ? { full:'bridge' } : null;
-  if(t.type==='bedrock') return t.tree ? { full:'tree' } : null;
+  if(t.type==='bedrock') return t.tree ? { full:'tree' } : (t.arenaWall&&TILEGEN.has('wall:arena') ? { full:'wall:arena' } : null);
   const base=wallBaseSpec(t);
   for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){ const f=wallFaceSpec(base,x+dx,y+dy,t.reinforced); if(f.full) return f; }
   return base;
@@ -6163,7 +6163,17 @@ function tileInfo3d(x,y){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
     return { wall:false, water:true, lava:!!t.lava, color:t.lava?COLORS.lava:COLORS.water, kind:null };
   }
-  if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
+  if(t.type==='bedrock'){
+    if(t.tree) return { wall:true, fullWall:'tree', color:'#4a3320', kind:null };
+    if(t.arenaWall && TILEGEN.has('wall:arena')){
+      // the arena's wall (and its low obstacles): dressed stone towards the yard, a cut-stone cap; the side away from the yard stays bare bedrock
+      const open=(nx,ny)=>{ const n=state.grid[ny]&&state.grid[ny][nx]; return !!n&&(n.type==='floor'||n.type==='water')&&fogSeen(n); };
+      const rim=(open(x+1,y)?1:0)|(open(x-1,y)?2:0)|(open(x,y+1)?4:0)|(open(x,y-1)?8:0), dressed={ full:'wall:arena' }, bare={ color:COLORS.bedrock, kind:null };
+      const face=bit=>t.low?dressed:((rim&bit)?{ full:'wall:arena', face:true }:bare);
+      return { wall:true, low:!!t.low, color:'#8a7650', kind:null, top:'#bca27a', cap:true, rim, faces:[face(1),face(2),face(4),face(8)] };
+    }
+    return { wall:true, color:COLORS.bedrock, kind:null };
+  }
   const base=wallBaseSpec(t);
   // which sides face open, seen ground (bit 1 +x, 2 -x, 4 +y, 8 -y): there the top gets a lit edge and the face a shaded foot; rock with no open side is a dark mass
   const open=(nx,ny)=>{ if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) return false; const n=state.grid[ny][nx]; return (n.type==='floor'||n.type==='water')&&fogSeen(n)&&!isHidden(nx,ny); };
@@ -6172,20 +6182,36 @@ function tileInfo3d(x,y){
   return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, fullWall:base.full, top: t.reinforced?'#6c6a68':undefined, cap:!!t.reinforced, rim, mass:!rim&&!t.reinforced,
     faces:[face(wallFaceSpec(base,x+1,y,t.reinforced),1), face(wallFaceSpec(base,x-1,y,t.reinforced),2), face(wallFaceSpec(base,x,y+1,t.reinforced),4), face(wallFaceSpec(base,x,y-1,t.reinforced),8)] };
 }
+const wallTorchSpot=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%4===0;
+// each arena team's banners: up to three on the yard's wall behind its camp (3D only), on spots without a torch
+function arenaBannerItems(){
+  const a=state.arena;
+  if(!a.bannerSpots){
+    a.bannerSpots=[];
+    const wallOf=(x,y)=>{ for(const [dx,dy] of [[0,-1],[-1,0],[1,0],[0,1]]){ const n=state.grid[y+dy]&&state.grid[y+dy][x+dx]; if(n&&n.arenaWall&&!n.low) return { dx, dy }; } return null; };
+    const cand=[]; for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=state.grid[y][x]; if(t.type!=='floor'||t.room==='bridge'||wallTorchSpot(x,y)) continue; const w=wallOf(x,y); if(w) cand.push({ x, y, wall:w }); }
+    a.anchors.forEach((an,ti)=>{ const picked=[];
+      cand.slice().sort((p,q)=>(Math.abs(p.x-an.x)+Math.abs(p.y-an.y))-(Math.abs(q.x-an.x)+Math.abs(q.y-an.y))).forEach(c=>{
+        if(picked.length<3 && picked.every(p=>Math.abs(p.x-c.x)+Math.abs(p.y-c.y)>=3) && a.bannerSpots.every(p=>Math.abs(p.x-c.x)+Math.abs(p.y-c.y)>=3)) picked.push(c); });
+      picked.forEach(c=>a.bannerSpots.push(Object.assign({ team:ti },c))); });
+  }
+  return a.bannerSpots.filter(b=>fogSeen(state.grid[b.y][b.x])).map(b=>({ kind:'prop', key:'wallBanner'+b.team, x:b.x, y:b.y, wall:b.wall }));
+}
 // decorative torches on the walls next to conquered floor (3D only): a fixed pattern by tile position, each one a light source
 function wallTorchItems(){
   const out=[], now=Math.floor(Date.now()/280);
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){
     const t=state.grid[y][x];
-    if(t.type!=='floor'||!t.owned||isHidden(x,y)) continue;
-    if((((x*73856093)^(y*19349663))>>>0)%4 !== 0) continue;
+    if(t.type!=='floor'||!t.owned||isHidden(x,y)||!fogSeen(t)) continue;
+    if(!wallTorchSpot(x,y)) continue;
     for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]){
       const nx=x+dx, ny=y+dy; if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) continue;
-      const n=state.grid[ny][nx]; if(n.type!=='rock'||!(n.reinforced||t.room)) continue;      // torches hang on reinforced walls, and on any wall of a room
+      const n=state.grid[ny][nx]; if(!((n.type==='rock'&&(n.reinforced||t.room))||(n.arenaWall&&!n.low))) continue;      // torches hang on reinforced walls, on any wall of a room and on the arena's wall
       out.push({ kind:'wallTorch', key:'torch', canvas:spriteCanvas('prop_flame',now,false,false), x, y, dx, dy, wx:x+0.5+dx*0.5, wz:y+0.5+dy*0.5, wy:0.7 });   // fixed to the wall face, leaning away from it
       break;
     }
   }
+  if(state.arena) arenaBannerItems().forEach(it=>out.push(it));
   // the throne room glows, lava lights what lies next to it (light sources without a picture)
   for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ const t=state.grid[y][x]; if(isHidden(x,y)) continue;
     if(t.room==='throne'&&(x+y)%3===0) out.push({ kind:'light', key:'throne', x, y });
@@ -6299,7 +6325,7 @@ function draw2d(){
         }
         ctx.stroke();
       }
-      if(t.type==='bedrock' && !t.tree){
+      if(t.type==='bedrock' && !t.tree && !t.arenaWall){
         ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=1;
         ctx.beginPath();
         ctx.moveTo(px+6,py+TILE-6); ctx.lineTo(px+TILE-6,py+6);
