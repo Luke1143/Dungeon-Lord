@@ -6079,7 +6079,7 @@ function drawActor(c, baseIcon){
   drawSlots(heldSlotIcons(c, !!(typeof ZOO!=='undefined' && ZOO[c.kind||'imp'] && ZOO[c.kind||'imp'].humanoid)), px, py, true);   // worn gear is part of the sprite
 
   const th=thoughtOf(c);
-  if(th) drawEmojiFx(th, px, py, { scale:0.5, offsetY:-TILE*0.36 });
+  if(th) drawThought(th, px, py, { scale:0.5, offsetY:-TILE*(0.36+0.5*Math.max(0,creatureScale(c)-1)) });       // a big creature has its thought higher up
 }
 
 // Blood stains that stay on floors and walls for a while (fx.js)
@@ -6514,7 +6514,7 @@ function draw2d(){
   state.imps.forEach(imp=>{
     if(imp.held) return;
     drawActor(imp, '👹');
-    if(imp.hasteTicks>0 && blinkOn(200)) drawEmojiFx('⏩', rx(imp), ry(imp), { scale:0.5, offsetX:-TILE*0.3 });
+    if(imp.hasteTicks>0 && blinkOn(200)) drawThought('⏩', rx(imp), ry(imp), { scale:0.5, offsetX:-TILE*0.3 });
   });
 
   state.creatures.forEach(c=>{
@@ -6547,7 +6547,7 @@ function draw2d(){
     ctx.arc(px+TILE/2, py+TILE/2, TILE*0.44, 0, Math.PI*2);
     ctx.stroke();
     ctx.restore();
-    drawEmojiFx('👁️', rx(possessed), ry(possessed), { scale:0.55, offsetY:-TILE*0.38 });
+    drawThought('👁️', rx(possessed), ry(possessed), { scale:0.55, offsetY:-TILE*0.38 });
   }
 
   state.looseItems.forEach(it=>{
@@ -6672,6 +6672,15 @@ function drawEmojiSeamTint(char, x, y, color, preFilter){
 }
 
 // Variante mit Drehung/Groesse/Transparenz - fuer Effekte wie Teleport und Stufenaufstieg
+// a thought over a creature: our own pixel icon in a bubble (icons.js), the emoji where none is drawn yet
+function drawThought(char,x,y,o){
+  const cv=typeof thoughtCanvas==='function'&&thoughtCanvas(char); if(!cv) return drawEmojiFx(char,x,y,o);
+  if(fogHidden(x,y)) return;
+  const sc=(o.scale||1)*1.25, ox=o.offsetX||0, oy=o.offsetY||0;
+  if(capture){ capture.push({ kind:'emoji', canvas:cv, x, y, ox, oy:oy-TILE*0.32, scale:sc }); return; }       // in 3D the figures stand taller: the bubble floats above the head
+  const size=TILE*sc*0.85, px=(x-camX)*TILE+TILE/2+ox-size/2, py=(y-camY)*TILE+TILE/2+oy-size/2;
+  ctx.save(); ctx.imageSmoothingEnabled=false; ctx.drawImage(cv,px,py,size,size*cv.height/cv.width); ctx.restore();
+}
 function drawEmojiFx(char,x,y,{rotation=0, scale=1, alpha=1, offsetY=0, offsetX=0}={}){
   if(fogHidden(x,y)) return;
   if(capture){ capture.push({ kind:'emoji', emoji:char, x, y, ox:offsetX, oy:offsetY, scale, alpha, rotation }); return; }
