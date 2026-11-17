@@ -6161,7 +6161,7 @@ function tileInfo3d(x,y){
   if(t.type==='floor'){ const sp=floorSpec(t); return { wall:false, full:sp.full, color:sp.color, kind:sp.kind, tint:fogTint3d(x,y)||(t.goodRoom&&!t.owned)?'rgba(60,110,220,0.32)':((t.enemy&&!t.owned)?'rgba(150,25,25,0.3)':undefined) }; }
   if(t.type==='water'){
     if(t.room==='bridge'&&TILEGEN.has('bridge')) return { wall:false, full:'bridge' };
-    return { wall:false, water:true, color:t.lava?COLORS.lava:COLORS.water, kind:null };
+    return { wall:false, water:true, lava:!!t.lava, color:t.lava?COLORS.lava:COLORS.water, kind:null };
   }
   if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
   const base=wallBaseSpec(t);

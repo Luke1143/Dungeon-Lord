@@ -106,6 +106,31 @@ const View3D=(()=>{
     const m=new T.MeshLambertMaterial(Object.assign({ map:texture(spec,variant) }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
     matCache.set(key,m); return m;
   }
+  // ---- water and lava: one living texture each (redrawn a few times a second), every tile shows its own quarter of it so the pattern does not repeat per tile;
+  // lava is unlit (it glows by itself), water is lit and a little see-through
+  const liquids=[null,null], liquidMaps=[[],[]];
+  function liquidTex(lava){
+    if(!liquids[lava?1:0]){ const c=document.createElement('canvas'); c.width=c.height=64; const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace; t.wrapS=t.wrapT=T.RepeatWrapping; liquids[lava?1:0]={ c, t, last:-1 }; drawLiquid(lava,0); }
+    return liquids[lava?1:0].t;
+  }
+  // 16 materials per liquid, one for each quarter-of-a-quarter of the texture (by tile position), all on the same picture
+  const liquidMats={};
+  function liquidMat(lava,x,y){
+    const key=(lava?'L':'W')+(x&3)+(y&3); if(liquidMats[key]) return liquidMats[key];
+    const t=liquidTex(lava).clone(); t.offset.set((x&3)/4,(y&3)/4); t.repeat.set(0.25,0.25); t.needsUpdate=true; liquidMaps[lava?1:0].push(t);
+    return liquidMats[key]=lava?new T.MeshBasicMaterial({ map:t }):new T.MeshLambertMaterial({ map:t, transparent:true, opacity:0.9 });
+  }
+  function drawLiquid(lava,now){
+    const L=liquids[lava?1:0], g=L.c.getContext('2d'), ph=now/1000;
+    g.fillStyle=lava?'#7a1a08':'#24506c'; g.fillRect(0,0,64,64);
+    for(let y=0;y<64;y+=2) for(let x=0;x<64;x+=2){
+      const w=Math.sin(x*0.19+ph*(lava?0.9:1.6))+Math.sin(y*0.23-ph*(lava?0.7:1.1))+Math.sin((x+y)*0.11+ph*0.5);
+      if(lava){ g.fillStyle=w>1.5?'#ffd25a':(w>0.7?'#ff8a20':(w>-0.4?'#c83a10':'#7a1a08')); g.fillRect(x,y,2,2); }
+      else if(w>1.7){ g.fillStyle='#a8d8f0'; g.fillRect(x,y,2,2); } else if(w>1.1){ g.fillStyle='#4a86a8'; g.fillRect(x,y,2,2); } else if(w<-1.6){ g.fillStyle='#1a3a52'; g.fillRect(x,y,2,2); }
+    }
+    L.last=now; liquidMaps[lava?1:0].forEach(m=>{ m.needsUpdate=true; }); L.t.needsUpdate=true;
+  }
+  function updateLiquids(now){ [0,1].forEach(i=>{ const L=liquids[i]; if(L&&now-L.last>140) drawLiquid(i===1,now); }); }
   const boxGeo=()=>boxGeo.g||(boxGeo.g=new T.BoxGeometry(1,WALL,1));
   const flatGeo=()=>flatGeo.g||(flatGeo.g=(()=>{ const g=new T.PlaneGeometry(1,1); g.rotateX(-Math.PI/2); return g; })());
   // info = { wall, color, kind, top, water, hidden } from the game
@@ -119,7 +144,7 @@ const View3D=(()=>{
       const m=i=>material(wc(f[i]||base),v);
       mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
-      mesh=new T.Mesh(flatGeo(), material(Object.assign(info.full?{ full:info.full }:{ color:info.color, kind:info.kind }, info.tint?{ tint:info.tint }:{}),v,info.water?'water':'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
+      mesh=new T.Mesh(flatGeo(), info.water?liquidMat(!!info.lava,x,y):material(Object.assign(info.full?{ full:info.full }:{ color:info.color, kind:info.kind }, info.tint?{ tint:info.tint }:{}),v,'')); mesh.position.set(x+0.5,info.water?-0.12:0,y+0.5);
     }
     mesh.userData={ x, y };
     return mesh;
@@ -408,7 +433,7 @@ const View3D=(()=>{
   function render(tileInfo, items, cx, cy, viewRows){
     if(!ready||!active) return;
     lastInfo=tileInfo; syncTiles(tileInfo);
-    updateLights(items,cx,cy,performance.now());
+    updateLights(items,cx,cy,performance.now()); updateLiquids(performance.now());
     poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
