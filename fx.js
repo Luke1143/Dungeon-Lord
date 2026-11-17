@@ -10,13 +10,26 @@ const FX=(()=>{
   const between=(a,b)=>a+(b-a)*rnd();
   const pick=arr=>arr[Math.floor(rnd()*arr.length)];
   // p: x,y tile position (centre of the tile = +0.5), z height in tiles, v* speed in tiles/s, grav, drag, grow (size per s),
-  // life in s, size in tiles, color, shape 'chip' (square) | 'puff' (round), fade (alpha at birth, shrinks to 0)
+  // life in s, size in tiles, color, shape 'chip' (square) | 'puff' (round), fade (alpha at birth, shrinks to 0), wait (s before it appears)
   function add(p){ if(particles.length>=MAX) particles.shift(); particles.push(Object.assign({ z:0.3, vx:0, vy:0, vz:0, grav:0, drag:0, grow:0, age:0, life:0.8, size:0.06, color:'#fff', shape:'chip', alpha:1 },p)); }
   const shade=(hex,amt)=>{ const m=/^#?([0-9a-f]{6})$/i.exec(hex); if(!m) return hex; const n=parseInt(m[1],16); const f=v=>Math.max(0,Math.min(255,Math.round(v+amt))); return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(f).map(v=>v.toString(16).padStart(2,'0')).join(''); };
 
   const RECIPES={
     // a few chips while a wall is being hit
-    chip(x,y,o){ for(let i=0;i<2;i++){ const a=rnd()*6.28; add({ x:x+0.5, y:y+0.5, z:between(0.4,0.8), vx:Math.cos(a)*1.1, vy:Math.sin(a)*1.1, vz:between(0.8,1.8), grav:7, life:between(0.35,0.6), size:between(0.04,0.07), color:shade(o.color||'#6b5a48',pick([-25,0,25])) }); } },
+    // a wall is being hit: chips jump off its face towards the digger, a little dust rolls out along the floor
+    // o.fx,o.fy: direction from the wall to the one hitting it (the face that is hit); o.wait: seconds until the blow lands
+    chip(x,y,o){
+      const fx=o.fx||0, fy=o.fy||0, L=Math.hypot(fx,fy)||1, ux=fx/L, uy=fy/L, at=L>0.01&&(fx||fy)?0.54:0, w=o.wait||0, c=o.color||'#6b5a48';
+      const px=x+0.5+ux*at, py=y+0.5+uy*at;
+      for(let i=0;i<3;i++){ const a=Math.atan2(uy,ux)+between(-1.1,1.1), s=between(0.6,1.5); add({ wait:w, x:px, y:py, z:between(0.3,0.75), vx:(ux||Math.cos(a))*s*0.8+Math.cos(a)*0.4, vy:(uy||Math.sin(a))*s*0.8+Math.sin(a)*0.4, vz:between(0.6,1.6), grav:7, life:between(0.4,0.65), size:between(0.04,0.07), color:shade(c,pick([-25,0,25])) }); }
+      for(let i=0;i<2;i++){ const s=between(0.15,0.4), side=between(-0.6,0.6); add({ wait:w, x:px+uy*side*0.4, y:py+ux*side*0.4, z:between(0.15,0.45), vx:ux*s-uy*side*0.3, vy:uy*s+ux*side*0.3, vz:between(0.05,0.25), drag:1.3, grow:0.35, life:between(0.8,1.3), size:between(0.14,0.22), color:shade('#8a7a68',pick([0,15,30])), shape:'puff', alpha:0.4 }); }
+    },
+    // the smith's hammer on hot iron: a fan of bright sparks
+    sparks(x,y,o){ const w=o.wait||0;
+      for(let i=0;i<9;i++){ const a=rnd()*6.28, s=between(1,2.6); add({ wait:w, x:x+0.5, y:y+0.5, z:between(0.3,0.45), vx:Math.cos(a)*s, vy:Math.sin(a)*s, vz:between(0.8,2.4), grav:6, drag:0.6, life:between(0.25,0.55), size:between(0.03,0.05), color:pick(['#ffd23f','#ffb020','#fff2a0','#ff7a20']) }); } },
+    // the bellows blow: a few embers rise from the kiln
+    embers(x,y,o){ const w=o.wait||0;
+      for(let i=0;i<4;i++){ const a=rnd()*6.28, r=between(0,0.25); add({ wait:w, x:x+0.5+Math.cos(a)*r, y:y+0.5+Math.sin(a)*r, z:between(0.5,0.8), vx:between(-0.15,0.15), vy:between(-0.15,0.15), vz:between(0.5,1.1), drag:0.5, life:between(0.7,1.3), size:between(0.03,0.05), color:pick(['#ff7a20','#ffb020','#ff5a10']) }); } },
     // the block breaks: fragments fly out, a dust cloud rises
     dig(x,y,o){
       const c=o.color||'#6b5a48';
@@ -28,7 +41,7 @@ const FX=(()=>{
       for(let i=0;i<7;i++){ const a=rnd()*6.28, s=between(0.05,0.35); add({ x:x+0.5+Math.cos(a)*0.2, y:y+0.5+Math.sin(a)*0.2, z:between(0.1,0.3), vx:Math.cos(a)*s, vy:Math.sin(a)*s, vz:between(0.25,0.55), drag:0.8, grow:0.45, life:between(0.9,1.5), size:between(0.2,0.3), color:pick(['#9a6ad0','#b48ae8','#7b4bb0']), shape:'puff', alpha:0.5 }); }
       for(let i=0;i<12;i++){ const a=rnd()*6.28, r=between(0.1,0.4); add({ x:x+0.5+Math.cos(a)*r, y:y+0.5+Math.sin(a)*r, z:between(0.05,0.3), vx:Math.cos(a+1.57)*0.5, vy:Math.sin(a+1.57)*0.5, vz:between(0.5,1.3), drag:0.3, life:between(0.7,1.3), size:between(0.03,0.055), color:pick(['#f4d03f','#fff2a0','#d8b8ff','#ffffff']) }); }
     },
-    reinforce(x,y,o){ for(let i=0;i<8;i++){ const a=rnd()*6.28; add({ x:x+0.5, y:y+0.5, z:between(0.3,0.9), vx:Math.cos(a)*1.4, vy:Math.sin(a)*1.4, vz:between(0.5,1.6), grav:6, life:between(0.25,0.5), size:0.04, color:pick(['#c4d4e4','#9db4c9','#ffffff']) }); } },
+    reinforce(x,y,o){ const fx=o.fx||0, fy=o.fy||0, L=Math.hypot(fx,fy)||1, at=(fx||fy)?0.54:0; for(let i=0;i<8;i++){ const a=rnd()*6.28; add({ wait:o.wait||0, x:x+0.5+fx/L*at, y:y+0.5+fy/L*at, z:between(0.3,0.9), vx:Math.cos(a)*1.4, vy:Math.sin(a)*1.4, vz:between(0.5,1.6), grav:6, life:between(0.25,0.5), size:0.04, color:pick(['#c4d4e4','#9db4c9','#ffffff']) }); } },
     build(x,y,o){
       for(let i=0;i<6;i++){ const a=rnd()*6.28, s=between(0.1,0.5); add({ x:x+0.5, y:y+0.5, z:between(0.1,0.4), vx:Math.cos(a)*s, vy:Math.sin(a)*s, vz:between(0.2,0.5), drag:1.2, grow:0.4, life:between(0.6,1.1), size:between(0.18,0.28), color:'#b0a088', shape:'puff', alpha:0.45 }); }
       for(let i=0;i<6;i++){ const a=rnd()*6.28; add({ x:x+0.5, y:y+0.5, z:0.3, vx:Math.cos(a)*1.0, vy:Math.sin(a)*1.0, vz:between(1,2), grav:7, life:between(0.4,0.7), size:between(0.04,0.07), color:pick(['#8a5a34','#b07a4a','#d4af37']) }); }
@@ -68,7 +81,8 @@ const FX=(()=>{
     if(dt<=0) return;
     updateStains(dt);
     for(let i=particles.length-1;i>=0;i--){
-      const p=particles[i]; p.age+=dt;
+      const p=particles[i]; if(p.wait>0){ p.wait-=dt; continue; }   // not yet there: waits for the blow to land
+      p.age+=dt;
       if(p.age>=p.life){ particles.splice(i,1); continue; }
       const damp=Math.max(0,1-p.drag*dt);
       p.vx*=damp; p.vy*=damp; p.vz=p.vz*damp-p.grav*dt;
@@ -91,6 +105,6 @@ const FX=(()=>{
   // current look of a particle: { x, y, z, size, color, alpha, shape }
   function updateStains(dt){ for(let i=stains.length-1;i>=0;i--){ stains[i].age+=dt; if(stains[i].age>=stains[i].life) stains.splice(i,1); } }
   const stainView=st=>({ where:st.kind, x:st.x, y:st.y, h:st.h, nx:st.nx, ny:st.ny, tx:st.tx, ty:st.ty, size:st.size, color:st.color, alpha:Math.min(1,(st.life-st.age)/(st.life*0.25))*0.9 });
-  const view=p=>({ x:p.x, y:p.y, z:p.z, size:p.size, color:p.color, alpha:p.alpha*Math.min(1,(1-p.age/p.life)*1.8), shape:p.shape });
+  const view=p=>({ x:p.x, y:p.y, z:p.z, size:p.size, color:p.color, alpha:p.wait>0?0:p.alpha*Math.min(1,(1-p.age/p.life)*1.8), shape:p.shape });
   return { particles, stains, emit, blood, gibs, update, updateStains, stainView, set solidAt(f){ solidAt=f; }, reset(){ particles.length=0; stains.length=0; }, view, RECIPES, get count(){ return particles.length; } };
 })();

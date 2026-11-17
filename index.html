@@ -2147,8 +2147,9 @@ function interact(actor, x, y){
   const w=tileWork(t, rec.id, rec.cost);
   w.left-=actorPower(actor);
   if(w.left>0){
-    if(rec.id==='dig') emitFx('chip', x, y, { color:wallBaseSpec(t).color });
-    else if(rec.id==='reinforce') emitFx('reinforce', x, y);
+    const face={ fx:actor.x-x, fy:actor.y-y, wait:strikeDelay(actor) };   // on the face towards the one at work, when the blow lands
+    if(rec.id==='dig') emitFx('chip', x, y, Object.assign({ color:wallBaseSpec(t).color }, face));
+    else if(rec.id==='reinforce') emitFx('reinforce', x, y, face);
     return 'hit';
   }
 
@@ -3133,6 +3134,7 @@ function tickForgeWork(c){
   }
 
   if(!swing(c,'forge')) return true;
+  { const stn=forgeStations(room)[c.forgeStation]; if(stn) emitFx('sparks', c.x+(stn.fire.x-c.x)*0.45, c.y+(stn.fire.y-c.y)*0.45, { wait:strikeDelay(c) }); }
   c.forgeProgress=(c.forgeProgress||0)+1;
   if(c.forgeProgress>=FORGE_SWINGS_PER_ITEM){
     const itemId=preferredItemFor(c, c.forgeType);
@@ -4581,7 +4583,8 @@ function tickSmelterWork(c, speed){
       if(s.bloom || s.ore<=0){ leaveSmelter(c); c.state='wandering'; }
       return true;
     }
-    if(!swing(c,'smelter')) return true; // danebengetreten - der Balg gibt nichts her
+    if(!swing(c,'smelter')) return true; // missed: the bellows give nothing
+    { const ss=smelterStations(room); if(ss) emitFx('embers', ss.kiln.x, ss.kiln.y, { wait:strikeDelay(c) }); }
     if(s.heatWindow<=0) s.heatWindow=HEAT_WINDOW*batch; // Zeitfenster waechst mit der Charge
     s.heatProgress++;
     if(s.heatProgress>=HEAT_REQUIRED*batch){
@@ -4597,7 +4600,8 @@ function tickSmelterWork(c, speed){
 
   if(c.smelterStation==='anvil'){
     if(!s.bloom){ leaveSmelter(c); c.state='wandering'; return true; }
-    if(!swing(c,'smelter')) return true; // Schlag danebengesetzt
+    if(!swing(c,'smelter')) return true; // the blow missed
+    emitFx('sparks', c.x, c.y, { wait:strikeDelay(c) });
     s.bloom.hits++;
     const count=s.bloom.count||1;
     if(s.bloom.hits>=HAMMER_REQUIRED*count){
@@ -9498,10 +9502,27 @@ function owDrawNode(g,n,state,known){
     keys.forEach((k,i)=>{ const dx=px+(i-(keys.length-1)/2)*7, dy=py-17; g.beginPath(); g.arc(dx,dy,3,0,Math.PI*2);
       if(live.has(n.id)){ g.fillStyle=OW_STAT_COLORS[k]; g.fill(); } else { g.strokeStyle=OW_STAT_COLORS[k]; g.lineWidth=1; g.stroke(); } });
   }
-  g.font='11px Inter, sans-serif'; g.textAlign='center'; g.textBaseline='top';
-  const label = known ? n.name : 'Unbekannt';
-  g.lineWidth=3; g.strokeStyle='rgba(10,6,4,0.9)'; g.strokeText(label,px,py+14);
-  g.fillStyle = state==='locked' && !known ? '#9a8f7c' : state==='done' ? '#c9a8e0' : '#f4e9d0'; g.fillText(label,px,py+14);
+}
+// the names under the places: each label takes the first free spot (below, right, left, above); one that finds no room is left out when it only says "Unknown"
+function owDrawLabels(g,list){
+  g.font='11px Inter, sans-serif'; g.textBaseline='middle';
+  const W=OW_COLS*OW_TILE, H=OW_ROWS*OW_TILE, boxes=[], hit=(a,b)=>a.x0<b.x1&&b.x0<a.x1&&a.y0<b.y1&&b.y0<a.y1;
+  const circles=world.nodes.map(n=>{ const cx=n.x*OW_TILE+OW_TILE/2, cy=n.y*OW_TILE+OW_TILE/2; return { x0:cx-13, x1:cx+13, y0:cy-21, y1:cy+13 }; });
+  list.slice().sort((a,b)=>(b.known-a.known)||(a.n.y-b.n.y)).forEach(L=>{
+    const px=L.n.x*OW_TILE+OW_TILE/2, py=L.n.y*OW_TILE+OW_TILE/2, w=g.measureText(L.label).width+4, h=13;
+    const spots=[[px,py+20,'center'],[px+16,py,'left'],[px-16,py,'right'],[px,py-28,'center'],[px+12,py+20,'left'],[px-12,py+20,'right']];
+    let pick=null;
+    for(const [x,y,al] of spots){
+      const x0=al==='center'?x-w/2:al==='left'?x-2:x-w+2, b={ x0, x1:x0+w, y0:y-h/2, y1:y+h/2 };
+      if(b.x0<0||b.y0<0||b.x1>W||b.y1>H) continue;
+      if(boxes.some(o=>hit(o,b))||circles.some((c,i)=>world.nodes[i]!==L.n&&hit(c,b))){ continue; }
+      pick={ x, y, al, b }; break;
+    }
+    if(!pick){ if(!L.known) return; pick={ x:px, y:py+20, al:'center', b:null }; }
+    if(pick.b) boxes.push(pick.b);
+    g.textAlign=pick.al; g.lineWidth=3; g.strokeStyle='rgba(10,6,4,0.9)'; g.strokeText(L.label,pick.x,pick.y);
+    g.fillStyle=L.color; g.fillText(L.label,pick.x,pick.y);
+  });
 }
 
 let owLiveCache=null;
@@ -9549,11 +9570,14 @@ function owDraw(){
     g.stroke();
   });
   g.setLineDash([]);
+  const labels=[];
   world.nodes.forEach(n=>{
-    const done=owWasVisited(n.id), known=OW.knownTo(world,campaign,n.id);
-    owDrawNode(g,n, done ? 'done' : reach.has(n.id) ? 'reachable' : 'locked', known);
+    const done=owWasVisited(n.id), known=OW.knownTo(world,campaign,n.id), st=done ? 'done' : reach.has(n.id) ? 'reachable' : 'locked';
+    owDrawNode(g,n, st, known);
+    labels.push({ n, known, label:known ? n.name : 'Unbekannt', color:st==='locked' && !known ? '#9a8f7c' : st==='done' ? '#c9a8e0' : '#f4e9d0' });
     if(known && !done && campaign.fort && campaign.fort[n.id]){ g.font='12px serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('🛡️', n.x*OW_TILE+OW_TILE/2+15, n.y*OW_TILE+OW_TILE/2-12); }
   });
+  owDrawLabels(g,labels);
   g.font='16px serif'; g.textAlign='center'; g.textBaseline='middle';
   (campaign.messengers||[]).forEach(m=>{ const n=world.nodes[m.route[Math.min(m.i,m.route.length-1)]]; if(OW.knownTo(world,campaign,n.id)) g.fillText('📯', n.x*OW_TILE+OW_TILE/2-16, n.y*OW_TILE+OW_TILE/2+8); });
   (campaign.armies||[]).forEach(a=>{ const n=world.nodes[a.at]; if(OW.knownTo(world,campaign,n.id)) g.fillText(a.legend?'👑':'⚔️', n.x*OW_TILE+OW_TILE/2+16, n.y*OW_TILE+OW_TILE/2+8); });

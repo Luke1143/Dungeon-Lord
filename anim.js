@@ -41,11 +41,14 @@ function startAnim(actor, speed){
   if(verb==='attack') actor.lastSwingAt=Date.now();
   actor.verb=null; actor.actTarget=null;
   if(typeof SFX!=='undefined'){       // the sound of the blow lands with the strike, not with the wind-up
-    const snd=SOUND_OF[verb]||'tap', strike=(motion==='side'||motion==='over'?0.5:0.4)*actor.anim.dur/1000;
+    const snd=SOUND_OF[verb]||'tap', strike=strikeDelay(actor);
     if(verb==='attack') SFX.play('whoosh',{ x:actor.x, y:actor.y, delay:strike*0.4 });
     else SFX.play(snd,{ x:actor.x, y:actor.y, delay:strike });
   }
 }
+
+// seconds from the start of the current swing to the moment the blow lands (effects of the blow wait for it)
+function strikeDelay(actor){ const a=actor&&actor.anim; return a?(a.motion==='side'||a.motion==='over'?0.5:0.4)*a.dur/1000:0; }
 
 // pose at progress p (0..1): held tool angle (0 = pointing up, clockwise positive, mirrored for facing left), offsets of the hand in tiles
 // (ox forward, oy up), body lunge toward the target and hop in tiles, camera kick for first person
