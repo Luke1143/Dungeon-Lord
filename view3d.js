@@ -67,7 +67,7 @@ const View3D=(()=>{
     return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(f).map(v=>v.toString(16).padStart(2,'0')).join('');
   }
   // spec: { full } (opaque texture from TILEGEN.full) or { color, kind } (flat colour plus speckle overlay)
-  const specKey=s=>(s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||'')))+(s.crack?'#c'+s.crack:'')+(s.tint?'#t'+s.tint:'');
+  const specKey=s=>(s.full?('F'+s.full):('O'+s.color+'|'+(s.kind||'')))+(s.crack?'#c'+s.crack:'')+(s.tint?'#t'+s.tint:'')+(s.rim!==undefined?'#r'+s.rim:'')+(s.face?'#f':'')+(s.mass?'#m':'')+(s.cap?'#k':'');
   function texture(spec,variant){
     const key=specKey(spec)+'|'+variant;
     if(texCache.has(key)) return texCache.get(key);
@@ -84,6 +84,15 @@ const View3D=(()=>{
     }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
     if(spec.tint){ g.fillStyle=spec.tint; g.fillRect(0,0,32,32); }
+    // shaping the rock: a mass of rock reads dark on top; a wall's top edge over open floor catches the light; its face darkens towards the floor
+    if(spec.cap){       // a reinforced wall is capped with cut stone: slabs in staggered rows
+      g.fillStyle='rgba(20,16,12,0.55)'; for(let y=0;y<32;y+=11){ g.fillRect(0,y,32,1); const o=(y/11)%2?8:0; for(let x=o;x<32;x+=16) g.fillRect(x,y,1,11); }
+      g.fillStyle='rgba(255,255,255,0.08)'; for(let y=1;y<32;y+=11) g.fillRect(0,y,32,1); }
+    if(spec.mass){ g.fillStyle='rgba(8,5,3,0.42)'; g.fillRect(0,0,32,32); }
+    if(spec.rim!==undefined){ const r=spec.rim, lit=(x,y,w,h)=>{ g.fillStyle='rgba(255,236,200,0.26)'; g.fillRect(x,y,w,h); g.fillStyle='rgba(255,236,200,0.12)'; };
+      if(r&1){ lit(30,0,2,32); g.fillRect(28,0,2,32); } if(r&2){ lit(0,0,2,32); g.fillRect(2,0,2,32); } if(r&4){ lit(0,30,32,2); g.fillRect(0,28,32,2); } if(r&8){ lit(0,0,32,2); g.fillRect(0,2,32,2); } }
+    if(spec.face){ g.fillStyle='rgba(255,236,200,0.18)'; g.fillRect(0,0,32,2); g.fillStyle='rgba(0,0,0,0.14)'; g.fillRect(0,0,32,32);
+      for(let i=0;i<4;i++){ g.fillStyle='rgba(6,4,2,'+(0.1+i*0.1)+')'; g.fillRect(0,24+i*2,32,2); } }
     if(spec.crack && typeof TILEGEN!=='undefined'){
       const o=TILEGEN.crack(spec.crack,variant);
       o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
@@ -106,7 +115,7 @@ const View3D=(()=>{
     if(info.wall){
       const cr=info.crack||0, wc=s=>cr?Object.assign({},s,{ crack:cr }):s;   // dig progress shows as cracks on every face
       const base=info.fullWall?{ full:info.fullWall }:{ color:info.color, kind:info.kind }, f=info.faces||[base,base,base,base];
-      const top=material(wc(info.fullWall?{ full:info.fullWall }:{ color:info.top||shadeHex(info.color,38), kind:info.kind }),v);
+      const top=material(wc(Object.assign(info.fullWall?{ full:info.fullWall }:{ color:info.top||shadeHex(info.color,38), kind:info.kind }, info.rim?{ rim:info.rim }:{}, info.mass?{ mass:true }:{}, info.cap?{ cap:true }:{})),v);
       const m=i=>material(wc(f[i]||base),v);
       mesh=new T.Mesh(boxGeo(),[m(0),m(1),top,m(0),m(2),m(3)]); mesh.position.set(x+0.5,WALL/2,y+0.5);   // +x, -x, top, bottom, +z, -z
     } else {
@@ -117,7 +126,7 @@ const View3D=(()=>{
   }
   function syncTiles(tileInfo){
     for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
-      const info=tileInfo(x,y), sig=(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
+      const info=tileInfo(x,y), sig=(info.rim||0)+(info.mass?'m':'')+(info.cap?'k':'')+(info.wall?'w':'f')+'|'+(info.full||'')+(info.fullWall||'')+'|'+info.color+'|'+info.kind+'|'+(info.top||'')+'|'+(info.water?1:0)+'|'+(info.crack||0)+'|'+(info.tint||'')+'|'+(info.faces?info.faces.map(specKey).join(','):'');
       const i=y*cols+x, cur=tiles[i];
       if(cur && cur.sig===sig) continue;
       ceilDirty=true;

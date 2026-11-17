@@ -22,3 +22,4 @@ Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das 
 - **3D ist die Standardansicht**; 2D bleibt in den Optionen und auf Taste V.
 - **Stimmungslicht** (`View3D.setMood`): das gleichmäßige Tageslicht ist gedämpft und kühler, Fackeln und Feuer leuchten stärker und weiter, der Bildrand dunkelt ab (`#vignette`). Fackeln hängen jetzt an jeder Wand eines Raums, nicht nur an verstärkten Wänden; Thronsaal und Lava leuchten selbst.
 - **Schatten**: ein weicher Fleck unter jeder Kreatur (`View3D.setShadows`); Kreaturen sind in 3D etwas größer.
+- **Fels und Wände** (3D): Fels ohne offene Seite ist oben eine dunkle Masse; die Oberkante einer Wand über offenem Boden fängt Licht (heller Rand); die Wandfläche wird zum Boden hin dunkler. Verstärkte Wände tragen eine Abdeckung aus versetzten Steinplatten statt der flachen blaugrauen Fläche (`rim`, `mass`, `face`, `cap` in `tileInfo3d` und der Textur in `view3d.js`).

@@ -6165,8 +6165,12 @@ function tileInfo3d(x,y){
   }
   if(t.type==='bedrock') return t.tree ? { wall:true, fullWall:'tree', color:'#4a3320', kind:null } : { wall:true, color:COLORS.bedrock, kind:null };
   const base=wallBaseSpec(t);
-  return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, fullWall:base.full, top: t.reinforced?'#7f94a8':undefined,
-    faces:[wallFaceSpec(base,x+1,y,t.reinforced), wallFaceSpec(base,x-1,y,t.reinforced), wallFaceSpec(base,x,y+1,t.reinforced), wallFaceSpec(base,x,y-1,t.reinforced)] };
+  // which sides face open, seen ground (bit 1 +x, 2 -x, 4 +y, 8 -y): there the top gets a lit edge and the face a shaded foot; rock with no open side is a dark mass
+  const open=(nx,ny)=>{ if(nx<0||ny<0||nx>=WORLD_COLS||ny>=WORLD_ROWS) return false; const n=state.grid[ny][nx]; return (n.type==='floor'||n.type==='water')&&fogSeen(n)&&!isHidden(nx,ny); };
+  const rim=(open(x+1,y)?1:0)|(open(x-1,y)?2:0)|(open(x,y+1)?4:0)|(open(x,y-1)?8:0);
+  const face=(f,bit)=>(rim&bit)?Object.assign({},f,{ face:true }):f;
+  return { wall:true, crack:crackStage(t), color:base.color, kind:base.kind, fullWall:base.full, top: t.reinforced?'#6c6a68':undefined, cap:!!t.reinforced, rim, mass:!rim&&!t.reinforced,
+    faces:[face(wallFaceSpec(base,x+1,y,t.reinforced),1), face(wallFaceSpec(base,x-1,y,t.reinforced),2), face(wallFaceSpec(base,x,y+1,t.reinforced),4), face(wallFaceSpec(base,x,y-1,t.reinforced),8)] };
 }
 // decorative torches on the walls next to conquered floor (3D only): a fixed pattern by tile position, each one a light source
 function wallTorchItems(){
