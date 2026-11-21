@@ -87,7 +87,7 @@ i18nRegister({
 i18nRegister({
 "Kämpft":"Fights", "Ruht":"Rests", "Trainiert":"Trains", "Arbeitet":"Works", "arbeitet":"working", "Tag beenden":"End the day", "Was {0} heute tut":"What {0} does today",
 "Der Tag vergeht ohne Kampf: jeder tut seine Aufgabe":"The day passes without a bout: everyone does his task", "Tag ohne Kampf":"Day without a bout",
-"{0} trainiert: +{1} Erfahrung{2} (−{3} Gold)":"{0} trains: +{1} experience{2} (−{3} gold)", ", Stufe {0}":", level {0}", "{0} arbeitet: +{1} Gold":"{0} works: +{1} gold",
+"{0} trainiert: +{1} Erfahrung{2} (−{3} Gold)":"{0} trains: +{1} experience{2} (−{3} gold)", "{0} trainiert: +{1} Erfahrung, Stufe {2}":"{0} trains: +{1} experience, level {2}", "{0} trainiert: +{1} Erfahrung":"{0} trains: +{1} experience", "(−{0} Gold)":"(−{0} gold)", ", Stufe {0}":", level {0}", "{0} arbeitet: +{1} Gold":"{0} works: +{1} gold",
 "{0} ruht (für das Training fehlt das Gold)":"{0} rests (there is no gold for training)", "{0} ruht (für das Training fehlt der Trainingsraum)":"{0} rests (there is no training room)",
 "Kost und Logis: −{0} Gold.":"Board and lodging: −{0} gold.", "Kost und Logis: −{0} Gold":"Board and lodging: −{0} gold", "Kost und Logis: {0} Gold am Tag":"Board and lodging: {0} gold a day", "Kost und Logis":"Board and lodging",
 "Kost und Logis ({0} Gold) konnten nicht bezahlt werden: morgen muss jemand die Schuld in der Arena abkämpfen.":"Board and lodging ({0} gold) could not be paid: tomorrow someone must fight off the debt in the arena.",

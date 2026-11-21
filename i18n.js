@@ -37,7 +37,7 @@ function i18nCompute(s){
   if(m0[1].length||m0[3].length){ return m0[1]+Tr(m0[2])+m0[3]; }
   for(const p of I18N_PATTERNS){
     const m=p.re.exec(s);
-    if(m) return p.en.replace(/\{(\d+)\}/g,(x,i)=>Tr(m[+i+1]));
+    if(m && !m.slice(1).some(x=>x.indexOf(' · ')>=0)) return p.en.replace(/\{(\d+)\}/g,(x,i)=>Tr(m[+i+1]));       // ' · ' separates a list: no part of a pattern reaches across it
   }
   for(const sep of [' · ',' — ',': ',', ','; ','. ']){
     if(s.indexOf(sep)>0){ const parts=s.split(sep), out=parts.map(Tr); if(out.some((o,i)=>o!==parts[i])) return out.join(sep); }
