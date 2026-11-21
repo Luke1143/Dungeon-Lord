@@ -3359,7 +3359,7 @@ function forgeStations(room){
       // Die beiden Ziegel flankieren das Feuer entlang der Wand
       const px=dy!==0?1:0, py=dx!==0?1:0;
       const bricks=[{x:t.x-px,y:t.y-py},{x:t.x+px,y:t.y+py}].filter(b=> inRoom.has(b.x+','+b.y));
-      stations.push({ fire:{x:t.x,y:t.y}, work:front, bricks });
+      stations.push({ fire:{x:t.x,y:t.y}, front, bricks });   // front: where the smith stands
       used.add(t.x+','+t.y); used.add(front.x+','+front.y);
       bricks.forEach(b=> used.add(b.x+','+b.y));
       break;

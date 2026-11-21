@@ -20,5 +20,8 @@ Gesamtbild und Ausbaustufen stehen in `docs/design.md` (zuerst lesen). Kurzfassu
 3. Volle Kampagne (~10 Level mit Quirks und Nebenzielen, Finale), danach New Game Plus.
 4. Spaeter: Dungeon Lord als Figur, Tutorial, Ton, `index.html` in Module teilen.
 
+## Tests
+Browser tests in `tests/` (Playwright): `tests/run.sh` after every change to game code, `tests/run.sh shots` for screenshots into `tests/out/`. New checks go there, not into throwaway scripts (see `tests/README.md`).
+
 ## Git
 Develop on the branch given by the session; push when done so the user can `git pull`.
