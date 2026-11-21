@@ -49,6 +49,12 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - Entfallen: Wochenrangliste und Herausforderungen, Wochenkampf, Pflichtkampf nach 3 Tagen, Städteturniere, Aufrüstung der Städte, Referenzteams (der alte Kartenmodus und seine Bots).
 - **Bot** (`tools/ludus-tour-bot.js`): spielt ganze Läufe. Erste Läufe (100 Tage): eine Ork-Schule gewann das erste Turnier an Tag 30 und verlor die nächsten zwei in Spalte 1; eine Goblin-Schule gewann erst das dritte. Gold sammelt sich an (über 500), die Miete drückt kaum. Das Balancing der Tournee steht noch aus.
 
+### Bedienung (aus einem Durchgang über die echte Seite, `tests/ludus-walk.js`)
+- **Heute Abend:** Die Kämpferkarte zeigt, was der Abend bringt, wenn der Tag jetzt endet: je Gladiator die Wirkung seiner Aufgabe (Heilung, Lohn, Erfahrung und Kosten des Trainings, oder warum er stattdessen ruht), Kost und Logis, und Warnungen (wer mit weniger als 35 % Leben kämpfen soll, wenn das Gold nicht für Kost und Logis reicht).
+- **Grube:** bis zu drei Angebote, mit der besten Aussicht zuerst; „Leicht/Fair/Schwer“ richtet sich nach der Aussicht selbst (ab 65 % leicht, ab 35 % fair). Keine Lava-Arenen in der Grube (dort stirbt niemand). Der Ausbau der Grube gibt +25 % und +50 % Erfahrung.
+- **Ergebnis** nennt auch nach einer Niederlage die gewonnene Erfahrung; die Tagesnotiz (Aufgaben, Kost) steht dahinter, mit „·“ getrennt.
+- **Obere Leiste:** Kost und Logis pro Tag (mit Warnung, wenn das Gold nicht reicht), Tage bis zum Turnier bzw. die laufende Turnierrunde.
+
 ### Die lebende Welt (`ludus-life.js`)
 Vom Nutzer: Die Gegner in Grube und Arena sind echte Gladiatoren, die sich selbst entscheiden, dort anzutreten.
 - **Gladiatoren sind Kämpfer wie die eigenen:** derselbe Datensatz wie ein Mitglied des Teams (Stufe, Erfahrung, Leben, Ausgeruhtheit, echtes Inventar, Fähigkeiten, Gaben) plus Gold, Ehre, Siege, Niederlagen, Getötete und Wagemut (`bold`). Sie kämpfen mit genau diesen Werten (`ludusOppGroup` nimmt ihren Datensatz), und was ein Kampf mit ihnen macht, bleibt (Wunden, Erfahrung, verlorene Ausrüstung). Wer sich der Schule anschließt, bringt alles mit; wer sie verlässt, nimmt es mit.

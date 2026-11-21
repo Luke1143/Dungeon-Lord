@@ -106,3 +106,11 @@ i18nRegister({
 "Es treten alle an, die heute kämpfen: {0}.":"Everyone who fights today steps in: {0}.", "niemand":"nobody", "niemand (stelle oben jemanden auf Kämpft)":"nobody (set someone to fight above)",
 "Ein Kampf beendet den Tag; die anderen tun ihre Aufgabe. Eine ausgebaute Grube bietet auch schwere Kämpfe.":"A bout ends the day; the others do their tasks. An upgraded pit also offers hard bouts."
 });
+// the evening preview, the pit
+i18nRegister({
+"Heute Abend":"This evening", "Turnier läuft: {0}":"Tournament on: {0}", "kämpft (ohne Kampf: ruht, +{0} % Leben)":"fights (without a bout: rests, +{0} % life)", "ruht: +{0} % Leben":"rests: +{0} % life", "arbeitet: +{0} Gold":"works: +{0} gold",
+"kann nicht trainieren (kein Trainingsraum) und ruht":"cannot train (no training room) and rests", "kann das Training nicht bezahlen und ruht":"cannot pay for training and rests",
+"trainiert: +{0} Erfahrung, −{1} Gold":"trains: +{0} experience, −{1} gold", "⚠ nur {0} % Leben":"⚠ only {0} % life", "⚠ reicht nicht: morgen Schuldkampf":"⚠ not enough: a debt bout tomorrow",
+"Kost und Logis: −{0} Gold":"Board and lodging: −{0} gold", "+{0} Erfahrung":"+{0} experience", "Übungskämpfe":"practice bouts", "die Hälfte mehr Erfahrung aus der Grube":"half as much experience again from the pit",
+"Ein Kampf beendet den Tag; die anderen tun ihre Aufgabe. Eine ausgebaute Grube gibt mehr Erfahrung.":"A bout ends the day; the others do their tasks. An upgraded pit gives more experience."
+});

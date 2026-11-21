@@ -93,6 +93,24 @@ const ludusRankOf=(id,t,ref)=>{ const r=ludusBoard(id).find(x=>x.t===t&&x.id===r
 const LUDUS_JOBS=[['fight','Kämpft'],['rest','Ruht'],['train','Trainiert'],['work','Arbeitet']];
 const ludusJob=m=>m.job||'rest';
 function ludusPicks(){ return ludus.team.filter(m=>ludusJob(m)==='fight'); }
+// what the evening will bring if the day ends now, gladiator by gladiator, with board and lodging and the warnings that matter
+function ludusEveningHTML(){
+  const col=ludusRegionNode().col, rows=[]; let gold=ludus.gold, spend=0;
+  ludus.team.forEach(m=>{
+    const pct=ludusHealPct(ludusMemberCreature(m),m), job=ludusJob(m), heal=Math.round(ludusSleepHeal()*100);
+    let t;
+    if(job==='fight') t=`kämpft (ohne Kampf: ruht, +${heal} % Leben)`;
+    else if(job==='rest') t=`ruht: +${heal} % Leben`;
+    else if(job==='work'){ t=`arbeitet: +${ludusWage(col)} Gold`; gold+=ludusWage(col); }
+    else if(!ludusRoomTier('training')) t='kann nicht trainieren (kein Trainingsraum) und ruht';
+    else if(gold-spend<ludusTrainCost(m)) t='kann das Training nicht bezahlen und ruht';
+    else { t=`trainiert: +${ludusTrainXp(m)} Erfahrung, −${ludusTrainCost(m)} Gold`; spend+=ludusTrainCost(m); }
+    rows.push(`<div><b>${ludusEsc(m.name)}</b> ${t}${job==='fight'&&pct<35?` <span class="luBane">⚠ nur ${pct} % Leben</span>`:''}</div>`);
+  });
+  const rent=ludusRent(), short=gold-spend<rent;
+  rows.push(`<div>Kost und Logis: −${rent} Gold${short?' <span class="luBane">⚠ reicht nicht: morgen Schuldkampf</span>':''}</div>`);
+  return `<div class="luEvening"><h4>Heute Abend</h4>${rows.join('')}</div>`;
+}
 function ludusSetJob(id,job){ const m=ludusMember(id); if(!m||!LUDUS_JOBS.some(j=>j[0]===job)) return; m.job=job; ludus.options=null; ludus.arenaEst=null; ludusSave(); ludusRender(); }
 // the picks for a bout of `n` gladiators (the first n picked); null when fewer are picked
 const ludusPickFor=n=>{ const p=ludusPicks(); return p.length>=n?p.slice(0,n):null; };
@@ -201,7 +219,7 @@ function ludusTourneyBout(){
   const p=ludusTourneyNext(); if(!p) return null;
   const [a,b,i]=p, own=a.t==='own'?a:b, foe=a.t==='own'?b:a, f=ludusEntryFoe(foe), n=ludusRegionNode(), L=ludusRegionLevel(n.col), final=ludus.tourney.slots.length===2;
   return { arena:true, tourney:true, pair:i, final, mode:'duel', variant:'duel', foes:[f], members:[own.id], kind:f.kind, level:f.level, name:f.name,
-    title:`${ludusTourneyRoundName(ludus.tourney.slots.length)}: ${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(ludusRng('tl'+ludus.day+':'+i)), reward:Math.round((12+8*L)*(final?3:1.5)*ludusHallMult()) };
+    title:`${ludusTourneyRoundName(ludus.tourney.slots.length)}: ${f.name} (${SPECIES[f.kind].label})`, foeTitle:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(ludusRng('tl'+ludus.day+':'+i)), reward:Math.round((12+8*L)*(final?3:1.5)*ludusHallMult()) };
 }
 // a bout of the tournament without the player's say (strangers among themselves, or two of the player's own): fought out by the engine
 function ludusTourneySim(a,b,i){
