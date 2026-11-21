@@ -164,6 +164,38 @@ function ludusFeudPairs(l){
   return out;
 }
 
+// ---- alliances in a free for all: allies do not fight each other while any other side still stands; then they fight it out ----
+// A gladiator of the field allies with the school for nothing if he is well disposed (relation 1 and more), for 6 gold per level of his if neutral or wary, not at all if hostile.
+// Gladiators of the field who like each other (their relations both ways add up to 3 or more) stand together on their own, in pairs. A pact that held: the ally +1 to the school.
+// Striking an ally while the pact holds is betrayal (only a possessed gladiator can): the betrayed becomes hostile (−3), and the chronicle tells it.
+const LUDUS_PACT={ fee:6, mutual:3 };
+const ludusPactFee=n=>(n.bond||0)>=1?0:((n.bond||0)<=-2?null:LUDUS_PACT.fee*n.level);
+function ludusAiPacts(o){
+  const ids=(o.foes||[]).map(f=>f.npc), out=[], used=new Set();
+  for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
+    const a=ludusNpc(ids[i]), b=ludusNpc(ids[j]); if(!a||!b||a.id===o.pact||b.id===o.pact||used.has(i)||used.has(j)) continue;
+    if(ludusRel(a,b)+ludusRel(b,a)>=LUDUS_PACT.mutual){ out.push([i+1,j+1]); used.add(i); used.add(j); } }
+  return out;
+}
+// the pacts of a bout, as sides of the match (0 = the school, 1… = the foes in order)
+function ludusPacts(o){ if(!o||!o.ffa) return []; const g=ludusAiPacts(o); if(o.pact){ const k=o.foes.findIndex(f=>f.npc===o.pact); if(k>=0) g.unshift([0,k+1]); } return g; }
+function ludusPactOffer(i,k){
+  const o=ludusArenaOffers()[i], f=o&&o.foes[k], n=f&&ludusNpc(f.npc); if(!n||!o.ffa||o.pact||ludusAiPacts(o).some(p=>p.includes(k+1))) return;
+  const fee=ludusPactFee(n); if(fee===null||ludus.gold<fee) return;
+  ludus.gold-=fee; n.gold=(n.gold||0)+fee; o.pact=n.id; ludus.arenaEst=null;
+  ludusNote=`${n.name} steht im Kampf an deiner Seite, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
+}
+// after the bout: betrayals and pacts that held
+function ludusPactsAfter(o,st,lead){
+  if(!o||!o.ffa) return ''; const side=ti=>ti===0?null:ludusNpc((o.foes[ti-1]||{}).npc), out=[];
+  (st.arena.betrayals||[]).forEach(([by,of])=>{ const a=by===0?lead:side(by), b=of===0?lead:side(of); if(!a||!b) return;
+    if(of!==0) b.bond=-3; else a.bond=-3; if(by!==0&&of!==0){ b.rel=b.rel||{}; b.rel[a.id]=-3; }
+    const t=`${a.name} verrät ${b.name}.`; ludusChron(ludus.map.region,'pact',t); out.push(t); });
+  const n=o.pact&&ludusNpc(o.pact);
+  if(n&&lead&&!(st.arena.betrayals||[]).some(p=>p.includes(0))){ ludusRelAdd(n,lead,1); out.push(`Das Bündnis mit ${n.name} hat gehalten.`); }
+  return out.join(' · ');
+}
+
 // ---- trade with a gladiator: the same prices for everyone; a good relation makes them better ----
 // buying from him: worth × (1.3 − 0.1 × relation); selling to him (a piece better than what he wears, if he can pay): worth × (0.6 + 0.05 × relation)
 const ludusBuyPrice=(n,inst)=>Math.max(1,Math.round(ludusPrice(asInstance(inst).id)*(1.3-0.1*(n.bond||0))));

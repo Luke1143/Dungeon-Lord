@@ -19,6 +19,20 @@ let arenaSetup=arenaDefaultSetup();
 function arenaKinds(){ return Object.keys(SPECIES).filter(k=>SPECIES[k].canFight && SPECIES[k].category!=='boss' && !['worker','dungeonlord','imp','fly'].includes(k)); }
 // sides: 0 is the dark side ('evil'), 1 the good side ('good'); a free-for-all has more sides, each its own faction 'ffa2', 'ffa3' … (so nobody is anybody's ally)
 const arenaSideFaction=ti=>ti===0?'evil':(ti===1?'good':'ffa'+ti);
+// alliances (a free for all): sides of one pact do not fight each other while any side outside it still stands; then the pact is over and they fight it out.
+// Striking an ally while the pact holds is betrayal: the pact breaks, and the match remembers who betrayed whom (st.arena.betrayals, [by, of]).
+function arenaAllied(a,b){
+  const st=state; if(!st||!st.arena||!st.arena.pacts||!st.arena.pacts.length) return false;
+  const ta=arenaTeamOf(a), tb=arenaTeamOf(b); if(ta===tb) return false;
+  const g=st.arena.pacts.find(p=>p.includes(ta)); if(!g||!g.includes(tb)) return false;
+  for(let ti=0;ti<(st.arena.sides||2);ti++) if(!g.includes(ti)&&arenaAlive(st,ti).length) return true;
+  return false;
+}
+function arenaBetray(a,b){
+  const st=state, ta=arenaTeamOf(a), tb=arenaTeamOf(b);
+  st.arena.pacts=st.arena.pacts.map(p=>p.includes(ta)?p.filter(t=>t!==ta):p).filter(p=>p.length>1);
+  (st.arena.betrayals=st.arena.betrayals||[]).push([ta,tb]); logEvent(`${actorLabel(a)} bricht das Bündnis.`,a.x,a.y);
+}
 const arenaTeamOf=c=>{ if(c.faction==='evil') return 0; if(c.faction==='good') return 1; const m=/^ffa(\d+)$/.exec(c.faction||''); return m?+m[1]:1; };
 async function arenaSaveSetup(){ try{ await window.storage.set(ARENA_STORE, JSON.stringify(arenaSetup), false); }catch(e){} }
 async function arenaLoadSetup(){ try{ const r=await window.storage.get(ARENA_STORE,false); if(r&&r.value){ const s=JSON.parse(r.value); if(s&&s.teams&&s.teams.length===2&&s.map) arenaSetup=arenaExpand(Object.assign(arenaDefaultSetup(),s)); } }catch(e){} }
@@ -104,7 +118,7 @@ function arenaBuild(setup,seedExtra){
     let anchors=setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}];
     // more than two sides: every further camp as far as possible from the ones there are (the open cave's cells, farthest point first)
     for(let k=2;k<setup.teams.length;k++){ let best=null, bd=-1; cells.forEach(([x,y])=>{ const d=Math.min(...anchors.map(a=>Math.abs(a.x-x)+Math.abs(a.y-y))); if(d>bd){ bd=d; best={ x, y }; } }); anchors.push(best||anchors[0]); }
-    st.arena={ over:false, winner:null, sides:setup.teams.length, anchors, fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, noDeath:!!setup.noDeath, deathmatch:!!setup.deathmatch, roster:setup.teams.map(()=>[]) };
+    st.arena={ over:false, winner:null, sides:setup.teams.length, anchors, fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, noDeath:!!setup.noDeath, pacts:(setup.pacts||[]).map(p=>p.slice()), deathmatch:!!setup.deathmatch, roster:setup.teams.map(()=>[]) };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;

@@ -66,7 +66,7 @@ const { open, finish }=require('./lib');
       const m=ludus.team[0], v=ns[1], h=m.honor=40; ludus.challenges=[{ id:'cx', own:m.id, npc:v.id, day:ludus.day, by:'npc' }]; ludus.forced=null; ludus.event=null; ludusEndDay();
       if((m.honor||0)!==h-LUDUS_CHALLENGE.coward) bad('the coward kept his honour: '+m.honor);
       // the world challenges: a bold gladiator who hates the school
-      const g=ns[2]; g.bold=1; g.bond=-3; g.hp=undefined; ludus.lastAiChallenge=-99; ludus.challenges=[]; ludusLifePlan();
+      const g=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'&&!x.maimed); g.bold=1; g.bond=-3; g.hp=undefined; ludus.lastAiChallenge=-99; ludus.challenges=[]; ludusLifePlan();
       if(!(ludus.challenges||[]).some(c=>c.by==='npc'&&c.day===ludus.day)) bad(`no challenge from the world (day ${ludus.day}, tourney in ${ludusTourneyIn()}, ${g.status})`);
       ludus.challenges=[]; ludus.arenaOffers=null;
       // enemies settle it among themselves first
@@ -76,6 +76,15 @@ const { open, finish }=require('./lib');
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };
       const setup=ludusMatchSetup(o,'t'); if(setup.teams.length!==4) bad(`ffa sides ${setup.teams.length} (${npcs.length} gladiators, day ${ludus.day})`);
       const st=arenaBuild(setup,''); if(st.arena.anchors.length!==4||new Set(st.creatures.map(c=>c.faction)).size!==4) bad('ffa build');
+      // alliances: the school asks one of the field (well disposed, as all three are here: for nothing), two others who like each other stand together on their own
+      ludus.arenaOffers={ day:ludus.day, region:ludus.map.region, list:[o] }; delete o.members; npcs[1].rel={ [npcs[2].id]:2 }; npcs[2].rel={ [npcs[1].id]:2 };
+      ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.followup=null; ludus.giftChoice=null; ludusPicked=null; ludusTab='arena'; ludusRender(); const pb=document.querySelector('[data-pact="0:0"]'); if(!pb) bad('no alliance button'); else pb.click();
+      if(o.pact!==npcs[0].id) bad('alliance not made'); const pacts=ludusPacts(o); out.pacts=JSON.stringify(pacts); if(JSON.stringify(pacts)!=='[[0,1],[2,3]]') bad('pacts '+out.pacts);
+      { const st2=arenaBuild(ludusMatchSetup(o,'p'),''); withState(st2,()=>{ const side=t=>st2.creatures.find(c=>arenaTeamOf(c)===t);
+        if(areHostile(side(0),side(1))) bad('allies hostile'); if(!areHostile(side(0),side(2))) bad('foes not hostile');
+        arenaBetray(side(0),side(1)); if(!areHostile(side(0),side(1))||!(st2.arena.betrayals||[]).length) bad('betrayal did not break the pact');
+        st2.creatures.filter(c=>arenaTeamOf(c)>1).forEach(c=>{ c.unconscious=true; }); st2.arena.pacts=[[0,1]]; if(!areHostile(side(0),side(1))) bad('allies alone did not fight it out'); }); }
+      o.members=[ludus.team[0].id]; ludus.arenaOffers=null;
       const keep=ludus.team.map(m=>JSON.stringify(m)); out.ffa=fight(o); out.ffaText=ludusResultText; }
     // a second gladiator, so that line-ups matter
     ludus.gold+=500; const guest=ludusTavernGuests()[0]; if(guest){ ludusRecruit(guest.id); } out.team=ludus.team.map(m=>m.name+' L'+m.level).join(', ');

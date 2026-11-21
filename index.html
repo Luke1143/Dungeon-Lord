@@ -890,7 +890,7 @@ function areHostile(a, b){
     const other=lord===a?b:a;
     return !other.unconscious && factionOf(other)!==factionOf(lord);
   }
-  if(factionOf(a)!==factionOf(b)) return true;    // Fraktion
+  if(factionOf(a)!==factionOf(b)){ if(!(state.arena&&arenaAllied(a,b))) return true; }    // faction (allies of an arena pact are not, while it holds)
   if(hasGrudge(a,b) || hasGrudge(b,a)) return true; // Groll
   if(a.fightTarget===b || b.fightTarget===a) return true; // Auftrag (Arena)
   return false;
@@ -910,6 +910,7 @@ function faintLord(c){
 }
 function resolveAttack(attacker, defender, context){
   if(defender.removed) return { dodged:true, damage:0 };
+  if(state.arena&&arenaAllied(attacker,defender)) arenaBetray(attacker,defender);       // striking an ally breaks the pact
   if(defender.kind==='dungeonlord' && defender.unconscious){          // the reserve takes the blow
     const w=state.war; let dmg=Math.max(MIN_DAMAGE, Math.round(statStrength(attacker)*(1-defenseReduction(defender))));
     w.lordPool=(w.lordPool||0)-dmg; defender.hitAt=Date.now();

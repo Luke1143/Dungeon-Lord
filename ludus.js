@@ -115,7 +115,7 @@ function ludusMatchSetup(o,salt,team){
   const foes=ludusFoes(o); team=team||(o.members?o.members.map(ludusMember).filter(Boolean):ludus.team);
   const own={ name:team[0].name, groups:team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) };
   return { teams:o.ffa?[own].concat(foes.map(f=>({ name:f.name, groups:[ludusOppGroup(f)] }))):[ own, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],       // free-for-all: every foe a side of his own
-    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, swapSides:(arenaHash('side'+ludus.seed+':'+ludus.day)&1)===1, noDeath:!!o.pit, mercy:ludus.wins+ludus.losses<3 };       // nobody dies in the pit; the first bouts of a run cannot kill the team
+    map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, pacts:ludusPacts(o), fog:true, batch:1, ludus:true, fixedMap:true, swapSides:(arenaHash('side'+ludus.seed+':'+ludus.day)&1)===1, noDeath:!!o.pit, mercy:ludus.wins+ludus.losses<3 };       // nobody dies in the pit; the first bouts of a run cannot kill the team
 }
 function ludusAverageTier(){
   const worn=ludus.team.reduce((a,m)=>a.concat(wornItems(ludusMemberCreature(m))),[]); if(!worn.length) return 0;
@@ -340,6 +340,7 @@ function ludusResolve(st){
         if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
       }
     }
+    { const pt=ludusPactsAfter(o,st,alive[0]&&alive[0].m); if(pt) text+=' · '+pt; }
     if(fell) text+=` ${fell} ${fallen.length>1?'sind':'ist'} gefallen.`;
     if(ludus.over){}
     else if(o.tourney&&ludus.tourney){
@@ -567,6 +568,7 @@ function ludusRender(){
   el.querySelectorAll('[data-room]').forEach(b=>b.addEventListener('click',()=>ludusBuyRoom(b.dataset.room)));
   el.querySelectorAll('[data-cat]').forEach(b=>b.addEventListener('click',()=>{ const [t,f2]=b.dataset.cat.split(':'); ludusBuyCat(t,f2); }));
   el.querySelectorAll('[data-fight]').forEach(b=>b.addEventListener('click',()=>ludusFight(ludus.options[+b.dataset.fight])));
+  el.querySelectorAll('[data-pact]').forEach(b=>b.addEventListener('click',()=>{ const [i,k]=b.dataset.pact.split(':').map(Number); ludusPactOffer(i,k); }));
   el.querySelectorAll('[data-arena]').forEach(b=>b.addEventListener('click',()=>ludusArenaFight(+b.dataset.arena)));
   el.querySelectorAll('select[data-job]').forEach(b=>b.addEventListener('change',()=>ludusSetJob(b.dataset.job,b.value)));
   el.querySelectorAll('[data-member]').forEach(b=>b.addEventListener('click',()=>{ ludus.sel=+b.dataset.member; ludusSel=-1; ludusSave(); ludusRender(); }));
