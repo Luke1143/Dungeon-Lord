@@ -6,7 +6,7 @@
 // the region's gladiators live in ludus.world (field `region`), the team's honour in member.honor (counted in the region the team is in).
 const LUDUS_TOUR={
   tourneyEvery:30, rentEvery:7,     // days
-  rentBase:4, rentPerCol:2,         // gold per own gladiator and week: so much, and so much more for each column of the map
+  rentBase:10, rentPerCol:6,         // gold per own gladiator and week: so much, and so much more for each column of the map
   roster:9,                         // gladiators of a region besides its champion
   bracket:8,                        // places in a tournament
   cap:9                             // the highest region level (the experience needed doubles with every level)

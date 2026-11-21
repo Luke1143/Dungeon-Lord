@@ -6,6 +6,7 @@
 const LUDUS_LIFE={
   restBelow:55,        // % of life under which a gladiator rests
   outgrow:2,           // levels above his region's level at which a gladiator moves on to the right
+  champExtra:1,        // a champion stays one level longer (then he lays down the title and moves on too)
   minRoster:6,         // a region that has fewer gets wanderers
   deathCoarse:0.06,    // the chance that the loser of an arena bout dies, where it is only estimated
   chronicle:80         // entries kept
@@ -158,14 +159,21 @@ function ludusLifeTourneys(){
 // ---- after a tournament: who has outgrown his region moves on to the right; rookies start on the left; empty regions get wanderers ----
 function ludusLifeMigrate(){
   const w=ludusMapWorld(), r=ludusRng('mig'+ludus.day);
-  (ludus.world||[]).filter(n=>n.status==='active'&&!n.boss).forEach(n=>{
+  (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{
     const node=w.nodes[n.region]; if(!node||n.region===ludus.map.region&&ludus.tourney) return;
-    if(ludusIsChamp(n.region,'npc',n.id)) return;
-    if(n.level<ludusRegionLevel(node.col)+LUDUS_LIFE.outgrow) return;
+    const champ=ludusIsChamp(n.region,'npc',n.id);
+    if(n.level<ludusRegionLevel(node.col)+LUDUS_LIFE.outgrow+(champ?LUDUS_LIFE.champExtra:0)) return;
     const next=ludusMapNeighbours(node.id).map(i=>w.nodes[i]).filter(m=>m.col>node.col);
     // a waypoint is passed on the way: the next region behind it
     const regions=[]; next.forEach(m=>{ if(ludusIsRegion(m)) regions.push(m); else ludusMapNeighbours(m.id).map(i=>w.nodes[i]).filter(x=>x.col>m.col&&ludusIsRegion(x)).forEach(x=>regions.push(x)); });
-    if(!regions.length) return;
+    if(!regions.length){       // nowhere further to go: the land's best retire as legends
+      if(champ) return;
+      n.status='gone'; n.goneDay=ludus.day; ludusChron(n.region,'champ',`${n.name} (Stufe ${n.level}) tritt als Legende ab.`); return; }
+    if(champ){       // the champion lays down his title: the one with the most honour takes place 1
+      const next=ludusRegionNpcs(n.region).filter(x=>x!==n&&!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0];
+      if(next){ ludus.regions[n.region].champ={ t:'npc', id:next.id }; ludusChron(n.region,'champ',`${n.name} legt den Titel von ${node.name} nieder, ${next.name} ist neuer Champion.`); }
+    }
+    n.boss=false;
     const crowd=m=>ludusRegionNpcs(m.id).length+r()*0.5, to=regions.sort((x,y)=>crowd(x)-crowd(y))[0]; ludusRegionEnsure(to.id);       // the least crowded of the next regions
     ludusChron(n.region,'move',`${n.name} (Stufe ${n.level}) zieht weiter nach ${to.name}.`);
     if(to.id===ludus.map.region) ludusChron(to.id,'move',`${n.name} (Stufe ${n.level}) kommt aus ${ludusRegionName(n.region)}.`);

@@ -12,7 +12,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
     await p.goto('file://'+GAME+'/index.html'); await p.waitForTimeout(400);
     await p.evaluate(()=>{ window.storage.set=async()=>{}; showScreen('ludus'); });
     const res=await p.evaluate(async([kind,MAXDAY,ARENA_MIN])=>{
-      const sleep=ms=>new Promise(r=>setTimeout(r,ms)), log=[], stats={ pit:[0,0], arena:[0,0], rent:[0,0], tourney:[0,0], rentPaid:0, regions:[] };
+      const sleep=ms=>new Promise(r=>setTimeout(r,ms)), log=[], tourneys=[]; let tStart=null; const _x=[], stats={ pit:[0,0], arena:[0,0], rent:[0,0], tourney:[0,0], rentPaid:0, regions:[] };
       const fight=(o,tag)=>{ const w0=ludus.wins; ludusFight(o); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; ludusResolve(st); ludusLeaveMatch(); const won=ludus.wins>w0; stats[tag][won?0:1]++; return won; };
       const has=(m,type)=>(m.inventory||[]).filter(i=>instDef(i)&&instDef(i).type===type);
       const shop=()=>{ if(!ludusRoomTier('forge')) return; const stock=ludusStock();
@@ -33,7 +33,12 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         for(const g of ludusTavernGuests().slice().sort((x,y)=>y.level-x.level)){ if(ludusSlotsFree()>0&&ludus.gold>=ludusRecruitPrice(g)+ludusRent()+20&&(g.bond||0)>-2){ ludusRecruit(g.id); break; } }
         if(ludus.forced){
           const t=ludus.forced.type;
-          if(t==='tourney'){ const o=ludusTourneyBout(); if(o) fight(o,'tourney'); else ludusTourneyAdvance(); if(!ludus.tourney) log.push([ludus.day,'tourney-end',ludusEntryName(ludusChamp(ludus.map.region))]); continue; }
+          if(t==='tourney'){
+            if(!tStart){ const reg=ludus.map.region, ch=ludusChamp(reg), cg=ch&&(ch.t==='own'?ludusMember(ch.id):ludusNpc(ch.id)), np=ludusRegionNpcs(reg);
+              tStart={ day:ludus.day, col:ludusHere().col, L:ludusRegionLevel(ludusHere().col), champ:cg?cg.kind+cg.level:'-', field:np.length?Math.round(10*np.reduce((a,n)=>a+n.level,0)/np.length)/10:0, top:np.length?Math.max(...np.map(n=>n.level)):0, own:ludus.team.map(m=>m.kind+m.level).join('+') }; }
+            const o=ludusTourneyBout(); if(o) fight(o,'tourney'); else ludusTourneyAdvance();
+            if(!ludus.tourney){ const ch=ludusChamp(ludus.map.region); tStart.won=!!ch&&ch.t==='own'; tStart.winner=ludusEntryName(ch); tourneys.push(tStart); tStart=null; }
+            continue; }
           const o=ludusForcedBout(); fight(Object.assign({},o,{ members:[ludus.team.slice().sort((a,c)=>c.level-a.level)[0].id] }),t==='rent'?'rent':'arena'); continue;
         }
         if(ludus.map.cleared.includes(ludus.map.region)||!ludusIsRegion(ludusHere())){ const nx=ludusMapNeighbours(ludus.map.at).filter(ludusCanTravel); if(nx.length){ const w=ludusMapWorld(); const to=nx.sort((a,c)=>w.nodes[a].col-w.nodes[c].col)[0]; ludusMapTravel(to); if(ludusIsRegion(ludusHere())) stats.regions.push([ludus.day,ludusHere().col]); continue; } }
@@ -54,7 +59,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       const w=ludusMapWorld(), cols={}; (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{ const c=w.nodes[n.region].col; const e=cols[c]=cols[c]||{ n:0, lv:0, max:0 }; e.n++; e.lv+=n.level; e.max=Math.max(e.max,n.level); });
       const world=Object.keys(cols).sort((a,c)=>a-c).map(c=>`c${c}:${cols[c].n}x L${(cols[c].lv/cols[c].n).toFixed(1)}/${cols[c].max}`).join(' ');
       const chron=(ludus.chronicle||[]), count=re=>chron.filter(e=>re.test(e.t)).length;
-      return { world, deaths:count(/fällt/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
+      return { tourneys, world, deaths:count(/fällt/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));
     await p.close();
