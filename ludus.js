@@ -250,6 +250,7 @@ function ludusAdvanceDay(fought,travel){
   if(!ludus.over&&ludus.team.length) lines.push(ludusPayUpkeep());
   ludusDayNote=lines.join(' · ');
   if(!ludus.over) ludusLifeEvening();       // the gladiators who did not meet the player fight each other
+  ludusNemesisHunt();       // a nemesis elsewhere comes nearer
   ludusChallengesExpire();       // an appointed duel nobody came to: the own gladiator is a coward
   ludus.day++; ludus.opp=null; ludus.options=null; ludus.event=null;
   if(ludus.over) return;
@@ -296,9 +297,10 @@ function ludusResolve(st){
   ludusLifeBusy(foes.map(f=>f.npc));
   fallen.forEach(p=>{ const n=p.m.npc&&ludusNpc(p.m.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; } });
   ludus.team=ludus.team.filter(m=>!fallen.some(p=>p.m===m)); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1));
+  if(fallen.length) ludusNemesisMark(ludusKillerOf(st),fallen.map(p=>p.m),'kill');       // whoever killed one of yours becomes your nemesis
   const fell=fallen.map(p=>p.m.name).join(', ');
   if(!ludus.team.length){
-    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; ludusNemesisSync(ludusKillerOf(st),'kill',team); text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
+    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; ludusNemesisSync(); text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
     ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day);
     ludusSaveGhost(team,o.title||o.name,false);
   } else {
@@ -340,7 +342,7 @@ function ludusResolve(st){
       if(o.arena&&!o.rent&&!st.arena.mercy){
         const wi=st.arena.winner, ws=(st.arena.roster[wi]||[]).filter(c=>c.npcId&&!c.removed&&!c.dead&&!c.unconscious&&st.creatures.includes(c)).map(c=>ludusNpc(c.npcId)).filter(n=>n&&n.status==='active').sort((a,b)=>b.level-a.level), w=ws[0];
         if(w) alive.forEach(({m})=>{ const t=ludusVerdict(w,m,ludusAiExecutes(w,m),ludus.map.region); text+=' · '+t; });
-        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusNemesisSync(w,'exec',team); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
+        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusNemesisSync(); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
       }
     }
     { const pt=ludusPactsAfter(o,st,alive[0]&&alive[0].m); if(pt) text+=' · '+pt; }

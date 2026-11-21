@@ -139,13 +139,21 @@ const { open, finish }=require('./lib');
     }
     showAll();
     // the nemesis: the killer of this run outlives it, grows a level and waits in the next run, in the region that fits him; revenge strikes him off
-    { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; ludusMeta.nemeses=[];
-      ludusNemesisSync(k,'exec',[ludus.team[0]]); const e=(ludusMeta.nemeses||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no nemesis saved');
+    { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; k.nemesis=undefined; ludusMeta.nemeses=[];
+      ludusNemesisMark(k,[ludus.team[0]],'exec'); const e=(ludusMeta.nemeses||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no nemesis saved');
       ludus.over=true; ludusTab='start'; ludusRender(); if(!document.body.innerText.includes(Tr('Deine Erzfeinde'))) bad('no nemeses at the end of the run');
       ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.nemesis===e.id);
       if(!n) bad('nemesis not in the new world'); else { out.nemesis=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('nemesis not grown or not hostile');
         ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no nemesis line on the card'); ludusPicked=null;
-        const f0=ludus.fame; const t=ludusVerdict(ludus.team[0],n,true,n.region); out.revenge=t; if(ludus.fame<f0+LUDUS_NEMESIS.revenge||(ludusMeta.nemeses||[]).length) bad('no revenge'); } }
+        // the hunt: from elsewhere he comes one region nearer every 4 days
+        const far=ludusMapWorld().nodes.filter(x=>ludusIsRegion(x)&&x.col===2)[0], home=ludus.map.region; n.region=far.id; ludus.map.region=home; ludus.day=8; ludus.tourney=null;
+        const d0=ludusNemesisStep(far.id,home); ludusNemesisHunt(); out.hunt=far.col+'->'+ludusMapWorld().nodes[n.region].col; if(n.region===far.id||ludusMapWorld().nodes[n.region].col>=far.col) bad('the nemesis did not hunt: '+out.hunt);
+        // his rank grows with his victims
+        ludusNemesisMark(n,[{ name:'A', kind:'ork' },{ name:'B', kind:'ork' }],'kill'); if(ludusNemesisRank(ludusNemesisOf(n))!=='Geißel') bad('no rank: '+ludusNemesisRank(ludusNemesisOf(n)));
+        // revenge, and his best friend swears revenge
+        const fr=ludusRegionNpcs(n.region).find(x=>x!==n&&!x.nemesis&&!x.boss); if(fr){ fr.rel=Object.assign({},fr.rel,{ [n.id]:2 }); }
+        const f0=ludus.fame; const t=ludusVerdict(ludus.team[0],n,true,n.region); out.revenge=t; if(ludus.fame<f0+LUDUS_NEMESIS.revenge||(ludusMeta.nemeses||[]).some(x=>x.id===e.id)) bad('no revenge');
+        if(fr&&(!fr.nemesis||!(ludusMeta.nemeses||[]).some(x=>x.sworn===n.name))) bad('no oath of revenge'); out.oath=fr&&ludusNemesisText(fr); } }
     ludus.over=true; ludusTab='start'; ludusRender();
     out.misses=[...I18N_MISSES];
     return out;

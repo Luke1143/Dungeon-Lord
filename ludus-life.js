@@ -119,6 +119,7 @@ function ludusVerdict(w,l,execute,region){
     else { l.status='dead'; l.diedDay=ludus.day; l.last={ t:'died', d:ludus.day }; }
     (ludus.world||[]).forEach(n=>{ if(n.status==='active'&&n!==w&&n.rel&&(n.rel[l.id]||0)>=1) ludusRelAdd(n,w,-2); });       // his friends do not forget
     const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t);
+    if(ownL&&!ownW) ludusNemesisMark(w,[l],'exec');       // whoever executes one of yours becomes your nemesis
     const rv=ownW?ludusRevenge(l):''; return rv?t+' · '+rv:t;
   }
   const pay=ludusRansom(l,region);
@@ -317,7 +318,7 @@ function ludusLifeTourneys(){
 function ludusLifeMigrate(){
   const w=ludusMapWorld(), r=ludusRng('mig'+ludus.day);
   (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{
-    const node=w.nodes[n.region]; if(!node||n.region===ludus.map.region&&ludus.tourney) return;
+    const node=w.nodes[n.region]; if(!node||n.region===ludus.map.region&&ludus.tourney||n.nemesis) return;       // a nemesis does not wander off: he hunts
     const champ=ludusIsChamp(n.region,'npc',n.id);
     if(n.level<ludusRegionLevel(node.col)+LUDUS_LIFE.outgrow+(champ?LUDUS_LIFE.champExtra:0)) return;
     const next=ludusMapNeighbours(node.id).map(i=>w.nodes[i]).filter(m=>m.col>node.col);

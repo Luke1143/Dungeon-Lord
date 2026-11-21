@@ -79,10 +79,11 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - Leitsatz (Nutzer): „Verlieren macht Spaß“ — der Modus spielt sich wie ein Roguelike; Tod und Hinrichtung der ganzen Schule bleiben hart.
 
 ### Der Erzfeind (`ludus-ghosts.js`, nach dem Leitsatz „Verlieren macht Spaß“)
-- Wer den letzten Gladiator einer Schule tötet oder hinrichtet, überlebt den Lauf als **Erzfeind** (`ludusMeta.nemeses`, höchstens 5): Name, Art, Ausrüstung, Ruhm, Hinrichtungen und seine Opfer (wen, wie, an welchem Tag).
-- Mit jedem neuen Lauf wächst er um eine Stufe und wartet in der Region, deren Stufe zu ihm passt (Regionsstufe = seine Stufe − 1, mindestens die erste). Er ist der Schule verfeindet (−3) und wagemutig, fordert also gern heraus und richtet gern hin.
-- Auf seiner Karte steht, wen er in früheren Läufen getötet hat; die Rangliste markiert ihn; am Ende eines Laufs zeigt die Tafel alle Erzfeinde.
-- **Rache:** wer von deiner Schule ihn tötet oder hinrichtet, bekommt +5 Ruhm, und er ist für immer fort. Stirbt er anders (durch die Welt), ist er ebenfalls fort. Ein nicht beendeter Lauf schreibt seine Erzfeinde so zurück, wie sie gerade sind.
+- **Wer einen deiner Gladiatoren tötet oder hinrichtet, wird zum Erzfeind** (`ludusMeta.nemeses`, die fünf mit den meisten Opfern): er überlebt den Lauf mit Name, Art, Ausrüstung, Ruhm, Hinrichtungen und seinen Opfern (wen, wie, an welchem Tag). Er ist der Schule verfeindet (−3) und wagemutig, fordert also gern heraus und richtet gern hin.
+- **Rang:** Opfer + überlebte Läufe ergeben den Titel: Erzfeind, ab 3 Geißel, ab 6 Schrecken der Schulen. Ein Aufstieg steht in der Chronik; Karte und Rangliste zeigen den Titel.
+- **Er wächst und jagt:** mit jedem neuen Lauf eine Stufe mehr; er beginnt in der Region, deren Stufe zu ihm passt (Regionsstufe = seine Stufe − 1, mindestens die erste). Alle 4 Tage zieht ein Erzfeind, der woanders ist, eine Region näher an deine Schule (auf den Wegen, Wegpunkte werden durchquert; nicht während eines Turniers, nicht als Champion). Er wandert nicht nach rechts ab und tritt nicht als Legende ab.
+- **Rache:** wer von deiner Schule ihn tötet oder hinrichtet, bekommt +5 Ruhm, und er ist für immer fort (stirbt er anders, ebenso). Seine Freunde (Beziehung zu ihm 1 und mehr) grollen der Schule (−2); der beste von ihnen (2 und mehr) schwört Rache und wird der nächste Erzfeind.
+- Ein nicht beendeter Lauf schreibt seine Erzfeinde so zurück, wie sie gerade sind; die Tafel am Ende eines Laufs zeigt alle.
 
 ### Das Dungeon der Region (`hub3d.js`)
 - Vom Nutzer: Die 3D-Ansicht im Ludus ist ein prozedural erzeugtes, zusammenhängendes Dungeon, neu für jede Region; alle Gladiatoren sind darin sichtbar, in dem Raum, der zu ihrer Tätigkeit passt. Anklicken soll später Diplomatie öffnen (Verhandeln, Handel, Beitritt, Bündnisse für Jeder-gegen-jeden), die auch die KI nutzt.
