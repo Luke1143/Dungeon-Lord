@@ -8,7 +8,7 @@ const LUDUS_LIFE={
   outgrow:2,           // levels above his region's level at which a gladiator moves on to the right
   champExtra:1,        // a champion stays one level longer (then he lays down the title and moves on too)
   minRoster:6,         // a region that has fewer gets wanderers
-  deathCoarse:0.06,    // the chance that the loser of an arena bout dies, where it is only estimated
+  deathCoarse:0.03,    // the chance that the loser of an arena bout dies in the fight, where it is only estimated (the verdict may follow)
   chronicle:80         // entries kept
 };
 
@@ -84,11 +84,41 @@ function ludusLifeLoot(winner,loser){
 function ludusLifeAfterBout(sides,res,kind,region){
   sides.forEach(l=>l.forEach(n=>{ n.foughtToday=true; }));
   const [a,b]=sides, win=res.winner===0?a:b, lose=res.winner===0?b:a, L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
-  win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
+  win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'||kind==='tourney') n.fame=ludusFame(n)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
   if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&region===ludus.map.region) ludusChron(region,'loot',`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
   res.dead.forEach(n=>{ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; const k=win[0]; if(k&&res.dead.indexOf(k)<0) k.kills=(k.kills||0)+1;
     ludusChron(region,'death',`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt in der Arena${k?' gegen '+k.name:''}.`); });
+  // the verdict: the winner (the best of his side still standing) over every loser who lives; between gladiators of the same school there is none
+  if(kind==='arena'||kind==='tourney'){ const w=win.find(n=>res.dead.indexOf(n)<0); if(w) lose.filter(n=>res.dead.indexOf(n)<0&&n.status!=='dead').forEach(l=>{ if(!!ludusMember(w.id)&&!!ludusMember(l.id)) return; if(ludusMember(w.id)) return; ludusVerdict(w,l,ludusAiExecutes(w,l),region); }); }
+}
+
+// ---- fame and the verdict: whoever wins in the arena decides over a loser who is still alive ----
+// Execute: the loser dies, the winner gains fame (2 + half the loser's fame: who has executed much carries much fame, and is worth much to whoever beats him).
+// Spare: the loser pays a ransom out of his own gold (up to a prize of the region), and owes the winner (+2 to their relation, +3 when he could pay nothing).
+// The world's gladiators decide by a fixed rule, no dice: their boldness, the loser's fame and how often he executed others speak for the axe, a good relation against it.
+const LUDUS_VERDICT={ fame:2, fameShare:0.5, spare:2, sparePoor:3, ai:0.55 };
+const ludusFame=g=>g&&g.fame||0;
+// the relation of `a` to `b` (-3 … 3): a gladiator of the world to the school is his `bond`, otherwise what `a` remembers of `b`
+function ludusRel(a,b){ if(!a||!b) return 0; const own=x=>!!ludusMember(x.id); if(own(b)&&!own(a)) return a.bond||0; return (a.rel&&a.rel[b.id])||0; }
+function ludusRelAdd(a,b,v){ if(!a||!b) return; const own=x=>!!ludusMember(x.id); if(own(b)&&!own(a)){ a.bond=Math.max(-3,Math.min(3,(a.bond||0)+v)); return; } a.rel=a.rel||{}; a.rel[b.id]=Math.max(-3,Math.min(3,(a.rel[b.id]||0)+v)); }
+const ludusExecGain=l=>LUDUS_VERDICT.fame+Math.round(LUDUS_VERDICT.fameShare*ludusFame(l));
+const ludusRansom=(l,region)=>{ const L=ludusRegionLevel(ludusMapWorld().nodes[region].col), want=10+6*L, has=ludusMember(l.id)?ludus.gold:(l.gold||0); return Math.max(0,Math.min(want,has)); };
+const ludusAiExecutes=(w,l)=>0.7*(w.bold===undefined?0.5:w.bold)+0.03*ludusFame(l)+0.12*(l.execs||0)-0.25*ludusRel(w,l)>LUDUS_VERDICT.ai;
+// carries a verdict out; returns the line for the chronicle and the result
+function ludusVerdict(w,l,execute,region){
+  const ownL=!!ludusMember(l.id), ownW=!!ludusMember(w.id);
+  if(execute){
+    const gain=ludusExecGain(l); w.fame=ludusFame(w)+gain; w.execs=(w.execs||0)+1; w.kills=(w.kills||0)+1; if(ownW) ludus.fame+=gain;
+    if(ownL){ ludus.team=ludus.team.filter(m=>m!==l); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); const n=l.npc&&ludusNpc(l.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; } }
+    else { l.status='dead'; l.diedDay=ludus.day; l.last={ t:'died', d:ludus.day }; }
+    const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t); return t;
+  }
+  const pay=ludusRansom(l,region);
+  if(ownL) ludus.gold-=pay; else l.gold=(l.gold||0)-pay;
+  if(ownW) ludus.gold+=pay; else w.gold=(w.gold||0)+pay;
+  ludusRelAdd(l,w,pay>0?LUDUS_VERDICT.spare:LUDUS_VERDICT.sparePoor);
+  const t=`${w.name} verschont ${l.name}${pay?` (Lösegeld ${pay} Gold)`:''}.`; if(region===ludus.map.region) ludusChron(region,'spare',t); return t;
 }
 
 // ---- the evening: the bouts of the day without the player ----
@@ -118,7 +148,7 @@ function ludusLifeEveningElsewhere(){
         ludusGladXp(win,ludusBoutXp(lose.level,true,1)); ludusGladXp(lose,ludusBoutXp(win.level,false,1));
         const cw=ludusMemberCreature(win), cl=ludusMemberCreature(lose);
         win.hp=Math.max(1,Math.round(cw.hp*(0.45+0.4*r()))); lose.hp=Math.max(1,Math.round(cl.hp*0.15));
-        const res={ winner:aw?0:1, dead:kind==='arena'&&r()<LUDUS_LIFE.deathCoarse?[lose]:[] };
+        const res={ winner:aw?0:1, dead:kind==='arena'&&r()<LUDUS_LIFE.deathCoarse?[lose]:[] };       // death in the fight itself; the verdict comes after (ludusLifeAfterBout)
         ludusLifeAfterBout([[a],[b]],res,kind,id);
       }
     });

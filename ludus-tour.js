@@ -80,8 +80,8 @@ const ludusMember=id=>ludus.team.find(m=>m.id===id)||null;
 // ---- the ladder of a region: its champion first, then everyone by honour ----
 function ludusBoard(id){
   const champ=ludusChamp(id), rows=[];
-  ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, boss:!!n.boss, plan:id===ludus.map.region?ludusPlanOf(n.id):undefined, wins:n.wins||0, kills:n.kills||0 }));
-  if(id===ludus.map.region) ludus.team.forEach(m=>rows.push({ t:'own', id:m.id, name:m.name, kind:m.kind, level:m.level, honor:m.honor||0 }));
+  ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, boss:!!n.boss, plan:id===ludus.map.region?ludusPlanOf(n.id):undefined, wins:n.wins||0, kills:n.kills||0, fame:n.fame||0 }));
+  if(id===ludus.map.region) ludus.team.forEach(m=>rows.push({ t:'own', id:m.id, name:m.name, kind:m.kind, level:m.level, honor:m.honor||0, fame:m.fame||0 }));
   rows.forEach(x=>{ x.champ=!!champ&&champ.t===x.t&&champ.id===x.id; });
   rows.sort((a,b)=>(b.champ-a.champ)||(b.honor-a.honor)||(b.level-a.level));
   rows.forEach((x,i)=>x.rank=i+1);
@@ -292,7 +292,7 @@ function ludusCalendar(){
 const ludusMayLeave=()=>!ludusIsRegion(ludusHere())||ludus.map.cleared.includes(ludus.map.at);
 const ludusCanTravel=id=>{ const w=ludusMapWorld(), here=ludusHere(), to=w.nodes[id]; return !!to&&ludusMapNeighbours(here.id).includes(id)&&to.col>here.col&&ludusMayLeave(); };
 function ludusMapTravel(id){
-  if(ludus.over||ludus.forced||ludus.event||ludus.giftChoice||!ludusCanTravel(id)) return;
+  if(ludus.over||ludus.forced||ludus.event||ludus.giftChoice||ludus.verdict||!ludusCanTravel(id)) return;
   const w=ludusMapWorld(), from=ludus.map.region, n=w.nodes[id];
   // the champion who leaves gives up the title: the region's best stranger takes place 1
   if(ludusIsChamp(from,'own',(ludusChamp(from)||{}).id)){ const best=ludusRegionNpcs(from).filter(x=>!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0]; if(best) ludus.regions[from].champ={ t:'npc', id:best.id }; }
@@ -349,7 +349,7 @@ function ludusMapWire(el){
 // the ladder of the region and, while it runs, the tournament tree
 function ludusBoardHTML(){
   const n=ludusRegionNode(), rows=ludusBoard(n.id);
-  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
+  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
   return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
     ${ludus.tourney?ludusTourneyHTML():''}${rows.map(row).join('')}${ludusChronicleHTML()}</div>`;
 }

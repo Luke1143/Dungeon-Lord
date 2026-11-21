@@ -27,6 +27,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       while(!ludus.over&&ludus.day<MAXDAY&&guard++<2000){
         if(ludus.giftChoice){ const g=ludus.giftChoice.slice().sort((a,c)=>c.power-a.power)[0]; ludus.team[0].gifts.push(g); ludus.giftChoice=null; }
         ludus.followup=null;
+        if(ludus.verdict){ const v=ludus.verdict, w=ludusMember(v.w)||ludus.fighter; v.list.slice().forEach(id=>{ const n=ludusNpc(id); if(!n) return; const ex=ludusExecGain(n)>=5; ludusVerdict(w,n,ex,ludus.map.region); stats.verdicts=stats.verdicts||[0,0]; stats.verdicts[ex?0:1]++; }); ludus.verdict=null; }
         if(ludus.event){ const d=ludusEventDef(ludus.event.id), opts=ludusEventOptions(d); let pick=opts.findIndex(o=>!o.when||o.when(ludus.event)); ludusEventChoose(Math.max(0,pick)); ludus.followup=null; continue; }
         build(); shop(); wear();
         for(const g of ludusTavernGuests().slice().sort((x,y)=>y.level-x.level)){ if(ludusSlotsFree()>0&&ludus.gold>=ludusRecruitPrice(g)+ludusRent()+20&&(g.bond||0)>-2){ ludusRecruit(g.id); break; } }
@@ -62,7 +63,8 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       const w=ludusMapWorld(), cols={}; (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{ const c=w.nodes[n.region].col; const e=cols[c]=cols[c]||{ n:0, lv:0, max:0 }; e.n++; e.lv+=n.level; e.max=Math.max(e.max,n.level); });
       const world=Object.keys(cols).sort((a,c)=>a-c).map(c=>`c${c}:${cols[c].n}x L${(cols[c].lv/cols[c].n).toFixed(1)}/${cols[c].max}`).join(' ');
       const chron=(ludus.chronicle||[]), count=re=>chron.filter(e=>re.test(e.t)).length;
-      return { tourneys, world, deaths:count(/fällt/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
+      const deadNpc=(ludus.world||[]).filter(n=>n.status==='dead').length, execs=(ludus.world||[]).reduce((t,n)=>t+(n.execs||0),0), topFame=(ludus.world||[]).filter(n=>n.status==='active').map(n=>n.fame||0).sort((a,b)=>b-a).slice(0,3);
+      return { execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));
     await p.close();

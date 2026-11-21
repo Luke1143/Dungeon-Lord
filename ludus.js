@@ -256,7 +256,7 @@ function ludusAdvanceDay(fought,travel){
 }
 let ludusDayNote='';
 // the day ends without a bout of the school
-function ludusEndDay(){ if(!ludus||ludus.over||ludus.forced||ludus.event||ludus.giftChoice) return; ludusLog('Tag ohne Kampf'); ludusAdvanceDay([]); ludusNote=ludusDayNote; ludusSave(); ludusRender(); }
+function ludusEndDay(){ if(!ludus||ludus.over||ludus.forced||ludus.event||ludus.giftChoice||ludus.verdict) return; ludusLog('Tag ohne Kampf'); ludusAdvanceDay([]); ludusNote=ludusDayNote; ludusSave(); ludusRender(); }
 function ludusForcedBout(){
   const fo=ludus.forced;
   if(fo.type==='tourney') return ludusTourneyBout();
@@ -315,7 +315,10 @@ function ludusResolve(st){
       } else if(o.rent){
         text=`${who} gewinnt gegen ${o.title||o.name}. Damit ist die Schuld abgegolten, mehr gibt es nicht.`;
       } else {
-        const gold=Math.round((o.reward||0)*(lead?giftMul(lead.c,'gold'):1)); ludus.gold+=gold; ludus.fame++;
+        const gold=Math.round((o.reward||0)*(lead?giftMul(lead.c,'gold'):1)); ludus.gold+=gold; ludus.fame++; if(lead) lead.m.fame=ludusFame(lead.m)+1;
+        // the verdict: every beaten gladiator of the world who still lives waits for the player's word (see the verdict panel)
+        const living=[]; (st.arena.roster||[]).forEach((side,ti)=>{ if(ti===0) return; side.forEach(c=>{ const n=c.npcId&&ludusNpc(c.npcId); if(n&&n.status==='active'&&!c.removed&&!c.dead&&st.creatures.includes(c)) living.push(n.id); }); });
+        if(living.length&&lead) ludus.verdict={ w:lead.m.id, list:living };
         const est=o.est===undefined?0.5:o.est; ludusGainRenown(o.tourney?8:(est<0.4?12:(est<0.65?8:5)));
         const loot=(st.looseItems||[]).filter(it=>it&&it.kind==='equipment'&&!it.arenaFloor); loot.forEach(it=>{ ludus.stash.push(looseInst(it)); });
         text=`${who} gewinnt gegen ${o.title||o.name}. +${gold} Gold${loot.length?`, Beute: ${loot.length} Stück`:''}. · +${xp} Erfahrung`;
@@ -329,9 +332,15 @@ function ludusResolve(st){
       if(lead&&!o.rent) text+=` · +${xp} Erfahrung`;
       if(o.arena&&!o.rent&&!o.tourney) ludusHonor(o,false,team);
       ludusLog(`Niederlage gegen ${o.title||o.name}`);
+      if(o.arena&&!o.rent&&!st.arena.mercy){
+        const wi=st.arena.winner, ws=(st.arena.roster[wi]||[]).filter(c=>c.npcId&&!c.removed&&!c.dead&&!c.unconscious&&st.creatures.includes(c)).map(c=>ludusNpc(c.npcId)).filter(n=>n&&n.status==='active').sort((a,b)=>b.level-a.level), w=ws[0];
+        if(w) alive.forEach(({m})=>{ const t=ludusVerdict(w,m,ludusAiExecutes(w,m),ludus.map.region); text+=' · '+t; });
+        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
+      }
     }
     if(fell) text+=` ${fell} ${fallen.length>1?'sind':'ist'} gefallen.`;
-    if(o.tourney&&ludus.tourney){
+    if(ludus.over){}
+    else if(o.tourney&&ludus.tourney){
       const r0=ludus.tourney.round, tr=(ludusTourneyResult(o,won)||'').trim(); if(tr) text+=' · '+tr;
       if(!ludus.tourney||ludus.tourney.round!==r0) ludusAdvanceDay(team);       // the round is over: tomorrow the next one
       else ludus.forced={ type:'tourney' };                                     // another own gladiator fights today
@@ -462,14 +471,18 @@ function ludusRender(){
     const abil=knownAbilities(c).filter(id=>ABILITIES[id]);
     const jobOpts=m=>LUDUS_JOBS.map(([k,l])=>`<option value="${k}"${ludusJob(m)===k?' selected':''}${k==='train'&&!ludusRoomTier('training')?' disabled':''}>${l}</option>`).join('');
     const strip=`<div class="luTeam">${ludus.team.map((m,i)=>{ const mc=ludusMemberCreature(m); return `<span class="luMem"><button data-member="${i}" class="${i===ludus.sel?'on':''}">${ludusEsc(m.name)}<small>${ludusHealPct(mc,m)} %</small></button><select data-job="${m.id}" title="Was ${ludusEsc(m.name)} heute tut">${jobOpts(m)}</select></span>`; }).join('')}${Array.from({length:Math.max(0,ludusSlotsFree())},()=>'<span class="luSlot" title="Freier Platz: in der Taverne kann man jemanden anheuern">+</span>').join('')}</div>`;
-    left=`<div class="luCard">${strip}<canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level}</div>${ludus.team.length>1?`<button data-dismiss="${ludus.sel}" class="luSmall">Entlassen</button>`:''}<div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+Tr(l.text)).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
+    left=`<div class="luCard">${strip}<canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level} · Ruhm ${ludusFame(f)}${f.execs?` · ${f.execs} hingerichtet`:''}</div>${ludus.team.length>1?`<button data-dismiss="${ludus.sel}" class="luSmall">Entlassen</button>`:''}<div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+Tr(l.text)).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
       <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
-      ${ludusSlotsHTML(f)}${ludusEveningHTML()}<button id="luEndDay" class="menuMain" ${ludus.forced||ludus.event||ludus.giftChoice?'disabled':''} title="Der Tag vergeht ohne Kampf: jeder tut seine Aufgabe">Tag beenden</button></div>`;
+      ${ludusSlotsHTML(f)}${ludusEveningHTML()}<button id="luEndDay" class="menuMain" ${ludus.forced||ludus.event||ludus.giftChoice||ludus.verdict?'disabled':''} title="Der Tag vergeht ohne Kampf: jeder tut seine Aufgabe">Tag beenden</button></div>`;
   }
   const itemRow=(inst,i)=>`<div class="luItem${wornIdx.has(i)?' worn':''}${ludusSel===i?' sel':''}" data-pick="${i}"><span>${ludusEsc(instLabel(inst))}${wornIdx.has(i)?' ✓':''}</span></div>`;
   let main='', override='';
-  if(live && ludus.giftChoice){
+  if(live && ludus.verdict){
+    const v=ludus.verdict, w=ludusMember(v.w)||ludus.fighter;
+    override=`<div class="luPanel luForced"><h2>Das Urteil</h2><p>Die Menge wartet auf dein Zeichen. ${ludusEsc(w.name)} hat gewonnen; wer noch lebt, liegt im Sand. Hinrichten bringt Ruhm (2 und die Hälfte des Ruhms des Verlierers); Verschonen bringt Lösegeld aus seinem Beutel und seine Dankbarkeit. Wer viele hinrichtet, wird gefürchtet, und hat selbst viel zu verlieren.</p>
+      ${v.list.map(id=>{ const n=ludusNpc(id); if(!n) return ''; const pay=ludusRansom(n,ludus.map.region); return `<div class="luItem"><span><b>${ludusEsc(n.name)}</b> — ${SPECIES[n.kind].label}, Stufe ${n.level} · Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}</span><span><button data-verdict="${id}:spare">Verschonen · ${pay?pay+' Gold Lösegeld':'kein Gold, große Dankbarkeit'}</button> <button data-verdict="${id}:exec">Hinrichten · +${ludusExecGain(n)} Ruhm</button></span></div>`; }).join('')}</div>`;
+  } else if(live && ludus.giftChoice){
     override=`<div class="luPanel luGifts"><h2>Eine Gabe</h2><p>Der Sieg in der Turnierrunde wird belohnt. Wähle eine Gabe, sie bleibt für den ganzen Lauf.</p><div class="luOpts">${ludus.giftChoice.map((g,i)=>`<div class="luOption luGift r${g.rarity}"><div><b>${ludusEsc(giftTitle(g))}</b>${g.wild?' <span class="luTrait">[Wildkarte]</span>':''}<br><i>${Tr(GIFT_RARITY[g.rarity])}</i>${giftLines(g).map(l=>`<div class="${l.role==='bane'?'luBane':'luBoon'}"><span>${l.role==='bane'?'▼':'▲'}</span> <span>${ludusEsc(l.text)}</span></div>`).join('')}</div>${ludus.team.length>1?ludus.team.map((m,mi)=>`<button data-gift="${i}:${mi}" class="menuMain">Für ${ludusEsc(m.name)}</button>`).join(' '):`<button data-gift="${i}:0" class="menuMain">Wählen</button>`}</div>`).join('')}</div></div>`;
   } else if(live && ludus.forced){
     const fo=ludus.forced;
@@ -486,7 +499,7 @@ function ludusRender(){
     override=`<div class="luPanel luEvent"><h2>${def.title}</h2><p>${ludusEsc(def.text(ev))}</p>${ludusCastHTML(ev.cast)}${opts.map((o,i)=>`<button data-event="${i}" class="menuMain" ${o.when&&!o.when(ev)?'disabled':''}>${o.trait?'<span class="luTrait">['+SPECIES[ludus.fighter.kind].label+']</span> ':''}${ludusEsc(typeof o.label==='function'?o.label(ev):o.label)}</button>`).join(' ')}</div>`;
   }
   if(live && ludus.followup && !ludus.giftChoice){ const fu=ludus.followup; override=`<div class="luPanel luEvent"><h2>${fu.title}</h2><p>${ludusEsc(fu.text)}</p><button id="luFollowGo" class="menuMain">Weiter</button></div>`; }
-  ludusEventShown=!!(override && live && !ludus.giftChoice && (ludus.followup || (ludus.event && !ludus.forced)));
+  ludusEventShown=!!(override && live && !ludus.giftChoice && !ludus.verdict && (ludus.followup || (ludus.event && !ludus.forced)));
   if(!override&&live&&ludusPicked){ const pc=ludusPickHTML(); if(pc) override=pc; }
   if(override){ main=override; }
   else if(ludusTab==='start'){
@@ -561,6 +574,8 @@ function ludusRender(){
   el.querySelectorAll('[data-event]').forEach(b=>b.addEventListener('click',()=>ludusEventChoose(+b.dataset.event)));
   on('luFollowGo',()=>{ ludus.followup=null; ludusSave(); ludusRender(); });
   on('luTourneyGo',ludusTourneyAdvance); ludusMapWire(el);
+  el.querySelectorAll('[data-verdict]').forEach(b=>b.addEventListener('click',()=>{ const [id,what]=b.dataset.verdict.split(':'), v=ludus.verdict, n=ludusNpc(id), w=v&&(ludusMember(v.w)||ludus.fighter); if(!v||!n||!w) return;
+    ludusNote=ludusVerdict(w,n,what==='exec',ludus.map.region); v.list=v.list.filter(x=>x!==id); if(!v.list.length) ludus.verdict=null; ludusSave(); ludusRender(); }));
   on('luPickClose',()=>{ ludusPicked=null; ludusRender(); });
   on('luPickJoin',()=>{ const id=ludusPicked; ludusPicked=null; if(!ludusRecruit(id)) ludusRender(); });
   on('luEndDay',ludusEndDay); on('luForcedGo',()=>{ const o=ludusForcedBout(); if(o) ludusFight(o.members?o:Object.assign({},o,{ members:[ludus.fighter.id] })); });
@@ -616,7 +631,7 @@ function ludusPickHTML(){
   const id=ludus.map.region, champ=ludusIsChamp(id,'npc',n.id), rank=ludusRankOf(id,'npc',n.id), plan=ludusPlanOf(n.id), c=ludusFoeCreature(ludusNpcFoe(n));
   const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
   const canJoin=!champ&&!n.boss&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
-  return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
+  return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
     <p class="luHint">Ausrüstung: ${gear}${story?'<br>'+ludusEsc(n.name)+' '+ludusEsc(story)+'.':''}</p>
     ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
     <button id="luPickClose">Schließen</button></div>`;

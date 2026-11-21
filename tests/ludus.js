@@ -32,6 +32,19 @@ const { open, finish }=require('./lib');
     out.est=ludus.arenaEst&&ludus.arenaEst.est;
     const g1=ludus.gold; if(offers.length) out.arena=fight(Object.assign({},offers[0],{ members:[ludus.team[0].id], reward:30 })); out.arenaText=ludusResultText;
     if(out.arena==='Sieg'&&ludus.gold<=g1) bad('arena win without gold');
+    // the verdict: the player's word over a living loser, and the world's rule over the player's own
+    { const ns=ludusRegionNpcs(ludus.map.region).filter(x=>!x.boss&&!ludusIsChamp(ludus.map.region,'npc',x.id)), a=ns[0], b=ns[1], w=ludus.team[0];
+      a.fame=6; const f0=ludusFame(w), g0=ludus.gold; ludus.verdict={ w:w.id, list:[a.id,b.id] }; ludusRender();
+      if(!document.querySelector('[data-verdict]')) bad('no verdict panel');
+      document.querySelector(`[data-verdict="${a.id}:exec"]`).click(); if(a.status!=='dead') bad('execution did not kill'); if(ludusFame(w)!==f0+2+3) bad('execution fame '+(ludusFame(w)-f0));
+      b.gold=30; const bond0=b.bond||0; document.querySelector(`[data-verdict="${b.id}:spare"]`).click(); if(b.status!=='active') bad('spared one died'); if(ludus.gold<=g0) bad('no ransom'); if((b.bond||0)<=bond0) bad('no gratitude');
+      if(ludus.verdict) bad('verdict not finished'); out.verdict=ludusNote;
+      // the world's rule: bold and a famous executioner as loser -> the axe; a friend -> mercy
+      const c=ns[2], d=ns[3]; c.bold=1; d.fame=10; d.execs=3; if(!ludusAiExecutes(c,d)) bad('a bold winner spared a famous executioner');
+      c.bold=0.2; d.fame=0; d.execs=0; c.rel={}; c.rel[d.id]=3; if(ludusAiExecutes(c,d)) bad('a friend was executed');
+      // over an own gladiator: a spare one joins for it, then is executed by a merciless winner
+      const extra={ id:'mX', name:'Opfer', kind:'goblin', level:1, xp:0, inventory:[], learned:[], gifts:[], seed:1, honor:0 }; ludus.team.push(extra); c.bold=1;
+      ludusVerdict(c,extra,true,ludus.map.region); if(ludus.team.includes(extra)) bad('executed own gladiator still in the team'); }
     // free for all: one of the own among three gladiators, every one a side of his own
     { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)).slice(0,3), foes=npcs.map(ludusNpcFoe);
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };

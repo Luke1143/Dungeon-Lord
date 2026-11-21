@@ -120,3 +120,11 @@ i18nRegister({
 "Leben {0} %":"Life {0} %", "heute {0}":"today {0}", "Ausrüstung: {0}":"Gear: {0}", "keine":"none",
 "Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.":"The champion cannot be hired. One meets him in the tournament.", "Kein Platz frei (die Taverne gibt mehr Plätze).":"No place free (the tavern gives more places)."
 });
+// fame and the verdict
+i18nRegister({
+"Das Urteil":"The verdict", "Ruhm {0}":"Fame {0}", "{0} hingerichtet":"{0} executed", "Hinrichten · +{0} Ruhm":"Execute · +{0} fame", "Verschonen · {0} Gold Lösegeld":"Spare · {0} gold ransom", "Verschonen · kein Gold, große Dankbarkeit":"Spare · no gold, great gratitude",
+"Die Menge wartet auf dein Zeichen. {0} hat gewonnen; wer noch lebt, liegt im Sand. Hinrichten bringt Ruhm (2 und die Hälfte des Ruhms des Verlierers); Verschonen bringt Lösegeld aus seinem Beutel und seine Dankbarkeit. Wer viele hinrichtet, wird gefürchtet, und hat selbst viel zu verlieren.":"The crowd waits for your sign. {0} has won; whoever still lives lies in the sand. Executing brings fame (2 and half the loser's fame); sparing brings a ransom from his purse and his gratitude. Whoever executes many is feared, and has much to lose himself.",
+"{0} richtet {1} hin (+{2} Ruhm).":"{0} executes {1} (+{2} fame).", "{0} verschont {1} (Lösegeld {2} Gold).":"{0} spares {1} (ransom {2} gold).", "{0} verschont {1}.":"{0} spares {1}.",
+"{0} richtet {1} hin (+{2} Ruhm)":"{0} executes {1} (+{2} fame)", "{0} verschont {1} (Lösegeld {2} Gold)":"{0} spares {1} (ransom {2} gold)", "{0} verschont {1}":"{0} spares {1}",
+"Hingerichtet von {0}":"Executed by {0}"
+});
