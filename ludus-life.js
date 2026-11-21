@@ -9,6 +9,7 @@ const LUDUS_LIFE={
   champExtra:1,        // a champion stays one level longer (then he lays down the title and moves on too)
   minRoster:6,         // a region that has fewer gets wanderers
   deathCoarse:0.03,    // the chance that the loser of an arena bout dies in the fight, where it is only estimated (the verdict may follow)
+  ffaFrom:6,           // from this many in the evening arena, the four weakest fight a free for all (with pacts) instead of duels
   chronicle:80         // entries kept
 };
 
@@ -50,22 +51,24 @@ function ludusLifePlan(){
 }
 const ludusPlanOf=id=>ludus.life&&ludus.life.day===ludus.day?ludus.life.plans[id]:undefined;
 // who is free in the pit / the arena today (not the champion: he only meets the player in the tournament)
-const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallengesToday().some(c=>c.npc===n.id&&!c.done));
+const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallenged(n.id));       // who has an appointment in the arena keeps himself for it
 const ludusLifeBusy=ids=>{ ids.forEach(id=>{ const n=id&&ludusNpc(id); if(n) n.foughtToday=true; }); if(ludus.life) ludus.life.busy=(ludus.life.busy||[]).concat(ids.filter(Boolean)); };
 
 // ---- a bout between gladiators, fought by the engine; everything that happens to them stays ----
 // a, b: lists of gladiators (records of ludus.world, or own members); kind: 'pit' (nobody dies) | 'arena'. Returns 0 when side a wins, 1 when b, and what happened
-function ludusLifeBout(a,b,kind,seed){
+function ludusLifeBout(a,b,kind,seed){ return ludusLifeBoutN([a,b],kind,seed,[]); }
+// the same with any number of sides (a free for all) and the pacts among them
+function ludusLifeBoutN(sides,kind,seed,pacts){
   const side=l=>({ name:l[0].name, groups:l.map(n=>{ const g=ludusFighterGroup(ludusEquip(n)); if(!ludusMember(n.id)) g.npc=n.id; return g; }) });
-  const setup={ teams:[side(a),side(b)], map:{ layout:'pit', dims:'S', seed:'life'+ludus.seed+':'+seed, lava:0, water:0, crystal:0, near:1 }, fog:false, batch:1, ludus:true, fixedMap:true, noDeath:kind==='pit' };
+  const setup={ teams:sides.map(side), pacts, map:{ layout:'pit', dims:'S', seed:'life'+ludus.seed+':'+seed, lava:0, water:0, crystal:0, near:1 }, fog:false, batch:1, ludus:true, fixedMap:true, noDeath:kind==='pit' };
   const st=arenaBuild(setup,''), prev=state, ps=screen; let w=0;
-  try{ state=st; screen='level'; let k=0; while(arenaStep(st)&&k<8000) k++; w=st.arena.winner<0?(Math.random()<0.5?0:1):st.arena.winner; }
+  try{ state=st; screen='level'; let k=0; while(arenaStep(st)&&k<8000) k++; w=st.arena.winner<0?Math.floor(Math.random()*sides.length):st.arena.winner; }
   finally{ state=prev; screen=ps; }
   const out={ winner:w, dead:[] };
-  [a,b].forEach((l,ti)=>l.forEach(n=>{
+  sides.forEach((l,ti)=>l.forEach(n=>{
     const c=st.arena.roster[ti].find(x=>x.memberId===n.id), gone=!c||c.removed||c.dead||!st.creatures.includes(c);
     if(gone){ out.dead.push(n); return; }
-    const foes=ti?a:b, xp=ludusBoutXp(Math.max(...foes.map(f=>f.level)),ti===w,foes.length);
+    const foes=[].concat(...sides.filter((x,k)=>k!==ti)), xp=ludusBoutXp(Math.max(...foes.map(f=>f.level)),ti===w,foes.length);
     withState(st,()=>grantXp(c,xp));
     n.level=c.level; n.xp=c.xp; n.inventory=JSON.parse(JSON.stringify(c.inventory||[])); n.learned=(c.learned||[]).slice();
     n.hp=c.unconscious?1:Math.max(1,Math.round(c.hp)); n.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:100)-12);
@@ -85,7 +88,7 @@ function ludusLifeLoot(winner,loser){
 // the bookkeeping of a bout between gladiators: wins, honour, gold, the dead
 function ludusLifeAfterBout(sides,res,kind,region){
   sides.forEach(l=>l.forEach(n=>{ n.foughtToday=true; }));
-  const [a,b]=sides, win=res.winner===0?a:b, lose=res.winner===0?b:a, L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
+  const win=sides[res.winner]||[], lose=[].concat(...sides.filter((x,k)=>k!==res.winner)), L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
   win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'||kind==='tourney') n.fame=ludusFame(n)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
   if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&region===ludus.map.region) ludusChron(region,'loot',`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
@@ -152,6 +155,7 @@ function ludusAiChallenge(){
 // the end of the day: who did not come to his duel is a coward
 function ludusChallengesExpire(){
   (ludus.challenges||[]).filter(c=>c.day===ludus.day&&!c.done).forEach(c=>{ const m=ludusMember(c.own), n=ludusNpc(c.npc);
+    if(!n||n.status!=='active') return;       // the other one could not come: nobody is a coward
     if(m) m.honor=Math.max(0,(m.honor||0)-LUDUS_CHALLENGE.coward); if(n) n.honor=(n.honor||0)+5;
     if(m&&n) ludusChron(ludus.map.region,'challenge',`${m.name} kneift vor ${n.name}.`); });
   ludus.challenges=(ludus.challenges||[]).filter(c=>c.day>ludus.day);
@@ -164,35 +168,49 @@ function ludusFeudPairs(l){
   return out;
 }
 
+// the evening's free for all among the world's gladiators: four, everyone for himself, and those who like each other stand together (the same rule as in the player's bouts)
+function ludusLifeFfa(four,region){
+  const o={ foes:four.map(n=>({ npc:n.id })) }, pacts=ludusAiPacts(o), res=ludusLifeBoutN(four.map(n=>[n]),'arena',ludus.day+':ffa',pacts);
+  pacts.forEach(([i,j])=>ludusChron(region,'pact',`${four[i-1].name} und ${four[j-1].name} verbünden sich für Jeder gegen jeden.`));
+  ludusChron(region,'pact',`Jeder gegen jeden: ${four.map(n=>n.name).join(', ')}. ${four[res.winner].name} bleibt als Letzter stehen.`);
+  ludusLifeAfterBout(four.map(n=>[n]),res,'arena',region);
+  if(pacts.length) pacts.forEach(([i,j])=>{ const a=four[i-1], b=four[j-1]; if(res.dead.indexOf(a)<0&&res.dead.indexOf(b)<0){ ludusRelAdd(a,b,1); ludusRelAdd(b,a,1); } });       // a pact that held binds
+}
+
 // ---- alliances in a free for all: allies do not fight each other while any other side still stands; then they fight it out ----
 // A gladiator of the field allies with the school for nothing if he is well disposed (relation 1 and more), for 6 gold per level of his if neutral or wary, not at all if hostile.
 // Gladiators of the field who like each other (their relations both ways add up to 3 or more) stand together on their own, in pairs. A pact that held: the ally +1 to the school.
 // Striking an ally while the pact holds is betrayal (only a possessed gladiator can): the betrayed becomes hostile (−3), and the chronicle tells it.
 const LUDUS_PACT={ fee:6, mutual:3 };
 const ludusPactFee=n=>(n.bond||0)>=1?0:((n.bond||0)<=-2?null:LUDUS_PACT.fee*n.level);
+// the sides of a free for all besides the school (side 0): lists of foe indices; a team bout groups them, else every foe is a side of his own
+const ludusFfaSides=o=>o.groups||(o.foes||[]).map((f,k)=>[k]);
+const ludusSideNpcs=(o,s)=>(ludusFfaSides(o)[s-1]||[]).map(k=>ludusNpc((o.foes[k]||{}).npc)).filter(Boolean);
+const ludusSideName=(o,s)=>ludusSideNpcs(o,s).map(n=>n.name).join(' & ');
+// how much two groups like each other: the relations both ways, per pair of them
+const ludusLiking=(A,B)=>{ let t=0, k=0; A.forEach(a=>B.forEach(b=>{ t+=ludusRel(a,b)+ludusRel(b,a); k++; })); return k?t/k:0; };
 function ludusAiPacts(o){
-  const ids=(o.foes||[]).map(f=>f.npc), out=[], used=new Set();
-  for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++){
-    const a=ludusNpc(ids[i]), b=ludusNpc(ids[j]); if(!a||!b||a.id===o.pact||b.id===o.pact||used.has(i)||used.has(j)) continue;
-    if(ludusRel(a,b)+ludusRel(b,a)>=LUDUS_PACT.mutual){ out.push([i+1,j+1]); used.add(i); used.add(j); } }
+  const S=ludusFfaSides(o).length, out=[], used=new Set([o.pact]);
+  for(let i=1;i<=S;i++) for(let j=i+1;j<=S;j++){ if(used.has(i)||used.has(j)) continue;
+    if(ludusLiking(ludusSideNpcs(o,i),ludusSideNpcs(o,j))>=LUDUS_PACT.mutual){ out.push([i,j]); used.add(i); used.add(j); } }
   return out;
 }
-// the pacts of a bout, as sides of the match (0 = the school, 1… = the foes in order)
-function ludusPacts(o){ if(!o||!o.ffa) return []; const g=ludusAiPacts(o); if(o.pact){ const k=o.foes.findIndex(f=>f.npc===o.pact); if(k>=0) g.unshift([0,k+1]); } return g; }
-function ludusPactOffer(i,k){
-  const o=ludusArenaOffers()[i], f=o&&o.foes[k], n=f&&ludusNpc(f.npc); if(!n||!o.ffa||o.pact||ludusAiPacts(o).some(p=>p.includes(k+1))) return;
-  const fee=ludusPactFee(n); if(fee===null||ludus.gold<fee) return;
-  ludus.gold-=fee; n.gold=(n.gold||0)+fee; o.pact=n.id; ludus.arenaEst=null;
-  ludusNote=`${n.name} steht im Kampf an deiner Seite, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
+// the pacts of a bout, as sides of the match (0 = the school, 1… = the other sides in order); a side asks the sum of its members' prices, and none if one of them refuses
+function ludusPacts(o){ if(!o||!o.ffa) return []; const g=ludusAiPacts(o); if(o.pact) g.unshift([0,o.pact]); return g; }
+const ludusSidePactFee=(o,s)=>{ const f=ludusSideNpcs(o,s).map(ludusPactFee); return !f.length||f.includes(null)?null:f.reduce((a,b)=>a+b,0); };
+function ludusPactOffer(i,s){
+  const o=ludusArenaOffers()[i]; if(!o||!o.ffa||o.pact||ludusAiPacts(o).some(p=>p.includes(s))) return;
+  const ns=ludusSideNpcs(o,s), fee=ludusSidePactFee(o,s); if(!ns.length||fee===null||ludus.gold<fee) return;
+  ludus.gold-=fee; ns.forEach(n=>{ n.gold=(n.gold||0)+ludusPactFee(n); }); o.pact=s; ludus.arenaEst=null;
+  ludusNote=`Bündnis mit ${ludusSideName(o,s)}: ihr kämpft zusammen, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
 }
 // after the bout: betrayals and pacts that held
 function ludusPactsAfter(o,st,lead){
-  if(!o||!o.ffa) return ''; const side=ti=>ti===0?null:ludusNpc((o.foes[ti-1]||{}).npc), out=[];
-  (st.arena.betrayals||[]).forEach(([by,of])=>{ const a=by===0?lead:side(by), b=of===0?lead:side(of); if(!a||!b) return;
-    if(of!==0) b.bond=-3; else a.bond=-3; if(by!==0&&of!==0){ b.rel=b.rel||{}; b.rel[a.id]=-3; }
-    const t=`${a.name} verrät ${b.name}.`; ludusChron(ludus.map.region,'pact',t); out.push(t); });
-  const n=o.pact&&ludusNpc(o.pact);
-  if(n&&lead&&!(st.arena.betrayals||[]).some(p=>p.includes(0))){ ludusRelAdd(n,lead,1); out.push(`Das Bündnis mit ${n.name} hat gehalten.`); }
+  if(!o||!o.ffa) return ''; const side=ti=>ti===0?(lead?[lead]:[]):ludusSideNpcs(o,ti), out=[];
+  (st.arena.betrayals||[]).forEach(([by,of])=>{ const A=side(by), B=side(of); if(!A.length||!B.length) return;
+    if(by===0) B.forEach(n=>{ n.bond=-3; }); else if(of===0) A.forEach(n=>{ n.bond=-3; }); else B.forEach(b=>A.forEach(a=>{ b.rel=b.rel||{}; b.rel[a.id]=-3; }));
+    const t=`${A.map(n=>n.name).join(' & ')} verrät ${B.map(n=>n.name).join(' & ')}.`; ludusChron(ludus.map.region,'pact',t); out.push(t); });
+  if(o.pact&&lead&&!(st.arena.betrayals||[]).some(p=>p.includes(0))){ ludusSideNpcs(o,o.pact).forEach(n=>ludusRelAdd(n,lead,1)); out.push(`Das Bündnis mit ${ludusSideName(o,o.pact)} hat gehalten.`); }
   return out.join(' · ');
 }
 
@@ -216,7 +234,9 @@ function ludusLifeEveningHere(){
   if(!ludus.life||ludus.life.day!==ludus.day) return;
   const id=ludus.life.region;
   ['pit','arena'].forEach(kind=>{
-    const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x)), pairs=kind==='arena'?ludusFeudPairs(l):l.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
+    const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
+    if(kind==='arena'&&l.length>=LUDUS_LIFE.ffaFrom) ludusLifeFfa(l.splice(l.length-4,4),id);
+    const pairs=kind==='arena'?ludusFeudPairs(l):l.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
     pairs.forEach(([x,y,feud],i)=>{ if(feud) ludusChron(id,'challenge',`Fehde in der Arena: ${x.name} gegen ${y.name}.`); const a=[x], b=[y], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); });
   });
   ludusRegionNpcs(id).forEach(n=>{ const p=ludusPlanOf(n.id); if(p==='rest'||((p==='pit'||p==='arena')&&!n.foughtToday)) ludusLifeRest(n); else if(p==='work') ludusLifeWork(n); });

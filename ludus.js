@@ -114,7 +114,7 @@ const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe', ffa
 function ludusMatchSetup(o,salt,team){
   const foes=ludusFoes(o); team=team||(o.members?o.members.map(ludusMember).filter(Boolean):ludus.team);
   const own={ name:team[0].name, groups:team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) };
-  return { teams:o.ffa?[own].concat(foes.map(f=>({ name:f.name, groups:[ludusOppGroup(f)] }))):[ own, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],       // free-for-all: every foe a side of his own
+  return { teams:o.ffa?[own].concat(ludusFfaSides(o).map(g=>({ name:g.map(k=>foes[k].name).join(' & '), groups:g.map(k=>ludusOppGroup(foes[k])) }))):[ own, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],       // free-for-all: every foe a side of his own
     map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, pacts:ludusPacts(o), fog:true, batch:1, ludus:true, fixedMap:true, swapSides:(arenaHash('side'+ludus.seed+':'+ludus.day)&1)===1, noDeath:!!o.pit, mercy:ludus.wins+ludus.losses<3 };       // nobody dies in the pit; the first bouts of a run cannot kill the team
 }
 function ludusAverageTier(){

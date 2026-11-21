@@ -22,7 +22,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       // the stash: what fits better than what is worn goes on
       const wear=()=>ludus.stash.slice().forEach(inst=>{ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return; const m=ludus.team.find(x=>{ const cur=has(x,d.type); return !cur.length||Math.max(...cur.map(ludusTierIndex))<ludusTierIndex(inst); }); if(m) ludusGiveItem(inst,m); });
       const build=()=>{ for(const id of ['inn','forge','hall','pit','training','library']){ const t=ludus.rooms[id]||0, c=LUDUS_ROOMS[id].cost[t]; if(c!==undefined&&ludus.renown>=c){ ludusBuyRoom(id); return; } } };
-      const chal={}; { const c0=ludusChron; window.ludusChron=(r,k,t)=>{ const key=/morgen in der Arena/.test(t)?'own':(/heute in der Arena/.test(t)?'ai':(/lehnt/.test(t)?'declined':(/kneift/.test(t)?'coward':(/Fehde/.test(t)?'feud':null)))); if(key) chal[key]=(chal[key]||0)+1; return c0(r,k,t); }; }
+      const chal={}; { const c0=ludusChron; window.ludusChron=(r,k,t)=>{ const key=/morgen in der Arena/.test(t)?'own':(/heute in der Arena/.test(t)?'ai':(/lehnt/.test(t)?'declined':(/kneift/.test(t)?'coward':(/Fehde/.test(t)?'feud':(/verbünden sich/.test(t)?'pactAi':(/^Jeder gegen jeden/.test(t)?'ffaAi':(/verrät/.test(t)?'betray':null))))))); if(key) chal[key]=(chal[key]||0)+1; return c0(r,k,t); }; }
       const t0=performance.now(); ludusMeta.unlockAll=true; ludusMeta.roomsAll=false; ludusMeta.ghosts=[]; ludusNewRun(kind,'Bot');
       let guard=0;
       while(!ludus.over&&ludus.day<MAXDAY&&guard++<2000){

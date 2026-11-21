@@ -127,8 +127,16 @@ const LUDUS_MODES={
   double:{ label:'Doppel', size:2, foes:2, mult:1.7 },
   trio:  { label:'Trio',   size:3, foes:3, mult:2.4 },
   pack:  { label:'Rudel',  size:1, pack:true, mult:1.2 },
-  ffa:   { label:'Jeder gegen jeden', size:1, ffa:true, mult:1 }      // one of the own among several gladiators, everyone for himself: the last one standing wins
+  ffa:   { label:'Jeder gegen jeden', size:1, ffa:true, mult:1 },     // one of the own among several gladiators, everyone for himself: the last one standing wins
+  teams: { label:'Drei Teams zu zwei', size:2, ffa:true, teams:true, mult:2.2 }  // two of the own against two teams of two: the last team standing wins
 };
+// teams of two from a list: friends first (their relations both ways add up to 2 or more), the rest as they come (by strength)
+function ludusTeamUp(l){
+  const left=l.slice(), out=[];
+  for(let i=0;i<left.length;i++){ const a=left[i], j=left.findIndex((b,k)=>k>i&&ludusRel(a,b)+ludusRel(b,a)>=2); if(j>0){ out.push([a,left[j]]); left.splice(j,1); left.splice(i,1); i--; } }
+  for(let i=0;i+1<left.length;i+=2) out.push([left[i],left[i+1]]);
+  return out;
+}
 // today's offers in the arena of the region: the gladiators who came to fight here today. Duels with two of them (different strength),
 // a double or trio when the team can field one and enough came, and a pack (the weakest of them, together) against one
 function ludusArenaOffers(){
@@ -139,11 +147,11 @@ function ludusArenaOffers(){
     const M=LUDUS_MODES[mode], foes=glads.map(ludusNpcFoe);
     const o={ arena:true, mode, ffa:!!M.ffa, variant:M.pack?'swarm':(M.ffa?'ffa':(foes.length>1?'group':'duel')), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
     o.title=(M.pack?'Rudel: ':'')+(foes.length>1?foes.map(f=>f.name).join(', '):`${foes[0].name} (${SPECIES[foes[0].kind].label})`);       // several foes: their names (one pair of brackets per title, so the translation reads it right)
-    o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:(M.ffa?0.8+0.5*foes.length:M.mult))*ludusHallMult());
+    o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:(M.ffa&&!M.teams?0.8+0.5*foes.length:M.mult))*ludusHallMult());
     list.push(o);
   };
   // the day's challenges come first: a duel against the challenged (or challenging) gladiator, with the own gladiator named in it
-  ludusChallengesToday().filter(c=>!c.done&&ludusMember(c.own)&&ludusNpc(c.npc)&&ludusNpc(c.npc).status==='active').forEach(c=>{
+  ludusChallengesToday().filter(c=>!c.done&&ludusMember(c.own)&&ludusNpc(c.npc)&&ludusNpc(c.npc).status==='active'&&ludusNpc(c.npc).region===id).forEach(c=>{
     add('duel',[ludusNpc(c.npc)]); const o=list[list.length-1]; o.challenge=c.id; o.members=[c.own]; o.baseReward=Math.round(o.baseReward*1.5); o.title=`Herausforderung: ${o.title}`; });
   if(pool.length) add('duel',[pool[Math.floor(pool.length/2)]]);
   if(pool.length>1){ const first=list[list.length-1].foes[0].npc; add('duel',[pool.find(x=>x.id!==first)]); }
@@ -151,6 +159,7 @@ function ludusArenaOffers(){
   else if(ludus.team.length>=2&&pool.length>=2) add('double',pool.slice(pool.length-2));
   if(pool.length>=3) add('pack',pool.slice(-Math.min(4,pool.length)));
   if(pool.length>=4){ const k=Math.min(4,pool.length-1), at=Math.floor(r()*(pool.length-k+1)); add('ffa',pool.slice(at,at+k)); }
+  if(ludus.team.length>=2&&pool.length>=4){ const t=ludusTeamUp(pool).slice(0,2); if(t.length===2){ add('teams',[].concat(...t)); const o=list[list.length-1]; o.groups=[[0,1],[2,3]]; o.title=t.map(p=>p.map(n=>n.name).join(' & ')).join(', '); } }
   ludus.arenaOffers={ day:ludus.day, region:id, list }; return list;
 }
 // the prize falls as the chances rise: a long shot pays up to twice as much, a sure thing half
@@ -366,16 +375,15 @@ function ludusTourneyHTML(){
 }
 // the alliances of a free for all: who stands together already, and whom the school can ask (his price, or why not)
 function ludusPactHTML(o,i){
-  const ai=ludusAiPacts(o), name=k=>ludusEsc(o.foes[k-1].name), rows=ai.map(p=>`<br><small>Verbündet: ${name(p[0])} und ${name(p[1])}</small>`);
-  const own=o.pact&&ludusNpc(o.pact);
-  if(own) rows.push(`<br><small>Dein Bündnis: ${ludusEsc(own.name)}</small>`);
-  else o.foes.forEach((f,k)=>{ const n=ludusNpc(f.npc); if(!n||ai.some(p=>p.includes(k+1))) return; const fee=ludusPactFee(n);
-    rows.push(fee===null?`<br><small>${ludusEsc(n.name)} will kein Bündnis.</small>`:`<br><button data-pact="${i}:${k}" ${ludus.gold<fee?'disabled':''}>Bündnis mit ${ludusEsc(n.name)} · ${fee?fee+' Gold':'umsonst'}</button>`); });
+  const ai=ludusAiPacts(o), name=k=>ludusEsc(ludusSideName(o,k)), rows=ai.map(p=>`<br><small>Verbündet: ${name(p[0])} und ${name(p[1])}</small>`);
+  if(o.pact) rows.push(`<br><small>Dein Bündnis: ${name(o.pact)}</small>`);
+  else ludusFfaSides(o).forEach((g,k)=>{ const s=k+1; if(!ludusSideNpcs(o,s).length||ai.some(p=>p.includes(s))) return; const fee=ludusSidePactFee(o,s);
+    rows.push(fee===null?`<br><small>${name(s)}: kein Bündnis</small>`:`<br><button data-pact="${i}:${s}" ${ludus.gold<fee?'disabled':''}>Bündnis mit ${name(s)} · ${fee?fee+' Gold':'umsonst'}</button>`); });
   return rows.join('');
 }
 function ludusArenaHTML(){
   const offers=ludusArenaOffers(), sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region, est=ludus.arenaEst&&ludus.arenaEst.sig===sig?ludus.arenaEst.est:null;
   const picks=ludusPicks();
   return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die an, die heute kämpfen (die ersten so viele, wie die Kampfart braucht): ${picks.length?picks.map(m=>ludusEsc(m.name)).join(', '):'niemand'}.</p>${offers.length?'':'<p><i>Heute ist niemand in die Arena gekommen.</i></p>'}
-    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], team=ludusOfferTeam(o), can=!!team, e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}${o.challenge&&team?'<br>Es kämpft '+ludusEsc(team[0].name)+' (+'+LUDUS_CHALLENGE.bonus+' Ehre beim Sieg; wer nicht kommt, kneift)':''}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold${o.ffa?ludusPactHTML(o,i):''}</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Stelle ${M.size} auf Kämpft`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
+    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], team=ludusOfferTeam(o), can=!!team, e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack||M.teams?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}${o.challenge&&team?'<br>Es kämpft '+ludusEsc(team[0].name)+' (+'+LUDUS_CHALLENGE.bonus+' Ehre beim Sieg; wer nicht kommt, kneift)':''}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold${o.ffa?ludusPactHTML(o,i):''}</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Stelle ${M.size} auf Kämpft`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
 }

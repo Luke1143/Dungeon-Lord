@@ -152,9 +152,13 @@ i18nRegister({
 });
 // alliances
 i18nRegister({
-"{0} bricht das Bündnis.":"{0} breaks the alliance.", "{0} steht im Kampf an deiner Seite, bis nur noch ihr übrig seid ({1} Gold).":"{0} stands at your side in the fight until only the two of you are left ({1} gold).",
-"{0} steht im Kampf an deiner Seite, bis nur noch ihr übrig seid.":"{0} stands at your side in the fight until only the two of you are left.",
+"{0} bricht das Bündnis.":"{0} breaks the alliance.", "Bündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid ({1} Gold).":"Alliance with {0}: you fight together until only you are left ({1} gold).",
+"Bündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid.":"Alliance with {0}: you fight together until only you are left.",
 "{0} verrät {1}.":"{0} betrays {1}.", "{0} verrät {1}":"{0} betrays {1}", "Das Bündnis mit {0} hat gehalten.":"The alliance with {0} held.", "Das Bündnis mit {0} hat gehalten":"The alliance with {0} held",
-"Verbündet: {0} und {1}":"Allied: {0} and {1}", "Dein Bündnis: {0}":"Your ally: {0}", "{0} will kein Bündnis.":"{0} wants no alliance.",
+"Verbündet: {0} und {1}":"Allied: {0} and {1}", "Dein Bündnis: {0}":"Your ally: {0}", "{0}: kein Bündnis":"{0}: no alliance", "Drei Teams zu zwei":"Three teams of two",
 "Bündnis mit {0} · {1} Gold":"Alliance with {0} · {1} gold", "Bündnis mit {0} · umsonst":"Alliance with {0} · free"
+});
+// free for all of the world's gladiators
+i18nRegister({
+"{0} und {1} verbünden sich für Jeder gegen jeden.":"{0} and {1} join forces for a free for all.", "Jeder gegen jeden: {0}. {1} bleibt als Letzter stehen.":"Free for all: {0}. {1} is the last one standing.",
 });
