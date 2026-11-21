@@ -17,7 +17,9 @@ function arenaDefaultSetup(){
 }
 let arenaSetup=arenaDefaultSetup();
 function arenaKinds(){ return Object.keys(SPECIES).filter(k=>SPECIES[k].canFight && SPECIES[k].category!=='boss' && !['worker','dungeonlord','imp','fly'].includes(k)); }
-const arenaTeamOf=c=> c.faction==='evil'?0:1;
+// sides: 0 is the dark side ('evil'), 1 the good side ('good'); a free-for-all has more sides, each its own faction 'ffa2', 'ffa3' … (so nobody is anybody's ally)
+const arenaSideFaction=ti=>ti===0?'evil':(ti===1?'good':'ffa'+ti);
+const arenaTeamOf=c=>{ if(c.faction==='evil') return 0; if(c.faction==='good') return 1; const m=/^ffa(\d+)$/.exec(c.faction||''); return m?+m[1]:1; };
 async function arenaSaveSetup(){ try{ await window.storage.set(ARENA_STORE, JSON.stringify(arenaSetup), false); }catch(e){} }
 async function arenaLoadSetup(){ try{ const r=await window.storage.get(ARENA_STORE,false); if(r&&r.value){ const s=JSON.parse(r.value); if(s&&s.teams&&s.teams.length===2&&s.map) arenaSetup=arenaExpand(Object.assign(arenaDefaultSetup(),s)); } }catch(e){} }
 
@@ -94,19 +96,23 @@ function arenaBuild(setup,seedExtra){
     arenaDressWalls(g,m.layout!=='pillars');
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, noDeath:!!setup.noDeath, deathmatch:!!setup.deathmatch, roster:[[],[]] };
+    let anchors=setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}];
+    // more than two sides: every further camp as far as possible from the ones there are (the open cave's cells, farthest point first)
+    for(let k=2;k<setup.teams.length;k++){ let best=null, bd=-1; cells.forEach(([x,y])=>{ const d=Math.min(...anchors.map(a=>Math.abs(a.x-x)+Math.abs(a.y-y))); if(d>bd){ bd=d; best={ x, y }; } }); anchors.push(best||anchors[0]); }
+    st.arena={ over:false, winner:null, sides:setup.teams.length, anchors, fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, noDeath:!!setup.noDeath, deathmatch:!!setup.deathmatch, roster:setup.teams.map(()=>[]) };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;
   try{
     setup.teams.forEach((team,ti)=>{
-      const anchor=st.arena.anchors[ti], other=st.arena.anchors[1-ti], tx=anchor.x+2*Math.sign(other.x-anchor.x), ty=anchor.y+2*Math.sign(other.y-anchor.y);
+      const N=st.arena.anchors.length, mid={ x:Math.round(st.arena.anchors.reduce((a,p)=>a+p.x,0)/N), y:Math.round(st.arena.anchors.reduce((a,p)=>a+p.y,0)/N) };
+      const anchor=st.arena.anchors[ti], other=N>2?mid:st.arena.anchors[1-ti], tx=anchor.x+2*Math.sign(other.x-anchor.x), ty=anchor.y+2*Math.sign(other.y-anchor.y);
       // a team stands in a loose bunch just in front of its camp (not on the diagonal a plain flood fill would give)
       const free=arenaFreeTiles(st,anchor,70).map(t=>({ t, k:(t.x-tx)**2+(t.y-ty)**2+Math.random()*3 })).sort((p,q)=>p.k-q.k).map(p=>p.t);
       team.groups.forEach(grp=>{
         for(let i=0;i<Math.max(1,Math.min(20,grp.count|0));i++){
           const at=free.shift()||anchor, c=arenaMake(grp.kind,at.x,at.y);
-          c.faction=ti===0?'evil':'good'; c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.xp=xpForLevel(c.level);
+          c.faction=arenaSideFaction(ti); c.level=Math.max(1,Math.min(40,grp.level|0||1)); c.xp=xpForLevel(c.level);
           if(setup.ludus||setup.gearAll) c.gearUser=true;
           if(setup.ludus) c.hpMult=LUDUS_HP_MULT; else if(setup.hpMult) c.hpMult=setup.hpMult;
           c.inventory=arenaGear(c,grp,i); c.maxHp=statMaxHp(c); c.hp=c.maxHp;
@@ -191,19 +197,20 @@ function arenaStep(st){
     const rout=!st.arena.deathmatch && !arenaAlive(st,arenaTeamOf(c)).some(o=>o.state!=='fleeing');
     if(!st.arena.deathmatch && !(c.berserkTicks>0) && c.fleeTicks>=(rout?ARENA_ROUT_TICKS:ARENA_SURRENDER_TICKS) && !c.unconscious){ c.surrendered=true; c.unconscious=true; c.unconsciousTimer=1e9; c.path=[]; c.fightTarget=null; c.state='unconscious'; logEvent(`${actorLabel(c)} gibt auf.`,c.x,c.y); }
   });
-  const a=arenaAlive(st,0).length, b=arenaAlive(st,1).length;
-  if(a===0||b===0||st.tickCount>=st.arena.maxTicks){
-    st.arena.over=true; st.arena.winner=(a>0&&b===0)?0:((b>0&&a===0)?1:-1);
-    if(st.arena.winner<0 && st.arena.hpWins){   // out of time: whoever kept more of the health wins
-      const hp=ti=>st.creatures.filter(c=>arenaTeamOf(c)===ti&&!c.removed).reduce((n,c)=>n+Math.max(0,c.hp)/Math.max(1,c.maxHp),0), h0=hp(0), h1=hp(1);
-      if(Math.abs(h0-h1)>0.05) st.arena.winner=h0>h1?0:1;
+  const sides=st.arena.sides||2, up=[]; for(let ti=0;ti<sides;ti++) if(arenaAlive(st,ti).length) up.push(ti);
+  if(up.length<=1||st.tickCount>=st.arena.maxTicks){
+    st.arena.over=true; st.arena.winner=up.length===1?up[0]:-1;
+    if(st.arena.winner<0 && st.arena.hpWins){   // out of time: whoever kept more of the health wins (among the sides still standing)
+      const hp=ti=>st.creatures.filter(c=>arenaTeamOf(c)===ti&&!c.removed).reduce((n,c)=>n+Math.max(0,c.hp)/Math.max(1,c.maxHp),0);
+      const l=(up.length?up:[...Array(sides).keys()]).map(ti=>({ ti, h:hp(ti) })).sort((p,q)=>q.h-p.h);
+      if(l.length>1&&l[0].h-l[1].h>0.05) st.arena.winner=l[0].ti;
     }
   }
   return !st.arena.over;
 }
 // headless runs for numbers (the test bench)
 function arenaSimulate(setup,n,onProgress){
-  const prevState=state, prevScreen=screen, res={ wins:[0,0], draws:0, ticks:0, left:[0,0], runs:n };
+  const prevState=state, prevScreen=screen, res={ wins:setup.teams.map(()=>0), draws:0, ticks:0, left:[0,0], runs:n };
   try{
     for(let i=0;i<n;i++){
       const st=arenaBuild(setup,setup.fixedMap?'':'#'+i); state=st; screen='level';
@@ -302,7 +309,7 @@ function arenaRenderPanel(){
   const names=(arenaLiveSetup||arenaSetup).teams.map(t=>t.name);
   const row=c=>{ const pct=Math.max(0,Math.round(100*c.hp/Math.max(1,c.maxHp))), out=c.unconscious||c.removed||c.dead;
     return `<div class="arRow${out?' out':''}" data-row="${st.creatures.indexOf(c)}"><span class="arIc">${creatureIconHTML(c,28)}</span><span class="arName">${SPECIES[c.kind].label} ${c.level}${c.fallen?'':''}</span><span class="arBar"><i style="width:${pct}%"></i><em style="width:${Math.round(staminaOf(c))}%"></em></span><button data-pos="${st.creatures.indexOf(c)}" title="Besessenheit">👁</button></div>`; };
-  const cols=[0,1].map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
+  const cols=names.map((_,ti)=>ti).map(ti=>{ const all=st.creatures.filter(c=>arenaTeamOf(c)===ti); return `<div class="arTeam t${ti}"><b>${names[ti]}</b> <small>${arenaAlive(st,ti).length}/${all.length}</small>${all.map(row).join('')}</div>`; }).join('');
   const kinds=arenaKinds().map(k=>[k,SPECIES[k].label]).sort((p,q)=>p[1].localeCompare(q[1],'de'));
   const spells=ludusActive?(typeof ludusScrollsHTML==='function'?ludusScrollsHTML():''):`<div class="arSpells">${ARENA_SPELLS.map(s=>`<button data-spell="${s.id}" class="${arenaSpell===s.id?'on':''}" title="${s.name}">${s.icon} ${s.name}</button>`).join('')}</div>`
     + (arenaSpell==='summon'?`<div class="arSummon"><select data-sk>${arenaOpts(kinds,arenaSummon.kind)}</select> Stufe <input data-sl type="number" min="1" max="40" value="${arenaSummon.level}" style="width:44px"> <select data-st>${arenaOpts([[0,names[0]],[1,names[1]]],arenaSummon.team)}</select></div>`:'');

@@ -57,7 +57,7 @@ function ludusNpcOutcomes(st,won,o){
     n.met=1;
     const gone=c.removed||c.dead||!st.creatures.includes(c);
     if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; if(n.region!==undefined) ludusChron(n.region,'death',`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt im Kampf gegen deine Schule.`); return; }
-    const theyWon=ti===0?won:!won;
+    const theyWon=st.arena.winner===ti;
     if(n.inventory&&!(o&&o.rent&&ti===0)){ withState(st,()=>grantXp(c,ludusBoutXp(foeLv,theyWon,1))); n.level=c.level; n.xp=c.xp; n.inventory=JSON.parse(JSON.stringify(c.inventory||[])); n.learned=(c.learned||[]).slice(); n.hp=c.unconscious?1:Math.max(1,Math.round(c.hp)); n.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:100)-12); }
     if(theyWon) n.wins=(n.wins||0)+1; else n.losses=(n.losses||0)+1;
     if(ti===0){ n.last={ t:'ally', d:ludus.day }; n.bond=Math.min(3,(n.bond||0)+1); return; }

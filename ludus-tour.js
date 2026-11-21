@@ -103,7 +103,8 @@ const LUDUS_MODES={
   duel:  { label:'Duell',  size:1, foes:1, mult:1 },
   double:{ label:'Doppel', size:2, foes:2, mult:1.7 },
   trio:  { label:'Trio',   size:3, foes:3, mult:2.4 },
-  pack:  { label:'Rudel',  size:1, pack:true, mult:1.2 }
+  pack:  { label:'Rudel',  size:1, pack:true, mult:1.2 },
+  ffa:   { label:'Jeder gegen jeden', size:1, ffa:true, mult:1 }      // one of the own among several gladiators, everyone for himself: the last one standing wins
 };
 // today's offers in the arena of the region: the gladiators who came to fight here today. Duels with two of them (different strength),
 // a double or trio when the team can field one and enough came, and a pack (the weakest of them, together) against one
@@ -113,9 +114,9 @@ function ludusArenaOffers(){
   const pool=ludusGoers('arena').sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)), list=[];
   const add=(mode,glads)=>{
     const M=LUDUS_MODES[mode], foes=glads.map(ludusNpcFoe);
-    const o={ arena:true, mode, variant:M.pack?'swarm':(foes.length>1?'group':'duel'), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
+    const o={ arena:true, mode, ffa:!!M.ffa, variant:M.pack?'swarm':(M.ffa?'ffa':(foes.length>1?'group':'duel')), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
     o.title=(M.pack?'Rudel: ':'')+(foes.length>1?foes.map(f=>f.name).join(', '):`${foes[0].name} (${SPECIES[foes[0].kind].label})`);       // several foes: their names (one pair of brackets per title, so the translation reads it right)
-    o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:M.mult)*ludusHallMult());
+    o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:(M.ffa?0.8+0.5*foes.length:M.mult))*ludusHallMult());
     list.push(o);
   };
   if(pool.length) add('duel',[pool[Math.floor(pool.length/2)]]);
@@ -123,6 +124,7 @@ function ludusArenaOffers(){
   if(ludus.team.length>=3&&pool.length>=3) add('trio',pool.slice(0,3));
   else if(ludus.team.length>=2&&pool.length>=2) add('double',pool.slice(pool.length-2));
   if(pool.length>=3) add('pack',pool.slice(-Math.min(4,pool.length)));
+  if(pool.length>=4){ const k=Math.min(4,pool.length-1), at=Math.floor(r()*(pool.length-k+1)); add('ffa',pool.slice(at,at+k)); }
   ludus.arenaOffers={ day:ludus.day, region:id, list }; return list;
 }
 // the prize falls as the chances rise: a long shot pays up to twice as much, a sure thing half
@@ -338,5 +340,5 @@ function ludusArenaHTML(){
   const offers=ludusArenaOffers(), sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region, est=ludus.arenaEst&&ludus.arenaEst.sig===sig?ludus.arenaEst.est:null;
   const picks=ludusPicks();
   return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die ersten Kämpfer deiner Aufstellung an: ${picks.map(m=>ludusEsc(m.name)).join(', ')}.</p>${offers.length?'':'<p><i>Heute ist niemand in die Arena gekommen.</i></p>'}
-    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':` (${M.size} gegen ${M.foes})`}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Wähle ${M.size} Kämpfer`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
+    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Wähle ${M.size} Kämpfer`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
 }

@@ -28,6 +28,12 @@ const { open, finish }=require('./lib');
     out.est=ludus.arenaEst&&ludus.arenaEst.est;
     const g1=ludus.gold; out.arena=fight(Object.assign({},offers[0],{ members:[ludus.team[0].id], reward:30 })); out.arenaText=ludusResultText;
     if(out.arena==='Sieg'&&ludus.gold<=g1) bad('arena win without gold');
+    // free for all: one of the own among three gladiators, every one a side of his own
+    { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)).slice(0,3), foes=npcs.map(ludusNpcFoe);
+      const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };
+      const setup=ludusMatchSetup(o,'t'); if(setup.teams.length!==4) bad('ffa sides '+setup.teams.length);
+      const st=arenaBuild(setup,''); if(st.arena.anchors.length!==4||new Set(st.creatures.map(c=>c.faction)).size!==4) bad('ffa build');
+      const keep=ludus.team.map(m=>JSON.stringify(m)); out.ffa=fight(o); out.ffaText=ludusResultText; }
     // a second gladiator, so that line-ups matter
     ludus.gold+=500; const guest=ludusTavernGuests()[0]; if(guest){ ludusRecruit(guest.id); } out.team=ludus.team.map(m=>m.name+' L'+m.level).join(', ');
     // the rent: paid

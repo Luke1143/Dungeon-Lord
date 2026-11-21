@@ -107,11 +107,12 @@ const SCOUT_RUNS=4, LUDUS_XP_MULT=3.5;       // the campaign's levels come slowl
 // a gladiator of the world fights as what he is: his own level, gear, wounds and gifts (the same record as a member of the team)
 function ludusOppGroup(o){ if(o.npc){ const n=ludusNpc(o.npc); if(n&&n.inventory){ const g=ludusFighterGroup(n); g.npc=n.id; return g; } } if(o.ghost) return ludusFighterGroup(o.level===o.member.level?o.member:Object.assign({},o.member,{ level:o.level, xp:xpForLevel(o.level) })); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
 const ludusFoes=o=>o.foes||[o];
-const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.variant]||'Duell');
+const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe', ffa:'Jeder gegen jeden' }[o.variant]||'Duell');
 // `team` (optional) stands in for the fighter's own team: the test fights of a place with a level of its own use a reference team
 function ludusMatchSetup(o,salt,team){
   const foes=ludusFoes(o); team=team||(o.members?o.members.map(ludusMember).filter(Boolean):ludus.team);
-  return { teams:[ { name:team[0].name, groups:team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) }, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],
+  const own={ name:team[0].name, groups:team.map(m=>ludusFighterGroup(m)).concat(o.ally?[ludusOppGroup(o.ally)]:[]) };
+  return { teams:o.ffa?[own].concat(foes.map(f=>({ name:f.name, groups:[ludusOppGroup(f)] }))):[ own, { name:o.title||o.name, groups:foes.map(ludusOppGroup) } ],       // free-for-all: every foe a side of his own
     map:{ layout:o.layout||'pit', dims:'S', seed:'lud'+ludus.seed+':'+ludus.day, lava:0, water:0, crystal:0, near:1 }, items:o.items||null, fog:true, batch:1, ludus:true, fixedMap:true, swapSides:(arenaHash('side'+ludus.seed+':'+ludus.day)&1)===1, noDeath:!!o.pit, mercy:ludus.wins+ludus.losses<3 };       // nobody dies in the pit; the first bouts of a run cannot kill the team
 }
 function ludusAverageTier(){
