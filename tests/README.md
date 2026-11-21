@@ -13,7 +13,7 @@ NODE_PATH=$(npm root -g) node tests/shots.js arena,ludus   # only some pictures 
 |---|---|
 | `smoke.js` | menu, a campaign level (400 ticks, 2D and 3D), an arena match in 3D with fog, a Ludus bout to the end, no missing translations (`I18N_MISSES`) |
 | `work.js` | forge station, smelter (bellows, anvil) and digging at work; their effects (sparks, embers, chips) are emitted |
-| `ludus.js` | the Ludus tour without the match screen: ladder, pit (no gold, loot), arena, rent paid and unpaid, a whole tournament, travelling on |
+| `ludus.js` | the Ludus tour without the match screen: ladder, pit (no gold, loot), arena, rent paid and unpaid, a whole tournament, travelling on; the living world runs along (gladiators fight each other every evening) |
 | `emoji.js` | which emojis still reach the screen as emojis on the main screens (`STRICT=1` fails on any) |
 | `shots.js` | screenshots: menu, world map (also revealed), dungeon 2D/3D, toolbar, panel, portal, arena layouts, Ludus, options |
 

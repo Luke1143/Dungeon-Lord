@@ -22,7 +22,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       // the stash: what fits better than what is worn goes on
       const wear=()=>ludus.stash.slice().forEach(inst=>{ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return; const m=ludus.team.find(x=>{ const cur=has(x,d.type); return !cur.length||Math.max(...cur.map(ludusTierIndex))<ludusTierIndex(inst); }); if(m) ludusGiveItem(inst,m); });
       const build=()=>{ for(const id of ['inn','forge','hall','pit','training','library']){ const t=ludus.rooms[id]||0, c=LUDUS_ROOMS[id].cost[t]; if(c!==undefined&&ludus.renown>=c){ ludusBuyRoom(id); return; } } };
-      ludusMeta.unlockAll=true; ludusMeta.roomsAll=false; ludusMeta.ghosts=[]; ludusNewRun(kind,'Bot');
+      const t0=performance.now(); ludusMeta.unlockAll=true; ludusMeta.roomsAll=false; ludusMeta.ghosts=[]; ludusNewRun(kind,'Bot');
       let guard=0;
       while(!ludus.over&&ludus.day<MAXDAY&&guard++<2000){
         if(ludus.giftChoice){ const g=ludus.giftChoice.slice().sort((a,c)=>c.power-a.power)[0]; ludus.team[0].gifts.push(g); ludus.giftChoice=null; }
@@ -50,7 +50,11 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         const o=(ludus.options||[]).find(x=>x.diff==='fair')||(ludus.options||[])[0]; if(!o){ ludusAdvanceDay([]); continue; }
         fight(o,'pit');
       }
-      return { kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
+      // the world: who is alive where, how strong, what happened
+      const w=ludusMapWorld(), cols={}; (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{ const c=w.nodes[n.region].col; const e=cols[c]=cols[c]||{ n:0, lv:0, max:0 }; e.n++; e.lv+=n.level; e.max=Math.max(e.max,n.level); });
+      const world=Object.keys(cols).sort((a,c)=>a-c).map(c=>`c${c}:${cols[c].n}x L${(cols[c].lv/cols[c].n).toFixed(1)}/${cols[c].max}`).join(' ');
+      const chron=(ludus.chronicle||[]), count=re=>chron.filter(e=>re.test(e.t)).length;
+      return { world, deaths:count(/fällt/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));
     await p.close();

@@ -36,7 +36,7 @@ const ludusGearWord=t=>['zerlumpt und schlecht bewaffnet','einfach ausgerüstet'
 const ludusCastLine=s=>`${s.name} — ${SPECIES[s.kind].label}, Stufe ${s.level}, ${ludusGearWord(s.tier)}`;
 // the look of a character for the 3D view
 function ludusLookOf(s){
-  const c=arenaMake(s.kind,0,0); c.level=s.level; c.inventory=arenaGear(c,ludusOppGroup(s),0);
+  const c=ludusFoeCreature(s.npc?s:Object.assign({ npc:s.id&&ludusNpc(s.id)?s.id:undefined },s));
   const extra=typeof equipLook==='function'?equipLook(c):undefined;
   return { kind:s.kind, extra:extra||undefined, sig:JSON.stringify(extra||null) };
 }
@@ -48,13 +48,17 @@ function ludusTavernGuests(){
   const here=act.filter(n=>!n.boss&&n.region===ludus.map.region&&!ludusIsChamp(n.region,'npc',n.id)), known=shuf(here.filter(n=>n.met)), rest=shuf(here.filter(n=>!n.met));
   return known.slice(0,3).concat(rest.slice(0,2)).slice(0,5);
 }
-// after a match: what happened to the characters who fought in it
-function ludusNpcOutcomes(st,won){
+// after a match: what happened to the characters who fought in it. A gladiator of the world keeps what the bout did to him (life, experience, gear), like the team does
+function ludusNpcOutcomes(st,won,o){
+  const foeLv=Math.max(...ludus.team.map(m=>m.level));
   (st.arena.roster||[]).forEach((team,ti)=>team.forEach(c=>{
     const n=c.npcId&&ludusNpc(c.npcId); if(!n) return;
     n.met=1;
     const gone=c.removed||c.dead||!st.creatures.includes(c);
-    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; return; }
+    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; if(n.region!==undefined) ludusChron(n.region,`${n.name} (${SPECIES[n.kind].label}, Stufe ${n.level}) fällt im Kampf gegen deine Schule.`); return; }
+    const theyWon=ti===0?won:!won;
+    if(n.inventory&&!(o&&o.rent&&ti===0)){ withState(st,()=>grantXp(c,ludusBoutXp(foeLv,theyWon,1))); n.level=c.level; n.xp=c.xp; n.inventory=JSON.parse(JSON.stringify(c.inventory||[])); n.learned=(c.learned||[]).slice(); n.hp=c.unconscious?1:Math.max(1,Math.round(c.hp)); n.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:100)-12); }
+    if(theyWon) n.wins=(n.wins||0)+1; else n.losses=(n.losses||0)+1;
     if(ti===0){ n.last={ t:'ally', d:ludus.day }; n.bond=Math.min(3,(n.bond||0)+1); return; }
     if(won){
       if(c.surrendered){ n.last={ t:'surrender', d:ludus.day }; n.maimed=true; }
@@ -68,9 +72,8 @@ function ludusNpcOutcomes(st,won){
 const ludusMateLevel=n=>n.level;       // a gladiator joins as what he is
 const ludusRecruitPrice=n=>Math.round((20+22*ludusMateLevel(n))*((n.bond||0)>=2?0.5:((n.bond||0)<0?1.6:1)));
 function ludusJoinTeam(n){
-  const lv=ludusMateLevel(n), c=arenaMake(n.kind,0,0); c.level=lv;
-  const inv=arenaGear(c,ludusOppGroup(ludusNpcFoe(n)),0);
-  ludus.team.push({ id:'m'+n.id, npc:n.id, gifts:[], kind:n.kind, name:n.name, level:lv, xp:xpForLevel(lv), hp:undefined, inventory:JSON.parse(JSON.stringify(inv)), learned:[], books:[], seed:n.seed, honor:n.honor||0 });
+  ludusEquip(n);
+  ludus.team.push({ id:'m'+n.id, npc:n.id, gifts:JSON.parse(JSON.stringify(n.gifts||[])), kind:n.kind, name:n.name, level:n.level, xp:n.xp||xpForLevel(n.level), hp:n.hp, energy:n.energy, inventory:JSON.parse(JSON.stringify(n.inventory||[])), learned:(n.learned||[]).slice(), books:[], seed:n.seed, honor:n.honor||0 });
   ludusNormalizeGear(ludus.team[ludus.team.length-1]); n.status='team'; n.maimed=false; n.met=1; n.last={ t:'joined', d:ludus.day };
 }
 function ludusRecruit(id){
@@ -80,6 +83,6 @@ function ludusRecruit(id){
 }
 function ludusDismiss(i){
   const m=ludus.team[i]; if(!m||ludus.team.length<2) return;
-  const n=m.npc&&ludusNpc(m.npc); if(n){ n.status='active'; n.level=m.level; n.region=ludus.map.region; n.honor=m.honor||0; n.last={ t:'left', d:ludus.day }; }
+  const n=m.npc&&ludusNpc(m.npc); if(n){ Object.assign(n,{ status:'active', level:m.level, xp:m.xp, hp:m.hp, energy:m.energy, inventory:JSON.parse(JSON.stringify(m.inventory||[])), learned:(m.learned||[]).slice(), gifts:JSON.parse(JSON.stringify(m.gifts||[])), region:ludus.map.region, honor:m.honor||0, last:{ t:'left', d:ludus.day } }); }
   ludus.team.splice(i,1); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); ludus.pick=(ludus.pick||[]).filter(id=>id!==m.id); ludusNote=`${m.name} verlässt das Team.`; ludusSave(); ludusRender();
 }

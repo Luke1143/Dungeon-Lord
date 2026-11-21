@@ -74,3 +74,12 @@ i18nRegister({
 "{0} heult: die Gegner zucken zurück.":"{0} howls: the foes flinch.", "{0} platzt in einer Feuersbrunst!":"{0} bursts in a blaze!", "{0} weckt einen Gefallenen!":"{0} wakes a fallen one!",
 "{0} fängt einmal einen tödlichen Schlag für einen Verbündeten ab":"{0} takes a deadly blow for an ally, once", "{0} steigt einmal aus der Asche wieder auf":"{0} rises from the ashes once"
 });
+// the living world (ludus-life.js)
+i18nRegister({
+"in der Grube":"in the pit", "in der Arena":"in the arena", "ruht":"resting", "{0} Siege":"{0} wins", "{0} getötet":"{0} killed", "Chronik":"Chronicle",
+"{0} nimmt {1} in der Grube {2} ab.":"{0} takes {2} from {1} in the pit.", "{0} ({1}, Stufe {2}) fällt in der Arena gegen {3}.":"{0} ({1}, level {2}) falls in the arena against {3}.", "{0} ({1}, Stufe {2}) fällt in der Arena.":"{0} ({1}, level {2}) falls in the arena.",
+"{0} ({1}, Stufe {2}) fällt im Kampf gegen deine Schule.":"{0} ({1}, level {2}) falls fighting your school.", "{0} gewinnt das Turnier von {1} und stürzt {2}.":"{0} wins the tournament of {1} and topples {2}.",
+"{0} (Stufe {1}) zieht weiter nach {2}.":"{0} (level {1}) moves on to {2}.", "{0} ({1}) beginnt als Neuling in {2}.":"{0} ({1}) starts as a rookie in {2}.",
+"Tag {0} · {1}:":"Day {0} · {1}:", "Tag {0}:":"Day {0}:", "Heute ist niemand in die Arena gekommen.":"Nobody came to the arena today.", "Heute ist niemand in die Grube gekommen.":"Nobody came to the pit today.",
+"Übungskämpfe, jeden Tag: Hier stirbt niemand, und es gibt kein Gold, nur Erfahrung und das beste Stück Ausrüstung der Besiegten. Gegner sind die Gladiatoren der Region, die heute in die Grube gekommen sind. Es treten alle an, die in deiner Aufstellung stehen: {0}.":"Practice bouts, every day: nobody dies here, and there is no gold, only experience and the best piece of the beaten foes' gear. The foes are the region's gladiators who came to the pit today. Everyone in your line-up steps in: {0}."
+});

@@ -104,7 +104,8 @@ function ludusLog(t){ ludus.log.unshift(`Tag ${ludus.day}: ${t}`); ludus.log=lud
 const LUDUS_DIFF={ easy:{ label:'Leicht', target:0.8, mult:0.6 }, fair:{ label:'Fair', target:0.5, mult:1 }, hard:{ label:'Schwer', target:0.3, mult:1.7 } };
 const SCOUT_RUNS=4, LUDUS_XP_MULT=3.5;       // the campaign's levels come slowly; a run is short, so a fight is worth three and a half times as much
 // a ghost whose level was lowered starts with the experience of that level
-function ludusOppGroup(o){ if(o.ghost) return ludusFighterGroup(o.level===o.member.level?o.member:Object.assign({},o.member,{ level:o.level, xp:xpForLevel(o.level) })); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
+// a gladiator of the world fights as what he is: his own level, gear, wounds and gifts (the same record as a member of the team)
+function ludusOppGroup(o){ if(o.npc){ const n=ludusNpc(o.npc); if(n&&n.inventory){ const g=ludusFighterGroup(n); g.npc=n.id; return g; } } if(o.ghost) return ludusFighterGroup(o.level===o.member.level?o.member:Object.assign({},o.member,{ level:o.level, xp:xpForLevel(o.level) })); const g=arenaGroup(o.kind,1,o.level); g.tier=o.tier; g.seed=o.seed; g.name=o.name; if(o.npc) g.npc=o.npc; return g; }
 const ludusFoes=o=>o.foes||[o];
 const ludusVariantLabel=o=>({ swarm:'Rudel', tag:'Tag-Team', group:'Gruppe' }[o.variant]||'Duell');
 // `team` (optional) stands in for the fighter's own team: the test fights of a place with a level of its own use a reference team
@@ -157,15 +158,16 @@ function ludusScoutOpponent(){
   ludusBusy=true; ludusRender();
   const picks=ludusPicks(), ids=picks.map(m=>m.id);
   // one candidate per timer tick, so the page stays alive and can paint between the test fights
-  const r=ludusRng('opp'+ludus.day+':'+ids.join(',')), cands=[];
-  const scales=[0.55,0.7,1,1,1,1.3,1.6,2];
-  ludusWithTeam(picks,()=>{ const tier=ludusAverageTier(), kinds=ludusFoeKinds(), level=ludusLevel();
-    for(let i=0;i<8;i++){ const o=ludusCandidate(r,kinds,level,tier,i<3?0:(i<5?0.6:(i<7?0.9:undefined)),scales[i]); o.pit=true; o.members=ids; o.items=null; cands.push(o); } });
+  // the candidates: groups of gladiators who came to the pit today, as many as the line-up (fewer when not enough came), of every strength
+  const goers=ludusGoers('pit').sort((a,b)=>ludusGladWorth(a)-ludusGladWorth(b)), n=Math.min(ids.length,goers.length), cands=[], r=ludusRng('opp'+ludus.day+':'+ids.join(','));
+  for(let i=0;n>0&&i+n<=goers.length;i++){ const foes=goers.slice(i,i+n).map(ludusNpcFoe); cands.push({ pit:true, members:ids, variant:foes.length>1?'group':'duel', foes, kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name, layout:ludusLayoutPick(r) }); }
+  cands.forEach(o=>{ o.title=ludusBoutLabel(o); });
   const run=ludus, want=['fair','easy'].concat(ludusRoomTier('pit')>=2?['hard']:[]), rated=[];
   const step=i=>{
     if(ludus!==run){ ludusBusy=false; return; }
     if(i>=cands.length){
       const used=new Set(), opts=[];
+      if(!cands.length){ run.options=[]; run.optionsSig=sig; ludusBusy=false; ludusSave(); ludusRender(); return; }
       want.forEach(d=>{ let best=null; rated.forEach(x=>{ if(used.has(x.o)) return; const sc=Math.abs(x.rate-LUDUS_DIFF[d].target); if(!best||sc<best.sc) best={ sc, x }; }); if(best){ used.add(best.x.o); opts.push(Object.assign(best.x.o,{ diff:d, est:+best.x.rate.toFixed(2), reward:0 })); } });
       opts.sort((p,q)=>LUDUS_DIFF[p.diff].mult-LUDUS_DIFF[q.diff].mult);
       run.options=opts; run.optionsSig=sig; ludusBusy=false; ludusSave(); ludusRender(); return;
@@ -224,9 +226,11 @@ function ludusQuickBout(diff,rewardMult){
 function ludusAdvanceDay(fought,noRest){
   const ids=new Set((fought||[]).map(m=>m.id||m));
   if(!noRest) ludus.team.forEach(m=>{ if(ids.has(m.id)) return; ludusHeal(ludusSleepHeal()*0.5,m); m.energy=Math.min(100,(m.energy===undefined?100:m.energy)+40); });
+  if(!ludus.over) ludusLifeEvening();       // the gladiators who did not meet the player fight each other
   ludus.day++; ludus.opp=null; ludus.options=null; ludus.event=null;
   if(ludus.over) return;
   ludusCalendar();
+  ludusLifePlan();
   if(!ludus.forced) ludusMaybeEvent();
 }
 function ludusForcedBout(){
@@ -236,6 +240,8 @@ function ludusForcedBout(){
   return fo.opp;
 }
 
+// a foe as a creature (for pictures): a gladiator of the world as he is, a stranger with the gear of his group
+function ludusFoeCreature(f){ const n=f.npc&&ludusNpc(f.npc); if(n&&n.inventory) return ludusMemberCreature(n); const c=arenaMake(f.kind,0,0); c.level=f.level; c.inventory=arenaGear(c,ludusOppGroup(f),0); return c; }
 // ---- the match ----
 function ludusFight(o){
   if(!ludus||ludus.over) return;
@@ -256,7 +262,8 @@ function ludusResolve(st){
   let head, text;
   if(ludus.forced&&ludus.forced.type!=='tourney') ludus.forced=null;
   ludus.lastFight=ludus.day;
-  ludusNpcOutcomes(st,won);
+  ludusNpcOutcomes(st,won,o);
+  ludusLifeBusy(foes.map(f=>f.npc));
   fallen.forEach(p=>{ const n=p.m.npc&&ludusNpc(p.m.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; } });
   ludus.team=ludus.team.filter(m=>!fallen.some(p=>p.m===m)); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1));
   const fell=fallen.map(p=>p.m.name).join(', ');
@@ -276,9 +283,9 @@ function ludusResolve(st){
       ludus.wins++; head='Sieg';
       if(o.pit){
         // the pit pays in gear: the best piece the beaten foes carried
-        const pool=(st.arena.roster[1]||[]).reduce((a,c)=>a.concat((c.inventory||[]).filter(i=>instDef(i)&&['weapon','armor','shield'].includes(instDef(i).type))),[]);
-        pool.sort((a,b)=>ludusPrice(b.id)-ludusPrice(a.id)||((b.q||1)-(a.q||1)));
-        const best=pool[0]?JSON.parse(JSON.stringify(pool[0])):null; if(best){ delete best.off; delete best.pin; ludus.stash.push(best); }
+        const pool=(st.arena.roster[1]||[]).reduce((a,c)=>a.concat((c.inventory||[]).filter(i=>instDef(i)&&['weapon','armor','shield'].includes(instDef(i).type)).map(i=>({ i, c }))),[]);
+        pool.sort((a,b)=>ludusPrice(b.i.id)-ludusPrice(a.i.id)||((b.i.q||1)-(a.i.q||1)));
+        const best=pool[0]?JSON.parse(JSON.stringify(pool[0].i)):null; if(best){ delete best.off; delete best.pin; ludus.stash.push(best); const n=pool[0].c.npcId&&ludusNpc(pool[0].c.npcId); if(n&&n.inventory){ const k=n.inventory.findIndex(x=>x.id===best.id&&x.s===best.s); if(k>=0) n.inventory.splice(k,1); } }
         text=`${who} gewinnt gegen ${o.title||o.name}. +${xp} Erfahrung${best?`, Beute: ${instLabel(best)}`:''}.`;
       } else if(o.rent){
         text=`${who} gewinnt gegen ${o.title||o.name}. Damit ist die Miete abgegolten, mehr gibt es nicht.`;
@@ -472,7 +479,7 @@ function ludusRender(){
     main=`<div class="luPanel"><h2>${room.label} (Stufe ${tier}/${room.cost.length})</h2><p>${room.text[tier-1]}.</p>${roomId==='forge'?`<h3>Sortiment der Schmiede</h3>${ludusCatsHTML()}`:''}${ludusRoomBox(roomId)}</div>`;
   } else if(ludusTab==='pit'){
     const opts=ludus.options&&ludus.optionsSig===ludusPickSig()+'|'+ludus.day?ludus.options:null;
-    main=`<div class="luPanel"><h2>Grube</h2><p class="luHint">Übungskämpfe, jeden Tag: Hier stirbt niemand, und es gibt kein Gold, nur Erfahrung und das beste Stück Ausrüstung der Besiegten. Es treten alle an, die in deiner Aufstellung stehen: ${ludusPicks().map(m=>ludusEsc(m.name)).join(', ')}.</p>`+(opts?`<div class="luOpts">${opts.map((o,i)=>`<div class="luOption"><div class="luDiff d-${o.diff}">${LUDUS_DIFF[o.diff].label}</div><canvas class="luOptPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>${ludusVariantLabel(o)} · Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>Aussichten: ${Math.round(o.est*100)} %</div><button data-fight="${i}" class="menuMain">Kämpfen</button></div>`).join('')}</div>`
+    main=`<div class="luPanel"><h2>Grube</h2><p class="luHint">Übungskämpfe, jeden Tag: Hier stirbt niemand, und es gibt kein Gold, nur Erfahrung und das beste Stück Ausrüstung der Besiegten. Gegner sind die Gladiatoren der Region, die heute in die Grube gekommen sind. Es treten alle an, die in deiner Aufstellung stehen: ${ludusPicks().map(m=>ludusEsc(m.name)).join(', ')}.</p>`+(opts&&!opts.length?'<p><i>Heute ist niemand in die Grube gekommen.</i></p>':'')+(opts?`<div class="luOpts">${opts.map((o,i)=>`<div class="luOption"><div class="luDiff d-${o.diff}">${LUDUS_DIFF[o.diff].label}</div><canvas class="luOptPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>${ludusVariantLabel(o)} · Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>Aussichten: ${Math.round(o.est*100)} %</div><button data-fight="${i}" class="menuMain">Kämpfen</button></div>`).join('')}</div>`
       : (ludusBusy?'<p>Der Grubenmeister sucht Gegner … <span id="luScout"></span></p>':'<p>Kein Gegner in Sicht.</p>'))+`<p class="luHint">Jeder Kampf kostet einen Tag; wer nicht kämpft, erholt sich. Eine ausgebaute Grube bietet auch schwere Kämpfe.</p>${ludusRoomBox('pit')}</div>`;
   } else if(ludusTab==='arena'){
     main=ludusArenaHTML();
@@ -568,7 +575,7 @@ function ludusHubSync(roomId){
 function ludusPaint(){
   if(screen!=='ludus'||!ludus) return;
   const cv=document.getElementById('luPrev'); if(cv) arenaPaintCreature(cv,ludusCreature(),0,96);
-  const draw=(canvas,o,size)=>{ const f=ludusFoes(o)[0], c=arenaMake(f.kind,0,0); c.level=f.level; c.inventory=arenaGear(c,ludusOppGroup(f),0); arenaPaintCreature(canvas,c,1,size); };
+  const draw=(canvas,o,size)=>{ arenaPaintCreature(canvas,ludusFoeCreature(ludusFoes(o)[0]),1,size); };
   document.querySelectorAll('canvas.luOptPrev').forEach(cv2=>{ const o=(ludus.options||[])[+cv2.dataset.opt]; if(o) draw(cv2,o,66); });
   document.querySelectorAll('canvas.luArPrev').forEach(cv2=>{ const o=(ludus.arenaOffers&&ludus.arenaOffers.list||[])[+cv2.dataset.opt]; if(o) draw(cv2,o,66); });
   const fc=document.getElementById('luForcedPrev'); if(fc&&ludus.forced){ const o=ludus.forced.type==='tourney'?ludusTourneyBout():ludus.forced.opp; if(o) draw(fc,o,76); }
