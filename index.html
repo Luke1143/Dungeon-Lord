@@ -316,6 +316,7 @@
   body.arenaMode #arenaPanel{ flex:none; max-height:60%; overflow-y:auto; scrollbar-width:thin; }
   @media (max-width:900px){ body.inLevel #levelScreen .panel.dkPanel{ left:6px; right:6px; top:auto; width:auto; max-height:45vh; } #eventStack{ left:6px; top:60px; bottom:auto; flex-direction:row; width:auto; height:46px; } }
 
+  img.emi{ image-rendering:pixelated; width:14px; height:14px; vertical-align:-2px; display:inline-block; } img.emi2{ width:28px; height:28px; vertical-align:-6px; }
   .pxIcon{ image-rendering:pixelated; width:28px; height:28px; display:block; margin:0 auto; } .dkTab .pxIcon{ width:28px; height:28px; } .evIcon .pxIcon{ width:36px; height:36px; margin:0 auto; } .tile img.ti{ width:28px; height:28px; }
   .cText{ position:absolute; z-index:13; transform:translate(-50%,-50%); font-family:'Cinzel',serif; font-weight:700; font-size:17px; pointer-events:none; text-shadow:0 0 3px #000,0 1px 2px #000; animation:cRise .9s ease-out forwards; }
   .cText.own{ color:#fff4cc; } .cText.foe{ color:#ff8a7a; } .cText.crit{ font-size:26px; color:#ffd24a; } .cText.miss{ font-size:12px; font-weight:500; color:#b8b0a0; font-style:italic; font-family:'Inter',sans-serif; }
@@ -6420,7 +6421,7 @@ function draw2d(){
     const h=Math.max(...room.tiles.map(t=>t.y))-minY+1;
     // Portal-Effekt: dreht sich stufenweise gegen den Uhrzeigersinn
     const spin=-(Math.floor(Date.now()/400)%4)*Math.PI/2;
-    drawEmojiFx(room.type==='portal' ? '🔥' : '🌀', minX+(w-1)/2, minY+(h-1)/2, { scale:Math.max(w,h)*1.9, alpha:0.6, rotation:room.type==='portal' ? 0 : spin });
+    drawFloorArt(portalArt(room.type==='portal', Math.floor(Date.now()/220)%2), minX+(w-1)/2, minY+(h-1)/2, { scale:Math.max(w,h)*1.9, alpha:room.type==='portal'?0.8:0.7, rotation:room.type==='portal' ? 0 : spin });
   });
 
   dormitoryTorchSpots().forEach(spot=> drawEmoji('🕯️', spot.x, spot.y, false));
@@ -6722,6 +6723,38 @@ function drawEmojiFx(char,x,y,{rotation=0, scale=1, alpha=1, offsetY=0, offsetX=
   ctx.font=Math.round(16*scale)+'px serif';
   ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText(char, 0, 0);
+  ctx.restore();
+}
+
+// the pictures on the floor of the entrance (a swirl with three arms) and of the heroes' portal (a ring of flames, two frames that flicker), 32 x 32
+const PORTAL_ART={};
+function portalArt(fire,frame){
+  const key=(fire?'f':'s')+frame; if(PORTAL_ART[key]) return PORTAL_ART[key];
+  const N=32, cv=document.createElement('canvas'); cv.width=cv.height=N; const g=cv.getContext('2d');
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const dx=x+0.5-N/2, dy=y+0.5-N/2, r=Math.hypot(dx,dy), a=Math.atan2(dy,dx);
+    let col=null;
+    if(!fire){
+      if(r>15) continue;
+      const arm=Math.sin(3*a+r*0.55);                       // three arms winding inwards
+      if(r<2.2) col='#f4fcff'; else if(arm>0.55) col=r<8?'#bff0ff':'#6cc8f0'; else if(arm>0) col='#3a8ad0'; else if(arm>-0.5) col='#24508c'; else col=r>12?null:'#182c5a';
+    } else {
+      const tongue=12+2.6*Math.max(0,Math.sin(8*a+frame*0.8))+((x*7+y*13+frame*5)%5===0?1:0);   // flames licking outwards from a glowing ring
+      if(r>tongue||r<6) continue;
+      const t=(r-6)/(tongue-6);
+      col=t<0.25?'#fff2a0':t<0.5?'#ffd23f':t<0.78?'#f08020':'#b8301a';
+    }
+    if(col){ g.fillStyle=col; g.fillRect(x,y,1,1); }
+  }
+  return PORTAL_ART[key]=cv;
+}
+// a picture lying flat on the floor (2D: drawn over the tiles; 3D: a decal); scale like drawEmojiFx (1 = half a tile)
+function drawFloorArt(cv,x,y,{rotation=0, scale=1, alpha=1}={}){
+  if(fogHidden(x,y)) return;
+  if(capture){ capture.push({ kind:'emoji', canvas:cv, flat:true, x, y, scale, alpha, rotation }); return; }
+  const px=(x-camX)*TILE, py=(y-camY)*TILE, size=TILE*0.5*scale;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.imageSmoothingEnabled=false;
+  ctx.translate(px+TILE/2, py+TILE/2); ctx.rotate(rotation); ctx.drawImage(cv,-size/2,-size/2,size,size);
   ctx.restore();
 }
 

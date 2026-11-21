@@ -17,6 +17,8 @@ Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das 
 ## Eigene Pixelsymbole
 `icons.js` zeichnet alle Symbole des Menüs selbst (12 × 12, aus Rechtecken, Kreisen und Linien, mit dunklem Rand): Gebäude, Zauber, Reiter und die Meldungen. Die Brücke in den Arenen hat jetzt die Bohlen der Kampagnenbrücke. Der Bildeffekt liegt in `postfx.js` und gilt auch für den Ludus-Hof.
 
+**Emojis werden zu Pixelbildern**: `EMOJI_SHAPES` in `icons.js` ordnet einem Emoji ein eigenes Bild zu (eigene Form, ein Menüsymbol `ui:id` oder der Gedanke `th`). Ausrüstung (Waffe, Rüstung, Schild) bekommt automatisch das Bild des ersten Gegenstands mit diesem Emoji (`itemIconCanvas`). Der Tausch passiert dort, wo der Text auf den Bildschirm kommt, wie bei der Übersetzung: im Dokument ersetzt ein Beobachter jedes bekannte Emoji durch ein kleines Bild (14 px, in großer Schrift 28 px, Klasse `emi`), und eine Leinwand, die ein bekanntes Emoji allein zeichnet (`fillText`), zeichnet stattdessen das Bild in Schriftgröße (Spielwelt 2D und 3D, Arena, Ludus). Ein Emoji ohne Eintrag bleibt ein Emoji; ein neues Bild ist ein neuer Tabelleneintrag. Eingang und Heldenportal haben eigene größere Bodenbilder (32 × 32: Wirbel mit drei Armen, flackernder Flammenring; `portalArt`, `drawFloorArt`).
+
 ## Optionen und Bildstimmung
 - **Optionen** (`options.js`, Zahnrad in der Leiste, Knopf im Hauptmenü, Taste O): Ansicht 3D/2D, Stimmungslicht, Schatten unter Kreaturen, Tiefe der Figuren, Bildeffekt. Eine neue Einstellung ist eine neue Zeile in `OPTION_ROWS`. Gespeichert im Browser (`dungeon-lord-options`, dazu wie bisher `dungeon-lord-3d` und `dungeon-lord-post`).
 - **3D ist die Standardansicht**; 2D bleibt in den Optionen und auf Taste V.

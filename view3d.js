@@ -349,7 +349,7 @@ const View3D=(()=>{
     }
     const tex=it.canvas?texOfCanvas(it.canvas):emojiTex(it.emoji);
     const ox=(it.ox||0)/32, oy=(it.oy||0)/32, alpha=it.alpha===undefined?1:it.alpha;
-    if(it.emoji && it.scale>=1.5){
+    if((it.emoji||it.flat) && it.scale>=1.5){
       const d=takeDecal(); d.material.map=tex; d.material.opacity=alpha; d.material.needsUpdate=true;
       const size=0.5*it.scale; d.scale.set(size,1,size); d.position.set(it.x+0.5,0.03,it.y+0.5); d.rotation.y=-(it.rotation||0);
       return;
