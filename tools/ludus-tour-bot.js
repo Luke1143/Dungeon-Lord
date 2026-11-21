@@ -28,7 +28,6 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         if(ludus.giftChoice){ const g=ludus.giftChoice.slice().sort((a,c)=>c.power-a.power)[0]; ludus.team[0].gifts.push(g); ludus.giftChoice=null; }
         ludus.followup=null;
         if(ludus.event){ const d=ludusEventDef(ludus.event.id), opts=ludusEventOptions(d); let pick=opts.findIndex(o=>!o.when||o.when(ludus.event)); ludusEventChoose(Math.max(0,pick)); ludus.followup=null; continue; }
-        ludus.pick=ludus.team.map(m=>m.id);
         build(); shop(); wear();
         for(const g of ludusTavernGuests().slice().sort((x,y)=>y.level-x.level)){ if(ludusSlotsFree()>0&&ludus.gold>=ludusRecruitPrice(g)+ludusRent()+20&&(g.bond||0)>-2){ ludusRecruit(g.id); break; } }
         if(ludus.forced){
@@ -42,9 +41,13 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
           const o=ludusForcedBout(); fight(Object.assign({},o,{ members:[ludus.team.slice().sort((a,c)=>c.level-a.level)[0].id] }),t==='rent'?'rent':'arena'); continue;
         }
         if(ludus.map.cleared.includes(ludus.map.region)||!ludusIsRegion(ludusHere())){ const nx=ludusMapNeighbours(ludus.map.at).filter(ludusCanTravel); if(nx.length){ const w=ludusMapWorld(); const to=nx.sort((a,c)=>w.nodes[a].col-w.nodes[c].col)[0]; ludusMapTravel(to); if(ludusIsRegion(ludusHere())) stats.regions.push([ludus.day,ludusHere().col]); continue; } }
-        const hurt=Math.min(...ludus.team.map(m=>ludusHealPct(ludusMemberCreature(m),m)));
-        const tIn=ludusTourneyIn();
-        if(hurt<50||(tIn<=1&&hurt<90)){ ludusHealAll(ludusSleepHeal()); ludus.team.forEach(m=>{ m.energy=100; }); ludusAdvanceDay([],true); continue; }
+        // the day's tasks: the hurt rest (everyone before a tournament), one works when gold runs short, the weakest trains when there is plenty, the others fight
+        const tIn=ludusTourneyIn(), pct=m=>ludusHealPct(ludusMemberCreature(m),m);
+        ludus.team.forEach(m=>{ m.job=(pct(m)<55||(tIn<=1&&pct(m)<90))?'rest':'fight'; });
+        const able=ludus.team.filter(m=>m.job==='fight').sort((a,c)=>a.level-c.level);
+        if(able.length&&ludus.gold<4*ludusRent()) able[0].job='work';       // short of gold: the weakest works (alone, the only one)
+        else if(able.length>1&&ludusRoomTier('training')&&ludus.gold>ludusTrainCost(able[0])+10*ludusRent()) able[0].job='train';
+        if(!ludusPicks().length){ ludusEndDay(); stats.idle=(stats.idle||0)+1; continue; }
         // the arena when the chances are good
         ludus.arenaEst=null; ludusArenaScout(); for(let i=0;i<400&&!ludus.arenaEst;i++) await sleep(20);
         const offers=ludusArenaOffers(), est=ludus.arenaEst?ludus.arenaEst.est:{};
@@ -52,7 +55,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         if(best>=0&&tIn>2){ ludusArenaFight(best); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const w0=ludus.wins; ludusResolve(st); ludusLeaveMatch(); stats.arena[ludus.wins>w0?0:1]++; continue; }
         // else the pit
         ludus.options=null; ludusBusy=false; ludusScoutOpponent(); for(let i=0;i<600&&!ludus.options;i++) await sleep(20);
-        const o=(ludus.options||[]).find(x=>x.diff==='fair')||(ludus.options||[])[0]; if(!o){ ludusAdvanceDay([]); continue; }
+        const o=(ludus.options||[]).find(x=>x.diff==='fair')||(ludus.options||[])[0]; if(!o){ ludusEndDay(); stats.idle=(stats.idle||0)+1; continue; }
         fight(o,'pit');
       }
       // the world: who is alive where, how strong, what happened

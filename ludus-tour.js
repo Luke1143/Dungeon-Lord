@@ -1,12 +1,14 @@
 // The Ludus tour (concept: docs/ludus.md, "Neues Gerüst: die Tournee"). The run travels across a campaign-style map from left to right.
 // Every city is a region with its own gladiators and a ladder; the region's champion (at first its boss) stands on place 1.
-// The calendar: every round is a day; rent is due every week (who cannot pay fights in the arena for nothing), a tournament every 30 days.
+// The day: every gladiator of the school has a task (fight, rest, train, work); at most one bout of the school a day. Every evening each gladiator costs his board and lodging
+// (who cannot pay fights in the arena for nothing the next morning); a tournament every 10 days.
 // Whoever wins a region's tournament is its new place 1 and may travel on to the right; the champion of the last column wins the run.
 // State: ludus.map={ at, region, cleared[] }, ludus.regions={ [nodeId]: { champ:{ t:'npc'|'own', id } } }, ludus.tourney while a tournament runs,
 // the region's gladiators live in ludus.world (field `region`), the team's honour in member.honor (counted in the region the team is in).
 const LUDUS_TOUR={
-  tourneyEvery:30, rentEvery:7,     // days
-  rentBase:10, rentPerCol:6,         // gold per own gladiator and week: so much, and so much more for each column of the map
+  tourneyEvery:10,                  // days
+  upkeepBase:2, upkeepPerCol:1,     // board and lodging, gold per gladiator and day: so much, and so much more for each column of the map (for the player's school and every gladiator of the world alike)
+  wageMult:2,                       // a day of work pays twice one's board
   roster:9,                         // gladiators of a region besides its champion
   bracket:8,                        // places in a tournament
   cap:9                             // the highest region level (the experience needed doubles with every level)
@@ -38,8 +40,9 @@ function ludusMapInit(){
 const ludusRegionLevel=col=>Math.max(1,Math.min(LUDUS_TOUR.cap,1+col));
 const ludusRegionTier=col=>col<3?0:(col<7?1:2);       // the gear that is usual there (crude at first, plain in the middle, fine at the end)
 const ludusRegionUnit=col=>creatureWorthAt('ork',ludusRegionLevel(col));
-const ludusRent=()=>(LUDUS_TOUR.rentBase+LUDUS_TOUR.rentPerCol*ludusRegionNode().col)*ludus.team.length;
-const ludusRentIn=()=>LUDUS_TOUR.rentEvery-(ludus.day%LUDUS_TOUR.rentEvery);
+const ludusUpkeep=col=>LUDUS_TOUR.upkeepBase+LUDUS_TOUR.upkeepPerCol*col, ludusWage=col=>LUDUS_TOUR.wageMult*ludusUpkeep(col);
+// the school's board and lodging for one day (whoever fought off a debt today eats for free: the bout paid for the day)
+const ludusRent=()=>ludusUpkeep(ludusRegionNode().col)*ludus.team.filter(m=>m.debtPaidDay!==ludus.day).length;
 const ludusTourneyIn=()=>LUDUS_TOUR.tourneyEvery-(ludus.day%LUDUS_TOUR.tourneyEvery);
 // the kinds a region's gladiators come from: the stronger kinds only further to the right
 const ludusRegionKinds=col=>{ const max=1.25+0.3*col, l=arenaKinds().filter(k=>creatureWorth(k)<=max&&creatureWorth(k)>=0.38); return l.length?l:arenaKinds(); };
@@ -86,12 +89,11 @@ function ludusBoard(id){
 }
 const ludusRankOf=(id,t,ref)=>{ const r=ludusBoard(id).find(x=>x.t===t&&x.id===ref); return r?r.rank:99; };
 
-// ---- the line-up: who steps in today. Bouts use the picked gladiators, the others rest ----
-function ludusPicks(){ const ids=(ludus.pick||[]).filter(id=>ludusMember(id)); if(!ids.length&&ludus.team.length) ids.push(ludus.fighter.id); ludus.pick=ids; return ids.map(ludusMember); }
-function ludusTogglePick(id){
-  const p=ludusPicks().map(m=>m.id), i=p.indexOf(id); if(i>=0){ if(p.length>1) p.splice(i,1); } else p.push(id);
-  ludus.pick=p; ludus.options=null; ludus.arenaEst=null; ludusSave(); ludusRender();
-}
+// ---- the day's tasks: every gladiator of the school fights, rests, trains or works. A bout of the school takes those who are set to fight ----
+const LUDUS_JOBS=[['fight','Kämpft'],['rest','Ruht'],['train','Trainiert'],['work','Arbeitet']];
+const ludusJob=m=>m.job||'rest';
+function ludusPicks(){ return ludus.team.filter(m=>ludusJob(m)==='fight'); }
+function ludusSetJob(id,job){ const m=ludusMember(id); if(!m||!LUDUS_JOBS.some(j=>j[0]===job)) return; m.job=job; ludus.options=null; ludus.arenaEst=null; ludusSave(); ludusRender(); }
 // the picks for a bout of `n` gladiators (the first n picked); null when fewer are picked
 const ludusPickFor=n=>{ const p=ludusPicks(); return p.length>=n?p.slice(0,n):null; };
 const ludusPickSig=()=>ludusPicks().map(m=>m.id).join(',');
@@ -156,11 +158,12 @@ function ludusHonor(o,won,team){
   team.forEach(m=>{ m.honor=Math.max(0,(m.honor||0)-5); }); foes.forEach(n=>{ n.honor=(n.honor||0)+8; }); return -5;
 }
 
-// ---- the rent: due every week; who cannot pay is thrown into the arena and fights for nothing ----
-function ludusRentDue(){
+// ---- board and lodging: every evening; a school that cannot pay pays nothing, and the next morning one of its gladiators fights the debt off in the arena, for nothing ----
+function ludusPayUpkeep(){
   const cost=ludusRent();
-  if(ludus.gold>=cost){ ludus.gold-=cost; ludusLog(`Miete bezahlt: ${cost} Gold`); ludusNote=`Die Miete ist fällig: ${cost} Gold für ${ludus.team.length} ${ludus.team.length>1?'Kämpfer':'Kämpfer'}.`; return; }
-  ludus.forced={ type:'rent' }; ludusLog('Miete nicht bezahlt');
+  if(cost<=0) return '';
+  if(ludus.gold>=cost){ ludus.gold-=cost; return `Kost und Logis: −${cost} Gold.`; }
+  ludus.debt=true; ludusLog('Kost und Logis nicht bezahlt'); return `Kost und Logis (${cost} Gold) konnten nicht bezahlt werden: morgen muss jemand die Schuld in der Arena abkämpfen.`;
 }
 function ludusRentBout(){
   const id=ludus.map.region, r=ludusRng('rent'+ludus.day), goers=ludusGoers('arena'), pool=goers.length?goers:ludusRegionNpcs(id).filter(x=>!x.maimed&&!x.boss&&!ludusIsChamp(id,'npc',x.id));
@@ -168,7 +171,7 @@ function ludusRentBout(){
   return { arena:true, rent:true, mode:'duel', variant:'duel', foes:[f], kind:f.kind, level:f.level, name:f.name, title:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(r), reward:0 };
 }
 
-// ---- the tournament: every 30 days, all gladiators of the region, a knock-out tree of 8, one round a day. The champion is seeded first ----
+// ---- the tournament: every 10 days, all gladiators of the region, a knock-out tree of 8, one round a day. The champion is seeded first ----
 function ludusTourneyStart(){
   const id=ludus.map.region, champ=ludusChamp(id), board=ludusBoard(id);
   const own=ludus.team.map(m=>({ t:'own', id:m.id })), champE=champ&&(champ.t==='own'?ludusMember(champ.id):ludusNpc(champ.id))?{ t:champ.t, id:champ.id }:null;
@@ -248,7 +251,7 @@ function ludusTourneyEnd(w){
     } else t+=` ${ludusEntryName(w)} gewinnt das Turnier von ${n.name}.`;
   }
   ludusRegionAfterTourney(id);
-  if(ludus.rentOwed&&!ludus.over){ ludus.rentOwed=false; ludusRentDue(); }
+  if(ludus.debt&&!ludus.over){ ludus.debt=false; ludus.forced={ type:'rent' }; }
   return t;
 }
 // after a tournament the region changes: some gladiators leave, the others grow, rookies come in; the maimed are healed
@@ -263,8 +266,8 @@ function ludusCalendar(){
   if(ludus.tourney){ ludus.forced={ type:'tourney' }; return; }
   const atRegion=ludusIsRegion(ludusHere());
   if(ludus.day%LUDUS_TOUR.tourneyEvery===0) ludusLifeTourneys();
-  if(ludus.day%LUDUS_TOUR.tourneyEvery===0&&atRegion){ ludusTourneyStart(); if(ludus.day%LUDUS_TOUR.rentEvery===0) ludus.rentOwed=true; return; }
-  if(ludus.day%LUDUS_TOUR.rentEvery===0) ludusRentDue();
+  if(ludus.day%LUDUS_TOUR.tourneyEvery===0&&atRegion){ ludusTourneyStart(); return; }       // a debt waits until the tournament is over
+  if(ludus.debt){ ludus.debt=false; ludus.forced={ type:'rent' }; }
 }
 
 // ---- travel: to the right only, and only from a region the team has won (waypoints in between are free) ----
@@ -277,7 +280,7 @@ function ludusMapTravel(id){
   if(ludusIsChamp(from,'own',(ludusChamp(from)||{}).id)){ const best=ludusRegionNpcs(from).filter(x=>!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0]; if(best) ludus.regions[from].champ={ t:'npc', id:best.id }; }
   ludus.map.at=id; ludusLog(`Reise nach ${n.name}`);
   if(ludusIsRegion(n)){ ludus.map.region=id; ludusRegionEnsure(id); ludus.team.forEach(m=>{ m.honor=0; }); ludus.arenaOffers=null; ludus.arenaEst=null; }
-  ludusAdvanceDay();
+  ludusAdvanceDay([],true);       // a day on the road: everybody rests a little, nobody works or trains
   if(n.type==='event'&&!ludus.forced&&!ludus.event){ ludusMaybeEvent(); if(!ludus.event){ const g=8+3*n.col; ludus.gold+=g; ludusNote=`Am Wegesrand liegt etwas Gold: +${g}.`; } }
   ludusSave(); ludusRender();
 }
@@ -339,6 +342,6 @@ function ludusTourneyHTML(){
 function ludusArenaHTML(){
   const offers=ludusArenaOffers(), sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region, est=ludus.arenaEst&&ludus.arenaEst.sig===sig?ludus.arenaEst.est:null;
   const picks=ludusPicks();
-  return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die ersten Kämpfer deiner Aufstellung an: ${picks.map(m=>ludusEsc(m.name)).join(', ')}.</p>${offers.length?'':'<p><i>Heute ist niemand in die Arena gekommen.</i></p>'}
-    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Wähle ${M.size} Kämpfer`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
+  return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die an, die heute kämpfen (die ersten so viele, wie die Kampfart braucht): ${picks.length?picks.map(m=>ludusEsc(m.name)).join(', '):'niemand'}.</p>${offers.length?'':'<p><i>Heute ist niemand in die Arena gekommen.</i></p>'}
+    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Stelle ${M.size} auf Kämpft`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
 }

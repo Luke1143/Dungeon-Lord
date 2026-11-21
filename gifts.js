@@ -17,8 +17,8 @@ const GIFT_MUL={
   damageTaken: { good:-1, w:1.1, name:'Unverwundbar', text:v=>`Erlittener Schaden ×${v}` },
   fatigueTaken:{ good:-1, w:0.4, name:'Wach',       text:v=>`Müdigkeitsschaden ×${v}` },
   procMul:     { good:1, w:0.5, name:'Tückisch',    text:v=>`Chance auf Zustände (Betäubung, Blutung, Verlangsamung) ×${v}` },
-  xp:          { good:1, w:0.5, name:'Lernbegierig', text:v=>`Erfahrung ×${v}` },
-  gold:        { good:1, w:0.5, name:'Goldgierig',  text:v=>`Gold aus Kämpfen ×${v}` }
+  xp:          { good:1, w:0.5, max:2, name:'Lernbegierig', text:v=>`Erfahrung ×${v}` },
+  gold:        { good:1, w:0.5, max:2, name:'Goldgierig',  text:v=>`Gold aus Kämpfen ×${v}` }
 };
 // rules: boon cost = power; param (if any) scales with rarity; bane = the same rule seen from the other side
 const GIFT_FLAG={
@@ -52,7 +52,8 @@ const mulValue=(k,power,boon)=>{ const d=GIFT_MUL[k], dir=(d.good>0)===boon?1:-1
 // a rule is on when any gift names it (as a boon or as a bane)
 function giftOn(c,key){ return !!(c.gifts&&c.gifts.some(g=>g.fx.some(f=>f.k===key))); }
 // multiplier of all gifts for a stat (1 when none)
-function giftMul(c,key){ if(!c.gifts||!c.gifts.length) return 1; let m=1; c.gifts.forEach(g=>g.fx.forEach(f=>{ if(f.k===key) m*=f.v; })); return m; }
+// the gifts of a creature together; gold and experience are capped (at most twice as much, however many gifts say so)
+function giftMul(c,key){ if(!c.gifts||!c.gifts.length) return 1; let m=1; c.gifts.forEach(g=>g.fx.forEach(f=>{ if(f.k===key) m*=f.v; })); const mx=GIFT_MUL[key]&&GIFT_MUL[key].max; return mx?Math.min(mx,m):m; }
 // the parameter of a rule gift (the best one), 0 when none
 function giftParam(c,key){ if(!c.gifts) return 0; let p=0; c.gifts.forEach(g=>g.fx.forEach(f=>{ if(f.k===key&&f.role==='boon') p=Math.max(p,f.v===true?1:f.v); })); return p; }
 // "weights" nudge the offer towards what the fighter can use, without ever excluding the strange finds

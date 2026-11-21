@@ -17,11 +17,17 @@ function i18nRegister(map){
   I18N_PATTERNS.sort((a,b)=>b.lit-a.lit);
   I18N_CACHE.clear();
 }
-const I18N_LETTER=/[A-Za-zÄÖÜäöüß]/;
+const I18N_LETTER=/[A-Za-zÄÖÜäöüß]/, I18N_GERMAN=/[äöüßÄÖÜ]|\b(der|die|das|und|ein|eine|nicht|wird|ist|zu|mit|auf|von|den|dem)\b/i;
+let I18N_PENDING=null;
 function Tr(s){
   if(LANG!=='en' || typeof s!=='string' || s.length<2 || !I18N_LETTER.test(s)) return s;
   let r=I18N_CACHE.get(s);
-  if(r===undefined){ r=i18nCompute(s); if(I18N_CACHE.size>6000) I18N_CACHE.clear(); I18N_CACHE.set(s,r); }
+  if(r===undefined){
+    // a text that is translated in the end is no miss, even when a first try on the way failed: misses are kept only when German is left in the result
+    const top=!I18N_PENDING; if(top) I18N_PENDING=[];
+    try{ r=i18nCompute(s); } finally{ if(top){ if(I18N_GERMAN.test(r)) I18N_PENDING.forEach(x=>I18N_MISSES.add(x)); I18N_PENDING=null; } }
+    if(I18N_CACHE.size>6000) I18N_CACHE.clear(); I18N_CACHE.set(s,r);
+  }
   return r;
 }
 function i18nCompute(s){
@@ -45,7 +51,7 @@ function i18nCompute(s){
   // a mark behind a known text: "Funkenstab ✓"
   const trail=/^([\s\S]*[A-Za-zÄÖÜäöüß])([^A-Za-zÄÖÜäöüß]+)$/.exec(s);
   if(trail){ const t=Tr(trail[1]); if(t!==trail[1]) return t+trail[2]; }
-  if(/[äöüßÄÖÜ]|\b(der|die|das|und|ein|eine|nicht|wird|ist|zu|mit|auf|von|den|dem)\b/i.test(s)) I18N_MISSES.add(s);
+  if(I18N_GERMAN.test(s)) I18N_PENDING?I18N_PENDING.push(s):I18N_MISSES.add(s);
   return s;
 }
 function trHTML(html){

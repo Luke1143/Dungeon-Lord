@@ -41,6 +41,7 @@ function ludusLifePlan(){
     ludusEquip(n);
     if(n.maimed||ludusHurtPct(n)<LUDUS_LIFE.restBelow||tIn<=1) { plans[n.id]='rest'; return; }
     if(n.boss||ludusIsChamp(id,'npc',n.id)){ plans[n.id]=r()<0.35?'arena':'rest'; return; }      // the champion fights now and then, but nobody may challenge him outside the tournament
+    if(ludusLifePoor(n)){ plans[n.id]=r()<n.bold?'arena':'work'; return; }       // gold for board and lodging: the bold fight for it, the others work
     const x=r(); plans[n.id]=x<0.15?'rest':(x<0.15+0.35+0.3*n.bold?'arena':'pit');
   });
   ludus.life={ day:ludus.day, region:id, plans, busy:[] };
@@ -48,7 +49,7 @@ function ludusLifePlan(){
 const ludusPlanOf=id=>ludus.life&&ludus.life.day===ludus.day?ludus.life.plans[id]:undefined;
 // who is free in the pit / the arena today (not the champion: he only meets the player in the tournament)
 const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id));
-const ludusLifeBusy=ids=>{ if(ludus.life) ludus.life.busy=(ludus.life.busy||[]).concat(ids.filter(Boolean)); };
+const ludusLifeBusy=ids=>{ ids.forEach(id=>{ const n=id&&ludusNpc(id); if(n) n.foughtToday=true; }); if(ludus.life) ludus.life.busy=(ludus.life.busy||[]).concat(ids.filter(Boolean)); };
 
 // ---- a bout between gladiators, fought by the engine; everything that happens to them stays ----
 // a, b: lists of gladiators (records of ludus.world, or own members); kind: 'pit' (nobody dies) | 'arena'. Returns 0 when side a wins, 1 when b, and what happened
@@ -81,6 +82,7 @@ function ludusLifeLoot(winner,loser){
 }
 // the bookkeeping of a bout between gladiators: wins, honour, gold, the dead
 function ludusLifeAfterBout(sides,res,kind,region){
+  sides.forEach(l=>l.forEach(n=>{ n.foughtToday=true; }));
   const [a,b]=sides, win=res.winner===0?a:b, lose=res.winner===0?b:a, L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
   win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
@@ -98,7 +100,7 @@ function ludusLifeEveningHere(){
     const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
     for(let i=0;i+1<l.length;i+=2){ const a=[l[i]], b=[l[i+1]], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); }
   });
-  ludusRegionNpcs(id).forEach(n=>{ if(ludusPlanOf(n.id)==='rest') ludusLifeRest(n); });
+  ludusRegionNpcs(id).forEach(n=>{ const p=ludusPlanOf(n.id); if(p==='rest'||((p==='pit'||p==='arena')&&!n.foughtToday)) ludusLifeRest(n); else if(p==='work') ludusLifeWork(n); });
 }
 function ludusLifeRest(n){ const c=ludusMemberCreature(n); n.hp=Math.min(c.maxHp,Math.round(c.hp+c.maxHp*0.5)); if(n.hp>=c.maxHp) n.hp=undefined; n.energy=100; }
 // elsewhere: the same day, estimated: who fights whom, the stronger wins as often as the worth says
@@ -108,7 +110,7 @@ function ludusLifeEveningElsewhere(){
     const id=+k; if(id===ludus.map.region) return;
     const l=ludusRegionNpcs(id).filter(n=>!n.maimed); l.forEach(ludusEquip);
     const goers={ pit:[], arena:[] };
-    l.forEach(n=>{ if(ludusHurtPct(n)<LUDUS_LIFE.restBelow){ ludusLifeRest(n); return; } const x=r(); if(x<0.25){ ludusLifeRest(n); return; } (x<0.25+0.3+0.3*n.bold?goers.arena:goers.pit).push(n); });
+    l.forEach(n=>{ if(ludusHurtPct(n)<LUDUS_LIFE.restBelow){ ludusLifeRest(n); return; } if(ludusLifePoor(n)&&r()>=n.bold){ ludusLifeWork(n); return; } const x=r(); if(x<0.25){ ludusLifeRest(n); return; } (x<0.25+0.3+0.3*n.bold?goers.arena:goers.pit).push(n); });
     ['pit','arena'].forEach(kind=>{
       const g=goers[kind].sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
       for(let i=0;i+1<g.length;i+=2){
@@ -136,8 +138,13 @@ function ludusLifeShop(){
   });
 }
 // the day ends (called before the day is counted on)
+// board and lodging, the same as for the player's school: whoever cannot pay is poor (and works or fights for gold tomorrow)
+const ludusLifePoor=n=>(n.gold||0)<3*ludusUpkeep(ludusMapWorld().nodes[n.region].col);
+function ludusLifeWork(n){ n.gold=(n.gold||0)+ludusWage(ludusMapWorld().nodes[n.region].col); n.energy=Math.max(10,(n.energy||100)-10); }
+function ludusLifeUpkeep(){ (ludus.world||[]).forEach(n=>{ if(n.status!=='active') return; const node=ludusMapWorld().nodes[n.region]; if(node) n.gold=Math.max(0,(n.gold||0)-ludusUpkeep(node.col)); }); }
 function ludusLifeEvening(){
-  ludusLifeEveningHere(); ludusLifeEveningElsewhere(); ludusLifeShop();
+  ludusLifeEveningHere(); ludusLifeEveningElsewhere(); ludusLifeShop(); ludusLifeUpkeep();
+  (ludus.world||[]).forEach(n=>{ delete n.foughtToday; });
   (ludus.world||[]).forEach(n=>{ if(n.status==='active') n.tier=ludusGladTier(n); });
 }
 
@@ -188,7 +195,7 @@ function ludusLifeMigrate(){
 }
 
 // ---- on screen ----
-const LUDUS_PLAN_LABEL={ pit:'in der Grube', arena:'in der Arena', rest:'ruht' };
+const LUDUS_PLAN_LABEL={ pit:'in der Grube', arena:'in der Arena', rest:'ruht', work:'arbeitet' };
 function ludusChronicleHTML(){
   const w=ludusMapWorld(), col=ludusRegionNode().col, near=e=>{ const n=w.nodes[e.r]; return !!n&&n.col>=col&&n.col<=col+2; };
   const l=(ludus.chronicle||[]).filter(e=>e.r===ludus.map.region||((e.k==='champ'||e.k==='death')&&near(e))).slice(0,18); if(!l.length) return '';

@@ -6,13 +6,23 @@ Status: Entwurf zum Ausarbeiten. Die Creature Arena (`arena.js`) bleibt zugleich
 
 Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiatoren sollen wie der Spieler leben (kämpfen, aufsteigen, Beute sammeln, sterben), unabhängig von ihm. Zuerst wird das Gerüst umgebaut, die lebende Welt kommt danach darauf.
 
+### Die Regeln auf einen Blick (gilt für die Schule des Spielers und alle Gladiatoren der Welt gleich)
+1. **Ein Tag:** Jeder Gladiator hat eine Aufgabe: **Kämpft**, **Ruht**, **Trainiert** oder **Arbeitet**. Pro Tag hat die Schule höchstens einen Kampf (Grube oder Arena); es treten die an, die auf Kämpft stehen. Der Kampf beendet den Tag, sonst „Tag beenden“.
+2. **Am Abend** tut jeder seine Aufgabe: Ruhen heilt (das Bett der Taverne, 50 bis 85 %), Training gibt Erfahrung gegen Gold (Trainingsraum nötig), Arbeit bringt das Doppelte der eigenen Kost. Wer auf Kämpft stand und nicht gekämpft hat, ruht. Wer gekämpft hat, heilt an diesem Abend nicht (ein Huhn hilft sofort).
+3. **Kost und Logis:** Jeden Abend kostet jeder Gladiator 2 Gold + 1 je Spalte der Karte. Kann die Schule nicht zahlen, zahlt sie nichts, und am nächsten Morgen muss einer die Schuld in der Arena abkämpfen, ohne jeden Lohn; dafür isst er an diesem Tag umsonst (sonst käme eine Schule mit einem einzigen Kämpfer nie mehr aus der Schuld heraus).
+4. **Grube:** niemand stirbt, kein Gold; Erfahrung und das beste Stück des Besiegten. **Arena:** Lebensgefahr (Aufgeben und Ohnmacht gehen); Gold, Ruhm, Ansehen, Ehre, je schlechter die Aussichten, desto mehr. Gegner sind immer Gladiatoren, die sich an diesem Tag für Grube oder Arena entschieden haben.
+5. **Turnier alle 10 Tage** (Tag 10, 20, 30 …) in jeder Region, Pflicht für alle ihre Gladiatoren: 8 Plätze, drei Tage (Viertelfinale, Halbfinale, Finale). Wer gewinnt, ist Platz 1 der Region.
+6. **Tournee:** Weiter nach rechts geht es erst als Platz 1 der Region; eine Etappe kostet einen Tag (unterwegs ruhen alle ein wenig). Platz 1 der Hauptstadt gewinnt den Lauf. Stirbt der letzte Gladiator, ist der Lauf vorbei.
+7. **Wanderung:** Nach jedem Turnier zieht weiter, wer 2 Stufen über seiner Region steht (Champions bei 3); in der letzten Spalte tritt er als Legende ab. Neulinge beginnen ganz links.
+
 ### Vom Nutzer festgelegt
 - **Jede Runde ist ein Tag.**
 - **Pflichtkämpfe fast ganz weg.** Es bleiben nur der Mietkampf und das Turnier.
-- **Miete:** Jede Woche zahlt der Spieler einen kleinen Satz Gold je eigenem Kämpfer. Fehlt das Gold, wird er stattdessen in einen **Arenakampf ohne jede Belohnung** geworfen.
+- **Kost und Logis (früher Miete):** täglich ein kleiner Satz Gold je eigenem Kämpfer (vorher: jede Woche). Fehlt das Gold, wird er stattdessen in einen **Arenakampf ohne jede Belohnung** geworfen.
+- **Nicht jeder Tag ist ein Kampf:** Das Management drumherum ist ein ständiges Abwägen zwischen Kämpfen und anderen Tätigkeiten. Die Regeln sollen klar verständlich, nicht willkürlich und in sich logisch sein; der Roguelike-Kern bleibt.
 - **Grube (Pit):** immer verfügbar, gibt **kein Gold**, nur Erfahrung und den **besten Gegenstand des Gegners**. **Niemand stirbt** (auf beiden Seiten).
 - **Arena:** echte Kämpfe um Ruhm, Gold und Ehre, mit Lebensgefahr (Regeln wie bisher: Aufgeben und Ohnmacht sind möglich). Hohes Risiko, hoher Lohn. Verschiedene **Kampfarten**: verschiedene Arenen und Teamgrößen (1 gegen 1, 3 gegen 3, Jeder gegen jeden usw.).
-- **Turnier:** alle **30 Tage**. Alle Kämpfer am Ort **müssen** teilnehmen. Der **Endgegner (Boss)** muss besiegt werden; danach geht es auf der Weltkarte in die nächste Region (Tournee), wo in 30 Tagen das nächste Turnier mit dem nächsten Boss wartet.
+- **Turnier:** alle **10 Tage** (vorher 30). Alle Kämpfer am Ort **müssen** teilnehmen. Der **Endgegner (Boss)** muss besiegt werden; danach geht es auf der Weltkarte in die nächste Region (Tournee), wo in 30 Tagen das nächste Turnier mit dem nächsten Boss wartet.
 - **Kaderverwaltung:** Der Spieler entscheidet, wer heute antritt, wer geheilt wird, wer für welchen Kampf passt.
 - **Jede Region hat eine Rangliste, der Boss steht immer auf Platz 1.** Besiegt der Spieler den Boss, ist er der neue Platz 1 und muss den Titel verteidigen, bis er selbst weiterzieht.
 - **Neue Gladiatoren** entstehen links auf der Karte als Neulinge (wie der Spieler) und kämpfen sich nach rechts. Nur die Bosse entstehen mit der Welt (oder aus früheren Läufen).
@@ -20,12 +30,12 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 ### Von Claude entschieden (änderbar)
 - **Ein einziger Ludus-Modus:** die Tournee auf der Karte. Der klassische Modus (Wochenrangliste, Wochenkampf, Pflichtkampf nach 3 Tagen) und die Städteturniere des alten Kartenmodus entfallen.
 - **Region = eine Stadt der Karte** (auch der Startort). Wegpunkte mit Ereignis bleiben Zwischenhalte ohne Rangliste. Weiterreisen geht nur nach rechts und erst, wenn man in der Region Platz 1 geworden ist. Eine Reise kostet einen Tag je Etappe. Platz 1 der Hauptstadt (letzte Spalte) gewinnt den Lauf.
-- **Kalender:** Miete alle 7 Tage, Turnier an jedem 30. Tag (Tag 30, 60, 90 …), unabhängig davon, wann man angekommen ist.
-- **Ein Tag, eine Unternehmung:** Pro Tag ein Grubenkampf, ein Arenakampf, Training oder Ruhetag. Für einen Kampf wählt man die Teilnehmer; wer nicht kämpft, erholt sich an diesem Tag ein Stück (halbe Bettruhe). Hühner kauft man gezielt für einzelne Kämpfer.
+- **Kalender:** Turnier an jedem 10. Tag (Tag 10, 20, 30 …), unabhängig davon, wann man angekommen ist.
+- **Tagesaufgaben** statt eines Ruhetags für alle: siehe die Regeln oben.
 - **Arena-Angebote** kommen aus der Rangliste der Region: Man kämpft gegen deren Gladiatoren (nie gegen den Boss außerhalb des Turniers). Ein Arenasieg bringt **Ehre** (Punkte der Rangliste), Gold, Ruhm und Ansehen; die Ehre bestimmt die Plätze unter dem Boss.
 - **Kampfarten:** Duell (1:1), Doppel (2:2), Trio (3:3), Rudel (einer gegen eine Meute) und **Jeder gegen jeden** (einer der eigenen unter drei bis vier Gladiatoren, jeder für sich, der Letzte gewinnt; ab vier Gladiatoren in der Arena). Die Arena-Engine kennt dafür beliebig viele Seiten: Seite 0 ist 'evil', Seite 1 'good', jede weitere eine eigene Fraktion 'ffa2', 'ffa3' … (`arenaSideFaction`), sodass niemand Verbündeter eines Fremden ist; jede weitere Seite startet so weit wie möglich von den anderen; gewonnen hat die letzte Seite, die noch steht (bei Zeitablauf die mit dem meisten Leben).
 - **Turnier:** ein K.-o.-Baum mit 8 Plätzen, 1 gegen 1, eine Runde pro Tag (Viertelfinale, Halbfinale, Finale). Der Boss ist an 1 gesetzt, dazu alle eigenen Kämpfer und die Besten der Rangliste. Kämpfe ohne eigene Beteiligung werden simuliert (mit der echten Engine). Turnierkämpfe folgen den Arenaregeln. Wer das Finale gewinnt, ist Platz 1 (auch ein fremder Gladiator, der den Boss schlägt).
-- **Miete:** 10 Gold + 6 je Spalte der Region, je Kämpfer (nach den ersten Bot-Läufen erhöht).
+- **Kost und Logis:** 2 Gold + 1 je Spalte, je Gladiator und Tag (Arbeit bringt das Doppelte).
 
 ### Stand der Umsetzung (`ludus-tour.js`)
 - **Karte und Regionen:** Die Welt kommt aus `buildWorld` (aus dem Lauf-Seed, nicht gespeichert). Jede Stadt ist eine Region (`ludusRegionEnsure`): ein Boss (`ludusBossMake`, Stärke 1,6 Orks der Regionsstufe, eine Güte besserer Ausrüstung; ein Geisterteam früherer Läufe, dessen Stufe passt, nimmt seinen Platz ein) und 9 Gladiatoren (0,6 bis 1,15 Orks der Regionsstufe). Regionsstufe = 1 + Spalte (höchstens 9), stärkere Arten gibt es erst weiter rechts (`ludusRegionKinds`).
@@ -33,8 +43,8 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - **Aufstellung:** Am Kämpferkärtchen schaltet das Schwert-Symbol, wer heute antritt (`ludus.pick`). Die Grube nimmt alle Aufgestellten, die Arena die ersten so viele, wie die Kampfart braucht. Wer an einem Tag nicht kämpft, erholt sich um eine halbe Bettruhe.
 - **Grube:** wie früher zwei oder drei Angebote (leicht, fair, mit ausgebauter Grube schwer), für die Aufstellung ausgesucht; `noDeath` in der Arena-Engine: niemand stirbt, auf keiner Seite. Lohn: Erfahrung (Grube Stufe 3: +25 %) und das teuerste Stück aus der Ausrüstung der Gegner.
 - **Arena** (`ludusArenaOffers`): Angebote aus den Gladiatoren, die heute in die Arena gekommen sind (siehe die lebende Welt), nie der Champion. Die Aussichten werden mit 4 Probekämpfen geschätzt; der Preis ist (14 + 9 × Stufe) × Faktor der Kampfart × (1,6 − 1,1 × Aussichten), zwischen halb und doppelt. Dazu Ruhm, Ansehen (5 bis 12 nach Risiko) und Ehre. Die Turnierhalle hebt Arena- und Turnierpreise um 25 % bzw. 50 %.
-- **Miete:** jeden 7. Tag 10 + 6 × Spalte Gold je Kämpfer. Reicht das Gold nicht: Pflichtkampf (Duell gegen einen Gladiator der Region) ohne Gold, Erfahrung oder Ehre. Fällt sie auf einen Turniertag, kommt sie nach dem Turnier.
-- **Turnier** (`ludusTourneyStart`): an jedem 30. Tag in der Region, in der man ist. 8 Plätze: Champion an 1, alle eigenen Kämpfer, die Besten der Rangliste; gesetzt wie üblich (1–8, 4–5, 2–7, 3–6). Eine Runde pro Tag; eigene Kämpfe gegen Fremde werden gespielt, alle anderen mit der Engine ausgefochten (`ludusTourneySim`). Sieger des Finales wird Champion: ein eigener Kämpfer bringt 40 + 30 × Spalte Gold, Ruhm, Ansehen und eine Gabe, und die Region gilt als gewonnen. Danach ändert sich die Region (20 % gehen, die anderen wachsen, Neulinge kommen).
+- **Kost und Logis** (`ludusPayUpkeep`): jeden Abend; reicht das Gold nicht, wird nichts bezahlt und am nächsten Morgen kommt der Schuldkampf (Duell gegen einen Gladiator der Region) ohne Gold, Erfahrung oder Ehre; fällt er auf einen Turniertag, kommt er nach dem Turnier. Die Gladiatoren der Welt zahlen dasselbe; wer weniger als drei Tage Kost hat, arbeitet oder geht (wenn wagemutig) in die Arena.
+- **Turnier** (`ludusTourneyStart`): an jedem 10. Tag in der Region, in der man ist. 8 Plätze: Champion an 1, alle eigenen Kämpfer, die Besten der Rangliste; gesetzt wie üblich (1–8, 4–5, 2–7, 3–6). Eine Runde pro Tag; eigene Kämpfe gegen Fremde werden gespielt, alle anderen mit der Engine ausgefochten (`ludusTourneySim`). Sieger des Finales wird Champion: ein eigener Kämpfer bringt 40 + 30 × Spalte Gold, Ruhm, Ansehen und eine Gabe, und die Region gilt als gewonnen. Danach ändert sich die Region (20 % gehen, die anderen wachsen, Neulinge kommen).
 - **Reise:** nur nach rechts und erst, wenn die Region gewonnen ist (Wegpunkte dazwischen sind frei); eine Etappe kostet einen Tag. Wer geht, gibt den Titel ab (der Beste der Region wird Champion). Platz 1 in der letzten Spalte gewinnt den Lauf.
 - Entfallen: Wochenrangliste und Herausforderungen, Wochenkampf, Pflichtkampf nach 3 Tagen, Städteturniere, Aufrüstung der Städte, Referenzteams (der alte Kartenmodus und seine Bots).
 - **Bot** (`tools/ludus-tour-bot.js`): spielt ganze Läufe. Erste Läufe (100 Tage): eine Ork-Schule gewann das erste Turnier an Tag 30 und verlor die nächsten zwei in Spalte 1; eine Goblin-Schule gewann erst das dritte. Gold sammelt sich an (über 500), die Miete drückt kaum. Das Balancing der Tournee steht noch aus.
@@ -55,7 +65,11 @@ Vom Nutzer: Die Gegner in Grube und Arena sind echte Gladiatoren, die sich selbs
 - **Gemessen** (Bot, `tools/ludus-tour-bot.js`, vier Arten, 180 Tage; der Bot geht in die Arena ab 60 % Aussicht, sonst in die Grube, ruht unter 50 % Leben):
   - Vorher (Champions blieben für immer): 1 bis 4 Regionen; ein Bot hing über 90 Tage an einem Elfen der Stufe 7 in einer Region der Stufe 2; rechts Stufe 12 bis 13 im Schnitt (Spitzen 17); bis 3700 Gold übrig.
   - Jetzt: 17 von 20 Turnieren gewonnen, 3 bis 5 Regionen in 180 Tagen. Das Feld einer Region liegt im Schnitt 1 bis 2 Stufen über der Regionsstufe, der Champion 2 bis 3; die eigenen Kämpfer liegen zur Turnierzeit 3 bis 5 Stufen über der Regionsstufe (sie kämpfen jeden Tag). Die letzte Spalte hat Stufe 8 bis 10. Gold am Ende 40 bis 1500.
-  - Offen: Ein ganzer Lauf über alle 11 Spalten dauert so 330 bis 360 Tage (30 Tage je Turnier).
+  - Damals offen: Ein ganzer Lauf über alle 11 Spalten dauerte 330 bis 360 Tage (30 Tage je Turnier). Gelöst mit Turnier alle 10 Tage und Tagesaufgaben (unten).
+- **Gemessen mit Tagesaufgaben, täglicher Kost und Turnier alle 10 Tage** (vier Bots, 150 Tage; der Bot lässt Verletzte ruhen, einen arbeiten, wenn das Gold knapp ist, den Schwächsten trainieren, wenn genug da ist):
+  - 2 von 4 Schulen gewannen den Lauf (Tag 113 und 133), eine stand an Tag 150 in Spalte 5, eine rutschte ab (ab Spalte 3 elf Turniere verloren, oft verschuldet).
+  - 24 bis 45 Tage ohne Kampf (Ruhe, Arbeit, Training). Gold am Ende 215 bis 3500.
+  - Vorher gefunden und behoben: (1) Ein einzelner Kämpfer kam aus der Schuld nie heraus (jeden Morgen Schuldkampf, abends wieder keine Kost) — jetzt isst, wer die Schuld abkämpft, an dem Tag umsonst. (2) Gaben „Goldgierig“ stapelten sich bis ins Vielfache (eine Schule hatte 38 790 Gold) — Gold und Erfahrung aus Gaben sind jetzt insgesamt auf das Doppelte begrenzt.
   - Ein Tag dauert etwa eine halbe Sekunde (vier Bots gleichzeitig: 1,7 s).
 
 ## Grundidee
