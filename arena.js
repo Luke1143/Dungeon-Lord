@@ -94,7 +94,7 @@ function arenaBuild(setup,seedExtra){
     arenaDressWalls(g,m.layout!=='pillars');
     if(setup.fog){ for(let y=0;y<WORLD_ROWS;y++) for(let x=0;x<WORLD_COLS;x++){ g[y][x].seen=false; } }
     st.imps=[]; st.creatures=[]; st.gold=0; st.looseItems=[]; st.corpses=[]; st.war=newWar(); st.war.timer=1e9; st.war.arena=true;
-    st.arena={ over:false, winner:null, anchors:setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, deathmatch:!!setup.deathmatch, roster:[[],[]] };
+    st.arena={ over:false, winner:null, anchors:setup.swapSides?[{x:B[0],y:B[1]},{x:A[0],y:A[1]}]:[{x:A[0],y:A[1]},{x:B[0],y:B[1]}], fog:!!setup.fog, maxTicks:setup.ludus?ARENA_LUDUS_TICKS:ARENA_MAX_TICKS, hpWins:!!setup.ludus, mercy:!!setup.mercy, noDeath:!!setup.noDeath, deathmatch:!!setup.deathmatch, roster:[[],[]] };
   } finally { Math.random=keepRandom; }
   // the teams
   const prev=state; state=st;

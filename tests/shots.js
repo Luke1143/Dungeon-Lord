@@ -23,7 +23,7 @@ const ONLY=(process.argv[2]||'').split(',').filter(Boolean), want=n=>!ONLY.lengt
     await p.evaluate(lay=>{ if(state&&state.arena) arenaLeave(); },lay); await p.evaluate(startArena,lay); await p.evaluate(()=>{ setView3d(true); setZoom(1); }); await p.waitForTimeout(2500); await take('arena-'+lay); }
   if(want('arena-2d')){ await p.evaluate(()=>{ if(!(state&&state.arena)) startArena('pit'); setView3d(false); }); await p.waitForTimeout(800); await take('arena-2d'); }
   await p.evaluate(async()=>{ if(state&&state.arena) arenaLeave(); await ludusOpen(); if(!ludus||ludus.over) ludusNewRun('ork','Grom'); });
-  for(const t of ['inn','smith']){ await p.evaluate(t=>{ ludusTab=t; ludusRender(); },t); await p.waitForTimeout(1200); await take('ludus-'+t); }
+  for(const t of ['map','tour','arena','pit','inn','smith']){ await p.evaluate(t=>{ ludusTab=t; ludusRender(); },t); await p.waitForTimeout(t==='arena'||t==='pit'?6000:1200); await take('ludus-'+t); }
   if(want('options')){ await p.evaluate(()=>{ showScreen('menu'); const b=document.getElementById('menuOptions'); if(b) b.click(); }); await p.waitForTimeout(500); await take('options'); }
   finish('shots → '+OUT,errs);
   await browser.close();

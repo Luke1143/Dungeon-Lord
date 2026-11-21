@@ -969,7 +969,7 @@ function resolveAttack(attacker, defender, context){
 function knockOutOrKill(victim, overkill, killer, context){
   if(victim.kind==='dungeonlord'){ faintLord(victim); return 'fainted'; }
   if(state&&state.arena&&state.arena.deathmatch){ killCreature(victim, killer); return 'killed'; }       // life or death
-  if(state&&state.arena&&state.arena.mercy&&victim.arenaTeam===0){ faintCreature(victim); return 'fainted'; }       // the first bouts of a Ludus run cannot kill
+  if(state&&state.arena&&(state.arena.noDeath||(state.arena.mercy&&victim.arenaTeam===0))){ faintCreature(victim); return 'fainted'; }       // nobody dies in the pit; the first bouts of a Ludus run cannot kill the team
   const limit=statMaxHp(victim)*FAINT_OVERKILL_RATIO;
   if(overkill>=limit) { killCreature(victim, killer); return 'killed'; }
 
@@ -10365,7 +10365,7 @@ init();
 <script src="ludus-world.js"></script>
 <script src="ludus-events.js"></script>
 <script src="ludus-ghosts.js"></script>
-<script src="ludus-map.js"></script>
+<script src="ludus-tour.js"></script>
 <script src="options.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();

@@ -1,0 +1,344 @@
+// The Ludus tour (concept: docs/ludus.md, "Neues Gerüst: die Tournee"). The run travels across a campaign-style map from left to right.
+// Every city is a region with its own gladiators and a ladder; the region's champion (at first its boss) stands on place 1.
+// The calendar: every round is a day; rent is due every week (who cannot pay fights in the arena for nothing), a tournament every 30 days.
+// Whoever wins a region's tournament is its new place 1 and may travel on to the right; the champion of the last column wins the run.
+// State: ludus.map={ at, region, cleared[] }, ludus.regions={ [nodeId]: { champ:{ t:'npc'|'own', id } } }, ludus.tourney while a tournament runs,
+// the region's gladiators live in ludus.world (field `region`), the team's honour in member.honor (counted in the region the team is in).
+const LUDUS_TOUR={
+  tourneyEvery:30, rentEvery:7,     // days
+  rentBase:4, rentPerCol:2,         // gold per own gladiator and week: so much, and so much more for each column of the map
+  roster:9,                         // gladiators of a region besides its champion
+  bracket:8,                        // places in a tournament
+  cap:9                             // the highest region level (the experience needed doubles with every level)
+};
+
+// ---- the map ----
+let ludusMapCache=null, ludusMapTerrain=null, ludusMapSeed=null;
+function ludusMapWorld(){
+  if(!ludusMapCache||ludusMapSeed!==ludus.seed){
+    const prev=world, prevT=owTerrainCache;
+    try{ world=buildWorld('lm'+ludus.seed); owTerrainCache=null; owRenderTerrain(); ludusMapTerrain=owTerrainCache; ludusMapCache=world; ludusMapSeed=ludus.seed; }
+    finally{ world=prev; owTerrainCache=prevT; }
+  }
+  return ludusMapCache;
+}
+const ludusMapLastCol=w=>Math.max(...w.nodes.map(n=>n.col));
+function ludusMapNeighbours(id){ const w=ludusMapWorld(); return w.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a); }
+const ludusIsRegion=n=>n.type!=='event';
+const ludusRegionNode=()=>ludusMapWorld().nodes[ludus.map.region];
+const ludusHere=()=>ludusMapWorld().nodes[ludus.map.at];
+function ludusMapInit(){
+  const w=ludusMapWorld(), start=w.nodes.find(n=>n.col===0&&ludusIsRegion(n))||w.nodes.find(n=>n.col===0);
+  ludus.map={ at:start.id, region:start.id, cleared:[] }; ludus.regions={};
+  ludusRegionEnsure(start.id);
+}
+
+// ---- the strength of a region: an ork of the region's level is the yardstick for its gladiators ----
+const ludusRegionLevel=col=>Math.max(1,Math.min(LUDUS_TOUR.cap,1+col));
+const ludusRegionTier=col=>col<3?0:(col<7?1:2);       // the gear that is usual there (crude at first, plain in the middle, fine at the end)
+const ludusRegionUnit=col=>creatureWorthAt('ork',ludusRegionLevel(col));
+const ludusRent=()=>(LUDUS_TOUR.rentBase+LUDUS_TOUR.rentPerCol*ludusRegionNode().col)*ludus.team.length;
+const ludusRentIn=()=>LUDUS_TOUR.rentEvery-(ludus.day%LUDUS_TOUR.rentEvery);
+const ludusTourneyIn=()=>LUDUS_TOUR.tourneyEvery-(ludus.day%LUDUS_TOUR.tourneyEvery);
+// the kinds a region's gladiators come from: the stronger kinds only further to the right
+const ludusRegionKinds=col=>{ const max=1.25+0.3*col, l=arenaKinds().filter(k=>creatureWorth(k)<=max&&creatureWorth(k)>=0.38); return l.length?l:arenaKinds(); };
+
+// a gladiator of a region: `f` is how strong against the yardstick (1 = an ork of the region's level)
+function ludusNpcMake(r,regionId,f,tierShift){
+  const n=ludusMapWorld().nodes[regionId], kinds=ludusRegionKinds(n.col), kind=creaturePickWeighted(r,kinds);
+  return { id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r), kind, level:creatureLevelFor(kind,ludusRegionUnit(n.col)*f), tier:Math.max(0,Math.min(3,ludusRegionTier(n.col)+(tierShift||0))),
+    seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null, region:regionId, honor:0 };
+}
+// the region's boss: a former team of the player's whose level fits, else a strong gladiator made with the world
+function ludusBossMake(r,regionId){
+  const n=ludusMapWorld().nodes[regionId], L=ludusRegionLevel(n.col), used=new Set(Object.values(ludus.regions||{}).map(x=>x.ghost).filter(Boolean));
+  const g=(ludusMeta.ghosts||[]).find(x=>!used.has(x.id)&&Math.abs(ludusGhostLevel(x)-(L+2))<=1);
+  if(g){ const m=g.members.slice().sort((a,b)=>b.level-a.level)[0];
+    return { boss:Object.assign({ id:'n'+Math.floor(r()*1e9), name:g.name, kind:m.kind, level:m.level, tier:3, seed:m.seed, status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true, ghost:g.id, member:JSON.parse(JSON.stringify(m)) }), ghost:g.id }; }
+  const strong=ludusRegionKinds(n.col).filter(k=>creatureWorth(k)>=1); const kind=creaturePickWeighted(r,strong.length?strong:ludusRegionKinds(n.col));
+  return { boss:{ id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r)+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], kind, level:creatureLevelFor(kind,ludusRegionUnit(n.col)*1.6),
+    tier:Math.min(3,ludusRegionTier(n.col)+1), seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true } };
+}
+// a region is filled the first time the run comes near it: its boss and its gladiators, ranked by strength (the stronger, the more honour)
+function ludusRegionEnsure(id){
+  ludus.regions=ludus.regions||{}; if(ludus.regions[id]) return ludus.regions[id];
+  const r=ludusRng('region'+id), { boss, ghost }=ludusBossMake(r,id);
+  ludus.world=ludus.world||[]; ludus.world.push(boss);
+  for(let i=0;i<LUDUS_TOUR.roster;i++){ const f=1.15-0.06*i+(r()-0.5)*0.1, n=ludusNpcMake(r,id,f,i<2?1:(i>6?-1:0)); n.honor=Math.round(10*(LUDUS_TOUR.roster-i)+r()*6); ludus.world.push(n); }
+  return ludus.regions[id]={ champ:{ t:'npc', id:boss.id }, ghost:ghost||null };
+}
+// new gladiators of a region (after a tournament some leave): rookies, weaker than the ones who stay
+function ludusRegionRefill(id){
+  const r=ludusRng('refill'+id+':'+ludus.day), have=(ludus.world||[]).filter(n=>n.region===id&&n.status==='active'&&!n.boss&&!ludusIsChamp(id,'npc',n.id)).length;
+  for(let i=have;i<LUDUS_TOUR.roster;i++) ludus.world.push(ludusNpcMake(r,id,0.75+r()*0.2,-1));
+}
+const ludusChamp=id=>(ludus.regions[id]||{}).champ||null;
+const ludusIsChamp=(id,t,ref)=>{ const c=ludusChamp(id); return !!c&&c.t===t&&c.id===ref; };
+const ludusRegionNpcs=id=>(ludus.world||[]).filter(n=>n.region===id&&n.status==='active');
+const ludusMember=id=>ludus.team.find(m=>m.id===id)||null;
+
+// ---- the ladder of a region: its champion first, then everyone by honour ----
+function ludusBoard(id){
+  const champ=ludusChamp(id), rows=[];
+  ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, boss:!!n.boss }));
+  if(id===ludus.map.region) ludus.team.forEach(m=>rows.push({ t:'own', id:m.id, name:m.name, kind:m.kind, level:m.level, honor:m.honor||0 }));
+  rows.forEach(x=>{ x.champ=!!champ&&champ.t===x.t&&champ.id===x.id; });
+  rows.sort((a,b)=>(b.champ-a.champ)||(b.honor-a.honor)||(b.level-a.level));
+  rows.forEach((x,i)=>x.rank=i+1);
+  return rows;
+}
+const ludusRankOf=(id,t,ref)=>{ const r=ludusBoard(id).find(x=>x.t===t&&x.id===ref); return r?r.rank:99; };
+
+// ---- the line-up: who steps in today. Bouts use the picked gladiators, the others rest ----
+function ludusPicks(){ const ids=(ludus.pick||[]).filter(id=>ludusMember(id)); if(!ids.length&&ludus.team.length) ids.push(ludus.fighter.id); ludus.pick=ids; return ids.map(ludusMember); }
+function ludusTogglePick(id){
+  const p=ludusPicks().map(m=>m.id), i=p.indexOf(id); if(i>=0){ if(p.length>1) p.splice(i,1); } else p.push(id);
+  ludus.pick=p; ludus.options=null; ludus.arenaEst=null; ludusSave(); ludusRender();
+}
+// the picks for a bout of `n` gladiators (the first n picked); null when fewer are picked
+const ludusPickFor=n=>{ const p=ludusPicks(); return p.length>=n?p.slice(0,n):null; };
+const ludusPickSig=()=>ludusPicks().map(m=>m.id).join(',');
+// runs `fn` with the team standing for the given members (the budget functions and the match setup read ludus.team)
+function ludusWithTeam(members,fn){ const keep=ludus.team; ludus.team=members; try{ return fn(); } finally { ludus.team=keep; } }
+
+// ---- the arena: real bouts against the region's gladiators, for gold, fame, honour and standing. Who fights here can die ----
+const LUDUS_MODES={
+  duel:  { label:'Duell',  size:1, foes:1, mult:1 },
+  double:{ label:'Doppel', size:2, foes:2, mult:1.7 },
+  trio:  { label:'Trio',   size:3, foes:3, mult:2.4 },
+  pack:  { label:'Rudel',  size:1, pack:true, mult:1.2 }
+};
+// today's offers in the arena of the region (the same all day): always a duel, and two more of the kinds the team can field
+function ludusArenaOffers(){
+  if(ludus.arenaOffers&&ludus.arenaOffers.day===ludus.day&&ludus.arenaOffers.region===ludus.map.region) return ludus.arenaOffers.list;
+  const id=ludus.map.region, n=ludusRegionNode(), r=ludusRng('arena'+ludus.day+':'+id), L=ludusRegionLevel(n.col);
+  const pool=ludusRegionNpcs(id).filter(x=>!x.maimed&&!x.boss&&!ludusIsChamp(id,'npc',x.id));
+  const modes=['duel'].concat(['duel','pack'].concat(ludus.team.length>=2?['double']:[]).concat(ludus.team.length>=3?['trio']:[]).sort(()=>r()-0.5).slice(0,2));
+  const list=[];
+  modes.forEach(mode=>{
+    const M=LUDUS_MODES[mode]; let foes;
+    if(M.pack){ const weak=ludusRegionKinds(n.col).filter(k=>creatureWorth(k)<=0.6), k=weak.length?weak[Math.floor(r()*weak.length)]:'goblin', cnt=3+Math.floor(r()*3), w=ludusRegionUnit(n.col)*1.1/cnt;
+      foes=Array.from({ length:cnt },()=>({ kind:k, level:creatureLevelFor(k,w), tier:Math.max(0,ludusRegionTier(n.col)-1), seed:Math.floor(r()*1e9), name:LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)] })); }
+    else { const left=pool.slice(); foes=[]; for(let i=0;i<M.foes&&left.length;i++) foes.push(ludusNpcFoe(left.splice(Math.floor(r()*left.length),1)[0])); if(foes.length<M.foes) return; }
+    const o={ arena:true, mode, variant:M.pack?'swarm':(M.foes>1?'group':'duel'), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
+    o.title=M.pack?`Rudel: ${foes.length} × ${SPECIES[foes[0].kind].label}`:foes.map(f=>`${f.name} (${SPECIES[f.kind].label})`).join(', ');
+    o.baseReward=Math.round((14+9*L)*M.mult*ludusHallMult());
+    list.push(o);
+  });
+  ludus.arenaOffers={ day:ludus.day, region:id, list }; return list;
+}
+// the prize falls as the chances rise: a long shot pays up to twice as much, a sure thing half
+const ludusArenaReward=(o,est)=>Math.max(5,Math.round(o.baseReward*(est===undefined?1:Math.max(0.5,Math.min(2,1.6-1.1*est)))));
+// the chances of the offers for today's line-up (a few test fights each, in the background)
+function ludusArenaScout(){
+  const sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region; if(ludusBusy||(ludus.arenaEst&&ludus.arenaEst.sig===sig)) return;
+  const offers=ludusArenaOffers(), run=ludus, est={}; ludusBusy=true;
+  const step=i=>{
+    if(ludus!==run){ ludusBusy=false; return; }
+    if(i>=offers.length){ run.arenaEst={ sig, est }; ludusBusy=false; ludusSave(); if(screen==='ludus') ludusRender(); return; }
+    const o=offers[i], team=ludusPickFor(LUDUS_MODES[o.mode].size);
+    if(team){ try{ const res=arenaSimulate(ludusMatchSetup(o,'scout',team),SCOUT_RUNS,null); est[i]=res.wins[0]/SCOUT_RUNS; }catch(e){ console.error(e); } }
+    setTimeout(()=>step(i+1),20);
+  };
+  setTimeout(()=>step(0),30);
+}
+function ludusArenaFight(i){
+  const o=ludusArenaOffers()[i]; if(!o||ludus.forced||ludus.over) return;
+  const team=ludusPickFor(LUDUS_MODES[o.mode].size); if(!team) return;
+  const est=ludus.arenaEst&&ludus.arenaEst.sig===ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region?ludus.arenaEst.est[i]:undefined;
+  ludusFight(Object.assign({},o,{ members:team.map(m=>m.id), est, reward:ludusArenaReward(o,est) }));
+}
+// what a won or lost arena bout does to the ladder: the winners take honour, the losers give some
+function ludusHonor(o,won,team){
+  const foes=ludusFoes(o).map(f=>f.npc&&ludusNpc(f.npc)).filter(Boolean);
+  const gain=10*Math.max(1,foes.length)+(foes.some(n=>(n.honor||0)>Math.max(...team.map(m=>m.honor||0)))?10:0);
+  if(won){ team.forEach(m=>{ m.honor=(m.honor||0)+gain; }); foes.forEach(n=>{ n.honor=Math.max(0,(n.honor||0)-5); }); return gain; }
+  team.forEach(m=>{ m.honor=Math.max(0,(m.honor||0)-5); }); foes.forEach(n=>{ n.honor=(n.honor||0)+8; }); return -5;
+}
+
+// ---- the rent: due every week; who cannot pay is thrown into the arena and fights for nothing ----
+function ludusRentDue(){
+  const cost=ludusRent();
+  if(ludus.gold>=cost){ ludus.gold-=cost; ludusLog(`Miete bezahlt: ${cost} Gold`); ludusNote=`Die Miete ist fällig: ${cost} Gold für ${ludus.team.length} ${ludus.team.length>1?'Kämpfer':'Kämpfer'}.`; return; }
+  ludus.forced={ type:'rent' }; ludusLog('Miete nicht bezahlt');
+}
+function ludusRentBout(){
+  const id=ludus.map.region, r=ludusRng('rent'+ludus.day), pool=ludusRegionNpcs(id).filter(x=>!x.maimed&&!x.boss&&!ludusIsChamp(id,'npc',x.id));
+  const n=pool.length?pool[Math.floor(r()*pool.length)]:null, f=n?ludusNpcFoe(n):{ kind:'ork', level:ludusRegionLevel(ludusRegionNode().col), tier:0, seed:Math.floor(r()*1e9), name:'Schuldeneintreiber' };
+  return { arena:true, rent:true, mode:'duel', variant:'duel', foes:[f], kind:f.kind, level:f.level, name:f.name, title:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(r), reward:0 };
+}
+
+// ---- the tournament: every 30 days, all gladiators of the region, a knock-out tree of 8, one round a day. The champion is seeded first ----
+function ludusTourneyStart(){
+  const id=ludus.map.region, champ=ludusChamp(id), board=ludusBoard(id);
+  const own=ludus.team.map(m=>({ t:'own', id:m.id })), champE=champ&&(champ.t==='own'?ludusMember(champ.id):ludusNpc(champ.id))?{ t:champ.t, id:champ.id }:null;
+  const rest=board.filter(x=>!(champE&&x.t===champE.t&&x.id===champE.id)&&!x.maimed);
+  // seeds: the champion, then the ladder; every own gladiator must take part, so the weakest strangers make room for them
+  const seeds=champE?[champE]:[], ownLeft=own.filter(e=>!(champE&&champE.t==='own'&&champE.id===e.id));
+  const room=Math.max(0,LUDUS_TOUR.bracket-seeds.length-ownLeft.length), npcs=new Set(rest.filter(x=>x.t==='npc').slice(0,room).map(x=>x.id));
+  rest.forEach(x=>{ if(x.t==='own'||npcs.has(x.id)) seeds.push({ t:x.t, id:x.id }); });
+  const order=[0,7,3,4,1,6,2,5], slots=order.map(i=>seeds[i]||null);
+  ludus.tourney={ region:id, round:0, slots, results:[], played:{} };
+  ludus.forced={ type:'tourney' };
+  ludusLog(`Turnier in ${ludusRegionNode().name}`);
+}
+const ludusTourneyRoundName=(n)=>n>=8?'Viertelfinale':(n>=4?'Halbfinale':'Finale');
+const ludusEntryName=e=>{ if(!e) return '—'; const x=e.t==='own'?ludusMember(e.id):ludusNpc(e.id); return x?x.name:'—'; };
+const ludusEntryAlive=e=>!!e&&(e.t==='own'?!!ludusMember(e.id):(()=>{ const n=ludusNpc(e.id); return !!n&&n.status==='active'; })());
+const ludusEntryFoe=e=>{ const n=ludusNpc(e.id); return n.member?Object.assign(ludusNpcFoe(n),{ ghost:true, member:Object.assign({},n.member,{ hp:undefined, energy:100 }) }):ludusNpcFoe(n); };
+// the pairs of the current round: [a, b, index]
+const ludusTourneyPairs=()=>{ const s=ludus.tourney.slots, out=[]; for(let i=0;i<s.length;i+=2) out.push([s[i],s[i+1],i/2]); return out; };
+// the next pair of this round the player has to fight (an own gladiator against a stranger), or null
+function ludusTourneyNext(){
+  const t=ludus.tourney; if(!t) return null;
+  return ludusTourneyPairs().find(([a,b,i])=>t.played[i]===undefined&&ludusEntryAlive(a)&&ludusEntryAlive(b)&&((a.t==='own')!==(b.t==='own')))||null;
+}
+function ludusTourneyBout(){
+  const p=ludusTourneyNext(); if(!p) return null;
+  const [a,b,i]=p, own=a.t==='own'?a:b, foe=a.t==='own'?b:a, f=ludusEntryFoe(foe), n=ludusRegionNode(), L=ludusRegionLevel(n.col), final=ludus.tourney.slots.length===2;
+  return { arena:true, tourney:true, pair:i, final, mode:'duel', variant:'duel', foes:[f], members:[own.id], kind:f.kind, level:f.level, name:f.name,
+    title:`${ludusTourneyRoundName(ludus.tourney.slots.length)}: ${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(ludusRng('tl'+ludus.day+':'+i)), reward:Math.round((12+8*L)*(final?3:1.5)*ludusHallMult()) };
+}
+// a bout of the tournament without the player's say (strangers among themselves, or two of the player's own): fought out by the engine
+function ludusTourneySim(a,b,i){
+  const grp=e=>e.t==='own'?ludusFighterGroup(ludusMember(e.id)):ludusOppGroup(ludusEntryFoe(e));
+  const setup={ teams:[{ name:ludusEntryName(a), groups:[grp(a)] },{ name:ludusEntryName(b), groups:[grp(b)] }], map:{ layout:'pit', dims:'S', seed:'ts'+ludus.seed+':'+ludus.day+':'+i, lava:0, water:0, crystal:0, near:1 }, fog:false, batch:1, ludus:true, fixedMap:true };
+  let aWins=true; try{ const res=arenaSimulate(setup,1,null); aWins=res.wins[0]>=res.wins[1]; }catch(e){ console.error(e); }
+  return aWins;
+}
+// called after an own bout of the tournament (won: the own gladiator goes on)
+function ludusTourneyResult(o,won){
+  const t=ludus.tourney; if(!t) return '';
+  const [a,b]=ludusTourneyPairs()[o.pair], ownFirst=a.t==='own'&&o.members.includes(a.id);
+  t.played[o.pair]=(won===ownFirst)?0:1;
+  if(won){ const m=ludusMember(o.members[0]); if(m) m.honor=(m.honor||0)+15; }
+  return ludusTourneyNext()?'':ludusTourneyCloseRound();
+}
+// the round ends: the other pairs are fought out, the winners move on; after the final the region has its champion
+function ludusTourneyCloseRound(){
+  const t=ludus.tourney, next=[], lines=[];
+  ludusTourneyPairs().forEach(([a,b,i])=>{
+    let w;
+    if(t.played[i]!==undefined) w=t.played[i]===0?a:b;
+    else if(!ludusEntryAlive(a)||!ludusEntryAlive(b)) w=ludusEntryAlive(a)?a:(ludusEntryAlive(b)?b:null);
+    else { w=ludusTourneySim(a,b,i)?a:b; lines.push(`${ludusEntryName(w)} schlägt ${ludusEntryName(w===a?b:a)}`); }
+    next.push(w);
+    if(w&&w.t==='npc'){ const n=ludusNpc(w.id); if(n) n.honor=(n.honor||0)+15; }
+  });
+  t.results.push(lines); t.round++; t.slots=next; t.played={};
+  let text=lines.length?' Weitere Kämpfe: '+lines.join(', ')+'.':'';
+  if(next.length===1||next.filter(Boolean).length<=1) text+=ludusTourneyEnd(next.find(Boolean)||null);
+  return text;
+}
+function ludusTourneyEnd(w){
+  const id=ludus.tourney.region, n=ludusMapWorld().nodes[id], last=n.col===ludusMapLastCol(ludusMapWorld());
+  ludus.tourney=null; if(ludus.forced&&ludus.forced.type==='tourney') ludus.forced=null;
+  let t='';
+  if(w){
+    const prev=ludusChamp(id); ludus.regions[id].champ={ t:w.t, id:w.id };
+    if(w.t==='own'){
+      const m=ludusMember(w.id), gold=40+30*n.col; ludus.gold+=gold; ludus.fame+=3+n.col; ludusGainRenown(Math.round((15+5*n.col)*ludusHallMult()));
+      if(!ludus.map.cleared.includes(id)) ludus.map.cleared.push(id);
+      ludus.giftChoice=genGiftOffer(Math.random,ludusMemberCreature(m),ludus.fame);
+      const beat=prev&&prev.t==='npc'?ludusNpc(prev.id):null; if(beat&&beat.ghost){ const g=(ludusMeta.ghosts||[]).find(x=>x.id===beat.ghost); if(g){ ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==g); t+=` ${g.name} tritt ab.`; } }
+      t+=` ${m.name} gewinnt das Turnier von ${n.name} und steht nun auf Platz 1! +${gold} Gold.`;
+      ludusLog(`Turniersieg in ${n.name}`);
+      if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusSaveGhost(ludus.team,'',true); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
+    } else t+=` ${ludusEntryName(w)} gewinnt das Turnier von ${n.name}.`;
+  }
+  ludusRegionAfterTourney(id);
+  if(ludus.rentOwed&&!ludus.over){ ludus.rentOwed=false; ludusRentDue(); }
+  return t;
+}
+// after a tournament the region changes: some gladiators leave, the others grow, rookies come in; the maimed are healed
+function ludusRegionAfterTourney(id){
+  const r=ludusRng('after'+id+':'+ludus.day);
+  ludusRegionNpcs(id).forEach(n=>{ n.maimed=false; if(n.boss||ludusIsChamp(id,'npc',n.id)) return; if(r()<0.2){ n.status='gone'; n.goneDay=ludus.day; return; } if(r()<0.6) n.level++; if(r()<0.2) n.tier=Math.min(3,n.tier+1); });
+  ludus.world=ludus.world.filter(n=>n.status==='active'||n.status==='team'||(n.status==='dead'&&ludus.day-(n.diedDay||0)<21));
+  ludusRegionRefill(id);
+}
+
+// ---- the calendar, called when a day has passed ----
+function ludusCalendar(){
+  if(ludus.over) return;
+  if(ludus.tourney){ ludus.forced={ type:'tourney' }; return; }
+  const atRegion=ludusIsRegion(ludusHere());
+  if(ludus.day%LUDUS_TOUR.tourneyEvery===0&&atRegion){ ludusTourneyStart(); if(ludus.day%LUDUS_TOUR.rentEvery===0) ludus.rentOwed=true; return; }
+  if(ludus.day%LUDUS_TOUR.rentEvery===0) ludusRentDue();
+}
+
+// ---- travel: to the right only, and only from a region the team has won (waypoints in between are free) ----
+const ludusMayLeave=()=>!ludusIsRegion(ludusHere())||ludus.map.cleared.includes(ludus.map.at);
+const ludusCanTravel=id=>{ const w=ludusMapWorld(), here=ludusHere(), to=w.nodes[id]; return !!to&&ludusMapNeighbours(here.id).includes(id)&&to.col>here.col&&ludusMayLeave(); };
+function ludusMapTravel(id){
+  if(ludus.over||ludus.forced||ludus.event||ludus.giftChoice||!ludusCanTravel(id)) return;
+  const w=ludusMapWorld(), from=ludus.map.region, n=w.nodes[id];
+  // the champion who leaves gives up the title: the region's best stranger takes place 1
+  if(ludusIsChamp(from,'own',(ludusChamp(from)||{}).id)){ const best=ludusRegionNpcs(from).filter(x=>!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0]; if(best) ludus.regions[from].champ={ t:'npc', id:best.id }; }
+  ludus.map.at=id; ludusLog(`Reise nach ${n.name}`);
+  if(ludusIsRegion(n)){ ludus.map.region=id; ludusRegionEnsure(id); ludus.team.forEach(m=>{ m.honor=0; }); ludus.arenaOffers=null; ludus.arenaEst=null; }
+  ludusAdvanceDay();
+  if(n.type==='event'&&!ludus.forced&&!ludus.event){ ludusMaybeEvent(); if(!ludus.event){ const g=8+3*n.col; ludus.gold+=g; ludusNote=`Am Wegesrand liegt etwas Gold: +${g}.`; } }
+  ludusSave(); ludusRender();
+}
+
+// ---- on screen ----
+function ludusMapDraw(){
+  const cv=document.getElementById('luMapCanvas'); if(!cv) return;
+  const w=ludusMapWorld(), g=cv.getContext('2d'), done=new Set(ludus.map.cleared), at=ludus.map.at, T=OW_TILE;
+  const near=new Set(ludusMapNeighbours(at).filter(ludusCanTravel));
+  g.drawImage(ludusMapTerrain,0,0);
+  g.fillStyle='rgba(52,16,60,0.5)';
+  for(let y=0;y<OW_ROWS;y++) for(let x=0;x<OW_COLS;x++){ if(w.terrain[y][x]==='water') continue; const nd=w.nodes[w.regionOf[y*OW_COLS+x]]; if(nd&&done.has(nd.id)) g.fillRect(x*T,y*T,T,T); }
+  w.edges.forEach(e=>{ const a=w.nodes[e.a], b=w.nodes[e.b], live=(e.a===at&&near.has(e.b))||(e.b===at&&near.has(e.a)); g.strokeStyle=live?'#e6c36a':'rgba(70,45,25,0.85)'; g.lineWidth=live?3:2; g.setLineDash(live?[]:[5,4]); g.beginPath(); g.moveTo(a.x*T+T/2,a.y*T+T/2); g.lineTo(b.x*T+T/2,b.y*T+T/2); g.stroke(); });
+  g.setLineDash([]);
+  g.font='bold 11px sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+  w.nodes.forEach(n=>{
+    const px=n.x*T+T/2, py=n.y*T+T/2, isDone=done.has(n.id);
+    if(near.has(n.id)){ g.fillStyle='rgba(255,215,90,0.35)'; g.beginPath(); g.arc(px,py,17,0,Math.PI*2); g.fill(); }
+    if(n.id===at){ g.strokeStyle='#7fe0ff'; g.lineWidth=2; g.beginPath(); g.arc(px,py,16,0,Math.PI*2); g.stroke(); }
+    g.fillStyle='rgba(10,6,4,0.78)'; g.beginPath(); g.arc(px,py,12,0,Math.PI*2); g.fill();
+    g.strokeStyle=isDone?'#8a4aa8':'#c9b98a'; g.lineWidth=1.5; g.beginPath(); g.arc(px,py,12,0,Math.PI*2); g.stroke();
+    owGlyph(g,n.type,px,py,isDone);
+    if(ludusIsRegion(n)&&!isDone){ const txt=String(ludusRegionLevel(n.col)), tw=g.measureText(txt).width+8; g.fillStyle='rgba(10,6,4,0.85)'; g.fillRect(px-tw/2,py+13,tw,13); g.fillStyle='#e8d870'; g.fillText(txt,px,py+19.5); }
+  });
+}
+function ludusMapHTML(){
+  const w=ludusMapWorld(), n=ludusHere(), lt=LOCATION_TYPES[n.type], region=ludusIsRegion(n), busy=!!(ludus.forced||ludus.event||ludus.giftChoice);
+  const near=ludusMapNeighbours(n.id).map(id=>w.nodes[id]).filter(m=>m.col>n.col);
+  let info='';
+  if(region){
+    const champ=ludusChamp(n.id), won=ludus.map.cleared.includes(n.id);
+    info=`<p>Stufe der Region: <b>${ludusRegionLevel(n.col)}</b> · Platz 1: <b>${ludusEsc(ludusEntryName(champ))}</b>${champ&&champ.t==='own'?' (dein Kämpfer)':''}<br>Nächstes Turnier in ${ludusTourneyIn()} Tagen (Tag ${ludus.day+ludusTourneyIn()}).</p>
+      <p class="${won?'luHint':'luBane'}">${won?'Du hast diese Region gewonnen: du darfst weiterziehen, oder bleiben und den Titel verteidigen.':'Weiter geht es erst, wenn einer deiner Kämpfer das Turnier gewinnt und Platz 1 wird.'}</p>`;
+  }
+  return `<div class="luPanel"><h2>Karte</h2><p class="luHint">Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht ihr Boss. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier: wer es gewinnt, ist Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.</p>
+    <canvas id="luMapCanvas" width="${OW_COLS*OW_TILE}" height="${OW_ROWS*OW_TILE}" style="width:100%;max-width:960px;border:1px solid #5a4a30"></canvas>
+    <p><b>${ludusEsc(n.name)}</b>${lt?' — '+Tr(lt.label):''}</p>${info}
+    <div class="luOpts">${near.map(m=>`<button data-travel="${m.id}" ${busy||!ludusCanTravel(m.id)?'disabled':''}>${ludusEsc(m.name)}${ludusIsRegion(m)?' · '+Tr('Stufe')+' '+ludusRegionLevel(m.col):''}</button>`).join(' ')}</div></div>`;
+}
+function ludusMapWire(el){
+  if(ludusTab!=='map'||!ludus.map) return;
+  ludusMapDraw();
+  el.querySelectorAll('[data-travel]').forEach(b=>b.addEventListener('click',()=>ludusMapTravel(+b.dataset.travel)));
+  const cv=document.getElementById('luMapCanvas');
+  if(cv) cv.addEventListener('click',e=>{ const r=cv.getBoundingClientRect(), k=cv.width/r.width, x=(e.clientX-r.left)*k, y=(e.clientY-r.top)*k, w=ludusMapWorld();
+    const hit=w.nodes.find(n=>Math.hypot(n.x*OW_TILE+OW_TILE/2-x,n.y*OW_TILE+OW_TILE/2-y)<16); if(hit) ludusMapTravel(hit.id); });
+}
+// the ladder of the region and, while it runs, the tournament tree
+function ludusBoardHTML(){
+  const n=ludusRegionNode(), rows=ludusBoard(n.id);
+  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.maimed?' · verletzt':''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
+  return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
+    ${ludus.tourney?ludusTourneyHTML():''}${rows.map(row).join('')}</div>`;
+}
+function ludusTourneyHTML(){
+  const t=ludus.tourney, pairs=ludusTourneyPairs();
+  return `<h3>${ludusTourneyRoundName(t.slots.length)}</h3>${pairs.map(([a,b,i])=>{ const r=t.played[i]; return `<div class="luItem"><span>${ludusEsc(ludusEntryName(a))}${a&&a.t==='own'?' ★':''} — ${ludusEsc(ludusEntryName(b))}${b&&b.t==='own'?' ★':''}</span><span>${r===undefined?'':(r===0?ludusEsc(ludusEntryName(a)):ludusEsc(ludusEntryName(b)))+' ✓'}</span></div>`; }).join('')}`;
+}
+function ludusArenaHTML(){
+  const offers=ludusArenaOffers(), sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region, est=ludus.arenaEst&&ludus.arenaEst.sig===sig?ludus.arenaEst.est:null;
+  const picks=ludusPicks();
+  return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die ersten Kämpfer deiner Aufstellung an: ${picks.map(m=>ludusEsc(m.name)).join(', ')}.</p>
+    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':` (${M.size} gegen ${M.foes})`}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Wähle ${M.size} Kämpfer`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
+}

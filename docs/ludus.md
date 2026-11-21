@@ -2,7 +2,7 @@
 
 Status: Entwurf zum Ausarbeiten. Die Creature Arena (`arena.js`) bleibt zugleich Testbank; der Ludus-Modus baut darauf auf.
 
-## Neues Gerüst: die Tournee (ab Tag-Plan November 2026, gilt vor allem Älteren unten)
+## Neues Gerüst: die Tournee (seit November 2026, gilt vor allem Älteren unten)
 
 Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiatoren sollen wie der Spieler leben (kämpfen, aufsteigen, Beute sammeln, sterben), unabhängig von ihm. Zuerst wird das Gerüst umgebaut, die lebende Welt kommt danach darauf.
 
@@ -26,6 +26,18 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - **Kampfarten zuerst:** Duell (1:1), Doppel (2:2), Trio (3:3), Rudel (einer gegen eine Meute). **Jeder gegen jeden** braucht mehr als zwei Seiten in der Arena-Engine und kommt als eigener Schritt.
 - **Turnier:** ein K.-o.-Baum mit 8 Plätzen, 1 gegen 1, eine Runde pro Tag (Viertelfinale, Halbfinale, Finale). Der Boss ist an 1 gesetzt, dazu alle eigenen Kämpfer und die Besten der Rangliste. Kämpfe ohne eigene Beteiligung werden simuliert (mit der echten Engine). Turnierkämpfe folgen den Arenaregeln. Wer das Finale gewinnt, ist Platz 1 (auch ein fremder Gladiator, der den Boss schlägt).
 - **Miete:** 4 Gold + 2 je Spalte der Region, je Kämpfer.
+
+### Stand der Umsetzung (`ludus-tour.js`)
+- **Karte und Regionen:** Die Welt kommt aus `buildWorld` (aus dem Lauf-Seed, nicht gespeichert). Jede Stadt ist eine Region (`ludusRegionEnsure`): ein Boss (`ludusBossMake`, Stärke 1,6 Orks der Regionsstufe, eine Güte besserer Ausrüstung; ein Geisterteam früherer Läufe, dessen Stufe passt, nimmt seinen Platz ein) und 9 Gladiatoren (0,6 bis 1,15 Orks der Regionsstufe). Regionsstufe = 1 + Spalte (höchstens 9), stärkere Arten gibt es erst weiter rechts (`ludusRegionKinds`).
+- **Rangliste** (`ludusBoard`): der Champion (anfangs der Boss) auf Platz 1, dann alle nach Ehre. Eigene Kämpfer starten in jeder neuen Region mit 0 Ehre. Arenasieg: +10 Ehre je Gegner (+10, wenn ein Gegner mehr Ehre hatte), die Besiegten −5; Niederlage: −5, die Sieger +8. Turniersieg je Runde +15.
+- **Aufstellung:** Am Kämpferkärtchen schaltet das Schwert-Symbol, wer heute antritt (`ludus.pick`). Die Grube nimmt alle Aufgestellten, die Arena die ersten so viele, wie die Kampfart braucht. Wer an einem Tag nicht kämpft, erholt sich um eine halbe Bettruhe.
+- **Grube:** wie früher zwei oder drei Angebote (leicht, fair, mit ausgebauter Grube schwer), für die Aufstellung ausgesucht; `noDeath` in der Arena-Engine: niemand stirbt, auf keiner Seite. Lohn: Erfahrung (Grube Stufe 3: +25 %) und das teuerste Stück aus der Ausrüstung der Gegner.
+- **Arena** (`ludusArenaOffers`): drei Angebote am Tag, immer ein Duell, dazu zwei aus Duell, Rudel, Doppel (ab 2 Kämpfern), Trio (ab 3). Gegner sind Gladiatoren der Region (nie der Champion). Die Aussichten werden mit 4 Probekämpfen geschätzt; der Preis ist (14 + 9 × Stufe) × Faktor der Kampfart × (1,6 − 1,1 × Aussichten), zwischen halb und doppelt. Dazu Ruhm, Ansehen (5 bis 12 nach Risiko) und Ehre. Die Turnierhalle hebt Arena- und Turnierpreise um 25 % bzw. 50 %.
+- **Miete:** jeden 7. Tag 4 + 2 × Spalte Gold je Kämpfer. Reicht das Gold nicht: Pflichtkampf (Duell gegen einen Gladiator der Region) ohne Gold, Erfahrung oder Ehre. Fällt sie auf einen Turniertag, kommt sie nach dem Turnier.
+- **Turnier** (`ludusTourneyStart`): an jedem 30. Tag in der Region, in der man ist. 8 Plätze: Champion an 1, alle eigenen Kämpfer, die Besten der Rangliste; gesetzt wie üblich (1–8, 4–5, 2–7, 3–6). Eine Runde pro Tag; eigene Kämpfe gegen Fremde werden gespielt, alle anderen mit der Engine ausgefochten (`ludusTourneySim`). Sieger des Finales wird Champion: ein eigener Kämpfer bringt 40 + 30 × Spalte Gold, Ruhm, Ansehen und eine Gabe, und die Region gilt als gewonnen. Danach ändert sich die Region (20 % gehen, die anderen wachsen, Neulinge kommen).
+- **Reise:** nur nach rechts und erst, wenn die Region gewonnen ist (Wegpunkte dazwischen sind frei); eine Etappe kostet einen Tag. Wer geht, gibt den Titel ab (der Beste der Region wird Champion). Platz 1 in der letzten Spalte gewinnt den Lauf.
+- Entfallen: Wochenrangliste und Herausforderungen, Wochenkampf, Pflichtkampf nach 3 Tagen, Städteturniere, Aufrüstung der Städte, Referenzteams (der alte Kartenmodus und seine Bots).
+- **Bot** (`tools/ludus-tour-bot.js`): spielt ganze Läufe. Erste Läufe (100 Tage): eine Ork-Schule gewann das erste Turnier an Tag 30 und verlor die nächsten zwei in Spalte 1; eine Goblin-Schule gewann erst das dritte. Gold sammelt sich an (über 500), die Miete drückt kaum. Das Balancing der Tournee steht noch aus.
 
 ### Danach: die lebende Welt
 Jeder Gladiator hat volle Werte (Stufe, Erfahrung, Gold, Inventar, Wunden). Jeden Tag kämpfen sie untereinander (echte Engine, im Hintergrund), steigen auf, nehmen Beute, sterben; die Ehre ordnet die Rangliste; eine Chronik erzählt davon; Neulinge rücken von links nach rechts nach.
@@ -137,14 +149,14 @@ Späte Arten sind mit Absicht stärker (Budget, `docs/budget.md`) und seltener u
 ## Seiten
 Wer in welchem Lager beginnt, wird pro Kampf gewürfelt (`swapSides`, aus dem Seed), damit Karten ohne Gleichgewicht nicht immer dieselbe Seite begünstigen.
 
-## Pflichtkämpfe und Kartenmodus (neu)
+## Früher: Pflichtkämpfe und Kartenmodus (durch die Tournee ersetzt)
 
 - **Wochenkampf:** Alle 5 Tage (erstmals Tag 8) ist ein Kampf Pflicht. Er ist ein normaler Kampf (kein Tod-Zwang) und bringt Gold, aber keinen Fortschritt in der Rangliste. Wer 3 Tage nicht kämpft, muss ebenfalls antreten.
 - **Rangliste (klassischer Modus):** Die Turnierhalle hat einen Knopf „Herausfordern": freiwillig, auf Leben und Tod, mit den alten Belohnungen (Gabe, Ansehen, Ruhm, Titel).
 - **Kartenmodus (`ludus-map.js`):** In der Startmaske wählbar, sobald freigeschaltet (Debug-Schalter „alle Kreaturen", 8 Siege in einem Lauf oder ein Titel). Die Welt kommt aus `buildWorld` wie in der Kampagne (aus dem Lauf-Seed neu gebaut, nicht gespeichert). Jede Reise zu einer Nachbarstadt kostet einen Tag; Wegepunkte mit Ereignis-Symbol lösen ein Ereignis oder einen Fund aus. Die Hauptstadt öffnet ihre Tore erst, wenn 6 Städte erobert sind (`LUDUS_CITY.needs`).
 - **Turnier einer Stadt:** 2 bis 4 Runden an aufeinanderfolgenden Tagen (Team wird über Nacht gepflegt), jede Runde auf Leben und Tod. Sieg = weiter, Niederlage = raus aus dem Turnier. Das Finale gibt es gegen eine Figur der Rangliste (je weiter rechts die Stadt, desto höher der Platz; die Hauptstadt hat den Meister) oder gegen ein Geisterteam, dessen Stufe zur Stadt passt. Finalsieg: Stadt erobert (Gold, Ansehen, Ruhm, Gabe). Hauptstadt erobert = Lauf gewonnen.
 
-### Stärke der Städte (Balancing des Kartenmodus)
+### Früher: Stärke der Städte (Balancing des alten Kartenmodus, Werkzeuge entfernt)
 - Jede Stadt hat eine **Stufe** (`ludusCityLevel`): 1 + 1 je Spalte der Karte, höchstens 9 (die Erfahrung für die nächste Stufe verdoppelt sich je Stufe, über 9 kommt man im Lauf kaum). Die Zahl steht an der Stadt, gefärbt nach deinen Aussichten (Leicht / Machbar / Ausgeglichen / Riskant / Aussichtslos, nach dem Stufenunterschied). Im Stadtfeld steht außerdem, worauf die Gegner abgestimmt sind: Stufe, Güte der Ausrüstung und Zahl der Gaben.
 - Die Gegner hängen **nicht von deinem Team**, sondern von der Stadt ab: Probekämpfe gegen ein **Referenzteam** (`ludusRefTeam`) suchen die Gegnerstufe, bei der das Referenzteam eine Zielquote gewinnt. Das Referenzteam sind deine Kreaturenarten auf der Stufe der Stadt, mit Schwert und leichter Rüstung der Güte, die man dort üblicherweise trägt (grob bis Spalte 2, schlicht bis 7, danach fein), und den Gaben, die man auf dem üblichen Weg bis dahin hat (0,6 je Spalte nach der ersten). Wer stärker ist (mehr Stufen, bessere Ausrüstung, mehr Gaben, Schriftrollen, Steuerung von Hand), gewinnt sicherer; wer zu früh kommt, verliert.
 - Zielquoten für das Referenzteam (`LUDUS_CITY`): Runde 0,99 − 0,012 je Spalte, Finale 0,97 − 0,025 je Spalte. Weder Art noch Stufe werden zurechtgebogen: Die Gegnerstufe liegt höchstens 4 über der Stadtstufe (`maxOver`); braucht eine schwache Art mehr, nimmt eine stärkere ihren Platz (`ludusCupCandidateG` wählt unter sechs Kandidaten den, der der Quote am nächsten kommt; eine Figur, die selbst auf Stufe 1 zu mächtig ist, weicht einer geringeren Art, eine zu schwache einer stärkeren). Geisterteams werden nur schwächer, nie stärker, als die Stadt erlaubt.
@@ -167,6 +179,7 @@ Eine Stufe mehr oder weniger verschiebt die Quote also um 4 bis 8 Punkte; ein Tu
 - Gewollt ist also: Wer genau auf der Stadtstufe antritt, schafft die Karte selten (etwa jeder Sechste), wer mit Reserve und Zeit kommt, meistens. Offen: Die Bots nutzen keine Schriftrollen und steuern nicht von Hand; Spieler dürften besser abschneiden.
 
 ## Geister: frühere Teams als Rivalen (`ludus-ghosts.js`)
+- **In der Tournee:** Ein Geisterteam, dessen Stufe zur Region passt (Regionsstufe + 2, ±1), wird dort Boss: sein stärkstes Mitglied steht auf Platz 1. Wird es im Turnier geschlagen, tritt es ab. Die Punkte unten beschreiben die alte Rangliste.
 - Endet ein Lauf durch den Tod des Teams (oder durch die Eroberung der Hauptstadt), wird das ganze Team (Kreaturen, Stufen, Ausrüstung, Gaben, Fähigkeiten) in `ludusMeta.ghosts` gespeichert (höchstens 10, die ältesten fallen heraus).
 - In jedem späteren Lauf ersetzt ein Geist die Ranglistenfigur seiner Stärke (durchschnittliche Stufe → Platz; belegte Plätze rücken zum nächsten freien). Er ist in der Turnierhalle als „früheres Team" markiert.
 - Der Kampf ist Team gegen Team, mit den gespeicherten Werten und ohne Anpassung an das eigene Team (im Kartenmodus als Finale, im klassischen Modus als Herausforderung).
