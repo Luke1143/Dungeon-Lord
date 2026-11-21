@@ -114,7 +114,7 @@ function ludusArenaOffers(){
   const add=(mode,glads)=>{
     const M=LUDUS_MODES[mode], foes=glads.map(ludusNpcFoe);
     const o={ arena:true, mode, variant:M.pack?'swarm':(foes.length>1?'group':'duel'), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
-    o.title=foes.map(f=>`${f.name} (${SPECIES[f.kind].label})`).join(', ');
+    o.title=(M.pack?'Rudel: ':'')+(foes.length>1?foes.map(f=>f.name).join(', '):`${foes[0].name} (${SPECIES[foes[0].kind].label})`);       // several foes: their names (one pair of brackets per title, so the translation reads it right)
     o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:M.mult)*ludusHallMult());
     list.push(o);
   };

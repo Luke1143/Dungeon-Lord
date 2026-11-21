@@ -84,7 +84,7 @@ function ludusLifeAfterBout(sides,res,kind,region){
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
   if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&ludusTierIndex(it)>=2) ludusChron(region,`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
   res.dead.forEach(n=>{ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; const k=win[0]; if(k&&res.dead.indexOf(k)<0) k.kills=(k.kills||0)+1;
-    ludusChron(region,`${n.name} (${SPECIES[n.kind].label}, Stufe ${n.level}) fällt in der Arena${k?' gegen '+k.name:''}.`); });
+    ludusChron(region,`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt in der Arena${k?' gegen '+k.name:''}.`); });
 }
 
 // ---- the evening: the bouts of the day without the player ----
