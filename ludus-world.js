@@ -18,10 +18,11 @@ const ludusNpc=id=>(ludus&&ludus.world||[]).find(n=>n.id===id)||null;
 const ludusNpcPool=()=>(ludus.world||[]).filter(n=>n.status==='active' && !n.maimed && !n.boss && (!ludus.map||n.region===ludus.map.region));
 // what a character looks like to the arena and to the 3D view: the same fields as an anonymous opponent, plus the id
 const ludusNpcFoe=n=>({ kind:n.kind, level:n.level, tier:n.tier, seed:n.seed, name:n.name, npc:n.id });
+// a gladiator's name: first name and byname, unique in the whole land (the player's own keep their single names)
 function ludusNpcName(r){
-  const taken=new Set((ludus.world||[]).filter(n=>n.status==='active').map(n=>n.name).concat(ludus.team.map(m=>m.name)));
-  const free=LUDUS_NAMES.filter(x=>!taken.has(x)); const l=free.length?free:LUDUS_NAMES;
-  return l[Math.floor(r()*l.length)];
+  const taken=new Set((ludus.world||[]).filter(n=>n.status!=='dead'&&n.status!=='gone').map(n=>n.name).concat(ludus.team.map(m=>m.name)));
+  for(let i=0;i<60;i++){ const nm=LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)]; if(!taken.has(nm)) return nm; }
+  return LUDUS_NAMES[Math.floor(r()*LUDUS_NAMES.length)]+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)]+' '+(2+Math.floor(r()*8));
 }
 // how a character stands to the fighter, in one line (the last thing that happened between them)
 function ludusNpcStory(n){
@@ -55,7 +56,7 @@ function ludusNpcOutcomes(st,won,o){
     const n=c.npcId&&ludusNpc(c.npcId); if(!n) return;
     n.met=1;
     const gone=c.removed||c.dead||!st.creatures.includes(c);
-    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; if(n.region!==undefined) ludusChron(n.region,`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt im Kampf gegen deine Schule.`); return; }
+    if(gone){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; if(n.region!==undefined) ludusChron(n.region,'death',`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt im Kampf gegen deine Schule.`); return; }
     const theyWon=ti===0?won:!won;
     if(n.inventory&&!(o&&o.rent&&ti===0)){ withState(st,()=>grantXp(c,ludusBoutXp(foeLv,theyWon,1))); n.level=c.level; n.xp=c.xp; n.inventory=JSON.parse(JSON.stringify(c.inventory||[])); n.learned=(c.learned||[]).slice(); n.hp=c.unconscious?1:Math.max(1,Math.round(c.hp)); n.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:100)-12); }
     if(theyWon) n.wins=(n.wins||0)+1; else n.losses=(n.losses||0)+1;

@@ -57,7 +57,7 @@ function ludusBossMake(r,regionId){
   if(g){ const m=g.members.slice().sort((a,b)=>b.level-a.level)[0];
     return { boss:ludusEquip({ id:'n'+Math.floor(r()*1e9), name:g.name, kind:m.kind, level:m.level, tier:3, seed:m.seed, status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true, ghost:g.id, member:JSON.parse(JSON.stringify(m)), bold:0.5 }), ghost:g.id }; }
   const strong=ludusRegionKinds(n.col).filter(k=>creatureWorth(k)>=1); const kind=creaturePickWeighted(r,strong.length?strong:ludusRegionKinds(n.col));
-  const b={ boss:{ id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r)+' '+LUDUS_CAST[Math.floor(r()*LUDUS_CAST.length)], kind, level:creatureLevelFor(kind,ludusRegionUnit(n.col)*1.6),
+  const b={ boss:{ id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r), kind, level:creatureLevelFor(kind,ludusRegionUnit(n.col)*1.6),
     tier:Math.min(3,ludusRegionTier(n.col)+1), seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true, bold:0.5 } };
   ludusEquip(b.boss); return b;
 }

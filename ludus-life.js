@@ -26,7 +26,8 @@ function ludusGladWorth(n){
   return creatureWorthAt(n.kind,n.level)*Math.pow(ludusKindBoost(n.kind),2)*(1+0.18*ludusGladTier(n))*(0.4+0.6*hp);
 }
 const ludusHurtPct=n=>{ const c=ludusMemberCreature(n); return Math.round(100*c.hp/Math.max(1,c.maxHp)); };
-function ludusChron(region,t){ ludus.chronicle=ludus.chronicle||[]; ludus.chronicle.unshift({ d:ludus.day, r:region, t }); if(ludus.chronicle.length>LUDUS_LIFE.chronicle) ludus.chronicle.length=LUDUS_LIFE.chronicle; }
+// k: what kind of news (loot, death, champ, move, rookie); the page shows everything of the own region, from elsewhere what matters for the way ahead
+function ludusChron(region,k,t){ ludus.chronicle=ludus.chronicle||[]; ludus.chronicle.unshift({ d:ludus.day, r:region, k, t }); if(ludus.chronicle.length>LUDUS_LIFE.chronicle) ludus.chronicle.length=LUDUS_LIFE.chronicle; }
 const ludusRegionName=id=>{ const n=ludusMapWorld().nodes[id]; return n?n.name:''; };
 // experience by the numbers (where no creature is at hand): the same formula as for the player's team
 function ludusGladXp(n,xp){ n.xp=(n.xp||xpForLevel(n.level))+xp; let up=false; while(n.level<40&&n.xp>=xpForLevel(n.level+1)){ n.level++; up=true; } return up; }
@@ -82,9 +83,9 @@ function ludusLifeAfterBout(sides,res,kind,region){
   const [a,b]=sides, win=res.winner===0?a:b, lose=res.winner===0?b:a, L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
   win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
-  if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&ludusTierIndex(it)>=2) ludusChron(region,`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
+  if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&region===ludus.map.region) ludusChron(region,'loot',`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
   res.dead.forEach(n=>{ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; const k=win[0]; if(k&&res.dead.indexOf(k)<0) k.kills=(k.kills||0)+1;
-    ludusChron(region,`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt in der Arena${k?' gegen '+k.name:''}.`); });
+    ludusChron(region,'death',`${n.name} (${SPECIES[n.kind].label} der Stufe ${n.level}) fällt in der Arena${k?' gegen '+k.name:''}.`); });
 }
 
 // ---- the evening: the bouts of the day without the player ----
@@ -150,7 +151,7 @@ function ludusLifeTourneys(){
     const w=round[0]; if(!w) return;
     const prev=champ&&champ.t==='npc'?ludusNpc(champ.id):null;
     ludus.regions[id].champ={ t:'npc', id:w.id }; w.honor=(w.honor||0)+30;
-    if(!prev||prev.id!==w.id) ludusChron(id,`${w.name} gewinnt das Turnier von ${ludusRegionName(id)}${prev?' und stürzt '+prev.name:''}.`);
+    if(!prev||prev.id!==w.id) ludusChron(id,'champ',`${w.name} gewinnt das Turnier von ${ludusRegionName(id)}${prev?' und stürzt '+prev.name:''}.`);
   });
   ludusLifeMigrate();
 }
@@ -166,12 +167,13 @@ function ludusLifeMigrate(){
     const regions=[]; next.forEach(m=>{ if(ludusIsRegion(m)) regions.push(m); else ludusMapNeighbours(m.id).map(i=>w.nodes[i]).filter(x=>x.col>m.col&&ludusIsRegion(x)).forEach(x=>regions.push(x)); });
     if(!regions.length) return;
     const crowd=m=>ludusRegionNpcs(m.id).length+r()*0.5, to=regions.sort((x,y)=>crowd(x)-crowd(y))[0]; ludusRegionEnsure(to.id);       // the least crowded of the next regions
-    ludusChron(n.region,`${n.name} (Stufe ${n.level}) zieht weiter nach ${to.name}.`);
+    ludusChron(n.region,'move',`${n.name} (Stufe ${n.level}) zieht weiter nach ${to.name}.`);
+    if(to.id===ludus.map.region) ludusChron(to.id,'move',`${n.name} (Stufe ${n.level}) kommt aus ${ludusRegionName(n.region)}.`);
     n.region=to.id; n.honor=0; n.maimed=false;
   });
   Object.keys(ludus.regions||{}).forEach(k=>{
     const id=+k, node=w.nodes[id], have=ludusRegionNpcs(id).filter(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)).length;
-    if(node.col===0){ for(let i=have;i<LUDUS_TOUR.roster;i++){ const n=ludusNpcMake(r,id,0.55+0.25*r(),-1); n.honor=0; ludus.world.push(n); ludusChron(id,`${n.name} (${SPECIES[n.kind].label}) beginnt als Neuling in ${node.name}.`); } }
+    if(node.col===0){ for(let i=have;i<LUDUS_TOUR.roster;i++){ const n=ludusNpcMake(r,id,0.55+0.25*r(),-1); n.honor=0; ludus.world.push(n); ludusChron(id,'rookie',`${n.name} (${SPECIES[n.kind].label}) beginnt als Neuling in ${node.name}.`); } }
     else if(have<LUDUS_LIFE.minRoster){ for(let i=have;i<LUDUS_LIFE.minRoster;i++){ const n=ludusNpcMake(r,id,0.8+0.2*r(),-1); n.honor=0; ludus.world.push(n); } }
   });
   ludus.world=ludus.world.filter(n=>n.status==='active'||n.status==='team'||(n.status==='dead'&&ludus.day-(n.diedDay||0)<30));
@@ -180,6 +182,7 @@ function ludusLifeMigrate(){
 // ---- on screen ----
 const LUDUS_PLAN_LABEL={ pit:'in der Grube', arena:'in der Arena', rest:'ruht' };
 function ludusChronicleHTML(){
-  const l=(ludus.chronicle||[]).slice(0,18); if(!l.length) return '';
+  const w=ludusMapWorld(), col=ludusRegionNode().col, near=e=>{ const n=w.nodes[e.r]; return !!n&&n.col>=col&&n.col<=col+2; };
+  const l=(ludus.chronicle||[]).filter(e=>e.r===ludus.map.region||((e.k==='champ'||e.k==='death')&&near(e))).slice(0,18); if(!l.length) return '';
   return `<h3>Chronik</h3><div class="luLog">${l.map(e=>`<span>Tag ${e.d}${e.r!==ludus.map.region?' · '+ludusEsc(ludusRegionName(e.r)):''}:</span> <span>${ludusEsc(e.t)}</span>`).join('<br>')}</div>`;
 }

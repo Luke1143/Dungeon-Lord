@@ -49,7 +49,8 @@ Vom Nutzer: Die Gegner in Grube und Arena sind echte Gladiatoren, die sich selbs
 - **Einkauf:** Gladiatoren mit Gold kaufen bessere Ausrüstung, eine Güte über der getragenen, bis eine Güte über dem Üblichen der Region.
 - **Turniere:** Alle Regionen haben am selben Tag Turnier; außerhalb der eigenen Region wird es aus den besten acht geschätzt. Turnierkämpfe in der eigenen Region ohne Spieler laufen mit der echten Engine und können töten.
 - **Wanderung:** Nach den Turnieren zieht, wer 2 Stufen über der Stufe seiner Region steht (und nicht Champion ist), in die am wenigsten volle Region rechts davon (über Wegpunkte hinweg). Neulinge entstehen nur in der ersten Spalte; eine Region mit weniger als 6 Gladiatoren bekommt Zugereiste.
-- **Chronik:** Tode, Turniersieger, Wanderungen, Neulinge und wertvolle Beute in der Grube stehen in der Rangliste.
+- **Chronik:** In der Rangliste steht alles aus der eigenen Region (Beute in der Grube, Tote, Turniersieger, wer weiterzieht oder ankommt, Neulinge), aus anderen Regionen nur Tode und Turniersieger der nächsten zwei Spalten (dorthin geht der Weg).
+- **Namen:** Jeder Gladiator hat Vor- und Beinamen (20 × 22), eindeutig im ganzen Land.
 - **Gemessen** (Bot, 100 Tage): 11 bis 18 Tote, 25 bis 37 Wanderungen, die Stufen steigen von links (im Schnitt 3 bis 4) nach rechts (12) an; ein Tag dauert etwa eine halbe Sekunde.
 
 ## Grundidee

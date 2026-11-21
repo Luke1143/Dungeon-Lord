@@ -327,7 +327,7 @@ function ludusLeaveMatch(){
   state=makeDefaultState(); ludusNote=ludusResultText.replace('\n',' — '); ludusTab=ludus.over?'start':ludusTab; showScreen('ludus'); ludusRender();
 }
 
-const LUDUS_CAST=['Ferox','Rufus','Magnus','Niger','Longus','Crassus','Felix','Fortis','Gracilis','Pius'];       // second names of the bosses
+const LUDUS_CAST=['Ferox','Magnus','Niger','Longus','Crassus','Felix','Fortis','Gracilis','Pius','Celer','Durus','Albus','Saevus','Brevis','Audax','Calvus','Lupus','Ursus','Corvus','Taurus','Vulpes','Rex'];       // bynames of the gladiators
 function ludusTavernHTML(){
   const g=ludusTavernGuests(), head=`<p class="luHint">Team: ${ludus.team.length} von ${ludusTeamMax()} Plätzen. Wer anheuert, hat keine Tag-Team-Kämpfe mit geliehenen Mitstreitern mehr, dafür kämpft das ganze Team gegen mehrere Gegner.</p>`;
   if(!g.length) return head;
