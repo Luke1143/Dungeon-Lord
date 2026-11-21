@@ -487,6 +487,7 @@ function ludusRender(){
   }
   if(live && ludus.followup && !ludus.giftChoice){ const fu=ludus.followup; override=`<div class="luPanel luEvent"><h2>${fu.title}</h2><p>${ludusEsc(fu.text)}</p><button id="luFollowGo" class="menuMain">Weiter</button></div>`; }
   ludusEventShown=!!(override && live && !ludus.giftChoice && (ludus.followup || (ludus.event && !ludus.forced)));
+  if(!override&&live&&ludusPicked){ const pc=ludusPickHTML(); if(pc) override=pc; }
   if(override){ main=override; }
   else if(ludusTab==='start'){
     main=(ludus&&ludus.over?`<div class="luPanel"><h2>Der Lauf ist zu Ende</h2><p>${ludusEsc(ludus.cause)}</p><p>Siege: ${ludus.wins} · Tage: ${ludus.day} · Ruhm: ${ludus.fame}</p><p>Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage.</p></div>`:'')+ludusStartHTML();
@@ -536,7 +537,7 @@ function ludusRender(){
     ${override?'':tabs}<div class="${live?'luCols':'luSolo'}">${left}<div>${main}${live&&ludus.log.length?`<div class="luLog">${ludus.log.map(ludusEsc).join('<br>')}</div>`:''}</div></div>
     <div class="arBtns"><button id="luMenu" class="menuMain">Hauptmenü</button>${live?'<button id="luReset" class="menuMain">Neu beginnen</button>':''}</div>`;
   const stockNow=el._stock;
-  el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; if(ludusTab!=='gear') ludusSel=-1; ludusRender(); }));
+  el.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ ludusTab=b.dataset.tab; ludusNote=''; ludusPicked=null; if(ludusTab!=='gear') ludusSel=-1; ludusRender(); }));
   if(live){
     el.querySelectorAll('[data-item]').forEach(b=>b.addEventListener('click',()=>{ ludusSel=+b.dataset.item; ludusTab='gear'; ludusRender(); }));
     el.querySelectorAll('[data-give]').forEach(b=>b.addEventListener('click',()=>{ const [k,mi]=b.dataset.give.split(':').map(Number), e=ludusItems()[k]; if(!e) return; ludusGiveItem(e.inst,mi<0?null:ludus.team[mi]); ludusSel=-1; ludusSave(); ludusRender(); }));
@@ -560,6 +561,8 @@ function ludusRender(){
   el.querySelectorAll('[data-event]').forEach(b=>b.addEventListener('click',()=>ludusEventChoose(+b.dataset.event)));
   on('luFollowGo',()=>{ ludus.followup=null; ludusSave(); ludusRender(); });
   on('luTourneyGo',ludusTourneyAdvance); ludusMapWire(el);
+  on('luPickClose',()=>{ ludusPicked=null; ludusRender(); });
+  on('luPickJoin',()=>{ const id=ludusPicked; ludusPicked=null; if(!ludusRecruit(id)) ludusRender(); });
   on('luEndDay',ludusEndDay); on('luForcedGo',()=>{ const o=ludusForcedBout(); if(o) ludusFight(o.members?o:Object.assign({},o,{ members:[ludus.fighter.id] })); });
   on('luChicken',()=>{ if(ludus.gold<ludusChickenCost()) return; ludus.gold-=ludusChickenCost(); ludusHeal(ludusChickenHeal()); ludus.fighter.energy=Math.min(100,(ludus.fighter.energy===undefined?100:ludus.fighter.energy)+10); ludusSave(); ludusRender(); });
   on('luBanquet',()=>{ const c=ludusBanquetCost(); if(ludus.gold<c) return; ludus.gold-=c; ludusGainRenown(3); ludusNote='Das Bankett spricht sich herum: +3 Ansehen.'; ludusSave(); ludusRender(); });
@@ -568,23 +571,55 @@ function ludusRender(){
   if(ludusTab==='start') ludusWireStart(el);
   if(ludusTab==='pit' && live && !override && ludusPicks().length) ludusScoutOpponent();
   if(ludusTab==='arena' && live && !override) ludusArenaScout();
-  ludusHubSync(roomId);
+  ludusHubSync(ludusTab);
 }
 // the 3D courtyard shows the meta progress; the camera belongs to the selected room, the fighter of the run walks in after it
 let hubState='idle', ludusEventShown=false;
 function ludusHubTiers(){ const t={ event:1 }; Object.keys(LUDUS_ROOMS).forEach(id=>{ t[id]=(ludus&&!ludus.over)||ludusMeta.roomsAll?ludusRoomTier(id):(id==='inn'||id==='pit'?1:0); }); return t; }
-function ludusHubSync(roomId){
+// the dungeon of the region (hub3d.js): which room each tab looks at, and who stands where (the room of what he does today)
+const LUDUS_HUB_ROOM={ map:'hall', tour:'hall', arena:'arena', pit:'pit', inn:'inn', train:'training', smith:'forge', lib:'library', gear:'inn', sheet:'inn', start:'inn' };
+const LUDUS_PLAN_ROOM={ pit:'pit', arena:'arena', work:'work', rest:'inn' }, LUDUS_JOB_ROOM={ fight:'hall', rest:'inn', train:'training', work:'work' };
+const ludusLookSig=c=>{ const extra=typeof equipLook==='function'?equipLook(c):undefined; return { extra:extra||undefined, sig:JSON.stringify(extra||null) }; };
+function ludusHubPeople(showEv){
+  if(!ludus||ludus.over||!ludus.map) return [];
+  const id=ludus.map.region, out=[];
+  ludusRegionNpcs(id).forEach(n=>{ const room=ludusIsChamp(id,'npc',n.id)?'hall':(LUDUS_PLAN_ROOM[ludusPlanOf(n.id)]||'inn'), look=ludusLookSig(ludusFoeCreature(ludusNpcFoe(n)));
+    out.push(Object.assign({ id:n.id, kind:n.kind, room, name:n.name, sel:n.id===ludusPicked },look)); });
+  ludus.team.forEach((m,i)=>{ const look=ludusLookSig(ludusMemberCreature(m)), room=showEv&&i===ludus.sel?'event':(LUDUS_JOB_ROOM[ludusJob(m)]||'inn');
+    out.push(Object.assign({ id:m.id, kind:m.kind, room, name:m.name, own:true, sel:i===ludus.sel },look)); });
+  return out;
+}
+let ludusPicked=null;       // the gladiator clicked in the dungeon (his card is shown)
+function ludusHubSync(tab){
   if(hubState==='failed') return;
   if(hubState==='idle'){
     hubState='loading';
-    Hub3D.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; Hub3D.start(); ludusHubSync(roomId); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
+    Hub3D.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; Hub3D.onPick=ludusOnPick; Hub3D.start(); ludusHubSync(tab); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
     return;
   }
   if(hubState!=='ready') return;
-  let fighter=null; if(ludus&&!ludus.over){ const c=ludusCreature(), extra=typeof equipLook==='function'?equipLook(c):undefined; fighter={ kind:ludus.fighter.kind, extra:extra||undefined, sig:JSON.stringify(extra||null) }; }
-  const showEv=!!(ludus&&!ludus.over&&ludusEventShown);
+  const live=!!(ludus&&!ludus.over), showEv=live&&ludusEventShown;
   if(typeof View3D!=='undefined') Hub3D.setPost(View3D.post||0);
-  Hub3D.sync(ludusHubTiers(),fighter,showEv?ludusEventCast():null,ludusTavernGuests().map(ludusLookOf)); Hub3D.focus(showEv?'event':(roomId||'inn')); Hub3D.start(); Hub3D.resize();
+  Hub3D.sync(ludusHubTiers(),live&&ludus.map?'r'+ludus.seed+':'+ludus.map.region:'start',showEv?ludusEventCast():null,ludusHubPeople(showEv));
+  const picked=live&&ludusPicked&&ludusHubPeople(false).find(x=>x.id===ludusPicked);       // the camera follows a clicked gladiator to his room
+  Hub3D.focus(showEv?'event':(picked?picked.room:(LUDUS_HUB_ROOM[tab]||'inn'))); Hub3D.start(); Hub3D.resize();
+}
+// a click on a gladiator in the dungeon: an own one is selected, any other shows his card
+function ludusOnPick(id){
+  if(!ludus||ludus.over) return;
+  const k=ludus.team.findIndex(m=>m.id===id); if(k>=0){ ludus.sel=k; ludusPicked=null; ludusSave(); ludusRender(); return; }
+  if(ludusNpc(id)){ ludusPicked=id; ludusRender(); }
+}
+// the card of a gladiator of the region: who he is, what he does today, how he stands to the school, what one can do with him
+function ludusPickHTML(){
+  const n=ludusNpc(ludusPicked); if(!n||n.status!=='active'){ ludusPicked=null; return ''; }
+  const id=ludus.map.region, champ=ludusIsChamp(id,'npc',n.id), rank=ludusRankOf(id,'npc',n.id), plan=ludusPlanOf(n.id), c=ludusFoeCreature(ludusNpcFoe(n));
+  const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
+  const canJoin=!champ&&!n.boss&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
+  return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
+    <p class="luHint">Ausrüstung: ${gear}${story?'<br>'+ludusEsc(n.name)+' '+ludusEsc(story)+'.':''}</p>
+    ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
+    <button id="luPickClose">Schließen</button></div>`;
 }
 function ludusPaint(){
   if(screen!=='ludus'||!ludus) return;
@@ -592,6 +627,7 @@ function ludusPaint(){
   const draw=(canvas,o,size)=>{ arenaPaintCreature(canvas,ludusFoeCreature(ludusFoes(o)[0]),1,size); };
   document.querySelectorAll('canvas.luOptPrev').forEach(cv2=>{ const o=(ludus.options||[])[+cv2.dataset.opt]; if(o) draw(cv2,o,66); });
   document.querySelectorAll('canvas.luArPrev').forEach(cv2=>{ const o=(ludus.arenaOffers&&ludus.arenaOffers.list||[])[+cv2.dataset.opt]; if(o) draw(cv2,o,66); });
+  const pc=document.getElementById('luPickPrev'); if(pc&&ludusPicked){ const n=ludusNpc(ludusPicked); if(n) arenaPaintCreature(pc,ludusFoeCreature(ludusNpcFoe(n)),1,76); }
   const fc=document.getElementById('luForcedPrev'); if(fc&&ludus.forced){ const o=ludus.forced.type==='tourney'?ludusTourneyBout():ludus.forced.opp; if(o) draw(fc,o,76); }
 }
 setInterval(ludusPaint,200);

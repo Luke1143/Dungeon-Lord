@@ -1,21 +1,26 @@
-// The Ludus as a real 3D place (Three.js, lib/three.min.js, loaded on demand). Every building is a stage of its own: the camera is bound to the selected one, swings
-// over quickly when another is chosen, and nothing else is in sight (no peeking behind the scenes). An orbit around the building is allowed within narrow limits.
-// Buildings that are not bought are empty building sites: the fighter walks in, and the only thing to do there is to build. Guests and the fighter are billboards
-// of the game's own sprites. The Ludus screen tells this view which room to show and in which tier each one stands.
+// The Ludus as a real 3D place (Three.js, lib/three.min.js, loaded on demand): the region's dungeon. Its rooms (the school's own buildings, the region's pit, arena,
+// workshop and tournament hall, the alley of the events) lie on a grid, made anew for every region from its seed, and are joined by torch-lit corridors.
+// The camera swings to the room of the selected tab and may orbit it a little. Every gladiator of the region stands in the room of what he does today
+// (people: billboards of the game's own sprites, the school's own with a red ring); a click on one tells the Ludus screen who it was (onPick).
+// Buildings that are not bought are empty building sites.
 const Hub3D=(()=>{
   let T, host, renderer, post=null, scene, camera, ready=false, loading=null, running=false, last=0, sig='';
   const cam={ x:0, z:3, r:15, tx:0, tz:3, tr:15, dTheta:0, dPhi:0, theta0:0.6, phi0:0.85, idle:0 };
   const texCache=new Map(), spriteTex=new Map(), rooms={}, MAT={};
-  let current='inn', previous=null, travel=0, fighter=null, fighterInfo=null;
+  let current='inn', layoutSeed=null, corridors=null, people=[], peopleKey='', onPick=null;
+  // the rooms: camera distance, and where in the room people may stand (half width, half depth around the centre)
   const DEF={
-    inn:     { x:0,     z:3,    r:15, door:[0,5.5], inside:[-1.2,0.9] },
-    pit:     { x:13,    z:-1,   r:19, door:[0,6.5], inside:[0,0.6] },
-    forge:   { x:-12.5, z:-0.5, r:14, door:[0,4.5], inside:[0.5,1.2] },
-    library: { x:-8,    z:-10,  r:14, door:[0,4.5], inside:[0,0.8] },
-    hall:    { x:7,     z:-10,  r:14, door:[0,4.5], inside:[0,0.8] },
-    training:{ x:0,     z:-19,  r:15, door:[0,5.2], inside:[0,0.4] },
-    event:   { x:-25,   z:-8,   r:11, door:[-5,2.5], inside:[-1.6,0.6] }
+    inn:     { x:0, z:0, r:15, area:[3.6,2.6] },
+    pit:     { x:0, z:0, r:17, area:[3.2,3.2] },
+    arena:   { x:0, z:0, r:19, area:[4.6,3.4] },
+    work:    { x:0, z:0, r:13, area:[2.6,2.0] },
+    forge:   { x:0, z:0, r:13, area:[2.2,1.6] },
+    library: { x:0, z:0, r:13, area:[2.2,1.6] },
+    hall:    { x:0, z:0, r:14, area:[2.6,1.8] },
+    training:{ x:0, z:0, r:14, area:[3.0,1.6] },
+    event:   { x:0, z:0, r:11, area:[1.6,1.2] }
   };
+  const ROOM_IDS=Object.keys(DEF);
 
   function load(){
     if(window.THREE) return Promise.resolve();
@@ -106,6 +111,25 @@ const Hub3D=(()=>{
     if(t>=2){ [-3.8,3.8].forEach(px=>{ box(0.2,2,0.2,'darkwood',px,0,-3,g); box(0.3,0.3,0.3,flat(0xff7a20,0xff5a10),px,2,-3,g); }); light(g,-3.8,2.2,-3,0xff8a30,1,8); box(1.2,0.4,1.2,'stone',-2.8,0,1.8,g); }
     if(t>=3){ box(8,0.6,0.3,'stone',0,0,3.4,g); box(0.3,0.6,7,'stone',-4,0,0,g); box(0.3,0.6,7,'stone',4,0,0,g); box(2,1.4,0.15,'cloth',0,1,-3.4,g); }
   }
+  // the region's arena: a sand floor in a ring of stone, tiers of benches on two sides, banners and fire baskets
+  function buildArena(g){
+    pad(g,14,12); box(14,0.06,12,'sand',0,0,0,g);
+    wall(-7,-6,7,-6,1.0,'stone',g); wall(-7,6,-1.5,6,1.0,'stone',g); wall(1.5,6,7,6,1.0,'stone',g); wall(-7,-6,-7,6,1.0,'stone',g); wall(7,-6,7,6,1.0,'stone',g);
+    for(let i=0;i<3;i++){ box(12,0.45,0.8,'wood',0,0.45*i,-6.6-i*0.8,g); box(0.8,0.45,10,'wood',-7.6-i*0.8,0.45*i,0,g); }
+    [-4,0,4].forEach(bx=>{ box(0.15,2.4,0.15,'darkwood',bx,0,-6.1,g); box(1,1.4,0.08,'cloth',bx,1.0,-6.0,g); });
+    [[-6.4,-5.4],[6.4,-5.4],[-6.4,5.4],[6.4,5.4]].forEach(([fx,fz])=>{ box(0.2,1.6,0.2,'darkwood',fx,0,fz,g); box(0.4,0.3,0.4,flat(0xff7a20,0xff5a10),fx,1.6,fz,g); });
+    light(g,-6.4,2,-5.4,0xff8a30,1.3,12); light(g,6.4,2,5.4,0xff8a30,1.3,12);
+  }
+  // the workshop where gladiators earn their board: a bench, crates and sacks, a lamp
+  function buildWork(g){
+    pad(g,8,7); box(8,0.06,7,'dirt',0,0,0,g);
+    wall(-4,-3.5,4,-3.5,2.2,'darkwood',g); wall(-4,-3.5,-4,3.5,2.2,'darkwood',g);
+    box(2.6,0.9,0.9,'wood',-1,0,-2.6,g); box(2.8,0.1,1.0,'darkwood',-1,0.9,-2.6,g);
+    [[2.6,-2.6],[3.2,-1.6],[2.7,-1.4]].forEach(([cx,cz],i)=>box(0.8,0.7,0.8,i===2?'darkwood':'wood',cx,i===2?0.7:0,cz,g));
+    [[-3.2,1.6],[-3.3,2.6]].forEach(([sx,sz])=>box(0.7,0.6,0.6,'straw',sx,0,sz,g));
+    cyl(0.4,0.4,0.9,8,'darkwood',3.2,0,2.4,g);
+    box(0.15,2,0.15,'darkwood',0.6,0,-3.2,g); box(0.35,0.35,0.35,flat(0xffcc66,0xffaa33),0.6,2,-3.2,g); light(g,0.6,2.2,-3,0xffcc66,1.0,9);
+  }
   // the street scene where the events happen: a lantern, crates, a wall; the fighter stands on the left, the others come to the right
   function buildAlley(g){
     pad(g,11,8); box(11,0.08,8,'cobble',0,0,0,g);
@@ -123,8 +147,41 @@ const Hub3D=(()=>{
     [[-w/2,d/2,w/2,d/2],[-w/2,-d/2,w/2,-d/2],[-w/2,-d/2,-w/2,d/2],[w/2,-d/2,w/2,d/2]].forEach(([a,b,c,e])=>{ wall(a,b,c,e,0.05,flat(0xc8a96a),g).position.y=0.9; });
     box(0.8,0.5,0.8,'darkwood',-w/4,0,-d/4,g); box(1.2,0.3,0.6,'wood',w/4,0,d/4,g);
   }
-  const BUILD={ event:buildAlley, inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining };
-  const SITE={ event:[10,8], inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7] };
+  const BUILD={ event:buildAlley, inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining, arena:buildArena, work:buildWork };
+  const SITE={ event:[10,8], inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7], arena:[14,12], work:[8,7] };
+  // ---- the dungeon's plan: the rooms on a 3 x 3 grid in a seeded order, a little moved inside their cell; corridors join neighbours (a tree, and a few loops more) ----
+  const CELL=22;
+  function plan(seed){
+    let s=1; for(const ch of String(seed)) s=(s*31+ch.charCodeAt(0))>>>0; const r=()=>{ s=(s*1103515245+12345)>>>0; return (s>>>8)/16777216; };
+    const ids=ROOM_IDS.slice(); for(let i=ids.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [ids[i],ids[j]]=[ids[j],ids[i]]; }
+    const pos={}; ids.forEach((id,i)=>{ const cx=i%3-1, cz=Math.floor(i/3)-1; pos[id]=[cx*CELL+(r()-0.5)*4, cz*CELL+(r()-0.5)*4, cx, cz]; });
+    const at=(cx,cz)=>ids.find(id=>pos[id][2]===cx&&pos[id][3]===cz), links=[], linked=new Set([ids[0]]);
+    const pairs=[]; ids.forEach(a=>ids.forEach(b=>{ if(a<b&&Math.abs(pos[a][2]-pos[b][2])+Math.abs(pos[a][3]-pos[b][3])===1) pairs.push([a,b,r()]); })); pairs.sort((p,q)=>p[2]-q[2]);
+    while(linked.size<ids.length){ const e=pairs.find(([a,b])=>linked.has(a)!==linked.has(b)); if(!e) break; links.push(e); linked.add(e[0]); linked.add(e[1]); }
+    pairs.filter(e=>!links.includes(e)).slice(0,2).forEach(e=>links.push(e));
+    return { pos, links };
+  }
+  // the corridors: a stone floor from room to room (first along x, then along z), only where no room stands; dark walls on both sides, a torch now and then
+  function buildCorridors(p){
+    if(corridors) scene.remove(corridors); corridors=new T.Group(); corridors.userData={ lights:[] }; scene.add(corridors);
+    box(CELL*4,0.1,CELL*4,'dirt',0,-0.35,0,corridors);
+    const rects=ROOM_IDS.map(id=>{ const [w,d]=SITE[id], [x,z]=p.pos[id]; return [x-w/2-2.5,x+w/2+2.5,z-d/2-2.5,z+d/2+2.5]; });
+    const inRoom=(x,z)=>rects.some(([x0,x1,z0,z1])=>x>x0&&x<x1&&z>z0&&z<z1);
+    let torch=0;
+    const piece=(x0,z0,x1,z1,along)=>{ const len=Math.hypot(x1-x0,z1-z0); if(len<0.6) return; const cx=(x0+x1)/2, cz=(z0+z1)/2;
+      box(along?len:2.4,0.08,along?2.4:len,'darkstone',cx,-0.08,cz,corridors);
+      [-1.4,1.4].forEach(o=>box(along?len:0.4,1.2,along?0.4:len,'darkstone',cx+(along?0:o),-0.08,cz+(along?o:0),corridors));
+      if(len>3){ const mx=cx+(along?0:1.1), mz=cz+(along?1.1:0); box(0.12,1.6,0.12,'darkwood',mx,0,mz,corridors); box(0.3,0.25,0.3,flat(0xff7a20,0xff5a10),mx,1.6,mz,corridors); torch++; } };
+    const seg=(x0,z0,x1,z1)=>{ const along=Math.abs(x1-x0)>=Math.abs(z1-z0), n=Math.max(1,Math.ceil(Math.hypot(x1-x0,z1-z0)/0.5)); let run=null;
+      for(let i=0;i<=n;i++){ const x=x0+(x1-x0)*i/n, z=z0+(z1-z0)*i/n, out=!inRoom(x,z);
+        if(out&&!run) run=[x,z]; if((!out||i===n)&&run){ piece(run[0],run[1],x,z,along); run=null; } } };
+    p.links.forEach(([a,b])=>{ const [ax,az]=p.pos[a], [bx,bz]=p.pos[b]; seg(ax,az,bx,az); seg(bx,az,bx,bz); });
+  }
+  function applyPlan(seed){
+    if(seed===layoutSeed) return; layoutSeed=seed; const p=plan(seed);
+    ROOM_IDS.forEach(id=>{ DEF[id].x=p.pos[id][0]; DEF[id].z=p.pos[id][1]; if(rooms[id]) rooms[id].group.position.set(DEF[id].x,0,DEF[id].z); });
+    buildCorridors(p); peopleKey='';
+  }
 
   // ---- people ----
   function actorTex(kind,facingRight,frame,extra){
@@ -142,15 +199,10 @@ const Hub3D=(()=>{
   const GUEST_KINDS=['goblin','ork','skeleton','dwarf','barbarian','thief','troll','darkelf'];
   function spawnGuests(g,tier){
     g.userData.guests=[]; g.userData.guestKey='';
-    // without a world the tavern fills with strangers; the Ludus normally sends its characters through setGuests()
+    if(peopleKey) return;       // the region's gladiators fill the rooms
+    // without a world (no run yet) the tavern fills with strangers
     const kinds=GUEST_KINDS.filter(k=>typeof ZOO!=='undefined'&&ZOO[k]), n=2+Math.min(4,tier);
     for(let i=0;i<n;i++){ const k=kinds[Math.floor(Math.random()*kinds.length)], s=makeActor(k,-3+Math.random()*7,-2+Math.random()*4.5,k==='troll'?1.15:0.9); g.add(s); g.userData.guests.push(s); }
-  }
-  function setGuests(list){
-    const g=rooms.inn&&rooms.inn.group; if(!g||!g.userData.guests||!list||!list.length) return;
-    const key=JSON.stringify(list.map(x=>[x.kind,x.sig])); if(g.userData.guestKey===key) return; g.userData.guestKey=key;
-    g.userData.guests.forEach(s=>g.remove(s)); g.userData.guests=[];
-    list.forEach(x=>{ const s=makeActor(x.kind,-3+Math.random()*7,-2+Math.random()*4.5,x.kind==='troll'?1.15:0.9,x.extra); g.add(s); g.userData.guests.push(s); });
   }
   // the others of an event scene: they stand to the right of the fighter and, when the scene is over and they `exit`, walk off
   const CAST_POS=[[2.2,0.3],[3.6,1.5],[3.4,-1.2]];
@@ -164,6 +216,20 @@ const Hub3D=(()=>{
     const out=list.some(x=>x.exit);
     g.userData.cast.forEach(s=>{ if(out&&!s.userData.leaving){ s.userData.leaving=true; s.userData.tx=s.userData.x+12; s.userData.tz=s.userData.z+0.5; } });
   }
+  // the people of the region: { id, kind, extra, sig, room, own, sel, name }; each stands at a spot of his room that follows from his id, and wanders about it
+  const hashId=id=>{ let h=2166136261; for(const ch of String(id)) h=Math.imul(h^ch.charCodeAt(0),16777619); return h>>>0; };
+  function setPeople(list){
+    list=list||[]; const key=JSON.stringify(list.map(p=>[p.id,p.room,p.sig,!!p.own,!!p.sel]))+'|'+layoutSeed;
+    if(key===peopleKey) return; peopleKey=key;
+    people.forEach(s=>{ scene.remove(s); if(s.userData.ring) scene.remove(s.userData.ring); }); people=[];
+    const inn=rooms.inn&&rooms.inn.group; if(inn&&inn.userData.guests){ inn.userData.guests.forEach(s=>inn.remove(s)); inn.userData.guests=[]; }
+    list.forEach(p=>{
+      const d=DEF[p.room]||DEF.inn, h=hashId(p.id), ox=((h%1000)/1000*2-1)*d.area[0], oz=(((h>>>10)%1000)/1000*2-1)*d.area[1];
+      const s=makeActor(p.kind,d.x+ox,d.z+oz,p.kind==='troll'?1.15:(p.own?1.05:0.95),p.extra); Object.assign(s.userData,{ id:p.id, room:p.room, own:!!p.own, name:p.name });
+      if(p.own||p.sel){ const ring=new T.Mesh(new T.RingGeometry(0.35,0.5,20),new T.MeshBasicMaterial({ color:p.sel?0xf4d36a:0xe63c32, transparent:true, opacity:0.75, side:T.DoubleSide })); ring.rotation.x=-Math.PI/2; scene.add(ring); s.userData.ring=ring; }
+      scene.add(s); people.push(s);
+    });
+  }
   function walk(s,dt,t,speed){
     const u=s.userData, dx=u.tx-u.x, dz=u.tz-u.z, d=Math.hypot(dx,dz); let moving=false;
     if(d>0.05){ const st=Math.min(d,speed*dt); u.x+=dx/d*st; u.z+=dz/d*st; if(Math.abs(dx)>0.05) u.right=dx>0; moving=true; }
@@ -174,11 +240,9 @@ const Hub3D=(()=>{
     const inn=rooms.inn;
     if(inn&&inn.group.visible&&inn.group.userData.guests) inn.group.userData.guests.forEach(s=>{ const u=s.userData; if(Math.hypot(u.tx-u.x,u.tz-u.z)<0.1){ u.wait-=dt; if(u.wait<=0){ u.tx=-4+Math.random()*8; u.tz=-2.5+Math.random()*5.5; u.wait=1+Math.random()*3; } } walk(s,dt,t,0.7); });
     const ev=rooms.event; if(ev&&ev.group.visible&&ev.group.userData.cast) ev.group.userData.cast.forEach(s=>walk(s,dt,t,s.userData.leaving?2.4:1));
-    if(fighter){
-      const u=fighter.userData, now=performance.now()/1000;
-      if(u.enterAt && now>=u.enterAt){ u.tx=u.goalX; u.tz=u.goalZ; u.enterAt=0; }       // after the camera has swung over, he steps inside
-      walk(fighter,dt,t,2.4); if(u.ring) u.ring.position.set(u.x,0.03,u.z);
-    }
+    people.forEach(s=>{ const u=s.userData, d=DEF[u.room]||DEF.inn;
+      if(Math.hypot(u.tx-u.x,u.tz-u.z)<0.1){ u.wait-=dt; if(u.wait<=0){ u.tx=d.x+(Math.random()*2-1)*d.area[0]; u.tz=d.z+(Math.random()*2-1)*d.area[1]; u.wait=1.5+Math.random()*4; } }
+      walk(s,dt,t,0.7); if(u.ring) u.ring.position.set(u.x,0.03,u.z); });
   }
 
   // ---- the scene ----
@@ -191,11 +255,16 @@ const Hub3D=(()=>{
     scene.add(new T.AmbientLight(0xb8aec0,1.35)); const sun=new T.DirectionalLight(0xffe2b8,0.85); sun.position.set(-8,16,10); scene.add(sun);
     // the orbit is narrow: drag turns the view a little around the room, the wheel nudges the distance; nothing else moves the camera
     const el=renderer.domElement; let drag=null;
-    el.addEventListener('pointerdown',e=>{ drag={ x:e.clientX, y:e.clientY }; el.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; cam.idle=0; });
-    el.addEventListener('pointermove',e=>{ if(!drag) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY; cam.dTheta=Math.max(-1.1,Math.min(1.1,cam.dTheta-dx*0.006)); cam.dPhi=Math.max(-0.3,Math.min(0.35,cam.dPhi-dy*0.004)); cam.idle=0; });
-    el.addEventListener('pointerup',()=>{ drag=null; el.style.cursor='grab'; });
+    const ray=new T.Raycaster(), ndc=new T.Vector2();
+    const hitAt=e=>{ const r=el.getBoundingClientRect(); ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ndc,camera); const h=ray.intersectObjects(people,false)[0]; return h?h.object:null; };
+    el.addEventListener('pointerdown',e=>{ drag={ x:e.clientX, y:e.clientY, moved:0 }; el.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; cam.idle=0; });
+    el.addEventListener('pointermove',e=>{
+      if(!drag){ const h=hitAt(e); el.style.cursor=h?'pointer':'grab'; el.title=h?h.userData.name||'':''; return; }
+      const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY; drag.moved+=Math.abs(dx)+Math.abs(dy); cam.dTheta=Math.max(-1.1,Math.min(1.1,cam.dTheta-dx*0.006)); cam.dPhi=Math.max(-0.3,Math.min(0.35,cam.dPhi-dy*0.004)); cam.idle=0; });
+    el.addEventListener('pointerup',e=>{ const click=drag&&drag.moved<6; drag=null; el.style.cursor='grab'; if(click){ const h=hitAt(e); if(h&&onPick) onPick(h.userData.id); } });       // a click (not a drag) on a gladiator
     el.addEventListener('wheel',e=>{ e.preventDefault(); const base=(DEF[current]||DEF.inn).r; cam.tr=Math.max(base*0.75,Math.min(base*1.2,cam.tr*(1+Math.sign(e.deltaY)*0.06))); cam.idle=0; },{ passive:false });
-    Object.keys(DEF).forEach(id=>{ const g=new T.Group(); g.position.set(DEF[id].x,0,DEF[id].z); g.userData={ lights:[], tier:-1 }; g.visible=false; scene.add(g); rooms[id]={ group:g }; });
+    Object.keys(DEF).forEach(id=>{ const g=new T.Group(); g.position.set(DEF[id].x,0,DEF[id].z); g.userData={ lights:[], tier:-1 }; scene.add(g); rooms[id]={ group:g }; });
+    applyPlan('start');
     post=createPostFX(T); ready=true; resize(); window.addEventListener('resize',resize);
     return true;
   }
@@ -203,48 +272,29 @@ const Hub3D=(()=>{
     if(!ready||!host) return; const w=host.clientWidth||600, h=host.clientHeight||360;
     renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1)); renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); if(post) post.resize(w,h,Math.min(1.5,window.devicePixelRatio||1));
   }
-  // tiers = { inn, pit, forge, library, hall, training }, 0 = not bought; the fighter is { kind, extra, sig } or null
-  function sync(tiers,fighterIn,castIn,guestsIn){
+  // tiers = { inn, pit, forge, library, hall, training }, 0 = not bought (arena, workshop and the alley are the region's and always there);
+  // seed: the region's dungeon; peopleIn: who stands where (see setPeople); the cast of an event scene
+  function sync(tiers,seed,castIn,peopleIn){
     if(!ready) return;
+    applyPlan(seed||'start');
     Object.keys(DEF).forEach(id=>{
-      const r=rooms[id], t=tiers[id]||0, g=r.group; if(g.userData.tier===t) return;
+      const r=rooms[id], t=(id==='arena'||id==='work'||id==='event')?1:(id==='hall'?Math.max(1,tiers[id]||0):(tiers[id]||0)), g=r.group; if(g.userData.tier===t) return;       // the hall is the champion's seat: the region always has one (the school's upgrade makes it grander)
       while(g.children.length) g.remove(g.children[0]); g.userData.lights.length=0; g.userData.guests=null; g.userData.tier=t;
       if(t>0) BUILD[id](g,t); else buildSite(g,SITE[id][0],SITE[id][1]);
     });
-    setCast(castIn); setGuests(guestsIn);
-    const key=fighterIn?JSON.stringify([fighterIn.kind,fighterIn.sig]):'';
-    if(key!==sig){ sig=key; setFighter(fighterIn); }
-    if(!rooms[current].group.visible) focus(current,true);
-  }
-  function setFighter(info){
-    if(fighter){ scene.remove(fighter); if(fighter.userData.ring) scene.remove(fighter.userData.ring); fighter=null; }
-    fighterInfo=info; if(!info) return;
-    fighter=makeActor(info.kind,0,0,1.15,info.extra); fighter.userData.fighter=true; scene.add(fighter);
-    const ring=new T.Mesh(new T.RingGeometry(0.35,0.5,20),new T.MeshBasicMaterial({ color:0xe63c32, transparent:true, opacity:0.7, side:T.DoubleSide })); ring.rotation.x=-Math.PI/2; scene.add(ring); fighter.userData.ring=ring;
-    placeFighter(current,true);
-  }
-  // the fighter stands at the door, the camera swings over, and a moment later he walks into the room
-  function placeFighter(id,instant){
-    if(!fighter) return; const d=DEF[id], u=fighter.userData;
-    u.goalX=d.x+d.inside[0]; u.goalZ=d.z+d.inside[1];
-    if(instant){ u.x=u.tx=u.goalX; u.z=u.tz=u.goalZ; u.enterAt=0; return; }
-    u.x=u.tx=d.x+d.door[0]; u.z=u.tz=d.z+d.door[1]; u.enterAt=performance.now()/1000+0.55; u.right=false;
+    setCast(castIn); setPeople(peopleIn);
   }
   function focus(id,instant){
     if(!ready||!DEF[id]) return;
-    const same=id===current && rooms[id].group.visible; if(same&&!instant) return;
-    if(!same&&!instant){ previous=current; travel=0.7; }
-    current=id; Object.keys(rooms).forEach(k=>{ rooms[k].group.visible=(k===current)||(travel>0&&k===previous); });
-    cam.tx=DEF[id].x; cam.tz=DEF[id].z; cam.tr=DEF[id].r; cam.dTheta=0; cam.dPhi=0; cam.idle=0;
-    if(instant){ cam.x=cam.tx; cam.z=cam.tz; cam.r=cam.tr; travel=0; }
-    placeFighter(id,instant);
+    if(id===current&&!instant) return;
+    current=id; cam.tx=DEF[id].x; cam.tz=DEF[id].z; cam.tr=DEF[id].r; cam.dTheta=0; cam.dPhi=0; cam.idle=0;
+    if(instant){ cam.x=cam.tx; cam.z=cam.tz; cam.r=cam.tr; }
   }
   function frame(now){
     if(!running) return; requestAnimationFrame(frame);
     const dt=Math.min(0.1,(now-last)/1000||0.016); last=now; const t=now/1000;
     const sc=document.getElementById('ludusScreen'); if(!sc||sc.hidden||!ready) return;
     const k=1-Math.exp(-dt*6.5); cam.x+=(cam.tx-cam.x)*k; cam.z+=(cam.tz-cam.z)*k; cam.r+=(cam.tr-cam.r)*k;
-    if(travel>0){ travel-=dt; if(travel<=0){ travel=0; Object.keys(rooms).forEach(id=>{ rooms[id].group.visible=(id===current); }); } }
     cam.idle+=dt; const sway=cam.idle>3?Math.sin(t*0.12)*0.25:0;
     const th=cam.theta0+cam.dTheta+sway, ph=cam.phi0+cam.dPhi;
     camera.position.set(cam.x+Math.sin(th)*Math.cos(ph)*cam.r, 0.6+Math.sin(ph)*cam.r, cam.z+Math.cos(th)*Math.cos(ph)*cam.r); camera.lookAt(cam.x,0.5,cam.z);
@@ -255,5 +305,5 @@ const Hub3D=(()=>{
   function setPost(n){ if(post) post.setLevel(n); }
   function start(){ if(running||!ready) return; running=true; last=performance.now(); requestAnimationFrame(frame); resize(); }
   function stop(){ running=false; }
-  return { init, sync, focus, start, stop, resize, setPost, get ready(){ return ready; }, get current(){ return current; } };
+  return { init, sync, focus, start, stop, resize, setPost, set onPick(f){ onPick=f; }, get ready(){ return ready; }, get current(){ return current; } };
 })();

@@ -12,6 +12,8 @@ const { open, finish }=require('./lib');
     const fight=o=>{ ludusFight(o); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const head=ludusResolve(st); ludusLeaveMatch(); return head; };
     ludusMeta.unlockAll=true; ludusMeta.ghosts=[]; ludusNewRun('ork','Testa');
     showAll();
+    // the card of a gladiator clicked in the dungeon
+    { const n=ludusRegionNpcs(ludus.map.region).find(x=>!x.boss); ludusOnPick(n.id); if(!document.getElementById('luPickClose')) bad('no card for a clicked gladiator'); ludusPicked=null; ludusRender(); }
     const board=ludusBoard(ludus.map.region);
     out.board=board.map(x=>x.rank+'.'+x.name+(x.champ?'*':'')+' L'+x.level+' '+x.honor).join(' | ');
     if(board.length!==LUDUS_TOUR.roster+2) bad('board size '+board.length);
