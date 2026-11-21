@@ -45,6 +45,13 @@ const { open, finish }=require('./lib');
       // over an own gladiator: a spare one joins for it, then is executed by a merciless winner
       const extra={ id:'mX', name:'Opfer', kind:'goblin', level:1, xp:0, inventory:[], learned:[], gifts:[], seed:1, honor:0 }; ludus.team.push(extra); c.bold=1;
       ludusVerdict(c,extra,true,ludus.map.region); if(ludus.team.includes(extra)) bad('executed own gladiator still in the team'); }
+    // trade: buy a piece from a gladiator, sell him a better one, give a gift
+    { const n=ludusRegionNpcs(ludus.map.region).find(x=>!x.boss&&x.status==='active'&&(x.inventory||[]).length); if(n){
+      ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.giftChoice=null; ludus.followup=null;
+      ludus.gold=500; const k0=n.inventory.length, s0=ludus.stash.length; ludusPicked=n.id; ludusRender(); document.querySelector('[data-tbuy="0"]').click();
+      if(n.inventory.length!==k0-1||ludus.stash.length!==s0+1) bad('buying failed');
+      const best={ id:'sword_epic', q:1, s:7 }; ludus.stash.push(best); n.gold=999; ludusRender(); const sb=[...document.querySelectorAll('[data-tsell]')].find(b=>ludus.stash[+b.dataset.tsell]===best); if(!sb) bad('no sell offer for a better piece'); else { sb.click(); if(!n.inventory.includes(best)) bad('selling failed'); }
+      const b0=n.bond||0; document.getElementById('luGift').click(); if((n.bond||0)!==Math.min(3,b0+1)) bad('gift failed'); ludusPicked=null; ludusRender(); } }
     // free for all: one of the own among three gladiators, every one a side of his own
     { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)).slice(0,3), foes=npcs.map(ludusNpcFoe);
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };

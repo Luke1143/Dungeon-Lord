@@ -128,3 +128,10 @@ i18nRegister({
 "{0} richtet {1} hin (+{2} Ruhm)":"{0} executes {1} (+{2} fame)", "{0} verschont {1} (Lösegeld {2} Gold)":"{0} spares {1} (ransom {2} gold)", "{0} verschont {1}":"{0} spares {1}",
 "Hingerichtet von {0}":"Executed by {0}"
 });
+// trade and relations
+i18nRegister({
+"Handel":"Trade", "{0} verkauft {1} an {2} für {3} Gold.":"{0} sells {1} to {2} for {3} gold.", "Kaufen · {0} Gold":"Buy · {0} gold", "Verkaufen · {0} Gold":"Sell · {0} gold", "(aus deinem Vorrat)":"(from your stash)", "Er hat nichts zu verkaufen.":"He has nothing to sell.",
+"Geschenk · {0} Gold (Beziehung +1)":"Gift · {0} gold (relation +1)", "Zur Schule: {0} ({1})":"Towards the school: {0} ({1})", "Gold {0}":"Gold {0}",
+"befreundet":"friendly", "wohlgesinnt":"well disposed", "verfeindet":"hostile", "misstrauisch":"wary", "neutral":"neutral",
+"Gekauft: {0} für {1} Gold.":"Bought: {0} for {1} gold.", "Verkauft: {0} an {1} für {2} Gold.":"Sold: {0} to {1} for {2} gold.", "{0} nimmt das Geschenk an.":"{0} accepts the gift."
+});

@@ -577,6 +577,9 @@ function ludusRender(){
   el.querySelectorAll('[data-verdict]').forEach(b=>b.addEventListener('click',()=>{ const [id,what]=b.dataset.verdict.split(':'), v=ludus.verdict, n=ludusNpc(id), w=v&&(ludusMember(v.w)||ludus.fighter); if(!v||!n||!w) return;
     ludusNote=ludusVerdict(w,n,what==='exec',ludus.map.region); v.list=v.list.filter(x=>x!==id); if(!v.list.length) ludus.verdict=null; ludusSave(); ludusRender(); }));
   on('luPickClose',()=>{ ludusPicked=null; ludusRender(); });
+  el.querySelectorAll('[data-tbuy]').forEach(b=>b.addEventListener('click',()=>ludusTradeBuy(ludusPicked,+b.dataset.tbuy)));
+  el.querySelectorAll('[data-tsell]').forEach(b=>b.addEventListener('click',()=>ludusTradeSell(ludusPicked,+b.dataset.tsell)));
+  on('luGift',()=>ludusTradeGift(ludusPicked));
   on('luPickJoin',()=>{ const id=ludusPicked; ludusPicked=null; if(!ludusRecruit(id)) ludusRender(); });
   on('luEndDay',ludusEndDay); on('luForcedGo',()=>{ const o=ludusForcedBout(); if(o) ludusFight(o.members?o:Object.assign({},o,{ members:[ludus.fighter.id] })); });
   on('luChicken',()=>{ if(ludus.gold<ludusChickenCost()) return; ludus.gold-=ludusChickenCost(); ludusHeal(ludusChickenHeal()); ludus.fighter.energy=Math.min(100,(ludus.fighter.energy===undefined?100:ludus.fighter.energy)+10); ludusSave(); ludusRender(); });
@@ -632,7 +635,10 @@ function ludusPickHTML(){
   const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
   const canJoin=!champ&&!n.boss&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
   return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
-    <p class="luHint">Ausrüstung: ${gear}${story?'<br>'+ludusEsc(n.name)+' '+ludusEsc(story)+'.':''}</p>
+    <p class="luHint">Ausrüstung: ${gear}${story?'<br>'+ludusEsc(n.name)+' '+ludusEsc(story)+'.':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0}) · Gold ${n.gold||0}</p>
+    <h3>Handel</h3>${(n.inventory||[]).map((inst,k)=>`<div class="luItem"><span>${ludusEsc(instLabel(inst))}</span><button data-tbuy="${k}" ${ludus.gold<ludusBuyPrice(n,inst)?'disabled':''}>Kaufen · ${ludusBuyPrice(n,inst)} Gold</button></div>`).join('')||'<p class="luHint">Er hat nichts zu verkaufen.</p>'}
+    ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${(n.gold||0)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}
+    <p><button id="luGift" ${ludus.gold<ludusGiftCost(n)||(n.bond||0)>=3?'disabled':''}>Geschenk · ${ludusGiftCost(n)} Gold (Beziehung +1)</button></p>
     ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
     <button id="luPickClose">Schließen</button></div>`;
 }

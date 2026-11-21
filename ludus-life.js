@@ -112,6 +112,7 @@ function ludusVerdict(w,l,execute,region){
     const gain=ludusExecGain(l); w.fame=ludusFame(w)+gain; w.execs=(w.execs||0)+1; w.kills=(w.kills||0)+1; if(ownW) ludus.fame+=gain;
     if(ownL){ ludus.team=ludus.team.filter(m=>m!==l); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); const n=l.npc&&ludusNpc(l.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; } }
     else { l.status='dead'; l.diedDay=ludus.day; l.last={ t:'died', d:ludus.day }; }
+    (ludus.world||[]).forEach(n=>{ if(n.status==='active'&&n!==w&&n.rel&&(n.rel[l.id]||0)>=1) ludusRelAdd(n,w,-2); });       // his friends do not forget
     const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t); return t;
   }
   const pay=ludusRansom(l,region);
@@ -120,6 +121,20 @@ function ludusVerdict(w,l,execute,region){
   ludusRelAdd(l,w,pay>0?LUDUS_VERDICT.spare:LUDUS_VERDICT.sparePoor);
   const t=`${w.name} verschont ${l.name}${pay?` (Lösegeld ${pay} Gold)`:''}.`; if(region===ludus.map.region) ludusChron(region,'spare',t); return t;
 }
+
+// ---- trade with a gladiator: the same prices for everyone; a good relation makes them better ----
+// buying from him: worth × (1.3 − 0.1 × relation); selling to him (a piece better than what he wears, if he can pay): worth × (0.6 + 0.05 × relation)
+const ludusBuyPrice=(n,inst)=>Math.max(1,Math.round(ludusPrice(asInstance(inst).id)*(1.3-0.1*(n.bond||0))));
+const ludusSellTo=(n,inst)=>Math.max(1,Math.round(ludusPrice(asInstance(inst).id)*(0.6+0.05*(n.bond||0))));
+function ludusWantsItem(n,inst){ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return false; const worn=(n.inventory||[]).filter(i=>instDef(i)&&instDef(i).type===d.type); return !worn.length||Math.max(...worn.map(ludusTierIndex))<ludusTierIndex(inst); }
+// a gift of gold: a step of relation for 5 gold per level of his
+const ludusGiftCost=n=>5*n.level;
+function ludusTradeBuy(id,k){ const n=ludusNpc(id), inst=n&&n.inventory&&n.inventory[k]; if(!inst) return; const pr=ludusBuyPrice(n,inst); if(ludus.gold<pr) return; ludus.gold-=pr; n.gold=(n.gold||0)+pr; n.inventory.splice(k,1); ludus.stash.push(inst); ludusNote=`Gekauft: ${instLabel(inst)} für ${pr} Gold.`; ludusSave(); ludusRender(); }
+function ludusTradeSell(id,k){ const n=ludusNpc(id), inst=ludus.stash[k]; if(!n||!inst||!ludusWantsItem(n,inst)) return; const pr=ludusSellTo(n,inst); if((n.gold||0)<pr) return;
+  n.gold-=pr; ludus.gold+=pr; ludus.stash.splice(k,1); const d=instDef(inst); n.inventory=(n.inventory||[]).filter(i=>!(instDef(i)&&instDef(i).type===d.type)); n.inventory.push(inst); n.tier=ludusGladTier(n); ludusRelAdd(n,ludus.fighter,1);
+  ludusNote=`Verkauft: ${instLabel(inst)} an ${n.name} für ${pr} Gold.`; ludusSave(); ludusRender(); }
+function ludusTradeGift(id){ const n=ludusNpc(id); if(!n) return; const c=ludusGiftCost(n); if(ludus.gold<c||(n.bond||0)>=3) return; ludus.gold-=c; n.gold=(n.gold||0)+c; n.bond=Math.min(3,(n.bond||0)+1); ludusNote=`${n.name} nimmt das Geschenk an.`; ludusSave(); ludusRender(); }
+const LUDUS_BOND_WORD=b=>b>=2?'befreundet':(b>=1?'wohlgesinnt':(b<=-2?'verfeindet':(b<=-1?'misstrauisch':'neutral')));
 
 // ---- the evening: the bouts of the day without the player ----
 // in the player's region: pairs of similar strength, in the pit and in the arena, fought by the engine
@@ -156,6 +171,16 @@ function ludusLifeEveningElsewhere(){
 }
 // gladiators with gold buy better gear (the forge of their region: one quality above what they wear, up to the region's usual one and one more)
 function ludusLifeShop(){
+  // the poor sell: a gladiator short of gold sells his best piece to one of his region who wants it and can pay (worth × (0.8 + 0.05 × their relation))
+  (ludus.world||[]).forEach(n=>{
+    if(n.status!=='active'||!ludusLifePoor(n)||!(n.inventory||[]).length) return;
+    const it=n.inventory.slice().sort((a,b)=>ludusPrice(b.id)-ludusPrice(a.id))[0];
+    const buyer=ludusRegionNpcs(n.region).filter(b=>b!==n&&!ludusLifePoor(b)&&ludusWantsItem(b,it)).map(b=>({ b, pr:Math.round(ludusPrice(it.id)*(0.8+0.05*ludusRel(b,n))) })).filter(x=>(x.b.gold||0)>=x.pr).sort((p,q)=>(q.b.gold||0)-(p.b.gold||0))[0];
+    if(!buyer) return;
+    const b=buyer.b, d=instDef(it); n.inventory.splice(n.inventory.indexOf(it),1); n.gold=(n.gold||0)+buyer.pr; b.gold-=buyer.pr;
+    b.inventory=(b.inventory||[]).filter(i=>!(instDef(i)&&instDef(i).type===d.type)); b.inventory.push(it); ludusRelAdd(n,b,1);
+    if(n.region===ludus.map.region) ludusChron(n.region,'trade',`${n.name} verkauft ${instLabel(it)} an ${b.name} für ${buyer.pr} Gold.`);
+  });
   (ludus.world||[]).forEach(n=>{
     if(n.status!=='active'||!n.inventory||(n.gold||0)<20) return;
     const node=ludusMapWorld().nodes[n.region]; if(!node) return; const top=Math.min(3,ludusRegionTier(node.col)+1);

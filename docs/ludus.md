@@ -56,6 +56,11 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - **Der Spieler** entscheidet nach einem gewonnenen Arenakampf für jeden lebenden Verlierer (Tafel „Das Urteil“); bis dahin geht der Tag nicht weiter.
 - Gemessen (drei Bots, 120 Tage): 100 bis 120 Hinrichtungen in der ganzen Welt, die drei Berühmtesten mit Ruhm 23 bis 60; die Bots richteten 6 bis 15 Mal hin und verschonten 51 bis 73 Mal (sie richten hin, wenn es mindestens 5 Ruhm bringt).
 
+### Beziehungen und Handel
+- **Beziehung** (−3 … 3): ein Gladiator der Welt zur Schule (`bond`) und zu jedem anderen (`rel`). Verschonen: der Verschonte +2 zum Sieger (+3, wenn er nichts zahlen konnte). Hinrichten: wer mit dem Hingerichteten befreundet war (+1 und mehr), −2 zum Henker. Ein Geschenk (5 Gold je Stufe des Beschenkten) +1. Ein Verkauf an ihn +1.
+- **Handel auf der Karte:** seine Stücke kaufen für Wert × (1,3 − 0,1 × Beziehung); ihm Stücke aus dem Vorrat verkaufen, die besser sind als was er trägt, für Wert × (0,6 + 0,05 × Beziehung), wenn er so viel Gold hat (er legt das Stück gleich an).
+- **Die KI handelt auch:** Wer knapp bei Kasse ist (weniger als drei Tage Kost), verkauft am Abend sein bestes Stück an den Reichsten seiner Region, der es brauchen kann, für Wert × (0,8 + 0,05 × Beziehung).
+
 ### Das Dungeon der Region (`hub3d.js`)
 - Vom Nutzer: Die 3D-Ansicht im Ludus ist ein prozedural erzeugtes, zusammenhängendes Dungeon, neu für jede Region; alle Gladiatoren sind darin sichtbar, in dem Raum, der zu ihrer Tätigkeit passt. Anklicken soll später Diplomatie öffnen (Verhandeln, Handel, Beitritt, Bündnisse für Jeder-gegen-jeden), die auch die KI nutzt.
 - **Räume:** Taverne, Grube, Trainingsraum, Schmiede, Bücherei (die Gebäude der Schule, mit ihren Ausbaustufen oder als Bauplatz), dazu Arena (Tribünen, Banner), Werkstatt, Turnierhalle (Sitz des Champions, immer da) und die Gasse der Ereignisse. Sie liegen in einer aus dem Lauf und der Region gewürfelten Ordnung auf einem 3 × 3-Raster, ein wenig versetzt; Gänge mit dunklen Wänden und Fackeln verbinden Nachbarn (ein Baum und zwei Schleifen mehr), nur dort, wo kein Raum steht. Ein Reiter fährt die Kamera zu seinem Raum (Karte und Rangliste: Turnierhalle), ein angeklickter Gladiator holt sie zu seinem.
