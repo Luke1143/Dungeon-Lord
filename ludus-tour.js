@@ -105,7 +105,8 @@ function ludusEveningHTML(){
     else if(!ludusRoomTier('training')) t='kann nicht trainieren (kein Trainingsraum) und ruht';
     else if(gold-spend<ludusTrainCost(m)) t='kann das Training nicht bezahlen und ruht';
     else { t=`trainiert: +${ludusTrainXp(m)} Erfahrung, −${ludusTrainCost(m)} Gold`; spend+=ludusTrainCost(m); }
-    rows.push(`<div><b>${ludusEsc(m.name)}</b> ${t}${job==='fight'&&pct<35?` <span class="luBane">⚠ nur ${pct} % Leben</span>`:''}</div>`);
+    const duel=ludusChallengesToday().find(c=>c.own===m.id&&!c.done), foe=duel&&ludusNpc(duel.npc);
+    rows.push(`<div><b>${ludusEsc(m.name)}</b> ${t}${job==='fight'&&pct<35?` <span class="luBane">⚠ nur ${pct} % Leben</span>`:''}${foe?` <span class="luBane">⚠ Duell mit ${ludusEsc(foe.name)} offen: wer nicht antritt, kneift (−${LUDUS_CHALLENGE.coward} Ehre)</span>`:''}</div>`);
   });
   const rent=ludusRent(), short=gold-spend<rent;
   rows.push(`<div>Kost und Logis: −${rent} Gold${short?' <span class="luBane">⚠ reicht nicht: morgen Schuldkampf</span>':''}</div>`);
@@ -114,6 +115,8 @@ function ludusEveningHTML(){
 function ludusSetJob(id,job){ const m=ludusMember(id); if(!m||!LUDUS_JOBS.some(j=>j[0]===job)) return; m.job=job; ludus.options=null; ludus.arenaEst=null; ludusSave(); ludusRender(); }
 // the picks for a bout of `n` gladiators (the first n picked); null when fewer are picked
 const ludusPickFor=n=>{ const p=ludusPicks(); return p.length>=n?p.slice(0,n):null; };
+// who fights an offer: a challenge names its own gladiator (whatever his task), every other offer takes the first of those who fight today
+const ludusOfferTeam=o=>o.members?(o.members.map(ludusMember).filter(Boolean).length?o.members.map(ludusMember).filter(Boolean):null):ludusPickFor(LUDUS_MODES[o.mode].size);
 const ludusPickSig=()=>ludusPicks().map(m=>m.id).join(',');
 // runs `fn` with the team standing for the given members (the budget functions and the match setup read ludus.team)
 function ludusWithTeam(members,fn){ const keep=ludus.team; ludus.team=members; try{ return fn(); } finally { ludus.team=keep; } }
@@ -139,8 +142,11 @@ function ludusArenaOffers(){
     o.baseReward=Math.round((14+9*L)*(M.pack?1+0.3*foes.length:(M.ffa?0.8+0.5*foes.length:M.mult))*ludusHallMult());
     list.push(o);
   };
+  // the day's challenges come first: a duel against the challenged (or challenging) gladiator, with the own gladiator named in it
+  ludusChallengesToday().filter(c=>!c.done&&ludusMember(c.own)&&ludusNpc(c.npc)&&ludusNpc(c.npc).status==='active').forEach(c=>{
+    add('duel',[ludusNpc(c.npc)]); const o=list[list.length-1]; o.challenge=c.id; o.members=[c.own]; o.baseReward=Math.round(o.baseReward*1.5); o.title=`Herausforderung: ${o.title}`; });
   if(pool.length) add('duel',[pool[Math.floor(pool.length/2)]]);
-  if(pool.length>1){ const first=list[0].foes[0].npc; add('duel',[pool.find(x=>x.id!==first)]); }
+  if(pool.length>1){ const first=list[list.length-1].foes[0].npc; add('duel',[pool.find(x=>x.id!==first)]); }
   if(ludus.team.length>=3&&pool.length>=3) add('trio',pool.slice(0,3));
   else if(ludus.team.length>=2&&pool.length>=2) add('double',pool.slice(pool.length-2));
   if(pool.length>=3) add('pack',pool.slice(-Math.min(4,pool.length)));
@@ -156,7 +162,7 @@ function ludusArenaScout(){
   const step=i=>{
     if(ludus!==run){ ludusBusy=false; return; }
     if(i>=offers.length){ run.arenaEst={ sig, est }; ludusBusy=false; ludusSave(); if(screen==='ludus') ludusRender(); return; }
-    const o=offers[i], team=ludusPickFor(LUDUS_MODES[o.mode].size);
+    const o=offers[i], team=ludusOfferTeam(o);
     if(team){ try{ const res=arenaSimulate(ludusMatchSetup(o,'scout',team),SCOUT_RUNS,null); est[i]=res.wins[0]/SCOUT_RUNS; }catch(e){ console.error(e); } }
     setTimeout(()=>step(i+1),20);
   };
@@ -164,7 +170,7 @@ function ludusArenaScout(){
 }
 function ludusArenaFight(i){
   const o=ludusArenaOffers()[i]; if(!o||ludus.forced||ludus.over) return;
-  const team=ludusPickFor(LUDUS_MODES[o.mode].size); if(!team) return;
+  const team=ludusOfferTeam(o); if(!team) return;
   const est=ludus.arenaEst&&ludus.arenaEst.sig===ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region?ludus.arenaEst.est[i]:undefined;
   ludusFight(Object.assign({},o,{ members:team.map(m=>m.id), est, reward:ludusArenaReward(o,est) }));
 }
@@ -172,8 +178,9 @@ function ludusArenaFight(i){
 function ludusHonor(o,won,team){
   const foes=ludusFoes(o).map(f=>f.npc&&ludusNpc(f.npc)).filter(Boolean);
   const gain=10*Math.max(1,foes.length)+(foes.some(n=>(n.honor||0)>Math.max(...team.map(m=>m.honor||0)))?10:0);
-  if(won){ team.forEach(m=>{ m.honor=(m.honor||0)+gain; }); foes.forEach(n=>{ n.honor=Math.max(0,(n.honor||0)-5); }); return gain; }
-  team.forEach(m=>{ m.honor=Math.max(0,(m.honor||0)-5); }); foes.forEach(n=>{ n.honor=(n.honor||0)+8; }); return -5;
+  const bonus=o.challenge?LUDUS_CHALLENGE.bonus:0;       // a challenge is a matter of honour: 10 more to the winner
+  if(won){ team.forEach(m=>{ m.honor=(m.honor||0)+gain+bonus; }); foes.forEach(n=>{ n.honor=Math.max(0,(n.honor||0)-5); }); return gain+bonus; }
+  team.forEach(m=>{ m.honor=Math.max(0,(m.honor||0)-5); }); foes.forEach(n=>{ n.honor=(n.honor||0)+8+bonus; if(bonus) n.fame=ludusFame(n)+1; }); return -5;
 }
 
 // ---- board and lodging: every evening; a school that cannot pay pays nothing, and the next morning one of its gladiators fights the debt off in the arena, for nothing ----
@@ -361,5 +368,5 @@ function ludusArenaHTML(){
   const offers=ludusArenaOffers(), sig=ludusPickSig()+'|'+ludus.day+'|'+ludus.map.region, est=ludus.arenaEst&&ludus.arenaEst.sig===sig?ludus.arenaEst.est:null;
   const picks=ludusPicks();
   return `<div class="luPanel"><h2>Arena von ${ludusEsc(ludusRegionNode().name)}</h2><p class="luHint">Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die an, die heute kämpfen (die ersten so viele, wie die Kampfart braucht): ${picks.length?picks.map(m=>ludusEsc(m.name)).join(', '):'niemand'}.</p>${offers.length?'':'<p><i>Heute ist niemand in die Arena gekommen.</i></p>'}
-    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], can=!!ludusPickFor(M.size), e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Stelle ${M.size} auf Kämpft`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
+    <div class="luOpts">${offers.map((o,i)=>{ const M=LUDUS_MODES[o.mode], team=ludusOfferTeam(o), can=!!team, e=est&&est[i]; return `<div class="luOption"><div class="luDiff d-${e===undefined||e===null?'fair':(e>=0.65?'easy':(e>=0.4?'fair':'hard'))}">${M.label}${M.pack?'':(M.ffa?` (${o.foes.length+1} Kämpfer)`:` (${M.size} gegen ${M.foes})`)}</div><canvas class="luArPrev" data-opt="${i}" width="100" height="100"></canvas><div><b>${ludusEsc(o.title)}</b><br>Stufe ${o.level}${o.layout&&o.layout!=='pit'?' · Arena: '+ludusLayoutLabel(o.layout):''}<br>${e===undefined||e===null?(can?'Aussichten werden geprüft …':''):'Aussichten: '+Math.round(e*100)+' %'}${o.challenge&&team?'<br>Es kämpft '+ludusEsc(team[0].name)+' (+'+LUDUS_CHALLENGE.bonus+' Ehre beim Sieg; wer nicht kommt, kneift)':''}<br>Preis: ${ludusArenaReward(o,e===null?undefined:e)} Gold</div><button data-arena="${i}" class="menuMain" ${can?'':'disabled'}>${can?'Kämpfen':`Stelle ${M.size} auf Kämpft`}</button></div>`; }).join('')}</div>${ludusRoomBox('hall')}</div>`;
 }

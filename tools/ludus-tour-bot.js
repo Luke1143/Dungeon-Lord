@@ -22,6 +22,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       // the stash: what fits better than what is worn goes on
       const wear=()=>ludus.stash.slice().forEach(inst=>{ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return; const m=ludus.team.find(x=>{ const cur=has(x,d.type); return !cur.length||Math.max(...cur.map(ludusTierIndex))<ludusTierIndex(inst); }); if(m) ludusGiveItem(inst,m); });
       const build=()=>{ for(const id of ['inn','forge','hall','pit','training','library']){ const t=ludus.rooms[id]||0, c=LUDUS_ROOMS[id].cost[t]; if(c!==undefined&&ludus.renown>=c){ ludusBuyRoom(id); return; } } };
+      const chal={}; { const c0=ludusChron; window.ludusChron=(r,k,t)=>{ const key=/morgen in der Arena/.test(t)?'own':(/heute in der Arena/.test(t)?'ai':(/lehnt/.test(t)?'declined':(/kneift/.test(t)?'coward':(/Fehde/.test(t)?'feud':null)))); if(key) chal[key]=(chal[key]||0)+1; return c0(r,k,t); }; }
       const t0=performance.now(); ludusMeta.unlockAll=true; ludusMeta.roomsAll=false; ludusMeta.ghosts=[]; ludusNewRun(kind,'Bot');
       let guard=0;
       while(!ludus.over&&ludus.day<MAXDAY&&guard++<2000){
@@ -53,7 +54,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         ludus.arenaEst=null; ludusArenaScout(); for(let i=0;i<400&&!ludus.arenaEst;i++) await sleep(20);
         const offers=ludusArenaOffers(), est=ludus.arenaEst?ludus.arenaEst.est:{};
         let best=-1; offers.forEach((o,i)=>{ if(est[i]!==undefined&&est[i]>=ARENA_MIN&&ludusPickFor(LUDUS_MODES[o.mode].size)&&(best<0||ludusArenaReward(o,est[i])>ludusArenaReward(offers[best],est[best]))) best=i; });
-        if(best>=0&&tIn>2){ ludusArenaFight(best); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const w0=ludus.wins; ludusResolve(st); ludusLeaveMatch(); stats.arena[ludus.wins>w0?0:1]++; continue; }
+        if(best>=0&&tIn>2){ const bo=offers[best]; log.push(`d${ludus.day} ${bo.challenge?'CH ':''}${bo.title} est=${Math.round(100*est[best])} ${ludusOfferTeam(bo).map(m=>m.name+':'+ludusJob(m)+':'+Math.round(pct(m))).join(',')}`); ludusArenaFight(best); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const w0=ludus.wins; ludusResolve(st); ludusLeaveMatch(); stats.arena[ludus.wins>w0?0:1]++; continue; }
         // else the pit
         ludus.options=null; ludusBusy=false; ludusScoutOpponent(); for(let i=0;i<600&&!ludus.options;i++) await sleep(20);
         const o=(ludus.options||[]).find(x=>x.diff==='fair')||(ludus.options||[])[0]; if(!o){ ludusEndDay(); stats.idle=(stats.idle||0)+1; continue; }
@@ -64,7 +65,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       const world=Object.keys(cols).sort((a,c)=>a-c).map(c=>`c${c}:${cols[c].n}x L${(cols[c].lv/cols[c].n).toFixed(1)}/${cols[c].max}`).join(' ');
       const chron=(ludus.chronicle||[]), count=re=>chron.filter(e=>re.test(e.t)).length;
       const deadNpc=(ludus.world||[]).filter(n=>n.status==='dead').length, execs=(ludus.world||[]).reduce((t,n)=>t+(n.execs||0),0), topFame=(ludus.world||[]).filter(n=>n.status==='active').map(n=>n.fame||0).sort((a,b)=>b-a).slice(0,3);
-      return { execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
+      return { chall:chal, execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));
     await p.close();

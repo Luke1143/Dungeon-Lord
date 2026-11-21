@@ -130,8 +130,23 @@ i18nRegister({
 });
 // trade and relations
 i18nRegister({
-"Handel":"Trade", "{0} verkauft {1} an {2} für {3} Gold.":"{0} sells {1} to {2} for {3} gold.", "Kaufen · {0} Gold":"Buy · {0} gold", "Verkaufen · {0} Gold":"Sell · {0} gold", "(aus deinem Vorrat)":"(from your stash)", "Er hat nichts zu verkaufen.":"He has nothing to sell.",
+"Handel":"Trade", "{0} verkauft {1} an {2} für {3} Gold.":"{0} sells {1} to {2} for {3} gold.", "Kaufen · {0} Gold":"Buy · {0} gold", "Verkaufen · {0} Gold":"Sell · {0} gold", "(aus deinem Vorrat)":"(from your stash)", "Nichts zu verkaufen.":"Nothing to sell.",
 "Geschenk · {0} Gold (Beziehung +1)":"Gift · {0} gold (relation +1)", "Zur Schule: {0} ({1})":"Towards the school: {0} ({1})", "Gold {0}":"Gold {0}",
 "befreundet":"friendly", "wohlgesinnt":"well disposed", "verfeindet":"hostile", "misstrauisch":"wary", "neutral":"neutral",
 "Gekauft: {0} für {1} Gold.":"Bought: {0} for {1} gold.", "Verkauft: {0} an {1} für {2} Gold.":"Sold: {0} to {1} for {2} gold.", "{0} nimmt das Geschenk an.":"{0} accepts the gift."
+});
+// challenges
+i18nRegister({
+"Zuletzt:":"Lately:", "Herausforderung":"Challenge", "Herausforderung: {0}":"Challenge: {0}", "{0} fordert {1} heraus":"{0} challenges {1}",
+"{0} fordert {1} heraus: morgen in der Arena.":"{0} challenges {1}: tomorrow in the arena.", "{0} fordert {1} heraus: heute in der Arena.":"{0} challenges {1}: today in the arena.",
+"{0} fordert {1} heraus: morgen in der Arena":"{0} challenges {1}: tomorrow in the arena", "{0} fordert {1} heraus: heute in der Arena":"{0} challenges {1}: today in the arena",
+"{0} nimmt an.":"{0} accepts.", "{0} lehnt die Herausforderung von {1} ab.":"{0} declines the challenge of {1}.", "{0} lehnt die Herausforderung von {1} ab":"{0} declines the challenge of {1}",
+"{0} kneift vor {1}.":"{0} backs down from {1}.", "{0} kneift vor {1}":"{0} backs down from {1}", "Fehde in der Arena: {0} gegen {1}.":"Feud in the arena: {0} against {1}.", "Fehde in der Arena: {0} gegen {1}":"Feud in the arena: {0} against {1}",
+"{0} hat schon eine Verabredung in der Arena.":"{0} already has an appointment in the arena.",
+"Ein Duell morgen in der Arena, um den anderthalbfachen Preis und {0} Ehre mehr.":"A duel in the arena tomorrow, for one and a half times the prize and {0} more honour.",
+"{0} wird annehmen.":"{0} will accept.", "{0} wird wohl ablehnen und {1} Ehre verlieren.":"{0} will probably decline and lose {1} honour.",
+"Wer am Tag des Duells nicht antritt, kneift: −{0} Ehre.":"Whoever does not show up on the day of the duel backs down: −{0} honour.",
+"Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.":"The champion is challenged in the tournament, and nobody challenges just before a tournament.",
+"Es kämpft {0} (+{1} Ehre beim Sieg; wer nicht kommt, kneift)":"{0} fights (+{1} honour on a win; whoever does not come backs down)",
+"⚠ Duell mit {0} offen: wer nicht antritt, kneift (−{1} Ehre)":"⚠ Duel with {0} pending: whoever does not show up backs down (−{1} honour)"
 });

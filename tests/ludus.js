@@ -52,10 +52,29 @@ const { open, finish }=require('./lib');
       if(n.inventory.length!==k0-1||ludus.stash.length!==s0+1) bad('buying failed');
       const best={ id:'sword_epic', q:1, s:7 }; ludus.stash.push(best); n.gold=999; ludusRender(); const sb=[...document.querySelectorAll('[data-tsell]')].find(b=>ludus.stash[+b.dataset.tsell]===best); if(!sb) bad('no sell offer for a better piece'); else { sb.click(); if(!n.inventory.includes(best)) bad('selling failed'); }
       const b0=n.bond||0; document.getElementById('luGift').click(); if((n.bond||0)!==Math.min(3,b0+1)) bad('gift failed'); ludusPicked=null; ludusRender(); } }
+    // challenges: the player challenges a bold gladiator from his card, the duel is an arena offer the next day with the own gladiator named in it
+    { const id=ludus.map.region, ns=ludusRegionNpcs(id).filter(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'), n=ns[0];
+      ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.challenges=[]; ludus.day=Math.min(ludus.day,3); ludus.lastAiChallenge=ludus.day;       // far from the tournament: nobody challenges just before one
+      n.bold=1; n.bond=3; n.hp=undefined; n.maimed=false; ludusPicked=n.id;       // bold enough to accept, too fond of the school to execute (the test goes on with the team)
+       ludusRender(); const btn=document.getElementById('luChallenge');
+      if(!btn) bad('no challenge button'); else { btn.click(); const c=(ludus.challenges||[]).find(x=>x.npc===n.id); if(!c||c.day!==ludus.day+1) bad('challenge not booked');
+        ludusPicked=null; ludusEndDay(); ludus.forced=null; ludus.event=null;
+        const offers=ludusArenaOffers(), k=offers.findIndex(o=>o.challenge===c.id); if(k<0) bad('no challenge offer: '+offers.map(o=>o.title).join(', '));
+        else { const h0=ludusMember(c.own).honor||0; ludusTab='arena'; ludusRender(); out.challenge=fight(offers[k]); out.challengeText=ludusResultText; if(!c.done) bad('challenge not marked as fought');
+          if(out.challenge==='Sieg'&&ludusMember(c.own)&&(ludusMember(c.own).honor||0)<h0+LUDUS_CHALLENGE.bonus) bad('no honour bonus for the duel'); } }
+      // who does not come is a coward
+      const m=ludus.team[0], v=ns[1], h=m.honor=40; ludus.challenges=[{ id:'cx', own:m.id, npc:v.id, day:ludus.day, by:'npc' }]; ludus.forced=null; ludus.event=null; ludusEndDay();
+      if((m.honor||0)!==h-LUDUS_CHALLENGE.coward) bad('the coward kept his honour: '+m.honor);
+      // the world challenges: a bold gladiator who hates the school
+      const g=ns[2]; g.bold=1; g.bond=-3; g.hp=undefined; ludus.lastAiChallenge=-99; ludus.challenges=[]; ludusLifePlan();
+      if(!(ludus.challenges||[]).some(c=>c.by==='npc'&&c.day===ludus.day)) bad(`no challenge from the world (day ${ludus.day}, tourney in ${ludusTourneyIn()}, ${g.status})`);
+      ludus.challenges=[]; ludus.arenaOffers=null;
+      // enemies settle it among themselves first
+      const [a,b2,x,y]=ns; ns.forEach(q=>{ q.rel={}; }); a.rel[y.id]=-3; const pr=ludusFeudPairs([a,b2,x,y]); if(!(pr[0][0]===a&&pr[0][1]===y&&pr[0][2])) bad('feud not paired first'); }
     // free for all: one of the own among three gladiators, every one a side of his own
-    { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)).slice(0,3), foes=npcs.map(ludusNpcFoe);
+    { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&n.status==='active').slice(0,3); npcs.forEach(n=>{ n.bond=3; n.rel={}; }); const foes=npcs.map(ludusNpcFoe);
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };
-      const setup=ludusMatchSetup(o,'t'); if(setup.teams.length!==4) bad('ffa sides '+setup.teams.length);
+      const setup=ludusMatchSetup(o,'t'); if(setup.teams.length!==4) bad(`ffa sides ${setup.teams.length} (${npcs.length} gladiators, day ${ludus.day})`);
       const st=arenaBuild(setup,''); if(st.arena.anchors.length!==4||new Set(st.creatures.map(c=>c.faction)).size!==4) bad('ffa build');
       const keep=ludus.team.map(m=>JSON.stringify(m)); out.ffa=fight(o); out.ffaText=ludusResultText; }
     // a second gladiator, so that line-ups matter

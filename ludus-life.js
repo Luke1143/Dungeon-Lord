@@ -45,10 +45,12 @@ function ludusLifePlan(){
     const x=r(); plans[n.id]=x<0.15?'rest':(x<0.15+0.35+0.3*n.bold?'arena':'pit');
   });
   ludus.life={ day:ludus.day, region:id, plans, busy:[] };
+  ludusAiChallenge();
+  ludusChallengesToday().forEach(c=>{ plans[c.npc]='arena'; });       // a challenged gladiator keeps the appointment
 }
 const ludusPlanOf=id=>ludus.life&&ludus.life.day===ludus.day?ludus.life.plans[id]:undefined;
 // who is free in the pit / the arena today (not the champion: he only meets the player in the tournament)
-const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id));
+const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallengesToday().some(c=>c.npc===n.id&&!c.done));
 const ludusLifeBusy=ids=>{ ids.forEach(id=>{ const n=id&&ludusNpc(id); if(n) n.foughtToday=true; }); if(ludus.life) ludus.life.busy=(ludus.life.busy||[]).concat(ids.filter(Boolean)); };
 
 // ---- a bout between gladiators, fought by the engine; everything that happens to them stays ----
@@ -122,6 +124,46 @@ function ludusVerdict(w,l,execute,region){
   const t=`${w.name} verschont ${l.name}${pay?` (Lösegeld ${pay} Gold)`:''}.`; if(region===ludus.map.region) ludusChron(region,'spare',t); return t;
 }
 
+// ---- challenges: a duel in the arena the next day; whoever does not come is a coward ----
+// A challenged gladiator accepts when he bears a grudge, when he thinks himself a match (at least 0.8 of the challenger's worth) or when he is bold; else he declines
+// and loses 5 honour. The duel pays half again, and 10 honour more to the winner; who does not come loses 10 honour, the other gains 5.
+// The world challenges too: each morning the most eager gladiator of the region (boldness, grudge against the school, honour just below an own gladiator's) may challenge
+// the school's best (at most every 3 days); enemies among themselves settle it in the evening's arena.
+const LUDUS_CHALLENGE={ accept:0.8, decline:5, coward:10, bonus:10, aiEvery:3, aiScore:1.15 };
+const ludusChallengesToday=()=>(ludus.challenges||[]).filter(c=>c.day===ludus.day);
+const ludusChallenged=id=>(ludus.challenges||[]).some(c=>c.npc===id&&c.day>=ludus.day&&!c.done);
+const ludusAccepts=(n,m)=>ludusRel(n,m)<=-1||ludusGladWorth(n)>=LUDUS_CHALLENGE.accept*ludusGladWorth(m)||(n.bold||0)>=0.7;
+const ludusCanChallenge=n=>!!n&&n.status==='active'&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallenged(n.id)&&!ludus.tourney&&ludusTourneyIn()>1;
+function ludusChallenge(id){
+  const n=ludusNpc(id), m=ludus.fighter; if(!m||!ludusCanChallenge(n)) return;
+  if(ludusAccepts(n,m)){ ludus.challenges=(ludus.challenges||[]).concat([{ id:'c'+ludus.day+':'+n.id, own:m.id, npc:n.id, day:ludus.day+1, by:'own' }]); const t=`${m.name} fordert ${n.name} heraus: morgen in der Arena.`; ludusChron(ludus.map.region,'challenge',t); ludusNote=t+` · ${n.name} nimmt an.`; }
+  else { n.honor=Math.max(0,(n.honor||0)-LUDUS_CHALLENGE.decline); const t=`${n.name} lehnt die Herausforderung von ${m.name} ab.`; ludusChron(ludus.map.region,'challenge',t); ludusNote=t; }
+  ludus.arenaOffers=null; ludusSave(); ludusRender();
+}
+function ludusAiChallenge(){
+  if(ludus.tourney||ludusTourneyIn()<=1||!ludus.team.length||ludus.day-(ludus.lastAiChallenge||-99)<LUDUS_CHALLENGE.aiEvery) return;
+  const id=ludus.map.region, top=ludus.team.slice().sort((a,b)=>(b.honor||0)-(a.honor||0))[0];
+  const best=ludusRegionNpcs(id).filter(n=>ludusCanChallenge(n)&&!n.maimed&&ludusHurtPct(n)>=LUDUS_LIFE.restBelow)
+    .map(n=>({ n, sc:(n.bold||0)+0.3*Math.max(0,-(n.bond||0))+((top.honor||0)>(n.honor||0)&&(top.honor||0)-(n.honor||0)<=30?0.3:0) })).sort((a,b)=>b.sc-a.sc)[0];
+  if(!best||best.sc<LUDUS_CHALLENGE.aiScore) return;
+  ludus.challenges=(ludus.challenges||[]).concat([{ id:'c'+ludus.day+':'+best.n.id, own:top.id, npc:best.n.id, day:ludus.day, by:'npc' }]); ludus.lastAiChallenge=ludus.day; ludus.arenaOffers=null;
+  const t=`${best.n.name} fordert ${top.name} heraus: heute in der Arena.`; ludusChron(id,'challenge',t); if(typeof ludusDayNote!=='undefined') ludusDayNote+=(ludusDayNote?' · ':'')+t;
+}
+// the end of the day: who did not come to his duel is a coward
+function ludusChallengesExpire(){
+  (ludus.challenges||[]).filter(c=>c.day===ludus.day&&!c.done).forEach(c=>{ const m=ludusMember(c.own), n=ludusNpc(c.npc);
+    if(m) m.honor=Math.max(0,(m.honor||0)-LUDUS_CHALLENGE.coward); if(n) n.honor=(n.honor||0)+5;
+    if(m&&n) ludusChron(ludus.map.region,'challenge',`${m.name} kneift vor ${n.name}.`); });
+  ludus.challenges=(ludus.challenges||[]).filter(c=>c.day>ludus.day);
+}
+// enemies first: pairs of a list who bear each other a grudge (relation −2 or worse) fight each other, the rest by strength
+function ludusFeudPairs(l){
+  const out=[], left=l.slice();
+  for(let i=0;i<left.length;i++){ const a=left[i]; const j=left.findIndex((b,k)=>k>i&&(ludusRel(a,b)<=-2||ludusRel(b,a)<=-2)); if(j>0){ out.push([a,left[j],true]); left.splice(j,1); left.splice(i,1); i--; } }
+  for(let i=0;i+1<left.length;i+=2) out.push([left[i],left[i+1],false]);
+  return out;
+}
+
 // ---- trade with a gladiator: the same prices for everyone; a good relation makes them better ----
 // buying from him: worth × (1.3 − 0.1 × relation); selling to him (a piece better than what he wears, if he can pay): worth × (0.6 + 0.05 × relation)
 const ludusBuyPrice=(n,inst)=>Math.max(1,Math.round(ludusPrice(asInstance(inst).id)*(1.3-0.1*(n.bond||0))));
@@ -142,8 +184,8 @@ function ludusLifeEveningHere(){
   if(!ludus.life||ludus.life.day!==ludus.day) return;
   const id=ludus.life.region;
   ['pit','arena'].forEach(kind=>{
-    const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
-    for(let i=0;i+1<l.length;i+=2){ const a=[l[i]], b=[l[i+1]], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); }
+    const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x)), pairs=kind==='arena'?ludusFeudPairs(l):l.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
+    pairs.forEach(([x,y,feud],i)=>{ if(feud) ludusChron(id,'challenge',`Fehde in der Arena: ${x.name} gegen ${y.name}.`); const a=[x], b=[y], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); });
   });
   ludusRegionNpcs(id).forEach(n=>{ const p=ludusPlanOf(n.id); if(p==='rest'||((p==='pit'||p==='arena')&&!n.foughtToday)) ludusLifeRest(n); else if(p==='work') ludusLifeWork(n); });
 }
@@ -157,9 +199,9 @@ function ludusLifeEveningElsewhere(){
     const goers={ pit:[], arena:[] };
     l.forEach(n=>{ if(ludusHurtPct(n)<LUDUS_LIFE.restBelow){ ludusLifeRest(n); return; } if(ludusLifePoor(n)&&r()>=n.bold){ ludusLifeWork(n); return; } const x=r(); if(x<0.25){ ludusLifeRest(n); return; } (x<0.25+0.3+0.3*n.bold?goers.arena:goers.pit).push(n); });
     ['pit','arena'].forEach(kind=>{
-      const g=goers[kind].sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
-      for(let i=0;i+1<g.length;i+=2){
-        const a=g[i], b=g[i+1], wa=ludusGladWorth(a), wb=ludusGladWorth(b), pa=Math.pow(wa,1.5)/(Math.pow(wa,1.5)+Math.pow(wb,1.5)), aw=r()<pa, win=aw?a:b, lose=aw?b:a;
+      const g=goers[kind].sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x)), gp=kind==='arena'?ludusFeudPairs(g):g.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
+      for(const [a,b] of gp){
+        const wa=ludusGladWorth(a), wb=ludusGladWorth(b), pa=Math.pow(wa,1.5)/(Math.pow(wa,1.5)+Math.pow(wb,1.5)), aw=r()<pa, win=aw?a:b, lose=aw?b:a;
         ludusGladXp(win,ludusBoutXp(lose.level,true,1)); ludusGladXp(lose,ludusBoutXp(win.level,false,1));
         const cw=ludusMemberCreature(win), cl=ludusMemberCreature(lose);
         win.hp=Math.max(1,Math.round(cw.hp*(0.45+0.4*r()))); lose.hp=Math.max(1,Math.round(cl.hp*0.15));
