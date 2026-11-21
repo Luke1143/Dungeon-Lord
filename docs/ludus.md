@@ -2,6 +2,34 @@
 
 Status: Entwurf zum Ausarbeiten. Die Creature Arena (`arena.js`) bleibt zugleich Testbank; der Ludus-Modus baut darauf auf.
 
+## Neues Gerüst: die Tournee (ab Tag-Plan November 2026, gilt vor allem Älteren unten)
+
+Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiatoren sollen wie der Spieler leben (kämpfen, aufsteigen, Beute sammeln, sterben), unabhängig von ihm. Zuerst wird das Gerüst umgebaut, die lebende Welt kommt danach darauf.
+
+### Vom Nutzer festgelegt
+- **Jede Runde ist ein Tag.**
+- **Pflichtkämpfe fast ganz weg.** Es bleiben nur der Mietkampf und das Turnier.
+- **Miete:** Jede Woche zahlt der Spieler einen kleinen Satz Gold je eigenem Kämpfer. Fehlt das Gold, wird er stattdessen in einen **Arenakampf ohne jede Belohnung** geworfen.
+- **Grube (Pit):** immer verfügbar, gibt **kein Gold**, nur Erfahrung und den **besten Gegenstand des Gegners**. **Niemand stirbt** (auf beiden Seiten).
+- **Arena:** echte Kämpfe um Ruhm, Gold und Ehre, mit Lebensgefahr (Regeln wie bisher: Aufgeben und Ohnmacht sind möglich). Hohes Risiko, hoher Lohn. Verschiedene **Kampfarten**: verschiedene Arenen und Teamgrößen (1 gegen 1, 3 gegen 3, Jeder gegen jeden usw.).
+- **Turnier:** alle **30 Tage**. Alle Kämpfer am Ort **müssen** teilnehmen. Der **Endgegner (Boss)** muss besiegt werden; danach geht es auf der Weltkarte in die nächste Region (Tournee), wo in 30 Tagen das nächste Turnier mit dem nächsten Boss wartet.
+- **Kaderverwaltung:** Der Spieler entscheidet, wer heute antritt, wer geheilt wird, wer für welchen Kampf passt.
+- **Jede Region hat eine Rangliste, der Boss steht immer auf Platz 1.** Besiegt der Spieler den Boss, ist er der neue Platz 1 und muss den Titel verteidigen, bis er selbst weiterzieht.
+- **Neue Gladiatoren** entstehen links auf der Karte als Neulinge (wie der Spieler) und kämpfen sich nach rechts. Nur die Bosse entstehen mit der Welt (oder aus früheren Läufen).
+
+### Von Claude entschieden (änderbar)
+- **Ein einziger Ludus-Modus:** die Tournee auf der Karte. Der klassische Modus (Wochenrangliste, Wochenkampf, Pflichtkampf nach 3 Tagen) und die Städteturniere des alten Kartenmodus entfallen.
+- **Region = eine Stadt der Karte** (auch der Startort). Wegpunkte mit Ereignis bleiben Zwischenhalte ohne Rangliste. Weiterreisen geht nur nach rechts und erst, wenn man in der Region Platz 1 geworden ist. Eine Reise kostet einen Tag je Etappe. Platz 1 der Hauptstadt (letzte Spalte) gewinnt den Lauf.
+- **Kalender:** Miete alle 7 Tage, Turnier an jedem 30. Tag (Tag 30, 60, 90 …), unabhängig davon, wann man angekommen ist.
+- **Ein Tag, eine Unternehmung:** Pro Tag ein Grubenkampf, ein Arenakampf, Training oder Ruhetag. Für einen Kampf wählt man die Teilnehmer; wer nicht kämpft, erholt sich an diesem Tag ein Stück (halbe Bettruhe). Hühner kauft man gezielt für einzelne Kämpfer.
+- **Arena-Angebote** kommen aus der Rangliste der Region: Man kämpft gegen deren Gladiatoren (nie gegen den Boss außerhalb des Turniers). Ein Arenasieg bringt **Ehre** (Punkte der Rangliste), Gold, Ruhm und Ansehen; die Ehre bestimmt die Plätze unter dem Boss.
+- **Kampfarten zuerst:** Duell (1:1), Doppel (2:2), Trio (3:3), Rudel (einer gegen eine Meute). **Jeder gegen jeden** braucht mehr als zwei Seiten in der Arena-Engine und kommt als eigener Schritt.
+- **Turnier:** ein K.-o.-Baum mit 8 Plätzen, 1 gegen 1, eine Runde pro Tag (Viertelfinale, Halbfinale, Finale). Der Boss ist an 1 gesetzt, dazu alle eigenen Kämpfer und die Besten der Rangliste. Kämpfe ohne eigene Beteiligung werden simuliert (mit der echten Engine). Turnierkämpfe folgen den Arenaregeln. Wer das Finale gewinnt, ist Platz 1 (auch ein fremder Gladiator, der den Boss schlägt).
+- **Miete:** 4 Gold + 2 je Spalte der Region, je Kämpfer.
+
+### Danach: die lebende Welt
+Jeder Gladiator hat volle Werte (Stufe, Erfahrung, Gold, Inventar, Wunden). Jeden Tag kämpfen sie untereinander (echte Engine, im Hintergrund), steigen auf, nehmen Beute, sterben; die Ehre ordnet die Rangliste; eine Chronik erzählt davon; Neulinge rücken von links nach rechts nach.
+
 ## Grundidee
 Der Spieler führt eine Kampfschule (Ludus), trainiert und rüstet Kämpfer aus und schickt sie durch Turniere. Statt der Overworld gibt es einen Marktplatz (Townsquare); statt Dungeon-Bau gibt es Kämpfe in der Arena. Ein Kampf kann autobattle laufen oder per Besessenheit selbst gesteuert werden (gleiche Regeln wie im Hauptspiel: was die KI kann, kann der Spieler).
 
