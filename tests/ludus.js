@@ -9,7 +9,7 @@ const { open, finish }=require('./lib');
     const out={ problems:[] }, bad=t=>out.problems.push(t), sleep=ms=>new Promise(r=>setTimeout(r,ms));
     // fights a bout at once (as the match screen would), returns the headline
     const showAll=()=>{ LUDUS_TABS.forEach(([t])=>{ ludusTab=t; ludusRender(); if(t==='map') ludusMapDraw(); }); };
-    const fight=o=>{ ludusFight(o); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const head=ludusResolve(st); ludusLeaveMatch(); return head; };
+    const fight=o=>{ ludusFight(o); const st=state; let n=0; while(arenaStep(st)&&n<8000) n++; const head=ludusResolve(st); ludusLeaveMatch(); if(ludus.verdict){ const w=ludusMember(ludus.verdict.w)||ludus.fighter; ludus.verdict.list.forEach(id=>{ const n=ludusNpc(id); if(n) ludusVerdict(w,n,false,ludus.map.region); }); ludus.verdict=null; } return head; };       // a verdict after a won arena bout: spare
     ludusMeta.unlockAll=true; ludusMeta.ghosts=[]; ludusNewRun('ork','Testa');
     showAll();
     // the card of a gladiator clicked in the dungeon

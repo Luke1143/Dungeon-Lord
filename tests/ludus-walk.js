@@ -15,6 +15,7 @@ const { open, shot, finish }=require('./lib');
   await p.evaluate(()=>{ const m=ludus.team[0]; m.level=8; m.xp=xpForLevel(8); m.hp=undefined; ludus.day=9; ludus.event=null; ludus.forced=null; ludusRender(); });
   await p.click('#luEndDay'); await take('07-tourney');
   for(let k=0;k<6;k++){
+    for(let v=0;v<8;v++){ const sp=await p.$('[data-verdict$=":spare"]'); if(!sp) break; if(v===0) await take('08-verdict-'+k); await sp.click(); await p.waitForTimeout(300); }       // a won bout: spare the loser
     const go=await p.$('#luForcedGo'), adv=await p.$('#luTourneyGo');
     if(go){ await go.click(); await playMatch(); } else if(adv){ await adv.click(); } else break;
     await take('08-round-'+k); const ev=await p.$('#luFollowGo'); if(ev) await ev.click();
