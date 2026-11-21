@@ -9,7 +9,7 @@ const LUDUS_LIFE={
   champExtra:1,        // a champion stays one level longer (then he lays down the title and moves on too)
   minRoster:6,         // a region that has fewer gets wanderers
   deathCoarse:0.03,    // the chance that the loser of an arena bout dies in the fight, where it is only estimated (the verdict may follow)
-  ffaFrom:6,           // from this many in the evening arena, the four weakest fight a free for all (with pacts) instead of duels
+  ffaFrom:5,           // from this many in the evening arena, the four weakest fight a free for all (with pacts) instead of duels
   chronicle:80         // entries kept
 };
 
@@ -118,7 +118,8 @@ function ludusVerdict(w,l,execute,region){
     if(ownL){ ludus.team=ludus.team.filter(m=>m!==l); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); const n=l.npc&&ludusNpc(l.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; } }
     else { l.status='dead'; l.diedDay=ludus.day; l.last={ t:'died', d:ludus.day }; }
     (ludus.world||[]).forEach(n=>{ if(n.status==='active'&&n!==w&&n.rel&&(n.rel[l.id]||0)>=1) ludusRelAdd(n,w,-2); });       // his friends do not forget
-    const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t); return t;
+    const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t);
+    const rv=ownW?ludusRevenge(l):''; return rv?t+' · '+rv:t;
   }
   const pay=ludusRansom(l,region);
   if(ownL) ludus.gold-=pay; else l.gold=(l.gold||0)-pay;

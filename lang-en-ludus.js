@@ -162,3 +162,11 @@ i18nRegister({
 i18nRegister({
 "{0} und {1} verbünden sich für Jeder gegen jeden.":"{0} and {1} join forces for a free for all.", "Jeder gegen jeden: {0}. {1} bleibt als Letzter stehen.":"Free for all: {0}. {1} is the last one standing.",
 });
+// the nemesis
+i18nRegister({
+"{0} ist wieder da und hat deine Schule nicht vergessen.":"{0} is back and has not forgotten your school.", "Erzfeind":"Nemesis", " · Erzfeind":" · nemesis",
+"Erzfeind deiner Schule, aus früheren Läufen:":"Nemesis of your school, from earlier runs:", "hingerichtet: {0} (Tag {1})":"executed: {0} (day {1})", "getötet: {0} (Tag {1})":"killed: {0} (day {1})",
+"Rache: {0} ist tot (+{1} Ruhm).":"Revenge: {0} is dead (+{1} fame).", "Rache: {0} ist tot (+{1} Ruhm)":"Revenge: {0} is dead (+{1} fame)",
+"Deine Erzfeinde":"Your nemeses", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
+"Sie wachsen mit jedem Lauf um eine Stufe und warten in der Region, die zu ihnen passt. Wer einen von ihnen tötet oder hinrichtet, nimmt Rache (+{0} Ruhm).":"They grow a level with every run and wait in the region that fits them. Whoever of yours kills or executes one of them takes revenge (+{0} fame)."
+});

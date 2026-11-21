@@ -137,7 +137,16 @@ const { open, finish }=require('./lib');
       const next=ludusMapNeighbours(ludus.map.at).find(ludusCanTravel);
       if(next===undefined) bad('no way on'); else { ludusMapTravel(next); out.travel=ludusHere().name+' col '+ludusHere().col; out.board2=ludusBoard(ludus.map.region).length; }
     }
-    showAll(); ludus.over=true; ludusTab='start'; ludusRender();
+    showAll();
+    // the nemesis: the killer of this run outlives it, grows a level and waits in the next run, in the region that fits him; revenge strikes him off
+    { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; ludusMeta.nemeses=[];
+      ludusNemesisSync(k,'exec',[ludus.team[0]]); const e=(ludusMeta.nemeses||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no nemesis saved');
+      ludus.over=true; ludusTab='start'; ludusRender(); if(!document.body.innerText.includes(Tr('Deine Erzfeinde'))) bad('no nemeses at the end of the run');
+      ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.nemesis===e.id);
+      if(!n) bad('nemesis not in the new world'); else { out.nemesis=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('nemesis not grown or not hostile');
+        ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no nemesis line on the card'); ludusPicked=null;
+        const f0=ludus.fame; const t=ludusVerdict(ludus.team[0],n,true,n.region); out.revenge=t; if(ludus.fame<f0+LUDUS_NEMESIS.revenge||(ludusMeta.nemeses||[]).length) bad('no revenge'); } }
+    ludus.over=true; ludusTab='start'; ludusRender();
     out.misses=[...I18N_MISSES];
     return out;
   });

@@ -90,6 +90,8 @@ const ludusRerollPrice=inst=>Math.max(3,Math.round(ludusPrice(asInstance(inst).i
 
 // ---- a new run ----
 function ludusNewRun(kind,name){
+  if(ludus&&ludus.mode==='tour'&&!ludus.over) ludusNemesisSync();       // a run left unfinished: its nemeses are written back as they are
+  ludusNemesisGrow();
   const seed=String(Math.floor(Math.random()*1e9));
   ludus={ seed, mode:'tour', day:1, gold:LUDUS_START_GOLD, fame:0, wins:0, losses:0, over:false, cause:'', log:[], opp:null, options:null, rooms:{ inn:1, pit:1, forge:1 }, renown:0, cats:{}, world:[], forced:null, event:null, followup:null, giftChoice:null, lastFight:1,
     scrolls:{}, sel:0, pick:[], team:[{ id:'m0', gifts:[], kind, name:name||LUDUS_NAMES[Math.floor(Math.random()*LUDUS_NAMES.length)], level:1, xp:0, hp:undefined, inventory:[], learned:[], books:[], seed:Math.floor(Math.random()*1e9), honor:0, job:'fight' }] };
@@ -290,12 +292,13 @@ function ludusResolve(st){
   if(o.rent) team.forEach(m=>{ m.debtPaidDay=ludus.day; });
   if(o.challenge){ const c=(ludus.challenges||[]).find(x=>x.id===o.challenge); if(c) c.done=true; }       // the duel was fought: nobody is a coward       // the debt bout settles the debt and pays the day's board of whoever fought it
   ludusNpcOutcomes(st,won,o);
+  const revenge=foes.map(f=>ludusRevenge(f.npc&&ludusNpc(f.npc))).filter(Boolean);       // a nemesis who fell in the fight
   ludusLifeBusy(foes.map(f=>f.npc));
   fallen.forEach(p=>{ const n=p.m.npc&&ludusNpc(p.m.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; } });
   ludus.team=ludus.team.filter(m=>!fallen.some(p=>p.m===m)); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1));
   const fell=fallen.map(p=>p.m.name).join(', ');
   if(!ludus.team.length){
-    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
+    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; ludusNemesisSync(ludusKillerOf(st),'kill',team); text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
     ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day);
     ludusSaveGhost(team,o.title||o.name,false);
   } else {
@@ -337,11 +340,12 @@ function ludusResolve(st){
       if(o.arena&&!o.rent&&!st.arena.mercy){
         const wi=st.arena.winner, ws=(st.arena.roster[wi]||[]).filter(c=>c.npcId&&!c.removed&&!c.dead&&!c.unconscious&&st.creatures.includes(c)).map(c=>ludusNpc(c.npcId)).filter(n=>n&&n.status==='active').sort((a,b)=>b.level-a.level), w=ws[0];
         if(w) alive.forEach(({m})=>{ const t=ludusVerdict(w,m,ludusAiExecutes(w,m),ludus.map.region); text+=' · '+t; });
-        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
+        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusNemesisSync(w,'exec',team); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
       }
     }
     { const pt=ludusPactsAfter(o,st,alive[0]&&alive[0].m); if(pt) text+=' · '+pt; }
     if(fell) text+=` ${fell} ${fallen.length>1?'sind':'ist'} gefallen.`;
+    if(revenge.length) text+=' · '+revenge.join(' · ');
     if(ludus.over){}
     else if(o.tourney&&ludus.tourney){
       const r0=ludus.tourney.round, tr=(ludusTourneyResult(o,won)||'').trim(); if(tr) text+=' · '+tr;
@@ -506,7 +510,7 @@ function ludusRender(){
   if(!override&&live&&ludusPicked){ const pc=ludusPickHTML(); if(pc) override=pc; }
   if(override){ main=override; }
   else if(ludusTab==='start'){
-    main=(ludus&&ludus.over?`<div class="luPanel"><h2>Der Lauf ist zu Ende</h2><p>${ludusEsc(ludus.cause)}</p><p>Siege: ${ludus.wins} · Tage: ${ludus.day} · Ruhm: ${ludus.fame}</p><p>Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage.</p></div>`:'')+ludusStartHTML();
+    main=(ludus&&ludus.over?`<div class="luPanel"><h2>Der Lauf ist zu Ende</h2><p>${ludusEsc(ludus.cause)}</p><p>Siege: ${ludus.wins} · Tage: ${ludus.day} · Ruhm: ${ludus.fame}</p><p>Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage.</p>${ludusNemesesHTML()}</div>`:'')+ludusStartHTML();
   } else if(tier===0){
     main=`<div class="luPanel"><h2>${room.label}: Bauplatz</h2><p>Hier steht noch nichts. Wer hier baut, bekommt: ${room.text[0]}.</p>${ludusRoomBox(roomId)}</div>`;
   } else if(!live && ludusTab!=='gear'){
@@ -640,7 +644,7 @@ function ludusPickHTML(){
   const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
   const canJoin=!champ&&!n.boss&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
   return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
-    <p class="luHint">Ausrüstung: ${gear}${story?'<br>Zuletzt: <span>'+ludusEsc(story)+'</span>':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0}) · Gold ${n.gold||0}</p>
+    ${ludusNemesisText(n)?`<p class="luBane">${ludusEsc(ludusNemesisText(n))}</p>`:''}<p class="luHint">Ausrüstung: ${gear}${story?'<br>Zuletzt: <span>'+ludusEsc(story)+'</span>':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0}) · Gold ${n.gold||0}</p>
     <h3>Handel</h3>${(n.inventory||[]).map((inst,k)=>`<div class="luItem"><span>${ludusEsc(instLabel(inst))}</span><button data-tbuy="${k}" ${ludus.gold<ludusBuyPrice(n,inst)?'disabled':''}>Kaufen · ${ludusBuyPrice(n,inst)} Gold</button></div>`).join('')||'<p class="luHint">Nichts zu verkaufen.</p>'}
     ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${(n.gold||0)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}
     <h3>Herausforderung</h3>${ludusChallenged(n.id)?`<p class="luHint">${ludusEsc(n.name)} hat schon eine Verabredung in der Arena.</p>`:(ludusCanChallenge(n)&&ludus.fighter?`<p><button id="luChallenge">${ludusEsc(ludus.fighter.name)} fordert ${ludusEsc(n.name)} heraus</button></p><p class="luHint">Ein Duell morgen in der Arena, um den anderthalbfachen Preis und ${LUDUS_CHALLENGE.bonus} Ehre mehr.<br>${ludusAccepts(n,ludus.fighter)?`${ludusEsc(n.name)} wird annehmen.`:`${ludusEsc(n.name)} wird wohl ablehnen und ${LUDUS_CHALLENGE.decline} Ehre verlieren.`}<br>Wer am Tag des Duells nicht antritt, kneift: −${LUDUS_CHALLENGE.coward} Ehre.</p>`:'<p class="luHint">Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.</p>')}
