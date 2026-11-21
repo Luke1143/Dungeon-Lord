@@ -1170,13 +1170,13 @@ function tickCombat(c){
   // combat stance (aggressive): a foe one tile out of reach is closed in with the blow itself, so a runner is still hit
   if(stance==='aggressive' && d===reach+1 && (c.swingBudget||0)+1>=swingCostOf(c)){
     const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
-    if(res && res.path.length===1){ stanceMove(c,res.path[0]); d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y); c.lungeAt=Date.now(); }
+    if(res && res.path.length===1){ stanceMove(c,res.path[0]); d=Math.abs(t.x-c.x)+Math.abs(t.y-c.y); c.lungeAt=Date.now(); c.aim=null; }       // the lunge follows the runner: the blow is aimed where he is now
   }
   if(!canStrikeFrom(spec,c.x,c.y,t)){
     // Heranrücken (a shooter also steps up until no wall is in the way, a spear until the foe is in its line)
     // a free spot to strike from (a comrade already standing on the best one sends the others round it), else any
     const res=bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t) && !tileOccupied(x,y,c)) || bfsFind(c.x, c.y, (x,y)=> canStrikeFrom(spec,x,y,t));
-    if(res){ c.path=res.path; c.state='engaging'; stepAlong(c); return true; }
+    if(res){ c.path=res.path; c.state='engaging'; c.aim=null; stepAlong(c); return true; }       // whoever has to close in again aims anew when he gets there
     c.fightTarget=null;
     return false;
   }

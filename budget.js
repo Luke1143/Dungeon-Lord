@@ -21,10 +21,15 @@ const CREATURE_WORTH={ beetle:1.5, hound:0.56, warlock:0.38, barbarian:1.06, thi
 const creatureTier=k=>BUDGET_TIERS.find(t=>t.id===CREATURE_TIER[k])||BUDGET_TIERS[1];
 const creatureBudget=k=>creatureTier(k).budget;
 const creatureWorth=k=>CREATURE_WORTH[k]||creatureBudget(k);
+// measured at level 4 with plain gear against orks of the same (tools/worth-measure.js, 30 fights a probe; the ork is 1 by definition). Armed kinds grow with their gear,
+// beasts do not: an epic beast is worth less against equipped orks than at level 1 with crude gear (docs/budget.md)
+const CREATURE_WORTH_L4={ angel:3, archer:0.61, banshee:0.57, barbarian:1.35, beetle:0.94, brood:0.67, darkelf:0.59, darkknight:2.14, demon:1.67, dragon:8.33, dryad:0.53, dwarf:1.58, elf:0.94, fairy:0.34, ghost:0.66, ghoul:0.83, giant:2, goblin:0.61, golem:1.5, griffin:1.8, guardian:0.82, hound:0.63, kitsune:0.83, knight:1.4, lich:1.71, lizard:0.74, monk:1.4, ork:1, paladin:1.44, phoenix:1.41, priest:0.42, skeleton:1.06, spider:0.65, succubus:0.69, thief:0.76, troll:1.48, unicorn:1.63, vampire:2.73, warlock:0.15, werewolf:1.8, wisp:0.35, wizard:0.45, yule:0.62, zombie:1.25 };
+// the worth of a kind before the levels' growth: the level-1 measurement, moving to the level-4 one over levels 1 to 4, held from there
+const creatureWorthBase=(k,level)=>{ const a=creatureWorth(k), b=CREATURE_WORTH_L4[k]; if(!b) return a; const t=Math.max(0,Math.min(1,((level||1)-1)/3)); return a+(b-a)*t; };
 // what a kind at a level is worth: the levels multiply life and strength, so the worth grows with the square
-const creatureWorthAt=(k,level)=>creatureWorth(k)*Math.pow(levelScale(level)/levelScale(1),2);
-// the level at which a kind is worth `w` orks (at least 1)
-const creatureLevelFor=(k,w)=>Math.max(1,Math.min(40,Math.round((Math.sqrt(Math.max(0.01,w/creatureWorth(k)))-1)/LEVEL_SCALE_PER_LEVEL+1)));
+const creatureWorthAt=(k,level)=>creatureWorthBase(k,level)*Math.pow(levelScale(level)/levelScale(1),2);
+// the level at which a kind is worth `w` orks (at least 1, at most 40)
+const creatureLevelFor=(k,w)=>{ let best=1, bd=Infinity; const t=Math.max(0.01,w); for(let l=1;l<=40;l++){ const d=Math.abs(Math.log(creatureWorthAt(k,l)/t)); if(d<bd){ bd=d; best=l; } } return best; };
 // how often a kind shows up among opponents and in the world: the late creatures are stronger on purpose and rare, the lich and the dragon extremely rare
 const CREATURE_RARITY_TIER={ minor:1, common:1, strong:0.7, epic:0.22, legendary:0.05 }, CREATURE_RARITY_KIND={ lich:0.015, dragon:0.01 };
 const creatureRarity=k=>CREATURE_RARITY_KIND[k]!==undefined?CREATURE_RARITY_KIND[k]:(CREATURE_RARITY_TIER[creatureTier(k).id]||1);

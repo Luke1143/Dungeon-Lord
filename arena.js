@@ -40,7 +40,12 @@ function arenaGear(c,g,i){
   if(g.gear==='custom') return arenaSeedGear([g.weapon,g.weapon2,g.armor,g.shield].filter(id=>id&&ITEMS[id]).map(inst),g,i);
   const geared=['barbarian','thief','elf','wizard','knight','archer','monk','paladin','dwarf','giant','dryad'];
   if(geared.includes(c.kind)) return arenaSeedGear(heroGear(c.kind,c.level||1,false,Math.max(0,Math.min(3,g.tier===undefined?1:g.tier))),g,i);
-  return arenaSeedGear((HORDE_START_GEAR[c.kind]||[]).map(inst),g,i);
+  // the dark side's fighters get their usual pieces in the group's quality too (not always the crude starter), and whoever bears a weapon a light armour from plain quality on:
+  // the same quality for everybody, whichever side the kind comes from
+  const tier=Math.max(0,Math.min(3,g.tier===undefined?1:g.tier)), at=id=>{ const d=ITEMS[id]; if(!d) return id; const up=d.family+'_'+TIER_IDS[tier]; return ITEMS[up]?up:id; };
+  const ids=(HORDE_START_GEAR[c.kind]||[]).map(at);
+  if(ids.length&&tier>=1&&!ids.some(id=>ITEMS[id]&&ITEMS[id].type==='armor')&&ITEMS['lightArmor_'+TIER_IDS[tier]]) ids.push('lightArmor_'+TIER_IDS[tier]);
+  return arenaSeedGear(ids.map(inst),g,i);
 }
 function arenaComponents(g){
   const W=WORLD_COLS,H=WORLD_ROWS, comp=Array.from({length:H},()=>Array(W).fill(-1)), list=[];
