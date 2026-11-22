@@ -10,10 +10,11 @@ const STAGES = [ { name: 'early', round: 1, conquered: 1, defenders: ['hound','h
                  { name: 'mid',   round: 5, conquered: 4, defenders: ['hound','hound','hound','beetle','beetle','warlock'] },
                  { name: 'late',  round: 10, conquered: 8, defenders: ['hound','hound','hound','hound','beetle','beetle','beetle','warlock','warlock'] } ];
 (async () => {
-  const b = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
+  // a fresh browser for every level: a second page in the same browser could hang on load after a long headless level
+  const launch = () => chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
   for (const seedWord of SEEDS) for (const stage of STAGES) for (const region of REGIONS) {
-    const p = await b.newPage({ viewport: { width: 1000, height: 700 } });
-    await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'));
+    const b = await launch(), p = await b.newPage({ viewport: { width: 1000, height: 700 } });
+    await p.goto('file://' + path.resolve(__dirname, '..', 'index.html'), { timeout: 120000 });
     await p.waitForTimeout(300);
     const res = await p.evaluate(({ stage, region, MAX_TICKS, seedWord }) => {
       let seed = 777; Math.random = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -37,7 +38,6 @@ const STAGES = [ { name: 'early', round: 1, conquered: 1, defenders: ['hound','h
       return { mods: `w${mods.waves} s${mods.size} l${mods.levelBonus} g${mods.gearTier} z${mods.wizards}`, ai: OW.REGION_TYPES[region].ai, pool: state.keep ? state.keep.total : 0, recruited: state.keep ? state.keep.recruited : 0, contact, over: state.war.over || 'survived', tick: t, hp: Math.round(state.war.throneHp), won: state.war.over === 'won' };
     }, { stage, region, MAX_TICKS, seedWord });
     console.log(res.skip ? `${seedWord} ${stage.name.padEnd(5)} ${region.padEnd(11)} (not in this world)` : `${seedWord} ${stage.name.padEnd(5)} ${region.padEnd(11)} ${String(res.ai).padEnd(10)} ${res.mods.padEnd(16)} pool ${String(res.pool).padStart(2)} recruited ${String(res.recruited).padStart(2)} contact ${String(res.contact).padStart(5)} -> ${res.over} at ${res.tick}, throne ${res.hp}`);
-    await p.close();
+    await p.close(); await b.close();
   }
-  await b.close();
 })();
