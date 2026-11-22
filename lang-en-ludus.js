@@ -199,3 +199,6 @@ i18nRegister({
 "{0} zieht weiter nach {1}.":"{0} moves on to {1}.", "{0} kommt aus {1}.":"{0} comes from {1}.", "{0} ({1}) tritt als Legende ab.":"{0} ({1}) retire as legends.",
 "Haus {0}":"House {0}"
 });
+i18nRegister({
+"Deine Schule gewinnt das Turnier von {0} und steht nun auf Platz 1! +{1} Gold.":"Your school wins the tournament of {0} and now stands in first place! +{1} gold.", "(deine Schule)":"(your school)"
+});

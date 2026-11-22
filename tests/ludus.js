@@ -42,6 +42,9 @@ const { open, finish }=require('./lib');
     // the arena
     for(let d=0;d<8&&!ludusArenaOffers().length;d++){ ludus.forced=null; ludus.event=null; ludusEndDay(); ludus.forced=null; ludus.event=null; }
     const offers=ludusArenaOffers(); out.offers=offers.map(o=>o.mode+':'+o.title);
+    offers.forEach(o=>{ const t=o.foes.map(f=>(ludusNpc(f.npc)||{}).team);
+      if((o.mode==='double'||o.mode==='trio')&&new Set(t).size!==1) bad('a '+o.mode+' of several teams');
+      if(o.mode==='ffa'&&new Set(t).size!==t.length) bad('a free for all with two of one team'); });
     if(!offers.length) bad('no arena offers');
     ludusTab='arena'; ludusRender(); for(let i=0;i<300&&!(ludus.arenaEst);i++) await sleep(50);
     out.est=ludus.arenaEst&&ludus.arenaEst.est;
@@ -85,7 +88,10 @@ const { open, finish }=require('./lib');
       if(!(ludus.challenges||[]).some(c=>c.by==='npc'&&c.day===ludus.day)) bad(`no challenge from the world (day ${ludus.day}, tourney in ${ludusTourneyIn()}, ${g.status})`);
       ludus.challenges=[]; ludus.arenaOffers=null;
       // enemies settle it among themselves first
-      const [a,b2,x,y]=ns; ns.forEach(q=>{ q.rel={}; }); a.rel[y.id]=-3; const pr=ludusFeudPairs([a,b2,x,y]); if(!(pr[0][0]===a&&pr[0][1]===y&&pr[0][2])) bad('feud not paired first'); }
+      const four=[]; ludusRegionNpcs(id).forEach(q=>{ if(four.length<4&&!four.some(z=>z.team===q.team)) four.push(q); });
+      if(four.length===4){ const [a,b2,x,y]=four; four.forEach(q=>{ q.rel={}; }); a.rel[y.id]=-3; const pr=ludusFeudPairs([a,b2,x,y]); if(!(pr[0][0]===a&&pr[0][1]===y&&pr[0][2])) bad('feud not paired first'); }
+      // never two of one team against each other in the arena
+      const mates=ludusRegionNpcs(id).filter(q=>ludusTeamSize(q)>=2); if(mates.length>=2){ const t0=mates[0].team, pair=ludusRegionNpcs(id).filter(q=>q.team===t0).slice(0,2); pair[0].rel={ [pair[1].id]:-3 }; if(ludusFeudPairs(pair).length) bad('teammates paired in the arena'); } }
     // free for all: one of the own among three gladiators, every one a side of his own
     { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&n.status==='active').slice(0,3); npcs.forEach(n=>{ n.bond=3; n.rel={}; }); const foes=npcs.map(ludusNpcFoe);
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };
@@ -134,6 +140,8 @@ const { open, finish }=require('./lib');
     if(!ludus.tourney) bad('no tournament on day 30');
     else {
       out.bracket=ludus.tourney.slots.map(ludusEntryName).join(', '); showAll();
+      if(!ludus.tourney.slots.some(e=>e&&e.t==='own')||ludus.tourney.slots.some(e=>e&&e.t!=='own'&&e.t!=='team')) bad('the bracket is not of teams');
+      { const o=ludusTourneyBout(); if(o&&(o.foes.length<1||o.foes.length>3||o.members.length>3)) bad('a team bout of the wrong size'); }
       let guard=0;
       while(ludus.tourney&&guard++<20){
         const o=ludusTourneyBout();

@@ -71,13 +71,15 @@ function ludusRegionEnsure(id){
   ludus.world=ludus.world||[]; ludus.world.push(boss);
   for(let i=0;i<LUDUS_TOUR.roster;i++){ const f=1.15-0.06*i+(r()-0.5)*0.1, n=ludusNpcMake(r,id,f,i<2?1:(i>6?-1:0)); n.honor=Math.round(10*(LUDUS_TOUR.roster-i)+r()*6); ludus.world.push(n); }
   ludus.regions[id]={ champ:{ t:'npc', id:boss.id }, ghost:ghost||null };
-  ludusTeamsFill(id,r);       // the region's gladiators in teams (ludus-teams.js)
+  ludusTeamsFill(id,r);       // the region's gladiators in teams (ludus-teams.js); the boss's team holds the title
+  if(boss.team) ludus.regions[id].champ={ t:'team', id:boss.team };
   ludusRivalPlace(id);       // an old enemy whose strength fits this region waits here
   ludusTeamsTidy();
   return ludus.regions[id];
 }
 const ludusChamp=id=>(ludus.regions[id]||{}).champ||null;
-const ludusIsChamp=(id,t,ref)=>{ const c=ludusChamp(id); return !!c&&c.t===t&&c.id===ref; };
+// the champion of a region is a team ({ t:'team', id } or { t:'own' }): a gladiator is "the champion" when his team is
+const ludusIsChamp=(id,t,ref)=>{ const c=ludusChamp(id); if(!c) return false; if(c.t==='own') return t==='own'; if(c.t==='team'){ if(t==='team') return ref===c.id; if(t!=='npc') return false; const n=ludusNpc(ref); return !!n&&n.team===c.id; } return c.t===t&&c.id===ref; };
 const ludusRegionNpcs=id=>(ludus.world||[]).filter(n=>n.region===id&&n.status==='active');
 const ludusMember=id=>ludus.team.find(m=>m.id===id)||null;
 
@@ -86,7 +88,7 @@ function ludusBoard(id){
   const champ=ludusChamp(id), rows=[];
   ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, rival:ludusRivalOf(n)?ludusRivalRank(ludusRivalOf(n)):'', boss:!!n.boss, plan:id===ludus.map.region?ludusPlanOf(n.id):undefined, wins:n.wins||0, kills:n.kills||0, fame:n.fame||0 }));
   if(id===ludus.map.region) ludus.team.forEach(m=>rows.push({ t:'own', id:m.id, name:m.name, kind:m.kind, level:m.level, honor:m.honor||0, fame:m.fame||0 }));
-  rows.forEach(x=>{ x.champ=!!champ&&champ.t===x.t&&champ.id===x.id; });
+  rows.forEach(x=>{ x.champ=ludusIsChamp(id,x.t,x.id); });
   rows.sort((a,b)=>(b.champ-a.champ)||(b.honor-a.honor)||(b.level-a.level));
   rows.forEach((x,i)=>x.rank=i+1);
   return rows;
@@ -159,11 +161,17 @@ function ludusArenaOffers(){
     add('duel',[ludusNpc(c.npc)]); const o=list[list.length-1]; o.challenge=c.id; o.members=[c.own]; o.baseReward=Math.round(o.baseReward*1.5); o.title=`Herausforderung: ${o.title}`; });
   if(pool.length) add('duel',[pool[Math.floor(pool.length/2)]]);
   if(pool.length>1){ const first=list[list.length-1].foes[0].npc; add('duel',[pool.find(x=>x.id!==first)]); }
-  if(ludus.team.length>=3&&pool.length>=3) add('trio',pool.slice(0,3));
-  else if(ludus.team.length>=2&&pool.length>=2) add('double',pool.slice(pool.length-2));
+  // the goers by team: a double or trio is two or three of one team, a free for all one of each of several teams, three teams of two two real teams
+  const byTeam={}; pool.forEach(x=>{ (byTeam[x.team]=byTeam[x.team]||[]).push(x); });
+  const squads=Object.values(byTeam).sort((a,b)=>(b.length-a.length)||(ludusGladWorth(b[0])-ludusGladWorth(a[0])));
+  const t3=squads.find(g=>g.length>=3), t2=squads.find(g=>g.length>=2);
+  if(ludus.team.length>=3&&t3) add('trio',t3.slice(0,3));
+  else if(ludus.team.length>=2&&t2) add('double',t2.slice(0,2));
   if(pool.length>=3) add('pack',pool.slice(-Math.min(4,pool.length)));
-  if(pool.length>=4){ const k=Math.min(4,pool.length-1), at=Math.floor(r()*(pool.length-k+1)); add('ffa',pool.slice(at,at+k)); }
-  if(ludus.team.length>=2&&pool.length>=4){ const t=ludusTeamUp(pool).slice(0,2); if(t.length===2){ add('teams',[].concat(...t)); const o=list[list.length-1]; o.groups=[[0,1],[2,3]]; o.title=t.map(p=>p.map(n=>n.name).join(' & ')).join(', '); } }
+  const reps=squads.map(g=>g[0]);
+  if(reps.length>=3){ const k=Math.min(4,reps.length), at=Math.floor(r()*(reps.length-k+1)); add('ffa',reps.slice(at,at+k)); }
+  const duos=squads.filter(g=>g.length>=2);
+  if(ludus.team.length>=2&&duos.length>=2){ const t=[duos[0].slice(0,2),duos[1].slice(0,2)]; add('teams',[].concat(...t)); const o=list[list.length-1]; o.groups=[[0,1],[2,3]]; o.title=t.map(p=>ludusTeamName(p[0])).join(', '); }
   ludus.arenaOffers={ day:ludus.day, region:id, list }; return list;
 }
 // the prize falls as the chances rise: a long shot pays up to twice as much, a sure thing half
@@ -209,51 +217,56 @@ function ludusRentBout(){
   return { arena:true, rent:true, mode:'duel', variant:'duel', foes:[f], kind:f.kind, level:f.level, name:f.name, title:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(r), reward:0 };
 }
 
-// ---- the tournament: every 10 days, all gladiators of the region, a knock-out tree of 8, one round a day. The champion is seeded first ----
+// ---- the tournament: every 10 days, the teams of the region, a knock-out tree of 8, one round a day. The champion team is seeded first ----
+// A bout of the tournament is team against team: each sends up to three of its gladiators (the school: those who fight today, else the healthiest; a team of the world: its strongest who are not hurt).
 function ludusTourneyStart(){
-  const id=ludus.map.region, champ=ludusChamp(id), board=ludusBoard(id);
-  const own=ludus.team.map(m=>({ t:'own', id:m.id })), champE=champ&&(champ.t==='own'?ludusMember(champ.id):ludusNpc(champ.id))?{ t:champ.t, id:champ.id }:null;
-  const rest=board.filter(x=>!(champE&&x.t===champE.t&&x.id===champE.id)&&!x.maimed);
-  // seeds: the champion, then the ladder; every own gladiator must take part, so the weakest strangers make room for them
-  const seeds=champE?[champE]:[], ownLeft=own.filter(e=>!(champE&&champE.t==='own'&&champE.id===e.id));
-  const room=Math.max(0,LUDUS_TOUR.bracket-seeds.length-ownLeft.length), npcs=new Set(rest.filter(x=>x.t==='npc').slice(0,room).map(x=>x.id));
-  rest.forEach(x=>{ if(x.t==='own'||npcs.has(x.id)) seeds.push({ t:x.t, id:x.id }); });
+  const id=ludus.map.region, champ=ludusChamp(id), table=ludusTeamTable(id);
+  const champE=champ&&(champ.t==='own'?(ludus.team.length?{ t:'own', id:'own' }:null):(ludusTeam(champ.id)&&ludusTeamMembers(champ.id).length?{ t:'team', id:champ.id }:null));
+  // seeds: the champion, then the table; the school always takes part, so the weakest strangers make room for it
+  const seeds=champE?[champE]:[], own=ludus.team.length&&!(champE&&champE.t==='own')?[{ t:'own', id:'own' }]:[];
+  const others=table.filter(x=>x.t==='team'&&!(champE&&champE.t==='team'&&champE.id===x.id)&&ludusTeamMembers(x.id).some(n=>!n.maimed)).slice(0,Math.max(0,LUDUS_TOUR.bracket-seeds.length-own.length)).map(x=>({ t:'team', id:x.id }));
+  const ownAt=table.findIndex(x=>x.t==='own'); others.splice(Math.min(others.length,Math.max(0,ownAt-seeds.length)),0,...own); seeds.push(...others);
   const order=[0,7,3,4,1,6,2,5], slots=order.map(i=>seeds[i]||null);
   ludus.tourney={ region:id, round:0, slots, results:[], played:{} };
   ludus.forced={ type:'tourney' };
   ludusLog(`Turnier in ${ludusRegionNode().name}`);
 }
 const ludusTourneyRoundName=(n)=>n>=8?'Viertelfinale':(n>=4?'Halbfinale':'Finale');
-const ludusEntryName=e=>{ if(!e) return '—'; const x=e.t==='own'?ludusMember(e.id):ludusNpc(e.id); return x?x.name:'—'; };
-const ludusEntryAlive=e=>!!e&&(e.t==='own'?!!ludusMember(e.id):(()=>{ const n=ludusNpc(e.id); return !!n&&n.status==='active'; })());
-const ludusEntryFoe=e=>ludusNpcFoe(ludusNpc(e.id));
-const ludusEntryGlad=e=>e.t==='own'?ludusMember(e.id):ludusNpc(e.id);
+const ludusEntryName=e=>{ if(!e) return '—'; if(e.t==='own') return 'Deine Schule'; if(e.t==='team'){ const t=ludusTeam(e.id); return t?t.name:'—'; } const x=e.t==='npc'?ludusNpc(e.id):ludusMember(e.id); return x?x.name:'—'; };
+const ludusEntryAlive=e=>!!e&&(e.t==='own'?ludus.team.length>0:(e.t==='team'?ludusTeamMembers(e.id).length>0:(()=>{ const n=ludusNpc(e.id); return !!n&&n.status==='active'; })()));
+// who a team sends: up to three
+function ludusEntryLineup(e){
+  if(!e) return [];
+  if(e.t==='own'){ const p=ludusPicks(); if(p.length) return p.slice(0,3); return ludus.team.slice().sort((a,b)=>ludusHealPct(ludusMemberCreature(b),b)-ludusHealPct(ludusMemberCreature(a),a)).slice(0,3); }
+  const m=ludusTeamMembers(e.id), fit=m.filter(n=>!n.maimed);
+  return (fit.length?fit:m).sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)).slice(0,3);
+}
 // the pairs of the current round: [a, b, index]
 const ludusTourneyPairs=()=>{ const s=ludus.tourney.slots, out=[]; for(let i=0;i<s.length;i+=2) out.push([s[i],s[i+1],i/2]); return out; };
-// the next pair of this round the player has to fight (an own gladiator against a stranger), or null
+// the next pair of this round the player has to fight (the school against a team), or null
 function ludusTourneyNext(){
   const t=ludus.tourney; if(!t) return null;
   return ludusTourneyPairs().find(([a,b,i])=>t.played[i]===undefined&&ludusEntryAlive(a)&&ludusEntryAlive(b)&&((a.t==='own')!==(b.t==='own')))||null;
 }
 function ludusTourneyBout(){
   const p=ludusTourneyNext(); if(!p) return null;
-  const [a,b,i]=p, own=a.t==='own'?a:b, foe=a.t==='own'?b:a, f=ludusEntryFoe(foe), n=ludusRegionNode(), L=ludusRegionLevel(n.col), final=ludus.tourney.slots.length===2;
-  return { arena:true, tourney:true, pair:i, final, mode:'duel', variant:'duel', foes:[f], members:[own.id], kind:f.kind, level:f.level, name:f.name,
-    title:`${ludusTourneyRoundName(ludus.tourney.slots.length)}: ${f.name} (${SPECIES[f.kind].label})`, foeTitle:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(ludusRng('tl'+ludus.day+':'+i)), reward:Math.round((12+8*L)*(final?3:1.5)*ludusHallMult()) };
+  const [a,b,i]=p, foeE=a.t==='own'?b:a, lineup=ludusEntryLineup(foeE), own=ludusEntryLineup({ t:'own' }), foes=lineup.map(ludusNpcFoe), n=ludusRegionNode(), L=ludusRegionLevel(n.col), final=ludus.tourney.slots.length===2;
+  const name=ludusEntryName(foeE), size=Math.max(own.length,foes.length);
+  return { arena:true, tourney:true, pair:i, final, mode:size>=3?'trio':(size===2?'double':'duel'), variant:foes.length>1?'group':'duel', foes, members:own.map(m=>m.id), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name,
+    title:`${ludusTourneyRoundName(ludus.tourney.slots.length)}: ${name}`, foeTitle:name, layout:ludusLayoutPick(ludusRng('tl'+ludus.day+':'+i)), reward:Math.round((12+8*L)*(final?3:1.5)*Math.max(1,0.7*foes.length)*ludusHallMult()) };
 }
-// a bout of the tournament without the player's say (strangers among themselves, or two of the player's own): fought out by the engine
+// a bout of the tournament without the player: two teams of the world, fought out by the engine
 function ludusTourneySim(a,b,i){
-  const ga=ludusEntryGlad(a), gb=ludusEntryGlad(b), res=ludusLifeBout([ga],[gb],'arena','t'+ludus.day+':'+i);
-  ludusLifeAfterBout([[ga],[gb]],res,'tourney',ludus.tourney.region);
-  res.dead.forEach(n=>{ if(ludusMember(n.id)){ ludus.team=ludus.team.filter(m=>m.id!==n.id); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1)); } });
+  const A=ludusEntryLineup(a), B=ludusEntryLineup(b), res=ludusLifeBoutN([A,B],'arena','t'+ludus.day+':'+i,[]);
+  ludusLifeAfterBout([A,B],res,'tourney',ludus.tourney.region);
   return res.winner===0;
 }
-// called after an own bout of the tournament (won: the own gladiator goes on)
+// called after an own bout of the tournament (won: the school goes on)
 function ludusTourneyResult(o,won){
   const t=ludus.tourney; if(!t) return '';
-  const [a,b]=ludusTourneyPairs()[o.pair], ownFirst=a.t==='own'&&o.members.includes(a.id);
+  const [a]=ludusTourneyPairs()[o.pair], ownFirst=a.t==='own';
   t.played[o.pair]=(won===ownFirst)?0:1;
-  if(won){ const m=ludusMember(o.members[0]); if(m) m.honor=(m.honor||0)+15; }
+  if(won) (o.members||[]).forEach(id=>{ const m=ludusMember(id); if(m) m.honor=(m.honor||0)+15; });
   return ludusTourneyNext()?'':ludusTourneyCloseRound();
 }
 // the round ends: the other pairs are fought out, the winners move on; after the final the region has its champion
@@ -265,7 +278,7 @@ function ludusTourneyCloseRound(){
     else if(!ludusEntryAlive(a)||!ludusEntryAlive(b)) w=ludusEntryAlive(a)?a:(ludusEntryAlive(b)?b:null);
     else { w=ludusTourneySim(a,b,i)?a:b; lines.push(`${ludusEntryName(w)} schlägt ${ludusEntryName(w===a?b:a)}`); }
     next.push(w);
-    if(w&&w.t==='npc'){ const n=ludusNpc(w.id); if(n) n.honor=(n.honor||0)+15; }
+    if(w&&w.t==='team') ludusEntryLineup(w).forEach(n=>{ n.honor=(n.honor||0)+15; });
   });
   t.results.push(lines); t.round++; t.slots=next; t.played={};
   let text=lines.length?' Weitere Kämpfe: '+lines.join(', ')+'.':'';
@@ -277,13 +290,13 @@ function ludusTourneyEnd(w){
   ludus.tourney=null; if(ludus.forced&&ludus.forced.type==='tourney') ludus.forced=null;
   let t='';
   if(w){
-    const prev=ludusChamp(id); ludus.regions[id].champ={ t:w.t, id:w.id };
+    const prev=ludusChamp(id); ludus.regions[id].champ=w.t==='own'?{ t:'own' }:{ t:'team', id:w.id };
     if(w.t==='own'){
-      const m=ludusMember(w.id), gold=40+30*n.col; ludus.gold+=gold; ludus.fame+=3+n.col; ludusGainRenown(Math.round((15+5*n.col)*ludusHallMult()));
+      const m=ludus.team.slice().sort((a,b)=>(b.honor||0)-(a.honor||0))[0], gold=40+30*n.col; ludus.gold+=gold; ludus.fame+=3+n.col; ludusGainRenown(Math.round((15+5*n.col)*ludusHallMult()));
       if(!ludus.map.cleared.includes(id)) ludus.map.cleared.push(id);
       ludus.giftChoice=genGiftOffer(Math.random,ludusMemberCreature(m),ludus.fame);
-      const beat=prev&&prev.t==='npc'?ludusNpc(prev.id):null; if(beat&&beat.ghost){ const g=(ludusMeta.ghosts||[]).find(x=>x.id===beat.ghost); if(g){ ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==g); t+=` ${g.name} tritt ab.`; } }
-      t+=` ${m.name} gewinnt das Turnier von ${n.name} und steht nun auf Platz 1! +${gold} Gold.`;
+      const beaten=prev&&prev.t==='team'?ludusTeamMembers(prev.id):[], gh=beaten.find(x=>x.ghost); if(gh){ const g=(ludusMeta.ghosts||[]).find(x=>x.id===gh.ghost); if(g){ ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==g); t+=` ${g.name} tritt ab.`; } }
+      t+=` Deine Schule gewinnt das Turnier von ${n.name} und steht nun auf Platz 1! +${gold} Gold.`;
       ludusLog(`Turniersieg in ${n.name}`);
       if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusRivalSync(); ludusSaveGhost(ludus.team,'',true); ludusLegacyEnd(ludus.team); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
     } else t+=` ${ludusEntryName(w)} gewinnt das Turnier von ${n.name}.`;
@@ -315,7 +328,7 @@ function ludusMapTravel(id){
   if(ludus.over||ludus.forced||ludus.event||ludus.giftChoice||ludus.verdict||!ludusCanTravel(id)) return;
   const w=ludusMapWorld(), from=ludus.map.region, n=w.nodes[id];
   // the champion who leaves gives up the title: the region's best stranger takes place 1
-  if(ludusIsChamp(from,'own',(ludusChamp(from)||{}).id)){ const best=ludusRegionNpcs(from).filter(x=>!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0]; if(best) ludus.regions[from].champ={ t:'npc', id:best.id }; }
+  if(ludusIsChamp(from,'own',(ludusChamp(from)||{}).id)){ const best=ludusRegionNpcs(from).filter(x=>!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0]; if(best) ludus.regions[from].champ={ t:'team', id:best.team }; }
   ludus.map.at=id; ludusLog(`Reise nach ${n.name}`);
   if(ludusIsRegion(n)){ ludus.map.region=id; ludusRegionEnsure(id); ludus.team.forEach(m=>{ m.honor=0; }); ludus.arenaOffers=null; ludus.arenaEst=null; }
   ludusAdvanceDay([],true);       // a day on the road: everybody rests a little, nobody works or trains
@@ -350,7 +363,7 @@ function ludusMapHTML(){
   let info='';
   if(region){
     const champ=ludusChamp(n.id), won=ludus.map.cleared.includes(n.id);
-    info=`<p>Stufe der Region: <b>${ludusRegionLevel(n.col)}</b> · Platz 1: <b>${ludusEsc(ludusEntryName(champ))}</b>${champ&&champ.t==='own'?' (dein Kämpfer)':''}<br>Nächstes Turnier in ${ludusTourneyIn()} Tagen (Tag ${ludus.day+ludusTourneyIn()}).</p>
+    info=`<p>Stufe der Region: <b>${ludusRegionLevel(n.col)}</b> · Platz 1: <b>${ludusEsc(ludusEntryName(champ))}</b>${champ&&champ.t==='own'?' (deine Schule)':''}<br>Nächstes Turnier in ${ludusTourneyIn()} Tagen (Tag ${ludus.day+ludusTourneyIn()}).</p>
       <p class="${won?'luHint':'luBane'}">${won?'Du hast diese Region gewonnen: du darfst weiterziehen, oder bleiben und den Titel verteidigen.':'Weiter geht es erst, wenn einer deiner Kämpfer das Turnier gewinnt und Platz 1 wird.'}</p>`;
   }
   return `<div class="luPanel"><h2>Karte</h2><p class="luHint">Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht ihr Boss. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier: wer es gewinnt, ist Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.</p>

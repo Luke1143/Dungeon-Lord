@@ -161,13 +161,14 @@ function ludusChallengesExpire(){
     if(m&&n) ludusChron(ludus.map.region,'challenge',`${m.name} kneift vor ${n.name}.`); });
   ludus.challenges=(ludus.challenges||[]).filter(c=>c.day>ludus.day);
 }
-// enemies first: pairs of a list who bear each other a grudge (relation −2 or worse) fight each other, the rest by strength
+// enemies first: pairs of a list who bear each other a grudge (relation −2 or worse) fight each other, the rest by strength; never two of one team
 function ludusFeudPairs(l){
-  const out=[], left=l.slice();
-  for(let i=0;i<left.length;i++){ const a=left[i]; const j=left.findIndex((b,k)=>k>i&&(ludusRel(a,b)<=-2||ludusRel(b,a)<=-2)); if(j>0){ out.push([a,left[j],true]); left.splice(j,1); left.splice(i,1); i--; } }
-  for(let i=0;i+1<left.length;i+=2) out.push([left[i],left[i+1],false]);
-  return out;
+  const out=[], left=l.slice(), mates=(a,b)=>!!a.team&&a.team===b.team;
+  for(let i=0;i<left.length;i++){ const a=left[i]; const j=left.findIndex((b,k)=>k>i&&!mates(a,b)&&(ludusRel(a,b)<=-2||ludusRel(b,a)<=-2)); if(j>0){ out.push([a,left[j],true]); left.splice(j,1); left.splice(i,1); i--; } }
+  return out.concat(ludusPairUp(left));
 }
+// pairs of neighbours by strength, never two of one team (in the arena teammates do not fight each other)
+function ludusPairUp(l){ const left=l.slice(), out=[]; while(left.length>1){ const a=left.shift(), j=left.findIndex(b=>!a.team||b.team!==a.team); if(j<0) continue; out.push([a,left.splice(j,1)[0],false]); } return out; }
 
 // the evening's free for all among the world's gladiators: four, everyone for himself, and those who like each other stand together (the same rule as in the player's bouts)
 function ludusLifeFfa(four,region){
@@ -236,7 +237,7 @@ function ludusLifeEveningHere(){
   const id=ludus.life.region;
   ['pit','arena'].forEach(kind=>{
     const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
-    if(kind==='arena'&&l.length>=LUDUS_LIFE.ffaFrom) ludusLifeFfa(l.splice(l.length-4,4),id);
+    if(kind==='arena'&&l.length>=LUDUS_LIFE.ffaFrom){ const four=[]; for(let k=l.length-1;k>=0&&four.length<4;k--) if(!four.some(x=>x.team===l[k].team)) four.push(l[k]); if(four.length===4){ four.forEach(x=>l.splice(l.indexOf(x),1)); ludusLifeFfa(four,id); } }       // the four weakest of four teams
     const pairs=kind==='arena'?ludusFeudPairs(l):l.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
     pairs.forEach(([x,y,feud],i)=>{ if(feud) ludusChron(id,'challenge',`Fehde in der Arena: ${x.name} gegen ${y.name}.`); const a=[x], b=[y], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); });
   });
@@ -298,17 +299,18 @@ function ludusLifeEvening(){
   (ludus.world||[]).forEach(n=>{ if(n.status==='active') n.tier=ludusGladTier(n); });
 }
 
-// ---- the tournaments of the other regions (on the same day as the player's): the champion is estimated from the best eight ----
+// ---- the tournaments of the other regions (on the same day as the player's): the champion team is estimated from the best eight (each by its three strongest) ----
 function ludusLifeTourneys(){
   const r=ludusRng('lt'+ludus.day);
   Object.keys(ludus.regions||{}).forEach(k=>{
     const id=+k; if(id===ludus.map.region) return;
     const champ=ludusChamp(id), l=ludusRegionNpcs(id).filter(n=>!n.maimed);
-    const seeds=l.sort((x,y)=>(ludusIsChamp(id,'npc',y.id)-ludusIsChamp(id,'npc',x.id))||((y.honor||0)-(x.honor||0))).slice(0,8);
-    let round=seeds; while(round.length>1){ const next=[]; for(let i=0;i<round.length;i+=2){ const a=round[i], b=round[i+1]; if(!b){ next.push(a); continue; } const wa=ludusGladWorth(a), wb=ludusGladWorth(b); next.push(r()<Math.pow(wa,1.5)/(Math.pow(wa,1.5)+Math.pow(wb,1.5))?a:b); } round=next; }
+    const seeds=ludusTeamTable(id).filter(x=>x.t==='team'&&ludusTeamMembers(x.id).some(n=>!n.maimed)).slice(0,8);       // the champion team first, then the table
+    const power=x=>ludusEntryLineup({ t:'team', id:x.id }).reduce((s,n)=>s+Math.pow(ludusGladWorth(n),1.5),0);
+    let round=seeds; while(round.length>1){ const next=[]; for(let i=0;i<round.length;i+=2){ const a=round[i], b=round[i+1]; if(!b){ next.push(a); continue; } const pa=power(a), pb=power(b); next.push(r()<pa/Math.max(1e-6,pa+pb)?a:b); } round=next; }
     const w=round[0]; if(!w) return;
-    const prev=champ&&champ.t==='npc'?ludusNpc(champ.id):null;
-    ludus.regions[id].champ={ t:'npc', id:w.id }; w.honor=(w.honor||0)+30;
+    const prev=champ&&champ.t==='team'?ludusTeam(champ.id):null;
+    ludus.regions[id].champ={ t:'team', id:w.id }; ludusEntryLineup({ t:'team', id:w.id }).forEach(n=>{ n.honor=(n.honor||0)+30; });
     if(!prev||prev.id!==w.id) ludusChron(id,'champ',`${w.name} gewinnt das Turnier von ${ludusRegionName(id)}${prev?' und stürzt '+prev.name:''}.`);
   });
   ludusLifeMigrate();
@@ -328,9 +330,9 @@ function ludusLifeMigrate(){
     if(!regions.length){       // nowhere further to go: the land's best retire as legends
       if(champ) return;
       mem.forEach(n=>{ n.status='gone'; n.goneDay=ludus.day; }); ludusChron(t.region,'champ',`${t.name} (${mem.map(n=>n.name).join(', ')}) tritt als Legende ab.`); return; }
-    if(champ){       // the champion lays down his title: the one with the most honour (of another team) takes place 1
+    if(champ){       // the champion team lays down its title: the team of the gladiator with the most honour (of another team) takes place 1
       const nx=ludusRegionNpcs(t.region).filter(x=>x.team!==t.id&&!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0];
-      if(nx){ ludus.regions[t.region].champ={ t:'npc', id:nx.id }; ludusChron(t.region,'champ',`${champ.name} legt den Titel von ${node.name} nieder, ${nx.name} ist neuer Champion.`); }
+      if(nx&&ludusTeam(nx.team)){ ludus.regions[t.region].champ={ t:'team', id:nx.team }; ludusChron(t.region,'champ',`${t.name} legt den Titel von ${node.name} nieder, ${ludusTeam(nx.team).name} ist neuer Champion.`); }
     }
     const crowd=m=>ludusRegionNpcs(m.id).length+r()*0.5, to=regions.sort((x,y)=>crowd(x)-crowd(y))[0]; ludusRegionEnsure(to.id);       // the least crowded of the next regions
     ludusChron(t.region,'move',`${t.name} zieht weiter nach ${to.name}.`);

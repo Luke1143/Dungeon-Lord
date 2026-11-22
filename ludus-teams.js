@@ -37,6 +37,12 @@ function ludusTeamsTidy(){
     delete n.gold;
   });
   Object.keys(ludus.teams).forEach(id=>{ if(!ludusTeamMembers(id).length) delete ludus.teams[id]; });
+  // the title of a region belongs to a team (an old save named a gladiator; a team that is gone hands it to the best of the table)
+  Object.keys(ludus.regions||{}).forEach(k=>{ const reg=ludus.regions[k], c=reg.champ; if(!c) return;
+    if(c.t==='npc'){ const n=ludusNpc(c.id); reg.champ=n&&n.status==='active'&&n.team?{ t:'team', id:n.team }:null; }
+    else if(c.t==='team'&&!ludus.teams[c.id]) reg.champ=null;
+    if(!reg.champ){ const best=Object.values(ludus.teams).filter(t=>t.region===+k).sort((a,b)=>ludusTeamMembers(b.id).reduce((s,n)=>s+(n.honor||0),0)-ludusTeamMembers(a.id).reduce((s,n)=>s+(n.honor||0),0))[0]; if(best) reg.champ={ t:'team', id:best.id }; }
+  });
 }
 // a region is filled: the boss with the two strongest, the rest in teams of 1 to 3 (a fixed rule from the region's dice, no dice in the run)
 function ludusTeamsFill(id,r){
