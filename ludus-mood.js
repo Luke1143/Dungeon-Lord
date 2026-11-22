@@ -1,12 +1,12 @@
 // Happiness in the Ludus (docs/ludus.md, "Zufriedenheit"): every gladiator, of the school and of the world, has it (0 to 100; beasts and the undead feel nothing).
 // It is fighting spirit: the engine strikes with less force when it is low (index.html, moodMul) and holds out shorter (morale); and the fights work back on it.
 // Every evening it moves a third of the way towards what his life is worth to him:
-//   80 − 4 for every other gladiator of his team (they share a room) − 2 for every level above 1 (the better he is, the more he asks)
+//   80 − 5 for every other gladiator of his team (they share a room) − 2 for every level above 1 (the better he is, the more he asks)
 //   + comfort + 4 for every friend in his team (−4 for every foe there; at most ±12).
-// Comfort: the school's tavern 5 per tier, temple 8 per tier, bath 4 per tier; a team of the world lives as well as its purse allows (1 per 10 gold a head, up to 30).
+// Comfort: the school's tavern 4 per tier, temple 6 per tier, bath 3 per tier; a team of the world lives as well as its purse allows (1 per 10 gold a head, up to 30).
 // The day leaves its mark at once: a win +8, a defeat −8, hurt (below half his life after the bout) −6 more, a day of rest +5, a day in the bath 15/20/25 (by tier).
 // Below 20 at the end of a day he leaves his team (the school's last gladiator stays); below 25 a stranger who does not dislike the school may ask to join it (an event).
-const LUDUS_MOOD={ base:80, crowd:4, level:2, friend:4, friendCap:12, drift:1/3, win:8, loss:8, hurt:6, rest:5, bath:[15,20,25], leave:20, ask:25, start:70, comfort:{ inn:5, temple:8, bath:4 }, purseCap:30 };
+const LUDUS_MOOD={ base:80, crowd:5, level:2, friend:4, friendCap:12, drift:1/3, win:8, loss:8, hurt:6, rest:5, bath:[15,20,25], leave:20, ask:25, start:70, comfort:{ inn:4, temple:6, bath:3 }, purseCap:30 };
 const ludusFeels=g=>{ const s=g&&SPECIES[g.kind]; return !!s&&s.category!=='beast'&&s.category!=='undead'&&!(typeof BEAST_KINDS!=='undefined'&&BEAST_KINDS.has(g.kind)); };
 const ludusMood=g=>ludusFeels(g)?Math.round(g.happiness===undefined?LUDUS_MOOD.start:g.happiness):null;
 function ludusMoodAdd(g,v){ if(!ludusFeels(g)||!v) return; g.happiness=Math.max(0,Math.min(100,ludusMood(g)+v)); }

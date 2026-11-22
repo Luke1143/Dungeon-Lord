@@ -16,8 +16,8 @@ const LUDUS_ROOMS={
   library:{ label:'Bücherei',     cost:[20,50,110],     text:['einfache Fähigkeiten','mittlere Fähigkeiten','alle Fähigkeiten'] },
   hall:   { label:'Turnierhalle', cost:[40,120],        text:['Preise der Arena und des Turniers ein Viertel höher','Preise der Arena und des Turniers um die Hälfte höher'] },
   training:{ label:'Trainingsraum', cost:[20,60,130],    text:['Übungspuppen: Erfahrung ohne Verletzung (kostet Gold und einen Tag)','bessere Lehrmeister (mehr Erfahrung)','Meisterlehre (viel Erfahrung)'] },
-  temple: { label:'Tempel',       cost:[20,60,130],     text:['ein Altar: Komfort +8 für alle','ein Heiligtum: Komfort +16','ein Tempel: Komfort +24'] },
-  bath:   { label:'Badehaus',     cost:[25,70,150],     text:['ein Becken: wer badet, ruht und ist zufriedener (+15), Komfort +4','warmes Wasser: Baden +20, Komfort +8','Thermen: Baden +25, Komfort +12'] }
+  temple: { label:'Tempel',       cost:[20,60,130],     text:['ein Altar: Komfort +6 für alle','ein Heiligtum: Komfort +12','ein Tempel: Komfort +18'] },
+  bath:   { label:'Badehaus',     cost:[25,70,150],     text:['ein Becken: wer badet, ruht und ist zufriedener (+15), Komfort +3','warmes Wasser: Baden +20, Komfort +6','Thermen: Baden +25, Komfort +9'] }
 };
 const LUDUS_CATS={   // what the forge may sell: [type, family, cost]; the first of each type comes with the forge
   weapon:[['sword',0],['dagger',8],['spear',15],['mace',15],['axe',20],['hammer',30],['javelin',12],['bow',25],['crossbow',40],['wandFire',30],['wandBolt',40],['wandIce',50]],

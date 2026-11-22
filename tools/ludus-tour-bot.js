@@ -23,8 +23,8 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
           if(!opts.length) return; const it=opts.sort((a,c)=>ludusPrice(a.id)-ludusPrice(c.id))[0]; ludus.gold-=ludusPrice(it.id); const inst={ id:it.id, q:it.q, s:it.s }; ludus.stash.push(inst); ludusGiveItem(inst,m); stock.splice(stock.indexOf(it),1); })); };
       // the stash: what fits better than what is worn goes on
       const wear=()=>ludus.stash.slice().forEach(inst=>{ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return; const m=ludus.team.find(x=>{ const cur=has(x,d.type); return !cur.length||Math.max(...cur.map(ludusTierIndex))<ludusTierIndex(inst); }); if(m) ludusGiveItem(inst,m); });
-      const build=()=>{ for(const id of ['inn','forge','hall','pit','training','library']){ const t=ludus.rooms[id]||0, c=LUDUS_ROOMS[id].cost[t]; if(c!==undefined&&ludus.renown>=c){ ludusBuyRoom(id); return; } } };
-      const chal={}; { const c0=ludusChron; window.ludusChron=(r,k,t)=>{ const key=/morgen in der Arena/.test(t)?'own':(/heute in der Arena/.test(t)?'ai':(/lehnt/.test(t)?'declined':(/kneift/.test(t)?'coward':(/Fehde/.test(t)?'feud':(/verbünden sich/.test(t)?'pactAi':(/^Jeder gegen jeden/.test(t)?'ffaAi':(/verrät/.test(t)?'betray':(/ bei \(\d+ Gold\)/.test(t)?'hire':(/ geht in .* auf/.test(t)?'merge':null))))))))); if(key) chal[key]=(chal[key]||0)+1; return c0(r,k,t); }; }
+      const build=()=>{ for(const id of ['inn','forge','hall','temple','pit','bath','training','library']){ const t=ludus.rooms[id]||0, c=LUDUS_ROOMS[id].cost[t]; if(c!==undefined&&ludus.renown>=c){ ludusBuyRoom(id); return; } } };
+      const chal={}; { const c0=ludusChron; window.ludusChron=(r,k,t)=>{ const key=/morgen in der Arena/.test(t)?'own':(/heute in der Arena/.test(t)?'ai':(/lehnt/.test(t)?'declined':(/kneift/.test(t)?'coward':(/Fehde/.test(t)?'feud':(/verbünden sich/.test(t)?'pactAi':(/^Jeder gegen jeden/.test(t)?'ffaAi':(/verrät/.test(t)?'betray':(/ bei \(\d+ Gold\)/.test(t)?'hire':(/ geht in .* auf/.test(t)?'merge':(/unglücklich und verlässt/.test(t)?'leave':(/schließt sich deiner Schule an/.test(t)?'defect':null))))))))))); if(key) chal[key]=(chal[key]||0)+1; return c0(r,k,t); }; }
       const t0=performance.now(); ludusMeta.unlockAll=true; ludusMeta.roomsAll=false; ludusMeta.ghosts=[]; ludusNewRun(kind,'Bot');
       let guard=0;
       while(!ludus.over&&ludus.day<MAXDAY&&guard++<2000){
@@ -47,7 +47,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         if(ludus.map.cleared.includes(ludus.map.region)||!ludusIsRegion(ludusHere())){ const nx=ludusMapNeighbours(ludus.map.at).filter(ludusCanTravel); if(nx.length){ const w=ludusMapWorld(); const to=nx.sort((a,c)=>w.nodes[a].col-w.nodes[c].col)[0]; ludusMapTravel(to); if(ludusIsRegion(ludusHere())) stats.regions.push([ludus.day,ludusHere().col]); continue; } }
         // the day's tasks: the hurt rest (everyone before a tournament), one works when gold runs short, the weakest trains when there is plenty, the others fight
         const tIn=ludusTourneyIn(), pct=m=>ludusHealPct(ludusMemberCreature(m),m);
-        ludus.team.forEach(m=>{ m.job=(pct(m)<55||(tIn<=1&&pct(m)<90))?'rest':'fight'; });
+        ludus.team.forEach(m=>{ m.job=(pct(m)<55||(tIn<=1&&pct(m)<90))?'rest':'fight'; if(m.job==='rest'&&ludusRoomTier('bath')&&ludusFeels(m)&&ludusMood(m)<60) m.job='bath'; });
         const able=ludus.team.filter(m=>m.job==='fight').sort((a,c)=>a.level-c.level);
         if(able.length&&ludus.gold<4*ludusRent()) able[0].job='work';       // short of gold: the weakest works (alone, the only one)
         else if(able.length>1&&ludusRoomTier('training')&&ludus.gold>ludusTrainCost(able[0])+10*ludusRent()) able[0].job='train';
@@ -70,7 +70,9 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       const nem=(ludusMeta.rivals||[]).map(e=>`${e.name}:${e.kind}${e.level}:${e.victims.length}v:${ludusRivalRank(e)}`).join(' ');
       const sizes={}; Object.values(ludus.teams||{}).forEach(t=>{ const k=ludusTeamMembers(t.id).length; sizes[k]=(sizes[k]||0)+1; }); const richest=Object.values(ludus.teams||{}).sort((a,b)=>b.gold-a.gold)[0];
       const teams={ n:Object.keys(ludus.teams||{}).length, sizes, richest:richest&&richest.name+':'+richest.gold+':'+ludusTeamMembers(richest.id).length };
-      return { teams, nem, chall:chal, execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
+      const moods=(ludus.world||[]).filter(n=>n.status==='active'&&ludusFeels(n)).map(ludusMood), ownMood=ludus.team.filter(ludusFeels).map(ludusMood);
+      const mood={ world:moods.length?Math.round(moods.reduce((a,b)=>a+b,0)/moods.length):null, low:moods.filter(h=>h<30).length, own:ownMood.join(',') };
+      return { mood, teams, nem, chall:chal, execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));
   }
