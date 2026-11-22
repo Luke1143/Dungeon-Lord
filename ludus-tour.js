@@ -96,7 +96,7 @@ function ludusBoard(id){
 const ludusRankOf=(id,t,ref)=>{ const r=ludusBoard(id).find(x=>x.t===t&&x.id===ref); return r?r.rank:99; };
 
 // ---- the day's tasks: every gladiator of the school fights, rests, trains or works. A bout of the school takes those who are set to fight ----
-const LUDUS_JOBS=[['fight','Kämpft'],['rest','Ruht'],['train','Trainiert'],['work','Arbeitet']];
+const LUDUS_JOBS=[['fight','Kämpft'],['rest','Ruht'],['bath','Badet'],['train','Trainiert'],['work','Arbeitet']];
 const ludusJob=m=>m.job||'rest';
 function ludusPicks(){ return ludus.team.filter(m=>ludusJob(m)==='fight'); }
 // what the evening will bring if the day ends now, gladiator by gladiator, with board and lodging and the warnings that matter
@@ -107,6 +107,7 @@ function ludusEveningHTML(){
     let t;
     if(job==='fight') t=`kämpft (ohne Kampf: ruht, +${heal} % Leben)`;
     else if(job==='rest') t=`ruht: +${heal} % Leben`;
+    else if(job==='bath') t=ludusRoomTier('bath')?`badet: +${heal} % Leben, Zufriedenheit +${LUDUS_MOOD.bath[ludusRoomTier('bath')-1]}`:`ruht (es gibt kein Badehaus): +${heal} % Leben`;
     else if(job==='work'){ t=`arbeitet: +${ludusWage(col)} Gold`; gold+=ludusWage(col); }
     else if(!ludusRoomTier('training')) t='kann nicht trainieren (kein Trainingsraum) und ruht';
     else if(gold-spend<ludusTrainCost(m)) t='kann das Training nicht bezahlen und ruht';

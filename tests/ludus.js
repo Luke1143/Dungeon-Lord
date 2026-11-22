@@ -148,6 +148,21 @@ const { open, finish }=require('./lib');
       const fresh=ludus.world.slice(-3); const buyer=ludusTeamOf(fresh[0]); fresh[1].team=fresh[2].team; ludusTeamsTidy(); const seller=ludusTeamOf(fresh[1]);
       if(buyer&&seller&&buyer!==seller){ fresh.forEach(x=>{ x.rel={}; x.bond=0; }); fresh[1].level=fresh[0].level+3; Object.values(ludus.teams).forEach(x=>{ if(x!==buyer) x.gold=Math.min(x.gold||0,1); }); buyer.gold=9999;
         const k0=ludusTeamMembers(buyer.id).length; ludusTeamsTransfer(); out.transferAi=buyer.name+' '+k0+'->'+ludusTeamMembers(buyer.id).length; if(ludusTeamMembers(buyer.id).length!==k0+1) bad('a rich team bought nobody'); } }
+    // happiness: fighting spirit in the engine, the evening's drift, the bath, leaving, a stranger who asks to join
+    { if(Math.abs(moodMul({ happiness:0 })-0.8)>1e-9||moodMul({ happiness:100 })!==1||moodMul({})!==1) bad('moodMul');
+      const m=ludus.team.find(ludusFeels)||ludus.team[0]; const t0=ludusMoodTarget(m); ludus.rooms.temple=2; if(ludusMoodTarget(m)<=t0) bad('the temple gave no comfort'); ludus.rooms.temple=0;
+      const hp=ludusMood(m); ludusMoodAfterBout(m,false,30); if(ludusFeels(m)&&ludusMood(m)!==Math.max(0,hp-LUDUS_MOOD.loss-LUDUS_MOOD.hurt)) bad('a hurt defeat did not sadden');
+      const c=ludusMemberCreature(Object.assign({},m,{ happiness:10 })); if(ludusFeels(m)&&c.happiness!==10) bad('happiness not carried into the bout');
+      ludus.rooms.bath=1; ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.giftChoice=null; ludus.team.forEach(x=>{ x.job='rest'; }); m.job='bath'; m.happiness=40; ludus.gold+=200; ludusEndDay(); ludus.event=null; ludus.forced=null;
+      out.bath=ludusDayNote; if(ludusFeels(m)&&ludusMood(m)<=40) bad('the bath did not lift the mood'); m.job='fight';
+      ['temple','bath'].forEach(tb=>{ ludusTab=tb; ludusRender(); }); ludusTab='sheet'; ludusRender(); if(!document.body.innerText.includes(Tr('Zufriedenheit'))) bad('no happiness on the sheet');
+      // a gladiator of the school who has had enough leaves (not the last one)
+      if(ludus.team.length<2) ludus.team.push({ id:'mH', name:'Quartus', kind:'ork', level:2, xp:xpForLevel(2), inventory:[], learned:[], gifts:[], seed:4, honor:0, job:'rest' });
+      const sad=ludus.team.find(x=>ludusFeels(x)&&x!==ludus.team[0])||ludus.team[1]; sad.happiness=0; const sadName=sad.name; ludusMoodEvening(); if(ludusFeels(sad)&&ludusMember(sad.id)) bad('an unhappy gladiator stayed');
+      if(ludusFeels(sad)&&!ludusRegionNpcs(ludus.map.region).some(n=>n.name===sadName)) bad('the one who left is not in the world');
+      // a stranger who is unhappy asks to join
+      const id=ludus.map.region, d=ludusRegionNpcs(id).find(n=>ludusFeels(n)&&!n.boss&&!n.rival&&!ludusIsChamp(id,'npc',n.id)&&!ludusAlliedSchool(n));
+      if(d){ d.happiness=10; d.bond=0; const def=ludusEventDef('defector'), ev=def.make(()=>0); if(!ev) bad('no event for an unhappy stranger'); else { ludus.event=Object.assign({ id:'defector' },ev,{ npc:d.id }); ludusEventChoose(0); ludus.followup=null; if(!ludusMember('m'+d.id)) bad('the stranger did not join'); } } }
     // the day's tasks: one works, one trains (with a training room), the day ends without a bout
     ludus.rooms.training=1; ludus.gold=200; ludus.forced=null; ludus.event=null;
     ludus.team[0].job='work'; if(ludus.team[1]) ludus.team[1].job='train';
@@ -157,7 +172,7 @@ const { open, finish }=require('./lib');
       if(ludus.team[1]&&(ludus.team[1].xp||0)<=xp) bad('training gave no experience'); out.dayGold=ludus.gold-g; }
     ludus.team.forEach(m=>{ m.job='fight'; });
     // board and lodging not paid -> the next morning a bout for nothing
-    ludus.day=Math.min(ludus.day,5); ludus.gold=0; ludus.forced=null; ludus.event=null; ludus.giftChoice=null; ludus.followup=null; ludus.verdict=null; ludusEndDay(); ludus.event=null;
+    ludus.day=Math.min(ludus.day,5); ludus.tourney=null; ludus.gold=0; ludus.forced=null; ludus.event=null; ludus.giftChoice=null; ludus.followup=null; ludus.verdict=null; ludusEndDay(); ludus.event=null;
     if(!ludus.forced||ludus.forced.type!=='rent') bad('unpaid board did not force a bout: '+JSON.stringify({ forced:ludus.forced, day:ludus.day, gold:ludus.gold, debt:ludus.debt, note:ludusDayNote, over:ludus.over, tIn:ludusTourneyIn() }));
     else { showAll(); const o=ludusForcedBout(); out.rent=fight(Object.assign({},o,{ members:[ludus.team[0].id] })); if(ludus.gold>0) bad('debt bout paid gold: '+ludus.gold); }
     // the tournament: make the school strong enough, jump to day 29

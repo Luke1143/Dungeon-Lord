@@ -61,6 +61,7 @@ function ludusNpcOutcomes(st,won,o){
     const theyWon=st.arena.winner===ti;
     if(n.inventory&&!(o&&o.rent&&ti===0)){ withState(st,()=>grantXp(c,ludusBoutXp(foeLv,theyWon,1))); n.level=c.level; n.xp=c.xp; n.inventory=JSON.parse(JSON.stringify(c.inventory||[])); n.learned=(c.learned||[]).slice(); n.hp=c.unconscious?1:Math.max(1,Math.round(c.hp)); n.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:100)-12); }
     if(theyWon) n.wins=(n.wins||0)+1; else n.losses=(n.losses||0)+1;
+    ludusMoodAfterBout(n,theyWon,100*c.hp/Math.max(1,c.maxHp||statMaxHp(c)));
     if(ti===0){ n.last={ t:'ally', d:ludus.day }; n.bond=Math.min(3,(n.bond||0)+1); return; }
     if(won){
       if(c.surrendered){ n.last={ t:'surrender', d:ludus.day }; n.maimed=true; }

@@ -18,6 +18,8 @@ const Hub3D=(()=>{
     library: { x:0, z:0, r:13, area:[2.2,1.6] },
     hall:    { x:0, z:0, r:14, area:[2.6,1.8] },
     training:{ x:0, z:0, r:14, area:[3.0,1.6] },
+    temple:  { x:0, z:0, r:13, area:[2.2,1.6] },
+    bath:    { x:0, z:0, r:14, area:[2.6,1.8] },
     event:   { x:0, z:0, r:11, area:[1.6,1.2] }
   };
   const ROOM_IDS=Object.keys(DEF);
@@ -111,6 +113,24 @@ const Hub3D=(()=>{
     if(t>=2){ [-3.8,3.8].forEach(px=>{ box(0.2,2,0.2,'darkwood',px,0,-3,g); box(0.3,0.3,0.3,flat(0xff7a20,0xff5a10),px,2,-3,g); }); light(g,-3.8,2.2,-3,0xff8a30,1,8); box(1.2,0.4,1.2,'stone',-2.8,0,1.8,g); }
     if(t>=3){ box(8,0.6,0.3,'stone',0,0,3.4,g); box(0.3,0.6,7,'stone',-4,0,0,g); box(0.3,0.6,7,'stone',4,0,0,g); box(2,1.4,0.15,'cloth',0,1,-3.4,g); }
   }
+  // the temple: a stone floor, an altar with candles, pillars (more with the tier), a quiet light
+  function buildTemple(g,t){
+    pad(g,7,6); box(7,0.06,6,'stone',0,0,0,g);
+    box(1.8,0.9,0.9,'stone',0,0,-2.2,g); box(2.0,0.1,1.0,'cloth',0,0.9,-2.2,g);
+    [-0.6,0.6].forEach(x=>{ cyl(0.06,0.06,0.3,5,flat(0xf4ead0),x,1.0,-2.2,g); box(0.08,0.12,0.08,flat(0xffd070,0xffb030),x,1.3,-2.2,g); }); light(g,0,1.8,-2,0xffd8a0,1.1,9);
+    const pil=t===1?2:(t===2?4:6); for(let i=0;i<pil;i++){ const x=(i%2?1:-1)*2.8, z=-1.8+Math.floor(i/2)*1.8; cyl(0.25,0.3,2.6,8,'stone',x,0,z,g); }
+    if(t>=2){ box(3,0.05,4,'cloth',0,0.06,0.4,g); }
+    if(t>=3){ box(0.6,1.6,0.6,'stone',0,0.9,-2.9,g); box(0.5,0.5,0.5,flat(0xffe2a0,0xffc060),0,2.5,-2.9,g); light(g,0,2.8,-2.9,0xffe2a0,1.2,10); }
+  }
+  // the bath: a basin of water in a stone floor, benches, steam lamps (a bigger basin with the tier)
+  function buildBath(g,t){
+    pad(g,8,7); box(8,0.06,7,'stone',0,0,0,g);
+    const w=t===1?3:(t===2?4:5), d=t===1?2.2:(t===2?2.8:3.4);
+    box(w+0.6,0.35,d+0.6,'stone',0,0,0,g); box(w,0.06,d,flat(0x3c7fb8,0x10304a),0,0.32,0,g);
+    [-1,1].forEach(sx=>box(2,0.4,0.6,'wood',sx*(w/2+1.4),0,0,g));
+    [[-3.4,-3],[3.4,-3]].forEach(([lx,lz])=>{ box(0.15,1.8,0.15,'darkwood',lx,0,lz,g); box(0.3,0.3,0.3,flat(0xffcc88,0xffaa55),lx,1.8,lz,g); }); light(g,0,2.2,-2.6,0xffcc88,1.0,10);
+    if(t>=3){ [[-2.6,2.6],[2.6,2.6]].forEach(([px,pz])=>cyl(0.4,0.5,0.7,8,'stone',px,0,pz,g)); }
+  }
   // the region's arena: a sand floor in a ring of stone, tiers of benches on two sides, banners and fire baskets
   function buildArena(g){
     pad(g,14,12); box(14,0.06,12,'sand',0,0,0,g);
@@ -147,9 +167,9 @@ const Hub3D=(()=>{
     [[-w/2,d/2,w/2,d/2],[-w/2,-d/2,w/2,-d/2],[-w/2,-d/2,-w/2,d/2],[w/2,-d/2,w/2,d/2]].forEach(([a,b,c,e])=>{ wall(a,b,c,e,0.05,flat(0xc8a96a),g).position.y=0.9; });
     box(0.8,0.5,0.8,'darkwood',-w/4,0,-d/4,g); box(1.2,0.3,0.6,'wood',w/4,0,d/4,g);
   }
-  const BUILD={ event:buildAlley, inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining, arena:buildArena, work:buildWork };
-  const SITE={ event:[10,8], inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7], arena:[14,12], work:[8,7] };
-  // ---- the dungeon's plan: the rooms on a 3 x 3 grid in a seeded order, a little moved inside their cell; corridors join neighbours (a tree, and a few loops more) ----
+  const BUILD={ event:buildAlley, inn:buildTavern, pit:buildPit, forge:buildForge, library:buildLibrary, hall:buildHall, training:buildTraining, temple:buildTemple, bath:buildBath, arena:buildArena, work:buildWork };
+  const SITE={ event:[10,8], inn:[10,8], pit:[9,9], forge:[7,6], library:[7,6], hall:[7,6], training:[8,7], arena:[14,12], work:[8,7], temple:[7,6], bath:[8,7] };
+  // ---- the dungeon's plan: the rooms on a grid three wide in a seeded order, a little moved inside their cell; corridors join neighbours (a tree, and a few loops more) ----
   const CELL=22;
   function plan(seed){
     let s=1; for(const ch of String(seed)) s=(s*31+ch.charCodeAt(0))>>>0; const r=()=>{ s=(s*1103515245+12345)>>>0; return (s>>>8)/16777216; };

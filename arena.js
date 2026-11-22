@@ -194,6 +194,7 @@ function arenaApplyFighter(c,f){
   c.inventory=JSON.parse(JSON.stringify(f.inventory||[])); c.learned=(f.learned||[]).slice(); c.gifts=JSON.parse(JSON.stringify(f.gifts||[])); c.maxHp=statMaxHp(c);
   c.hp=Math.max(1,Math.min(c.maxHp,f.hp===undefined?c.maxHp:f.hp));
   if(f.energy!==undefined) c.energy=f.energy;          // how well rested: the quicker the stamina returns
+  if(f.happiness!==undefined&&c.happiness!==undefined) c.happiness=Math.max(0,Math.min(100,f.happiness));       // the Ludus's happiness is its fighting spirit (moodMul, morale)
 }
 function arenaFreeTiles(st,from,n){
   const g=st.grid, seen=new Set([from.x+','+from.y]), q=[[from.x,from.y]], out=[];

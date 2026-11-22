@@ -108,7 +108,7 @@ Das Framework braucht Platz für Hybride, die mehreren Kategorien angehören —
 | **Glück** | Doppelschaden bzw. halber Schaden, Deckel 25 % | nein — einmalig gewürfelt |
 | **Tempo** | Bewegung **und** Aktionsrate (ein Wert) | nein — aus Art und Ausrüstung |
 | **Loyalität** | Geduld vor dem Zusammenbruch | nein |
-| **Zufriedenheit** | Treibstoff für Loyalität | nein |
+| **Zufriedenheit** | Treibstoff für Loyalität; dazu **Kampfkraft**: Schaden × (0,8 + 0,2 × Zufriedenheit/100), also voll bei 100, ein Fünftel weniger bei 0 (Bestien und Untote: voll) | nein |
 
 **Zusammengelegt:** Tempo und Arbeitstempo. Wer rennt wie der Blitz, schlägt auch schnell zu.
 **Nicht eingeführt:** ein eigener Wahrnehmungswert — Geschicklichkeit übernimmt das.

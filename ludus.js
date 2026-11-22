@@ -15,7 +15,9 @@ const LUDUS_ROOMS={
   forge:  { label:'Schmiede',     cost:[0,25,70,150], text:['nur grobe Ware aus schlechten Teilen','gewöhnliche Ware','feine Ware aus guten Teilen','epische Ware aus den besten Teilen'] },
   library:{ label:'Bücherei',     cost:[20,50,110],     text:['einfache Fähigkeiten','mittlere Fähigkeiten','alle Fähigkeiten'] },
   hall:   { label:'Turnierhalle', cost:[40,120],        text:['Preise der Arena und des Turniers ein Viertel höher','Preise der Arena und des Turniers um die Hälfte höher'] },
-  training:{ label:'Trainingsraum', cost:[20,60,130],    text:['Übungspuppen: Erfahrung ohne Verletzung (kostet Gold und einen Tag)','bessere Lehrmeister (mehr Erfahrung)','Meisterlehre (viel Erfahrung)'] }
+  training:{ label:'Trainingsraum', cost:[20,60,130],    text:['Übungspuppen: Erfahrung ohne Verletzung (kostet Gold und einen Tag)','bessere Lehrmeister (mehr Erfahrung)','Meisterlehre (viel Erfahrung)'] },
+  temple: { label:'Tempel',       cost:[20,60,130],     text:['ein Altar: Komfort +8 für alle','ein Heiligtum: Komfort +16','ein Tempel: Komfort +24'] },
+  bath:   { label:'Badehaus',     cost:[25,70,150],     text:['ein Becken: wer badet, ruht und ist zufriedener (+15), Komfort +4','warmes Wasser: Baden +20, Komfort +8','Thermen: Baden +25, Komfort +12'] }
 };
 const LUDUS_CATS={   // what the forge may sell: [type, family, cost]; the first of each type comes with the forge
   weapon:[['sword',0],['dagger',8],['spear',15],['mace',15],['axe',20],['hammer',30],['javelin',12],['bow',25],['crossbow',40],['wandFire',30],['wandBolt',40],['wandIce',50]],
@@ -241,9 +243,11 @@ function ludusDoJob(m,job,travel){
     withState(null,()=>grantXp(c,xp)); m.level=c.level; m.xp=c.xp; m.energy=Math.max(10,(m.energy===undefined?100:m.energy)-15);
     return `${m.name} trainiert: +${xp} Erfahrung${c.level>before?`, Stufe ${c.level}`:''} (−${ludusTrainCost(m)} Gold)`;
   }
+  if(job==='bath'&&ludusRoomTier('bath')>0){       // a day in the bath: rest, and much more content
+    ludusHeal(ludusSleepHeal(),m); m.energy=100; const b=LUDUS_MOOD.bath[ludusRoomTier('bath')-1]; ludusMoodAdd(m,b); return `${m.name} badet: Zufriedenheit +${b}`; }
   if(job==='work'){ const w=ludusWage(col); ludus.gold+=w; m.energy=Math.max(10,(m.energy===undefined?100:m.energy)-10); return `${m.name} arbeitet: +${w} Gold`; }
-  ludusHeal(ludusSleepHeal()*(travel?0.5:1),m); m.energy=Math.min(100,(m.energy===undefined?100:m.energy)+(travel?40:100));
-  return job==='train'?`${m.name} ruht (für das Training fehlt ${ludusRoomTier('training')?'das Gold':'der Trainingsraum'})`:'';
+  ludusHeal(ludusSleepHeal()*(travel?0.5:1),m); m.energy=Math.min(100,(m.energy===undefined?100:m.energy)+(travel?40:100)); if(!travel) ludusMoodAdd(m,LUDUS_MOOD.rest);
+  return job==='bath'?`${m.name} ruht (es gibt kein Badehaus)`:job==='train'?`${m.name} ruht (für das Training fehlt ${ludusRoomTier('training')?'das Gold':'der Trainingsraum'})`:'';
 }
 function ludusAdvanceDay(fought,travel){
   const ids=new Set((fought||[]).map(m=>m.id||m)), lines=[];
@@ -252,6 +256,7 @@ function ludusAdvanceDay(fought,travel){
   ludusDayNote=lines.join(' · ');
   if(!ludus.over) ludusLifeEvening();       // the gladiators who did not meet the player fight each other
   ludusRivalHunt();       // a rival elsewhere comes nearer
+  if(!ludus.over){ const ml=ludusMoodEvening(); if(ml) ludusDayNote+=(ludusDayNote?' · ':'')+ml; }       // happiness drifts; who has had enough leaves
   ludusChallengesExpire();       // an appointed duel nobody came to: the own gladiator is a coward
   ludus.day++; ludus.opp=null; ludus.options=null; ludus.event=null;
   if(ludus.over) return;
@@ -309,6 +314,7 @@ function ludusResolve(st){
     const lead=alive[0]||null, who=alive.length>1?'Dein Team':(lead?lead.m.name:'Niemand'), lv=o.level, xp=Math.round(LUDUS_XP_MULT*(won ? 18+8*lv+6*(foes.length-1) : 6+2*lv)*(o.pit?[1,1,1.25,1.5][ludusRoomTier('pit')]||1:1));
     if(!o.rent) withState(st,()=>alive.forEach(p=>grantXp(p.c,xp)));       // a bout for the rent brings nothing, not even experience
     alive.forEach(({m,c})=>{
+      ludusMoodAfterBout(m,won,100*c.hp/Math.max(1,c.maxHp));       // the bout works back on the mood
       m.level=c.level; m.xp=c.xp; m.inventory=JSON.parse(JSON.stringify(c.inventory||[])); m.learned=(c.learned||[]).slice(); ludusNormalizeGear(m);
       m.hp=c.asleep?Math.max(1,Math.round(c.hp)):(c.unconscious?1:Math.max(1,c.hp));
       m.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:(m.energy===undefined?100:m.energy))-12);
@@ -459,7 +465,7 @@ function ludusHealPct(c,f){ return Math.round(100*Math.max(0,Math.min(c.maxHp,f.
 function ludusHeal(frac,m){ m=m||ludus.fighter; const c=ludusMemberCreature(m); m.hp=Math.min(c.maxHp,(m.hp===undefined?c.maxHp:m.hp)+Math.round(c.maxHp*frac)); }
 const ludusHealAll=frac=>ludus.team.forEach(m=>ludusHeal(frac,m));
 // every building has its tab; a tab of a room that is not bought shows the empty plot and the one thing to do there: build
-const LUDUS_TABS=[['map','Karte',null],['tour','Rangliste',null],['arena','Arena',null],['pit','Grube','pit'],['inn','Taverne','inn'],['train','Trainingsraum','training'],['smith','Schmiede','forge'],['lib','Bücherei','library'],['gear','Inventar',null],['sheet','Werte',null]];
+const LUDUS_TABS=[['map','Karte',null],['tour','Rangliste',null],['arena','Arena',null],['pit','Grube','pit'],['inn','Taverne','inn'],['train','Trainingsraum','training'],['smith','Schmiede','forge'],['lib','Bücherei','library'],['temple','Tempel','temple'],['bath','Badehaus','bath'],['gear','Inventar',null],['sheet','Werte',null]];
 const ludusRoomOfTab=tab=>(LUDUS_TABS.find(t=>t[0]===tab)||[])[2]||null;
 function ludusRoomBox(id){
   const r=LUDUS_ROOMS[id], t=ludusRoomTier(id), max=r.cost.length; if(t>=max) return t?`<p class="luHint">${r.label}: voll ausgebaut.</p>`:'';
@@ -481,8 +487,8 @@ function ludusRender(){
     const pct=ludusHealPct(c,f), nextXp=xpForLevel(f.level+1), curXp=xpForLevel(f.level), xpPct=Math.max(0,Math.min(100,Math.round(100*((f.xp||0)-curXp)/Math.max(1,nextXp-curXp))));
     wornIdx=new Set(wornItems(c).map(w=>c.inventory.indexOf(w)));
     const abil=knownAbilities(c).filter(id=>ABILITIES[id]);
-    const jobOpts=m=>LUDUS_JOBS.map(([k,l])=>`<option value="${k}"${ludusJob(m)===k?' selected':''}${k==='train'&&!ludusRoomTier('training')?' disabled':''}>${l}</option>`).join('');
-    const strip=`<div class="luTeam">${ludus.team.map((m,i)=>{ const mc=ludusMemberCreature(m); return `<span class="luMem"><button data-member="${i}" class="${i===ludus.sel?'on':''}">${ludusEsc(m.name)}<small>${ludusHealPct(mc,m)} %</small></button><select data-job="${m.id}" title="Was ${ludusEsc(m.name)} heute tut">${jobOpts(m)}</select></span>`; }).join('')}${Array.from({length:Math.max(0,ludusSlotsFree())},()=>'<span class="luSlot" title="Freier Platz: in der Taverne kann man jemanden anheuern">+</span>').join('')}</div>`;
+    const jobOpts=m=>LUDUS_JOBS.map(([k,l])=>`<option value="${k}"${ludusJob(m)===k?' selected':''}${k==='train'&&!ludusRoomTier('training')||k==='bath'&&!ludusRoomTier('bath')?' disabled':''}>${l}</option>`).join('');
+    const strip=`<div class="luTeam">${ludus.team.map((m,i)=>{ const mc=ludusMemberCreature(m); return `<span class="luMem"><button data-member="${i}" class="${i===ludus.sel?'on':''}">${ludusEsc(m.name)}<small>${ludusHealPct(mc,m)} %${ludusMood(m)===null?'':' · '+(ludusMood(m)<LUDUS_MOOD.leave+5?'⚠ ':'')+'Laune '+ludusMood(m)}</small></button><select data-job="${m.id}" title="Was ${ludusEsc(m.name)} heute tut">${jobOpts(m)}</select></span>`; }).join('')}${Array.from({length:Math.max(0,ludusSlotsFree())},()=>'<span class="luSlot" title="Freier Platz: in der Taverne kann man jemanden anheuern">+</span>').join('')}</div>`;
     left=`<div class="luCard">${strip}<canvas id="luPrev" width="140" height="140"></canvas><h2>${ludusEsc(f.name)}</h2><div>${SPECIES[f.kind].label} · Stufe ${f.level} · Ruhm ${ludusFame(f)}${f.execs?` · ${f.execs} hingerichtet`:''}</div>${ludus.team.length>1?`<button data-dismiss="${ludus.sel}" class="luSmall">Entlassen</button>`:''}<div class="luStance">Kampfstil: <b>${STANCES[stanceOf(c)].label}</b></div>${(f.gifts||[]).map(g=>`<div class="luGiftMini r${g.rarity}" title="${ludusEsc(giftLines(g).map(l=>(l.role==='bane'?'▼ ':'▲ ')+Tr(l.text)).join('\n'))}">${ludusEsc(giftTitle(g))}</div>`).join('')}
       <div class="luBar"><i class="hp" style="width:${pct}%"></i><b>${Math.round(c.hp)}/${c.maxHp} LP</b></div><div class="luBar"><i class="xp" style="width:${xpPct}%"></i><b>${f.xp||0}/${nextXp} EP</b></div><div class="luBar"><i class="rest" style="width:${Math.round(f.energy===undefined?100:f.energy)}%"></i><b>Ausgeschlafen ${Math.round(f.energy===undefined?100:f.energy)} %</b></div>
       ${abil.length?`<div class="luAbil">${abil.map(id=>ABILITIES[id].icon+' '+ABILITIES[id].name).join(' · ')}</div>`:''}
@@ -531,6 +537,9 @@ function ludusRender(){
       <button id="luChicken" ${ludus.gold<ludusChickenCost()?'disabled':''}>🍗 Huhn essen (${ludusChickenCost()} Gold, +${Math.round(ludusChickenHeal()*100)} % LP)</button> <button id="luBanquet" ${ludus.gold<ludusBanquetCost()?'disabled':''} title="Gold wird zu Ansehen">🍷 Bankett geben (${ludusBanquetCost()} Gold, +3 Ansehen)</button> ${ludusTavernHTML()}${ludusRoomBox('inn')}</div>`;
   } else if(ludusTab==='train'){
     main=`<div class="luPanel"><h2>Trainingsraum</h2><p>Wer auf <b>Trainiert</b> steht, übt hier am Ende des Tages: Erfahrung ohne Risiko, gegen Gold. Ein besserer Trainingsraum gibt mehr Erfahrung.</p>${ludus.team.map(m=>`<div class="luItem"><span>${ludusEsc(m.name)} (Stufe ${m.level})</span><span>${ludusTrainCost(m)} Gold · +${ludusTrainXp(m)} Erfahrung</span></div>`).join('')}${ludusRoomBox('training')}</div>`;
+  } else if(ludusTab==='temple'||ludusTab==='bath'){
+    main=`<div class="luPanel"><h2>${ludusTab==='temple'?'Tempel':'Badehaus'}</h2><p>${ludusTab==='temple'?'Ein Ort der Ruhe: er gibt allen Gladiatoren der Schule Komfort, also mehr Zufriedenheit.':'Wer auf <b>Badet</b> steht, ruht hier, heilt wie im Bett und wird deutlich zufriedener. Das Badehaus gibt allen auch etwas Komfort.'}</p>
+      <h3>Stimmung der Schule</h3>${ludus.team.map(m=>`<div class="luItem"><span><b>${ludusEsc(m.name)}</b></span><span>${ludusMood(m)===null?'fühlt nichts':ludusMood(m)+' · '+LUDUS_MOOD_WORD(ludusMood(m))}</span></div>`).join('')}${ludusRoomBox(ludusRoomOfTab(ludusTab))}</div>`;
   } else if(ludusTab==='tour'){
     main=ludusBoardHTML();
   } else if(ludusTab==='map'){
@@ -550,7 +559,7 @@ function ludusRender(){
         <button data-sell="${ludusSel}" title="Verkaufen">💰 ${ludusSellPrice(sel.inst)}</button></div>`:(all.length?'<p class="luHint">Wähle ein Stück, um es zu lesen, weiterzugeben oder zu verkaufen.</p>':'<p><i>Das Team besitzt noch keine Ausrüstung. Die Schmiede verkauft welche.</i></p>')}
       ${ludusScrollCount()?`<h3>Schriftrollen</h3><p class="luHint">${Object.keys(ludus.scrolls).map(id=>ludusScrollName(id)+' ×'+ludus.scrolls[id]).join(' · ')}</p>`:''}${books.length?`<h3>Bücher</h3>${books.map((id,i)=>`<div class="luItem"><span>📖 ${ABILITIES[id].icon} ${ABILITIES[id].name} — ${ABILITY_DESC[id]||ABILITIES[id].text||''}</span><span>${ludus.team.map((m,mi)=>`<button data-learn="${i}:${mi}">Lernen: ${ludusEsc(m.name)}</button>`).join(' ')}</span></div>`).join('')}`:''}</div>`;
   } else if(ludusTab==='sheet'){
-    main=ludusSheetHTML(f);
+    main=ludusSheetHTML(f).replace(/<\/div>\s*$/,'')+`<h3>Zufriedenheit</h3>${ludusMoodHTML(f)}</div>`;
   } else if(ludusTab==='smith'){
     const stock=ludusStock();
     main=`<div class="luPanel"><h2>Schmiede</h2><p>Heute im Angebot (${LUDUS_ROOMS.forge.text[tier-1]}):</p>${stock.length?stock.map((it,i)=>`<div class="luItem"><span>${ludusEsc(instLabel(it))}</span><button data-buy="${i}" ${ludus.gold<ludusPrice(it.id)?'disabled':''}>${ludusPrice(it.id)} Gold</button></div>`).join(''):'<p><i>Die Schmiede hat heute nichts, was du führen kannst. Kaufe unten mehr Sorten.</i></p>'}<h3>Sortiment der Schmiede</h3>${ludusCatsHTML()}${ludusRoomBox('forge')}</div>`;
@@ -611,8 +620,8 @@ function ludusRender(){
 let hubState='idle', ludusEventShown=false;
 function ludusHubTiers(){ const t={ event:1 }; Object.keys(LUDUS_ROOMS).forEach(id=>{ t[id]=(ludus&&!ludus.over)||ludusMeta.roomsAll?ludusRoomTier(id):(id==='inn'||id==='pit'?1:0); }); return t; }
 // the dungeon of the region (hub3d.js): which room each tab looks at, and who stands where (the room of what he does today)
-const LUDUS_HUB_ROOM={ map:'hall', tour:'hall', arena:'arena', pit:'pit', inn:'inn', train:'training', smith:'forge', lib:'library', gear:'inn', sheet:'inn', start:'inn' };
-const LUDUS_PLAN_ROOM={ pit:'pit', arena:'arena', work:'work', rest:'inn' }, LUDUS_JOB_ROOM={ fight:'hall', rest:'inn', train:'training', work:'work' };
+const LUDUS_HUB_ROOM={ map:'hall', tour:'hall', arena:'arena', pit:'pit', inn:'inn', train:'training', smith:'forge', lib:'library', temple:'temple', bath:'bath', gear:'inn', sheet:'inn', start:'inn' };
+const LUDUS_PLAN_ROOM={ pit:'pit', arena:'arena', work:'work', rest:'inn' }, LUDUS_JOB_ROOM={ fight:'hall', rest:'inn', bath:'bath', train:'training', work:'work' };
 const ludusLookSig=c=>{ const extra=typeof equipLook==='function'?equipLook(c):undefined; return { extra:extra||undefined, sig:JSON.stringify(extra||null) }; };
 function ludusHubPeople(showEv){
   if(!ludus||ludus.over||!ludus.map) return [];
@@ -628,7 +637,7 @@ function ludusHubSync(tab){
   if(hubState==='failed') return;
   if(hubState==='idle'){
     hubState='loading';
-    Hub3D.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; Hub3D.onPick=ludusOnPick; Hub3D.start(); ludusHubSync(tab); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
+    Hub3D.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; Hub3D.onPick=ludusOnPick; Hub3D.start(); ludusHubSync(ludusTab); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
     return;
   }
   if(hubState!=='ready') return;
@@ -650,7 +659,7 @@ function ludusPickHTML(){
   const id=ludus.map.region, champ=ludusIsChamp(id,'npc',n.id), rank=ludusRankOf(id,'npc',n.id), plan=ludusPlanOf(n.id), c=ludusFoeCreature(ludusNpcFoe(n));
   const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
   const solo=ludusTeamSize(n)<=1, canJoin=!champ&&!n.boss&&solo&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
-  return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
+  return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}${ludusMood(n)===null?'':`<br>Zufriedenheit ${ludusMood(n)} (${LUDUS_MOOD_WORD(ludusMood(n))})`}</div></div>
     ${ludusRivalText(n)?`<p class="luBane">${ludusEsc(ludusRivalText(n))}</p>`:''}${ludusRivalTraitsText(n)?`<p class="luHint">${ludusEsc(ludusRivalTraitsText(n))}</p>`:''}<p class="luHint">Ausrüstung: ${gear}${story?'<br>Zuletzt: <span>'+ludusEsc(story)+'</span>':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0})<br>${ludusEsc(ludusTeamLine(n))}</p>
     <h3>Handel</h3>${(n.inventory||[]).map((inst,k)=>`<div class="luItem"><span>${ludusEsc(instLabel(inst))}</span><button data-tbuy="${k}" ${ludus.gold<ludusBuyPrice(n,inst)?'disabled':''}>Kaufen · ${ludusBuyPrice(n,inst)} Gold</button></div>`).join('')||'<p class="luHint">Nichts zu verkaufen.</p>'}
     ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${ludusGold(n)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}

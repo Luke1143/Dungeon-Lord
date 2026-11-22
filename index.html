@@ -908,6 +908,9 @@ function faintLord(c){
   if(th){ c.x=th.x; c.y=th.y; c.renderX=th.x; c.renderY=th.y; }
   logEvent(`Der Dungeon Lord wurde niedergestreckt und liegt bewusstlos im Thronsaal. Reserve: ${Math.max(0,Math.round(state.war.lordPool||0))}.`, c.x, c.y);
 }
+// happiness is fighting spirit (docs/godhand.md): a content creature strikes with full force, an unhappy one up to a fifth weaker; beasts and the undead feel nothing (full force)
+const MOOD_DAMAGE=0.2;
+const moodMul=c=>c&&c.happiness!==undefined?1-MOOD_DAMAGE*(100-Math.max(0,Math.min(100,c.happiness)))/100:1;
 function resolveAttack(attacker, defender, context){
   if(defender.removed) return { dodged:true, damage:0 };
   if(state.arena&&arenaAllied(attacker,defender)) arenaBetray(attacker,defender);       // striking an ally breaks the pact
@@ -925,7 +928,7 @@ function resolveAttack(attacker, defender, context){
     combatText(attacker,defender,'miss');
     return { dodged:true, damage:0 };
   }
-  let dmg=statStrength(attacker);
+  let dmg=statStrength(attacker)*moodMul(attacker);
   let crit=false, soaked=false;
 
   // Glueck des Angreifers: doppelter Schaden
@@ -10373,6 +10376,7 @@ init();
 <script src="ludus-tour.js"></script>
 <script src="ludus-life.js"></script>
 <script src="ludus-teams.js"></script>
+<script src="ludus-mood.js"></script>
 <script src="options.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();

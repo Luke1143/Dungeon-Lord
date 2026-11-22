@@ -89,6 +89,7 @@ function ludusLifeLoot(winner,loser){
 function ludusLifeAfterBout(sides,res,kind,region){
   sides.forEach(l=>l.forEach(n=>{ n.foughtToday=true; }));
   const win=sides[res.winner]||[], lose=[].concat(...sides.filter((x,k)=>k!==res.winner)), L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
+  win.forEach(n=>ludusMoodAfterBout(n,true,ludusHurtPct(n))); lose.forEach(n=>{ if(res.dead.indexOf(n)<0) ludusMoodAfterBout(n,false,ludusHurtPct(n)); });
   win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'||kind==='tourney') n.fame=ludusFame(n)+1; if(kind==='arena'){ ludusGoldAdd(n,10+6*L); n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
   if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&region===ludus.map.region) ludusChron(region,'loot',`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
@@ -244,7 +245,7 @@ function ludusLifeEveningHere(){
   });
   ludusRegionNpcs(id).forEach(n=>{ const p=ludusPlanOf(n.id); if(p==='rest'||((p==='pit'||p==='arena')&&!n.foughtToday)) ludusLifeRest(n); else if(p==='work') ludusLifeWork(n); });
 }
-function ludusLifeRest(n){ const c=ludusMemberCreature(n); n.hp=Math.min(c.maxHp,Math.round(c.hp+c.maxHp*0.5)); if(n.hp>=c.maxHp) n.hp=undefined; n.energy=100; }
+function ludusLifeRest(n){ const c=ludusMemberCreature(n); n.hp=Math.min(c.maxHp,Math.round(c.hp+c.maxHp*0.5)); if(n.hp>=c.maxHp) n.hp=undefined; n.energy=100; ludusMoodAdd(n,LUDUS_MOOD.rest); }
 // elsewhere: the same day, estimated: who fights whom, the stronger wins as often as the worth says
 function ludusLifeEveningElsewhere(){
   const r=ludusRng('else'+ludus.day);

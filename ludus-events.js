@@ -76,6 +76,13 @@ const LUDUS_EVENTS=[
       { label:'Ins Team aufnehmen', when:()=>ludusSlotsFree()>0, run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.thanks=0; ludusJoinTeam(n); return { text:`${n.name} schlägt ein. Von nun an kämpft er an deiner Seite, und sein Platz im Team gehört ihm.` }; } },
       { label:'Die Hand schütteln', run:(f,ev)=>{ const n=ludusNpc(ev.npc); n.thanks=0; ludus.gold+=15; return { text:`${n.name} drückt dir 15 Gold in die Hand. "Für das nächste Huhn." Dann geht er seiner Wege.`, exit:true }; } }
     ] },
+  { id:'defector', title:'Ein unglücklicher Gladiator', story:true,
+    make:r=>{ if(ludusSlotsFree()<1) return null; const l=ludusDefectors(); if(!l.length) return null; const n=ludusPick(r,l); return { cast:[Object.assign(ludusNpcFoe(n),{ role:'friend' })], npc:n.id }; },
+    text:ev=>{ const n=ludusNpc(ev.npc); return `${n.name} spricht dich vor der Taverne an. „${ludusTeamSize(n)>1?'Bei '+ludusTeamName(n)+' halte ich es nicht mehr aus.':'Allein komme ich nicht weiter.'} Nimmst du mich in deine Schule auf?“`; },
+    options:[
+      { label:'Aufnehmen', when:()=>ludusSlotsFree()>0, run:(f,ev)=>{ const n=ludusNpc(ev.npc), t=ludusTeamName(n); ludusJoinTeam(n); const m=ludusMember('m'+n.id); if(m) m.happiness=Math.max(ludusMood(m)||0,55); ludusTeamsTidy(); ludusChron(ludus.map.region,'team',`${n.name} verlässt ${t} und schließt sich deiner Schule an.`); return { text:`${n.name} atmet auf und packt seine Sachen. Von nun an kämpft er für deine Schule.` }; } },
+      { label:'Ablehnen', run:(f,ev)=>({ text:'Du schüttelst den Kopf. Er nickt nur und geht.', exit:true }) }
+    ] },
   { id:'revenge', title:'Eine alte Rechnung', story:true,
     make:r=>{ const l=ludusNpcPool().filter(n=>(n.bond||0)<=-2&&n.last&&ludus.day-n.last.d>=3); if(!l.length) return null; const n=ludusPick(r,l); return { cast:[Object.assign(ludusNpcFoe(n),{ role:'foe' })], npc:n.id, toll:20+3*ludus.fighter.level }; },
     text:ev=>{ const n=ludusNpc(ev.npc); return `${n.name} hat auf dich gewartet. "Du erinnerst dich an mich? Heute zahlst du zurück."`; },

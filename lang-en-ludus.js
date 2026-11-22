@@ -217,3 +217,24 @@ i18nRegister({
 "Abwerben · {0} Gold Ablöse an {1}":"Poach · {0} gold transfer fee to {1}", "{0} wechselt von {1} zu deiner Schule ({2} Gold Ablöse).":"{0} moves from {1} to your school ({2} gold transfer fee).",
 "{0} wechselt von {1} zu {2} ({3} Gold Ablöse).":"{0} moves from {1} to {2} ({3} gold transfer fee)."
 });
+// happiness
+i18nRegister({
+"Laune":"mood", "Laune {0}":"mood {0}", "Zufriedenheit":"Happiness", "Badet":"Bathes", "Tempel":"Temple", "Badehaus":"Bath house", "Stimmung der Schule":"Mood of the school",
+"glücklich":"happy", "zufrieden":"content", "unzufrieden":"discontent", "unglücklich":"unhappy", "fühlt nichts":"feels nothing",
+"Zufriedenheit {0} ({1})":"Happiness {0} ({1})",
+"Zufriedenheit {0} ({1}) · Kampfkraft {2} % · strebt zu {3}":"Happiness {0} ({1}) · fighting strength {2} % · tends towards {3}",
+"Grundwert {0} · Kameraden im Raum {1} · Ansprüche (Stufe) {2} · Komfort {3} · Freunde {4}":"Base {0} · comrades in the room {1} · demands (level) {2} · comfort {3} · friends {4}",
+"Zufriedenheit: {0} fühlt nichts (Bestien und Untote kämpfen immer mit voller Kraft).":"Happiness: {0} feels nothing (beasts and the undead always fight with full strength).",
+"{0} badet: Zufriedenheit +{1}":"{0} bathes: happiness +{1}", "{0} ruht (es gibt kein Badehaus)":"{0} rests (there is no bath house)",
+"badet: +{0} % Leben, Zufriedenheit +{1}":"bathes: +{0} % life, happiness +{1}", "ruht (es gibt kein Badehaus): +{0} % Leben":"rests (there is no bath house): +{0} % life",
+"{0} ist unglücklich und verlässt deine Schule.":"{0} is unhappy and leaves your school.", "{0} verlässt deine Schule.":"{0} leaves your school.", "{0} ist unglücklich und verlässt {1}.":"{0} is unhappy and leaves {1}.",
+"ein Altar: Komfort +8 für alle":"an altar: comfort +8 for all", "ein Heiligtum: Komfort +16":"a sanctuary: comfort +16", "ein Tempel: Komfort +24":"a temple: comfort +24",
+"ein Becken: wer badet, ruht und ist zufriedener (+15), Komfort +4":"a basin: whoever bathes rests and grows happier (+15), comfort +4", "warmes Wasser: Baden +20, Komfort +8":"warm water: bathing +20, comfort +8", "Thermen: Baden +25, Komfort +12":"thermae: bathing +25, comfort +12",
+"Ein Ort der Ruhe: er gibt allen Gladiatoren der Schule Komfort, also mehr Zufriedenheit.":"A place of quiet: it gives every gladiator of the school comfort, and so more happiness.",
+"steht, ruht hier, heilt wie im Bett und wird deutlich zufriedener. Das Badehaus gibt allen auch etwas Komfort.":"rests here, heals as in bed and grows much happier. The bath house also gives everyone some comfort.",
+"Ein unglücklicher Gladiator":"An unhappy gladiator", "Aufnehmen":"Take in", "Ablehnen":"Decline",
+"{0} spricht dich vor der Taverne an. „Bei {1} halte ich es nicht mehr aus. Nimmst du mich in deine Schule auf?“":"{0} speaks to you in front of the tavern. “I cannot stand it with {1} any longer. Will you take me into your school?”",
+"{0} spricht dich vor der Taverne an. „Allein komme ich nicht weiter. Nimmst du mich in deine Schule auf?“":"{0} speaks to you in front of the tavern. “Alone I get nowhere. Will you take me into your school?”",
+"{0} verlässt {1} und schließt sich deiner Schule an.":"{0} leaves {1} and joins your school.", "{0} atmet auf und packt seine Sachen. Von nun an kämpft er für deine Schule.":"{0} breathes again and packs his things. From now on he fights for your school.",
+"Du schüttelst den Kopf. Er nickt nur und geht.":"You shake your head. He only nods and leaves."
+});
