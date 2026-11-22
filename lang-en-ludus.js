@@ -162,22 +162,21 @@ i18nRegister({
 i18nRegister({
 "{0} und {1} verbünden sich für Jeder gegen jeden.":"{0} and {1} join forces for a free for all.", "Jeder gegen jeden: {0}. {1} bleibt als Letzter stehen.":"Free for all: {0}. {1} is the last one standing.",
 });
-// the nemesis
+// the arch-enemy
 i18nRegister({
-"{0} ist wieder da und hat deine Schule nicht vergessen.":"{0} is back and has not forgotten your school.", "Erzfeind":"Nemesis", " · Erzfeind":" · nemesis",
-"Geißel":"Scourge", "Schrecken der Schulen":"Terror of the Schools", "{0} deiner Schule.":"{0} of your school.", "{0} deiner Schule, hat Rache für {1} geschworen.":"{0} of your school, has sworn revenge for {1}.",
-"{0} schwört Rache für {1}: ein neuer Erzfeind.":"{0} swears revenge for {1}: a new nemesis.", "{0} wird zum Erzfeind deiner Schule.":"{0} becomes your school's nemesis.", "{0} steigt auf: {1}.":"{0} rises: {1}.",
+"{0} ist wieder da und hat deine Schule nicht vergessen.":"{0} is back and has not forgotten your school.", "Erzfeind":"Arch-enemy", " · Erzfeind":" · arch-enemy",
+"Geißel":"Scourge", "Schrecken der Schulen":"Terror of the Schools", "{0} deiner Schule.":"{0} of your school.",
+"{0} wird zum Erzfeind deiner Schule.":"{0} becomes the arch-enemy of your school.", "{0} steigt auf: {1}.":"{0} rises: {1}.",
 "{0} ist in {1} angekommen und sucht deine Schule.":"{0} has arrived in {1} and seeks your school.", "{0} folgt deiner Schule nach {1}.":"{0} follows your school to {1}.", "{0} · {1} Opfer":"{0} · {1} victims", "hingerichtet: {0} (Tag {1})":"executed: {0} (day {1})", "getötet: {0} (Tag {1})":"killed: {0} (day {1})",
 "Rache: {0} ist tot (+{1} Ruhm).":"Revenge: {0} is dead (+{1} fame).", "Rache: {0} ist tot (+{1} Ruhm)":"Revenge: {0} is dead (+{1} fame)",
-"Deine Erzfeinde":"Your nemeses", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
+"Deine Erzfeinde":"Your arch-enemies", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
 "Sie wachsen mit jedem Lauf um eine Stufe und warten in der Region, die zu ihnen passt. Wer einen von ihnen tötet oder hinrichtet, nimmt Rache (+{0} Ruhm).":"They grow a level with every run and wait in the region that fits them. Whoever of yours kills or executes one of them takes revenge (+{0} fame)."
 });
-// the nemesis's traits and stage
+// the arch-enemy's traits and stage
 i18nRegister({
 "Schaden durch Schnitt ×{0}":"Damage from cuts ×{0}", "Schaden durch Stich ×{0}":"Damage from thrusts ×{0}", "Schaden durch Hieb ×{0}":"Damage from blows ×{0}",
 "Schnittfest":"Cut-proof", "Stichfest":"Thrust-proof", "Hiebfest":"Blow-proof",
 "Stärken: {0}":"Strengths: {0}", "Schwäche: {0}":"Weakness: {0}", "{0}, {1} deiner Schule":"{0}, {1} of your school", "{0} · Stufe {1} · Ruhm {2}":"{0} · level {1} · fame {2}", "Opfer: {0}":"Victims: {0}",
 "Ich kenne deine Schule. Ich kenne ihre Gräber.":"I know your school. I know its graves.", "Noch einer aus dieser Schule? Der Sand wartet schon.":"Another one from that school? The sand is waiting.",
-"Ich bin zurückgekommen. Für dich.":"I came back. For you.", "Letztes Mal hat mich niemand aufgehalten.":"Last time nobody stopped me.", "Sag mir deinen Namen, damit ich ihn mir merke.":"Tell me your name, so that I remember it.",
-"Für {0}!":"For {0}!"
+"Ich bin zurückgekommen. Für dich.":"I came back. For you.", "Letztes Mal hat mich niemand aufgehalten.":"Last time nobody stopped me.", "Sag mir deinen Namen, damit ich ihn mir merke.":"Tell me your name, so that I remember it."
 });

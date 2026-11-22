@@ -138,30 +138,35 @@ const { open, finish }=require('./lib');
       if(next===undefined) bad('no way on'); else { ludusMapTravel(next); out.travel=ludusHere().name+' col '+ludusHere().col; out.board2=ludusBoard(ludus.map.region).length; }
     }
     showAll();
-    // the nemesis: the killer of this run outlives it, grows a level and waits in the next run, in the region that fits him; revenge strikes him off
-    { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; k.nemesis=undefined; ludusMeta.nemeses=[];
-      ludusNemesisMark(k,[ludus.team[0]],'exec'); const e=(ludusMeta.nemeses||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no nemesis saved');
-      ludus.over=true; ludusTab='start'; ludusRender(); if(!document.body.innerText.includes(Tr('Deine Erzfeinde'))) bad('no nemeses at the end of the run');
-      ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.nemesis===e.id);
-      if(!n) bad('nemesis not in the new world'); else { out.nemesis=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('nemesis not grown or not hostile');
-        ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no nemesis line on the card'); ludusPicked=null;
+    // the arch: the killer of this run outlives it, grows a level and waits in the next run, in the region that fits him; revenge strikes him off
+    { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; k.arch=undefined; ludusMeta.archEnemies=[];
+      ludusArchMark(k,[ludus.team[0]],'exec'); const e=(ludusMeta.archEnemies||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no arch-enemy saved');
+      ludus.over=true; ludusTab='start'; ludusRender(); if(!document.body.innerText.includes(Tr('Deine Erzfeinde'))) bad('no arch-enemies at the end of the run');
+      ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.arch===e.id);
+      if(!n) bad('arch-enemy not in the new world'); else { out.arch=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('arch-enemy not grown or not hostile');
+        ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no arch-enemy line on the card'); ludusPicked=null;
         // his traits: a strength and a weakness, real in the fight; the stage when he steps into the sand
-        const ne=ludusNemesisOf(n); if(!ne||(ne.traits||[]).filter(t=>t.role==='boon').length<1||(ne.traits||[]).filter(t=>t.role==='bane').length!==1||!(n.gifts||[]).some(g=>g.id==='nemesis')) bad('no traits: '+JSON.stringify(ne&&ne.traits));
-        out.traits=ludusNemesisTraitsText(n);
+        const ne=ludusArchOf(n); if(!ne||(ne.traits||[]).filter(t=>t.role==='boon').length<1||(ne.traits||[]).filter(t=>t.role==='bane').length!==1||!(n.gifts||[]).some(g=>g.id==='arch')) bad('no traits: '+JSON.stringify(ne&&ne.traits));
+        out.traits=ludusArchTraitsText(n);
         { const c=ludusMemberCreature(n), w=ne.traits.find(t=>t.k.startsWith('taken_')&&t.role==='bane'); if(w&&resistOf(c,DMG_KINDS.indexOf(w.k.slice(6)))<=resistOf(arenaMake(n.kind,0,0),DMG_KINDS.indexOf(w.k.slice(6)))) bad('weakness has no effect'); }
         ludus.event=null; ludus.forced=null; ludus.verdict=null; ludusFight({ arena:true, mode:'duel', variant:'duel', foes:[ludusNpcFoe(n)], kind:n.kind, level:n.level, name:n.name, title:n.name, layout:'pit', reward:10, members:[ludus.team[0].id] });
-        const stg=document.getElementById('nemStage'); out.stage=stg&&stg.innerText.replace(/\n+/g,' | '); if(!stg) bad('no nemesis stage'); else document.getElementById('nemStageGo').click();
-        if(document.getElementById('nemStage')) bad('stage did not close'); { const st=state; let k=0; while(arenaStep(st)&&k<8000) k++; ludusResolve(st); ludusLeaveMatch(); ludus.verdict=null; revive(); }
-        if(n.status!=='active'){ n.status='active'; ludusMeta.nemeses=(ludusMeta.nemeses||[]).concat([ne]); n.avenged=false; }       // he fell in the stage bout: back for the rest of the test
+        const stg=document.getElementById('archStage'); out.stage=stg&&stg.innerText.replace(/\n+/g,' | '); if(!stg) bad('no arch-enemy stage'); else document.getElementById('archStageGo').click();
+        if(document.getElementById('archStage')) bad('stage did not close'); { const st=state; let k=0; while(arenaStep(st)&&k<8000) k++; ludusResolve(st); ludusLeaveMatch(); ludus.verdict=null; revive(); }
+        if(n.status!=='active'){ n.status='active'; ludusMeta.archEnemies=(ludusMeta.archEnemies||[]).concat([ne]); n.avenged=false; }       // he fell in the stage bout: back for the rest of the test
         // the hunt: from elsewhere he comes one region nearer every 4 days
         const far=ludusMapWorld().nodes.filter(x=>ludusIsRegion(x)&&x.col===2)[0], home=ludus.map.region; n.region=far.id; ludus.map.region=home; ludus.day=8; ludus.tourney=null;
-        const d0=ludusNemesisStep(far.id,home); ludusNemesisHunt(); out.hunt=far.col+'->'+ludusMapWorld().nodes[n.region].col; if(n.region===far.id||ludusMapWorld().nodes[n.region].col>=far.col) bad('the nemesis did not hunt: '+out.hunt);
+        const d0=ludusArchStep(far.id,home); ludusArchHunt(); out.hunt=far.col+'->'+ludusMapWorld().nodes[n.region].col; if(n.region===far.id||ludusMapWorld().nodes[n.region].col>=far.col) bad('the arch-enemy did not hunt: '+out.hunt);
         // his rank grows with his victims
-        ludusNemesisMark(n,[{ name:'A', kind:'ork' },{ name:'B', kind:'ork' }],'kill'); if(ludusNemesisRank(ludusNemesisOf(n))!=='Geißel') bad('no rank: '+ludusNemesisRank(ludusNemesisOf(n)));
-        // revenge, and his best friend swears revenge
-        const fr=ludusRegionNpcs(n.region).find(x=>x!==n&&!x.nemesis&&!x.boss); if(fr){ fr.rel=Object.assign({},fr.rel,{ [n.id]:2 }); }
-        const f0=ludus.fame; const t=ludusVerdict(ludus.team[0],n,true,n.region); out.revenge=t; if(ludus.fame<f0+LUDUS_NEMESIS.revenge||(ludusMeta.nemeses||[]).some(x=>x.id===e.id)) bad('no revenge');
-        if(fr&&(!fr.nemesis||!(ludusMeta.nemeses||[]).some(x=>x.sworn===n.name))) bad('no oath of revenge'); out.oath=fr&&ludusNemesisText(fr); } }
+        ludusArchMark(n,[{ name:'A', kind:'ork' },{ name:'B', kind:'ork' }],'kill'); if(ludusArchRank(ludusArchOf(n))!=='Geißel') bad('no rank: '+ludusArchRank(ludusArchOf(n)));
+        // revenge: his friends bear the school a grudge, but none of them takes his place
+        const fr=ludusRegionNpcs(n.region).find(x=>x!==n&&!x.arch&&!x.boss); if(fr){ fr.rel=Object.assign({},fr.rel,{ [n.id]:2 }); fr.bond=0; }
+        const f0=ludus.fame; const t=ludusVerdict(ludus.team[0],n,true,n.region); out.revenge=t; if(ludus.fame<f0+LUDUS_ARCH.revenge||(ludusMeta.archEnemies||[]).some(x=>x.id===e.id)) bad('no revenge');
+        if(fr&&(fr.arch||(fr.bond||0)>-2)) bad('a friend took his place, or bears no grudge'); out.friend=fr&&(fr.name+' bond '+fr.bond); } }
+    // a save from before the rename: the old list and marks are taken over, a sworn successor is dropped
+    { const keep=ludusMeta.archEnemies; ludusMeta.archEnemies=[]; ludusMeta.nemeses=[{ id:'neX', name:'Alt', kind:'ork', level:3, victims:[], runs:1, sworn:'Y' }];
+      const g=ludusRegionNpcs(ludus.map.region)[0]; g.nemesis='neX'; g.gifts=[{ id:'nemesis', fx:[] }]; ludusArchMigrate();
+      if(ludusMeta.nemeses||!ludusMeta.archEnemies.some(e=>e.id==='neX'&&!e.sworn)||g.arch!=='neX'||g.nemesis||g.gifts[0].id!=='arch') bad('old save not taken over');
+      delete g.arch; g.gifts=[]; ludusMeta.archEnemies=keep; }
     ludus.over=true; ludusTab='start'; ludusRender();
     out.misses=[...I18N_MISSES];
     return out;

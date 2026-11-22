@@ -71,7 +71,7 @@ function ludusRegionEnsure(id){
   ludus.world=ludus.world||[]; ludus.world.push(boss);
   for(let i=0;i<LUDUS_TOUR.roster;i++){ const f=1.15-0.06*i+(r()-0.5)*0.1, n=ludusNpcMake(r,id,f,i<2?1:(i>6?-1:0)); n.honor=Math.round(10*(LUDUS_TOUR.roster-i)+r()*6); ludus.world.push(n); }
   ludus.regions[id]={ champ:{ t:'npc', id:boss.id }, ghost:ghost||null };
-  ludusNemesisPlace(id);       // an old enemy whose strength fits this region waits here
+  ludusArchPlace(id);       // an old enemy whose strength fits this region waits here
   return ludus.regions[id];
 }
 const ludusChamp=id=>(ludus.regions[id]||{}).champ||null;
@@ -82,7 +82,7 @@ const ludusMember=id=>ludus.team.find(m=>m.id===id)||null;
 // ---- the ladder of a region: its champion first, then everyone by honour ----
 function ludusBoard(id){
   const champ=ludusChamp(id), rows=[];
-  ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, nemesis:ludusNemesisOf(n)?ludusNemesisRank(ludusNemesisOf(n)):'', boss:!!n.boss, plan:id===ludus.map.region?ludusPlanOf(n.id):undefined, wins:n.wins||0, kills:n.kills||0, fame:n.fame||0 }));
+  ludusRegionNpcs(id).forEach(n=>rows.push({ t:'npc', id:n.id, name:n.name, kind:n.kind, level:n.level, honor:n.honor||0, maimed:!!n.maimed, ghost:!!n.ghost, arch:ludusArchOf(n)?ludusArchRank(ludusArchOf(n)):'', boss:!!n.boss, plan:id===ludus.map.region?ludusPlanOf(n.id):undefined, wins:n.wins||0, kills:n.kills||0, fame:n.fame||0 }));
   if(id===ludus.map.region) ludus.team.forEach(m=>rows.push({ t:'own', id:m.id, name:m.name, kind:m.kind, level:m.level, honor:m.honor||0, fame:m.fame||0 }));
   rows.forEach(x=>{ x.champ=!!champ&&champ.t===x.t&&champ.id===x.id; });
   rows.sort((a,b)=>(b.champ-a.champ)||(b.honor-a.honor)||(b.level-a.level));
@@ -283,7 +283,7 @@ function ludusTourneyEnd(w){
       const beat=prev&&prev.t==='npc'?ludusNpc(prev.id):null; if(beat&&beat.ghost){ const g=(ludusMeta.ghosts||[]).find(x=>x.id===beat.ghost); if(g){ ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==g); t+=` ${g.name} tritt ab.`; } }
       t+=` ${m.name} gewinnt das Turnier von ${n.name} und steht nun auf Platz 1! +${gold} Gold.`;
       ludusLog(`Turniersieg in ${n.name}`);
-      if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusNemesisSync(); ludusSaveGhost(ludus.team,'',true); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
+      if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusArchSync(); ludusSaveGhost(ludus.team,'',true); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
     } else t+=` ${ludusEntryName(w)} gewinnt das Turnier von ${n.name}.`;
   }
   ludusRegionAfterTourney(id);
@@ -367,7 +367,7 @@ function ludusMapWire(el){
 // the ladder of the region and, while it runs, the tournament tree
 function ludusBoardHTML(){
   const n=ludusRegionNode(), rows=ludusBoard(n.id);
-  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.nemesis?' · '+x.nemesis:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
+  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.arch?' · '+x.arch:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
   return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
     ${ludus.tourney?ludusTourneyHTML():''}${rows.map(row).join('')}${ludusChronicleHTML()}</div>`;
 }
