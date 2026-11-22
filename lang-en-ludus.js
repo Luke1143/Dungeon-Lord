@@ -152,11 +152,11 @@ i18nRegister({
 });
 // alliances
 i18nRegister({
-"{0} bricht das Bündnis.":"{0} breaks the alliance.", "Bündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid ({1} Gold).":"Alliance with {0}: you fight together until only you are left ({1} gold).",
-"Bündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid.":"Alliance with {0}: you fight together until only you are left.",
+"{0} bricht das Bündnis.":"{0} breaks the alliance.", "Kampfbündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid ({1} Gold).":"Fight alliance with {0}: you fight together until only you are left ({1} gold).",
+"Kampfbündnis mit {0}: ihr kämpft zusammen, bis nur noch ihr übrig seid.":"Fight alliance with {0}: you fight together until only you are left.",
 "{0} verrät {1}.":"{0} betrays {1}.", "{0} verrät {1}":"{0} betrays {1}", "Das Bündnis mit {0} hat gehalten.":"The alliance with {0} held.", "Das Bündnis mit {0} hat gehalten":"The alliance with {0} held",
-"Verbündet: {0} und {1}":"Allied: {0} and {1}", "Dein Bündnis: {0}":"Your ally: {0}", "{0}: kein Bündnis":"{0}: no alliance", "Drei Teams zu zwei":"Three teams of two",
-"Bündnis mit {0} · {1} Gold":"Alliance with {0} · {1} gold", "Bündnis mit {0} · umsonst":"Alliance with {0} · free"
+"Verbündet: {0} und {1}":"Allied: {0} and {1}", "Dein Kampfbündnis: {0}":"Your fight ally: {0}", "{0}: kein Kampfbündnis":"{0}: no fight alliance", "Drei Teams zu zwei":"Three teams of two",
+"Kampfbündnis mit {0} · {1} Gold":"Fight alliance with {0} · {1} gold", "Kampfbündnis mit {0} · umsonst":"Fight alliance with {0} · free"
 });
 // free for all of the world's gladiators
 i18nRegister({
@@ -201,4 +201,14 @@ i18nRegister({
 });
 i18nRegister({
 "Deine Schule gewinnt das Turnier von {0} und steht nun auf Platz 1! +{1} Gold.":"Your school wins the tournament of {0} and now stands in first place! +{1} gold.", "(deine Schule)":"(your school)"
+});
+// accords between teams
+i18nRegister({
+"Schonungsabkommen":"spare accord", "Bündnis":"alliance", "Abkommen mit {0}":"Accords with {0}",
+"Beziehung des Teams zur Schule: {0} (der Schnitt seiner Gladiatoren). Ein Schonungsabkommen (ab 1): niemand richtet einen des anderen hin. Ein Bündnis (ab 2): dazu steigt ihr in der Arena nicht mehr gegeneinander in den Ring (in der Grube schon), und im Turnier lässt das schwächere Team dem stärkeren den Vortritt.":"The team's relation to the school: {0} (the average of its gladiators). A spare accord (from 1): nobody executes one of the other. An alliance (from 2): moreover you no longer step into the ring against each other in the arena (in the pit you do), and in the tournament the weaker team gives way to the stronger.",
+"Ihr habt ein {0} (seit Tag {1}).":"You have a {0} (since day {1}).", "Bündnis anbieten":"Offer an alliance", "Schonungsabkommen anbieten":"Offer a spare accord", "Aufkündigen":"Cancel",
+"{0} lehnt ab: dafür braucht es eine Beziehung von {1}.":"{0} declines: that needs a relation of {1}.", "Deine Schule und {0} schließen ein {1}.":"Your school and {0} conclude a {1}.",
+"Deine Schule kündigt das {0} mit {1}.":"Your school cancels the {0} with {1}.", "{0} und {1} schließen ein {2}.":"{0} and {1} conclude a {2}.", "{0} und {1} beenden ihr {2}.":"{0} and {1} end their {2}.",
+"{0} lässt {1} als Verbündetem den Vortritt":"{0} gives way to its ally {1}", "Abkommen mit {0}: keine Hinrichtung":"Accord with {0}: no execution",
+"{0} · {1} Gladiatoren · {2}":"{0} · {1} gladiators · {2}", "{0} · {1} Gladiator · {2}":"{0} · {1} gladiator · {2}"
 });

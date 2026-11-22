@@ -109,7 +109,8 @@ function ludusRel(a,b){ if(!a||!b) return 0; const own=x=>!!ludusMember(x.id); i
 function ludusRelAdd(a,b,v){ if(!a||!b) return; const own=x=>!!ludusMember(x.id); if(own(b)&&!own(a)){ a.bond=Math.max(-3,Math.min(3,(a.bond||0)+v)); return; } a.rel=a.rel||{}; a.rel[b.id]=Math.max(-3,Math.min(3,(a.rel[b.id]||0)+v)); }
 const ludusExecGain=l=>LUDUS_VERDICT.fame+Math.round(LUDUS_VERDICT.fameShare*ludusFame(l));
 const ludusRansom=(l,region)=>{ const L=ludusRegionLevel(ludusMapWorld().nodes[region].col), want=10+6*L, has=ludusGold(l); return Math.max(0,Math.min(want,has)); };
-const ludusAiExecutes=(w,l)=>0.7*(w.bold===undefined?0.5:w.bold)+0.03*ludusFame(l)+0.12*(l.execs||0)-0.25*ludusRel(w,l)>LUDUS_VERDICT.ai;
+// an accord between their teams, or a good relation (2 and more), spares him for sure; below that the relation weighs much against the axe
+const ludusAiExecutes=(w,l)=>!ludusSpared(w,l)&&ludusRel(w,l)<2&&0.7*(w.bold===undefined?0.5:w.bold)+0.03*ludusFame(l)+0.12*(l.execs||0)-0.4*ludusRel(w,l)>LUDUS_VERDICT.ai;
 // carries a verdict out; returns the line for the chronicle and the result
 function ludusVerdict(w,l,execute,region){
   const ownL=!!ludusMember(l.id), ownW=!!ludusMember(w.id);
@@ -137,7 +138,7 @@ const LUDUS_CHALLENGE={ accept:0.8, decline:5, coward:10, bonus:10, aiEvery:3, a
 const ludusChallengesToday=()=>(ludus.challenges||[]).filter(c=>c.day===ludus.day);
 const ludusChallenged=id=>(ludus.challenges||[]).some(c=>c.npc===id&&c.day>=ludus.day&&!c.done);
 const ludusAccepts=(n,m)=>ludusRel(n,m)<=-1||ludusGladWorth(n)>=LUDUS_CHALLENGE.accept*ludusGladWorth(m)||(n.bold||0)>=0.7;
-const ludusCanChallenge=n=>!!n&&n.status==='active'&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallenged(n.id)&&!ludus.tourney&&ludusTourneyIn()>1;
+const ludusCanChallenge=n=>!!n&&n.status==='active'&&!n.boss&&!ludusAlliedSchool(n)&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallenged(n.id)&&!ludus.tourney&&ludusTourneyIn()>1;
 function ludusChallenge(id){
   const n=ludusNpc(id), m=ludus.fighter; if(!m||!ludusCanChallenge(n)) return;
   if(ludusAccepts(n,m)){ ludus.challenges=(ludus.challenges||[]).concat([{ id:'c'+ludus.day+':'+n.id, own:m.id, npc:n.id, day:ludus.day+1, by:'own' }]); const t=`${m.name} fordert ${n.name} heraus: morgen in der Arena.`; ludusChron(ludus.map.region,'challenge',t); ludusNote=t+` · ${n.name} nimmt an.`; }
@@ -163,12 +164,12 @@ function ludusChallengesExpire(){
 }
 // enemies first: pairs of a list who bear each other a grudge (relation −2 or worse) fight each other, the rest by strength; never two of one team
 function ludusFeudPairs(l){
-  const out=[], left=l.slice(), mates=(a,b)=>!!a.team&&a.team===b.team;
+  const out=[], left=l.slice(), mates=(a,b)=>!!a.team&&a.team===b.team||ludusAllied(a,b);
   for(let i=0;i<left.length;i++){ const a=left[i]; const j=left.findIndex((b,k)=>k>i&&!mates(a,b)&&(ludusRel(a,b)<=-2||ludusRel(b,a)<=-2)); if(j>0){ out.push([a,left[j],true]); left.splice(j,1); left.splice(i,1); i--; } }
   return out.concat(ludusPairUp(left));
 }
-// pairs of neighbours by strength, never two of one team (in the arena teammates do not fight each other)
-function ludusPairUp(l){ const left=l.slice(), out=[]; while(left.length>1){ const a=left.shift(), j=left.findIndex(b=>!a.team||b.team!==a.team); if(j<0) continue; out.push([a,left.splice(j,1)[0],false]); } return out; }
+// pairs of neighbours by strength, never two of one team or of allied teams (they do not fight each other in the arena)
+function ludusPairUp(l){ const left=l.slice(), out=[]; while(left.length>1){ const a=left.shift(), j=left.findIndex(b=>(!a.team||b.team!==a.team)&&!ludusAllied(a,b)); if(j<0) continue; out.push([a,left.splice(j,1)[0],false]); } return out; }
 
 // the evening's free for all among the world's gladiators: four, everyone for himself, and those who like each other stand together (the same rule as in the player's bouts)
 function ludusLifeFfa(four,region){
@@ -204,7 +205,7 @@ function ludusPactOffer(i,s){
   const o=ludusArenaOffers()[i]; if(!o||!o.ffa||o.pact||ludusAiPacts(o).some(p=>p.includes(s))) return;
   const ns=ludusSideNpcs(o,s), fee=ludusSidePactFee(o,s); if(!ns.length||fee===null||ludus.gold<fee) return;
   ludus.gold-=fee; ns.forEach(n=>{ ludusGoldAdd(n,ludusPactFee(n)); }); o.pact=s; ludus.arenaEst=null;
-  ludusNote=`Bündnis mit ${ludusSideName(o,s)}: ihr kämpft zusammen, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
+  ludusNote=`Kampfbündnis mit ${ludusSideName(o,s)}: ihr kämpft zusammen, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
 }
 // after the bout: betrayals and pacts that held
 function ludusPactsAfter(o,st,lead){
@@ -237,7 +238,7 @@ function ludusLifeEveningHere(){
   const id=ludus.life.region;
   ['pit','arena'].forEach(kind=>{
     const l=ludusGoers(kind).sort((x,y)=>ludusGladWorth(y)-ludusGladWorth(x));
-    if(kind==='arena'&&l.length>=LUDUS_LIFE.ffaFrom){ const four=[]; for(let k=l.length-1;k>=0&&four.length<4;k--) if(!four.some(x=>x.team===l[k].team)) four.push(l[k]); if(four.length===4){ four.forEach(x=>l.splice(l.indexOf(x),1)); ludusLifeFfa(four,id); } }       // the four weakest of four teams
+    if(kind==='arena'&&l.length>=LUDUS_LIFE.ffaFrom){ const four=[]; for(let k=l.length-1;k>=0&&four.length<4;k--) if(!four.some(x=>x.team===l[k].team||ludusAllied(x,l[k]))) four.push(l[k]); if(four.length===4){ four.forEach(x=>l.splice(l.indexOf(x),1)); ludusLifeFfa(four,id); } }       // the four weakest of four teams
     const pairs=kind==='arena'?ludusFeudPairs(l):l.reduce((o,n,i)=>(i%2?o[o.length-1].push(n):o.push([n]),o),[]).filter(p=>p.length===2);
     pairs.forEach(([x,y,feud],i)=>{ if(feud) ludusChron(id,'challenge',`Fehde in der Arena: ${x.name} gegen ${y.name}.`); const a=[x], b=[y], res=ludusLifeBout(a,b,kind,ludus.day+':'+kind+i); ludusLifeAfterBout([a,b],res,kind,id); });
   });

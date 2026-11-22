@@ -148,7 +148,7 @@ function ludusTeamUp(l){
 function ludusArenaOffers(){
   if(ludus.arenaOffers&&ludus.arenaOffers.day===ludus.day&&ludus.arenaOffers.region===ludus.map.region) return ludus.arenaOffers.list;
   const id=ludus.map.region, n=ludusRegionNode(), r=ludusRng('arena'+ludus.day+':'+id), L=ludusRegionLevel(n.col);
-  const pool=ludusGoers('arena').sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)), list=[];
+  const pool=ludusGoers('arena').filter(x=>!ludusAlliedSchool(x)).sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)), list=[];       // allies do not step into the ring against the school
   const add=(mode,glads)=>{
     const M=LUDUS_MODES[mode], foes=glads.map(ludusNpcFoe);
     const o={ arena:true, mode, ffa:!!M.ffa, variant:M.pack?'swarm':(M.ffa?'ffa':(foes.length>1?'group':'duel')), foes, layout:ludusLayoutPick(r), kind:foes[0].kind, level:Math.max(...foes.map(f=>f.level)), name:foes[0].name };
@@ -212,7 +212,7 @@ function ludusPayUpkeep(){
   ludus.debt=true; ludusLog('Kost und Logis nicht bezahlt'); return `Kost und Logis (${cost} Gold) konnten nicht bezahlt werden: morgen muss jemand die Schuld in der Arena abkämpfen.`;
 }
 function ludusRentBout(){
-  const id=ludus.map.region, r=ludusRng('rent'+ludus.day), goers=ludusGoers('arena'), pool=goers.length?goers:ludusRegionNpcs(id).filter(x=>!x.maimed&&!x.boss&&!ludusIsChamp(id,'npc',x.id));
+  const id=ludus.map.region, r=ludusRng('rent'+ludus.day), goers=ludusGoers('arena').filter(x=>!ludusAlliedSchool(x)), pool=goers.length?goers:ludusRegionNpcs(id).filter(x=>!x.maimed&&!x.boss&&!ludusIsChamp(id,'npc',x.id));
   const n=pool.length?pool[Math.floor(r()*pool.length)]:null, f=n?ludusNpcFoe(n):{ kind:'ork', level:ludusRegionLevel(ludusRegionNode().col), tier:0, seed:Math.floor(r()*1e9), name:'Schuldeneintreiber' };
   return { arena:true, rent:true, mode:'duel', variant:'duel', foes:[f], kind:f.kind, level:f.level, name:f.name, title:`${f.name} (${SPECIES[f.kind].label})`, layout:ludusLayoutPick(r), reward:0 };
 }
@@ -246,7 +246,7 @@ const ludusTourneyPairs=()=>{ const s=ludus.tourney.slots, out=[]; for(let i=0;i
 // the next pair of this round the player has to fight (the school against a team), or null
 function ludusTourneyNext(){
   const t=ludus.tourney; if(!t) return null;
-  return ludusTourneyPairs().find(([a,b,i])=>t.played[i]===undefined&&ludusEntryAlive(a)&&ludusEntryAlive(b)&&((a.t==='own')!==(b.t==='own')))||null;
+  return ludusTourneyPairs().find(([a,b,i])=>t.played[i]===undefined&&ludusEntryAlive(a)&&ludusEntryAlive(b)&&((a.t==='own')!==(b.t==='own'))&&!ludusEntriesAllied(a,b))||null;       // allies do not fight: see the round's end
 }
 function ludusTourneyBout(){
   const p=ludusTourneyNext(); if(!p) return null;
@@ -276,6 +276,7 @@ function ludusTourneyCloseRound(){
     let w;
     if(t.played[i]!==undefined) w=t.played[i]===0?a:b;
     else if(!ludusEntryAlive(a)||!ludusEntryAlive(b)) w=ludusEntryAlive(a)?a:(ludusEntryAlive(b)?b:null);
+    else if(ludusEntriesAllied(a,b)){ const tab=ludusTeamTable(t.region), at=e=>tab.findIndex(x=>(e.t==='own'?x.t==='own':x.id===e.id)); w=at(a)<=at(b)?a:b; lines.push(`${ludusEntryName(w===a?b:a)} lässt ${ludusEntryName(w)} als Verbündetem den Vortritt`); }
     else { w=ludusTourneySim(a,b,i)?a:b; lines.push(`${ludusEntryName(w)} schlägt ${ludusEntryName(w===a?b:a)}`); }
     next.push(w);
     if(w&&w.t==='team') ludusEntryLineup(w).forEach(n=>{ n.honor=(n.honor||0)+15; });
@@ -393,9 +394,9 @@ function ludusTourneyHTML(){
 // the alliances of a free for all: who stands together already, and whom the school can ask (his price, or why not)
 function ludusPactHTML(o,i){
   const ai=ludusAiPacts(o), name=k=>ludusEsc(ludusSideName(o,k)), rows=ai.map(p=>`<br><small>Verbündet: ${name(p[0])} und ${name(p[1])}</small>`);
-  if(o.pact) rows.push(`<br><small>Dein Bündnis: ${name(o.pact)}</small>`);
+  if(o.pact) rows.push(`<br><small>Dein Kampfbündnis: ${name(o.pact)}</small>`);
   else ludusFfaSides(o).forEach((g,k)=>{ const s=k+1; if(!ludusSideNpcs(o,s).length||ai.some(p=>p.includes(s))) return; const fee=ludusSidePactFee(o,s);
-    rows.push(fee===null?`<br><small>${name(s)}: kein Bündnis</small>`:`<br><button data-pact="${i}:${s}" ${ludus.gold<fee?'disabled':''}>Bündnis mit ${name(s)} · ${fee?fee+' Gold':'umsonst'}</button>`); });
+    rows.push(fee===null?`<br><small>${name(s)}: kein Kampfbündnis</small>`:`<br><button data-pact="${i}:${s}" ${ludus.gold<fee?'disabled':''}>Kampfbündnis mit ${name(s)} · ${fee?fee+' Gold':'umsonst'}</button>`); });
   return rows.join('');
 }
 function ludusArenaHTML(){

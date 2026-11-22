@@ -87,7 +87,7 @@ function ludusTeamsMerge(){
     ludusChron(keep.region,'team',`${go.name} geht in ${keep.name} auf.`);
   });
 }
-function ludusTeamsEvening(){ ludusTeamsTidy(); ludusTeamsHire(); ludusTeamsMerge(); ludusTeamsTidy(); }
+function ludusTeamsEvening(){ ludusTeamsTidy(); ludusTeamsHire(); ludusTeamsMerge(); ludusTeamsTidy(); ludusAccordsEvening(); }
 
 // ---- the table: teams of the region by honour (the sum of their gladiators'), the school among them ----
 function ludusTeamTable(id){
@@ -98,7 +98,7 @@ function ludusTeamTable(id){
 }
 function ludusTeamTableHTML(id){
   const rows=ludusTeamTable(id); if(!rows.length) return '';
-  return `<h3>Tabelle der Teams</h3>${rows.map(x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} · ${x.size} ${x.size===1?'Gladiator':'Gladiatoren'}</span><span>${x.honor} Ehre · ${x.wins} Siege · ${x.gold} Gold</span></div>`).join('')}`;
+  return `<h3>Tabelle der Teams</h3>${rows.map(x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} · ${x.size} ${x.size===1?'Gladiator':'Gladiatoren'}${x.t==='team'&&ludusAccord('own',x.id)?' · '+LUDUS_ACCORD_WORD[ludusAccord('own',x.id).type]:''}</span><span>${x.honor} Ehre · ${x.wins} Siege · ${x.gold} Gold</span></div>`).join('')}`;
 }
 // the card: the team of a gladiator and who else is in it
 function ludusTeamLine(n){
@@ -106,3 +106,61 @@ function ludusTeamLine(n){
   const mates=ludusTeamMembers(t.id).filter(x=>x!==n).map(x=>x.name);
   return `Team: ${t.name}${mates.length?` (mit ${mates.join(', ')})`:' (allein)'} · Kasse ${t.gold||0} Gold`;
 }
+
+// ---- accords between teams: a spare accord (nobody of one executes anybody of the other) and an alliance (that, and never in the ring against each other, except the pit) ----
+// The school makes them only on its own offer (a team accepts from relation 1, an alliance from 2) and ends them itself (the team's gladiators −1).
+// Teams of the world make and end them among themselves by how they like each other (spare from 1, alliance from 2; ended below 0.5 and 1.5).
+// A team's relation is worked out from its gladiators': to the school the average of their relation to it, between two teams the average both ways.
+// ludus.accords=[{ a, b, type:'spare'|'ally', day }] (a, b: team ids, 'own' for the school)
+const LUDUS_ACCORD={ spare:1, ally:2, keep:0.5 };
+const ludusTeamKey=n=>!n?null:(ludusMember(n.id)?'own':(n.team||null));
+const ludusAccord=(ka,kb)=>ka&&kb&&ka!==kb?(ludus.accords||[]).find(x=>(x.a===ka&&x.b===kb)||(x.a===kb&&x.b===ka))||null:null;
+const ludusAllied=(n,m)=>{ const x=ludusAccord(ludusTeamKey(n),ludusTeamKey(m)); return !!x&&x.type==='ally'; };
+const ludusSpared=(n,m)=>!!ludusAccord(ludusTeamKey(n),ludusTeamKey(m));
+const ludusAlliedSchool=n=>{ const x=ludusAccord('own',ludusTeamKey(n)); return !!x&&x.type==='ally'; };
+function ludusTeamRel(ka,kb){
+  if(kb==='own') [ka,kb]=[kb,ka];
+  if(ka==='own'){ const m=ludusTeamMembers(kb); return m.length?m.reduce((s,n)=>s+(n.bond||0),0)/m.length:0; }
+  return ludusLiking(ludusTeamMembers(ka),ludusTeamMembers(kb))/2;
+}
+function ludusAccordSet(ka,kb,type){ ludus.accords=(ludus.accords||[]).filter(x=>!((x.a===ka&&x.b===kb)||(x.a===kb&&x.b===ka))); if(type) ludus.accords.push({ a:ka, b:kb, type, day:ludus.day }); }
+const LUDUS_ACCORD_WORD={ spare:'Schonungsabkommen', ally:'Bündnis' };
+function ludusAccordOffer(teamId,type){
+  const t=ludusTeam(teamId), cur=ludusAccord('own',teamId); if(!t||!LUDUS_ACCORD[type]||(cur&&(cur.type===type||cur.type==='ally'))) return;
+  const rel=ludusTeamRel('own',teamId), need=LUDUS_ACCORD[type];
+  if(rel<need){ ludusNote=`${t.name} lehnt ab: dafür braucht es eine Beziehung von ${need}.`; ludusRender(); return; }
+  ludusAccordSet('own',teamId,type); ludus.arenaOffers=null; ludus.arenaEst=null;
+  const txt=`Deine Schule und ${t.name} schließen ein ${LUDUS_ACCORD_WORD[type]}.`; ludusChron(t.region,'accord',txt); ludusNote=txt; ludusSave(); ludusRender();
+}
+function ludusAccordCancel(teamId){
+  const t=ludusTeam(teamId), cur=ludusAccord('own',teamId); if(!t||!cur) return;
+  ludusAccordSet('own',teamId,null); ludusTeamMembers(teamId).forEach(n=>{ n.bond=Math.max(-3,(n.bond||0)-1); }); ludus.arenaOffers=null; ludus.arenaEst=null;
+  const txt=`Deine Schule kündigt das ${LUDUS_ACCORD_WORD[cur.type]} mit ${t.name}.`; ludusChron(t.region,'accord',txt); ludusNote=txt; ludusSave(); ludusRender();
+}
+// the teams of the world among themselves, every evening (only teams of one region; the school's accords are left to the school)
+function ludusAccordsEvening(){
+  ludus.accords=(ludus.accords||[]).filter(x=>(x.a==='own'||ludus.teams[x.a])&&(x.b==='own'||ludus.teams[x.b])&&(x.a!=='own'&&x.b!=='own'||ludus.team.length));
+  const byRegion={}; Object.values(ludus.teams||{}).forEach(t=>{ (byRegion[t.region]=byRegion[t.region]||[]).push(t); });
+  Object.values(byRegion).forEach(ts=>{ for(let i=0;i<ts.length;i++) for(let j=i+1;j<ts.length;j++){
+    const a=ts[i], b=ts[j], rel=ludusTeamRel(a.id,b.id), cur=ludusAccord(a.id,b.id), had=cur?cur.type:null;
+    let want=had;
+    if(rel>=LUDUS_ACCORD.ally) want='ally'; else if(had==='ally'&&rel<LUDUS_ACCORD.ally-LUDUS_ACCORD.keep) want=rel>=LUDUS_ACCORD.spare?'spare':null;
+    if(!want&&rel>=LUDUS_ACCORD.spare) want='spare'; else if(want==='spare'&&rel<LUDUS_ACCORD.spare-LUDUS_ACCORD.keep) want=null;
+    if(want===had) continue;
+    ludusAccordSet(a.id,b.id,want);
+    ludusChron(a.region,'accord',want?`${a.name} und ${b.name} schließen ein ${LUDUS_ACCORD_WORD[want]}.`:`${a.name} und ${b.name} beenden ihr ${LUDUS_ACCORD_WORD[had]}.`);
+  } });
+}
+// the entries of a tournament: are they allied (then the weaker of the table gives the other the way)
+const ludusEntryKey=e=>!e?null:(e.t==='own'?'own':e.id);
+const ludusEntriesAllied=(a,b)=>{ const x=ludusAccord(ludusEntryKey(a),ludusEntryKey(b)); return !!x&&x.type==='ally'; };
+// the card: the diplomacy with a gladiator's team
+function ludusAccordHTML(n){
+  const t=ludusTeamOf(n); if(!t) return '';
+  const rel=ludusTeamRel('own',t.id), cur=ludusAccord('own',t.id), r1=Math.round(rel*10)/10;
+  let h=`<h3>Abkommen mit ${ludusEsc(t.name)}</h3><p class="luHint">Beziehung des Teams zur Schule: ${r1} (der Schnitt seiner Gladiatoren). Ein Schonungsabkommen (ab 1): niemand richtet einen des anderen hin. Ein Bündnis (ab 2): dazu steigt ihr in der Arena nicht mehr gegeneinander in den Ring (in der Grube schon), und im Turnier lässt das schwächere Team dem stärkeren den Vortritt.</p>`;
+  if(cur) h+=`<p>Ihr habt ein ${LUDUS_ACCORD_WORD[cur.type]} (seit Tag ${cur.day}). ${cur.type==='spare'?`<button data-accord="${t.id}:ally" ${rel<LUDUS_ACCORD.ally?'disabled':''}>Bündnis anbieten</button> `:''}<button data-accord="${t.id}:cancel">Aufkündigen</button></p>`;
+  else h+=`<p><button data-accord="${t.id}:spare" ${rel<LUDUS_ACCORD.spare?'disabled':''}>Schonungsabkommen anbieten</button> <button data-accord="${t.id}:ally" ${rel<LUDUS_ACCORD.ally?'disabled':''}>Bündnis anbieten</button></p>`;
+  return h;
+}
+function ludusWireAccords(el){ el.querySelectorAll('[data-accord]').forEach(b=>b.addEventListener('click',()=>{ const [id,what]=b.dataset.accord.split(':'); if(what==='cancel') ludusAccordCancel(id); else ludusAccordOffer(id,what); })); }

@@ -124,6 +124,21 @@ const { open, finish }=require('./lib');
       if(ns.length===4){ ns.forEach(n=>{ n.rel={}; n.hp=undefined; }); ns[1].rel[ns[2].id]=2; ns[2].rel[ns[1].id]=2; const w0=ns.map(n=>(n.wins||0)+(n.losses||0));
         ludusLifeFfa(ns,id); out.lifeFfa=(ludus.chronicle||[]).slice(0,12).map(e=>e.t).filter(t=>/Jeder gegen jeden/.test(t)); if(!out.lifeFfa.some(t=>/^Jeder gegen jeden/.test(t))||!out.lifeFfa.some(t=>/verbünden sich/.test(t))) bad('no free for all of the world in the chronicle');
         if(ns.some((n,k)=>(n.wins||0)+(n.losses||0)!==w0[k]+1)) bad('free for all not counted'); } }
+    // accords between teams: the school offers (a team accepts from relation 1, an alliance from 2); allies are not offered in the arena,
+    // nobody of an accord executes the other's; teams of the world make their own
+    { const id=ludus.map.region, ts=Object.values(ludus.teams).filter(t=>t.region===id&&ludusTeamMembers(t.id).length&&!ludusTeamMembers(t.id).some(n=>n.boss||ludusIsChamp(id,"npc",n.id))), t=ts[0];
+      if(t){ const mem=ludusTeamMembers(t.id); mem.forEach(n=>{ n.bond=0; }); ludusAccordOffer(t.id,'spare'); if(ludusAccord('own',t.id)) bad('an accord without a relation');
+        mem.forEach(n=>{ n.bond=2; }); ludusAccordOffer(t.id,'spare'); if(!ludusAccord('own',t.id)) bad('no spare accord');
+        const w=mem[0]; w.bold=1; if(ludusAiExecutes(w,ludus.team[0])) bad('an accord did not spare');
+        ludusAccordOffer(t.id,'ally'); if(!ludusAlliedSchool(mem[0])) bad('no alliance');
+        ludus.life.plans[mem[0].id]='arena'; ludus.arenaOffers=null; if(ludusArenaOffers().some(o=>o.foes.some(f=>f.npc&&ludusNpc(f.npc).team===t.id))) bad('an ally offered in the arena');
+        ludus.forced=null; ludus.event=null; ludus.verdict=null; ludusPicked=mem[0].id; ludusRender(); if(!document.querySelector('[data-accord]')) bad('no accords on the card');
+        document.querySelector(`[data-accord="${t.id}:cancel"]`).click(); if(ludusAccord('own',t.id)||(mem[0].bond||0)!==1) bad('cancelling failed'); ludusPicked=null; ludusRender(); }
+      for(let k=0;k<2;k++){ ludus.world.push(ludusNpcMake(ludusRng('acc'+k),id,1,0)); } ludusTeamsTidy();       // two teams of their own for the world's accord
+      const ts2=Object.values(ludus.teams).filter(x=>x.region===id&&ludusTeamMembers(x.id).length&&!ludusTeamMembers(x.id).some(n=>n.boss||ludusIsChamp(id,'npc',n.id))&&x!==t);
+      out.tsLen=ts2.length; if(ts2.length>=2){ const [a,b]=ts2.slice(-2), A=ludusTeamMembers(a.id), B=ludusTeamMembers(b.id); A.forEach(x=>{ x.rel=x.rel||{}; B.forEach(y=>{ x.rel[y.id]=3; }); }); B.forEach(y=>{ y.rel=y.rel||{}; A.forEach(x=>{ y.rel[x.id]=3; }); });
+        ludusAccordsEvening(); const ac=ludusAccord(a.id,b.id); if(!ac||ac.type!=='ally') bad('teams of the world made no alliance'); out.accordAi=ac&&ac.type;
+        if(ludusFeudPairs([A[0],B[0]]).length) bad('allies paired in the arena'); } }
     // the day's tasks: one works, one trains (with a training room), the day ends without a bout
     ludus.rooms.training=1; ludus.gold=200; ludus.forced=null; ludus.event=null;
     ludus.team[0].job='work'; if(ludus.team[1]) ludus.team[1].job='train';
