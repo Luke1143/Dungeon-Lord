@@ -10,7 +10,7 @@ let ludus=null, ludusMeta={ unlockAll:false, roomsAll:false, bestWins:0, bestDay
 // ---- the Ludus as a place: rooms that are built during a run (paid with standing, which wins bring) and that grow in tiers ----
 // cost[i] = standing to reach tier i+1. The forge's tier is the quality of what it sells; its categories (weapon kinds, armour weights, shields) are bought separately.
 const LUDUS_ROOMS={
-  inn:    { label:'Taverne',      cost:[0,15,45],       text:['Huhn und Bett, ein Platz im Team','besseres Essen, das Bett heilt mehr, zwei Plätze im Team','Festmahl, das Bett heilt fast alles, drei Plätze im Team'] },
+  inn:    { label:'Taverne',      cost:[0,15,45],       text:['Huhn und Bett','besseres Essen, das Bett heilt mehr','Festmahl, das Bett heilt fast alles'] },
   pit:    { label:'Grube',        cost:[0,30,90],      text:['Übungskämpfe','ein Viertel mehr Erfahrung aus der Grube','die Hälfte mehr Erfahrung aus der Grube'] },
   forge:  { label:'Schmiede',     cost:[0,25,70,150], text:['nur grobe Ware aus schlechten Teilen','gewöhnliche Ware','feine Ware aus guten Teilen','epische Ware aus den besten Teilen'] },
   library:{ label:'Bücherei',     cost:[20,50,110],     text:['einfache Fähigkeiten','mittlere Fähigkeiten','alle Fähigkeiten'] },
@@ -54,7 +54,8 @@ function ludusLink(l){ if(!l) return l; if(!l.team){ l.team=l.fighter?[l.fighter
   if(!l.stash){ l.stash=[]; l.bookbag=[]; const keep=ludus; ludus=l; try{ l.team.forEach(m=>{ ludusNormalizeGear(m); (m.books||[]).forEach(b=>l.bookbag.push(b)); m.books=[]; }); } finally { ludus=keep; } }
   Object.defineProperty(l,'fighter',{ configurable:true, enumerable:false, get(){ return this.team[this.sel]||this.team[0]; } }); return l; }
 const ludusLevel=()=>Math.max(1,Math.round(ludus.team.reduce((a,m)=>a+m.level,0)/Math.max(1,ludus.team.length)));
-const ludusTeamMax=()=>1+ludusInnTier();
+// a school may be large (docs/ludus.md, Teams): board and lodging for every gladiator keep it in check; the bound only keeps the screen in order
+const LUDUS_TEAM_CAP=12, ludusTeamMax=()=>LUDUS_TEAM_CAP;
 const ludusSlotsFree=()=>ludusTeamMax()-ludus.team.length;
 // the team shares one store of gear and books: a member carries what it wears, everything else lies in the stash
 function ludusNormalizeGear(m){
@@ -655,7 +656,7 @@ function ludusPickHTML(){
     ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${ludusGold(n)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}
     ${ludusAccordHTML(n)}<h3>Herausforderung</h3>${ludusChallenged(n.id)?`<p class="luHint">${ludusEsc(n.name)} hat schon eine Verabredung in der Arena.</p>`:(ludusCanChallenge(n)&&ludus.fighter?`<p><button id="luChallenge">${ludusEsc(ludus.fighter.name)} fordert ${ludusEsc(n.name)} heraus</button></p><p class="luHint">Ein Duell morgen in der Arena, um den anderthalbfachen Preis und ${LUDUS_CHALLENGE.bonus} Ehre mehr.<br>${ludusAccepts(n,ludus.fighter)?`${ludusEsc(n.name)} wird annehmen.`:`${ludusEsc(n.name)} wird wohl ablehnen und ${LUDUS_CHALLENGE.decline} Ehre verlieren.`}<br>Wer am Tag des Duells nicht antritt, kneift: −${LUDUS_CHALLENGE.coward} Ehre.</p>`:'<p class="luHint">Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.</p>')}
     <p><button id="luGift" ${ludus.gold<ludusGiftCost(n)||(n.bond||0)>=3?'disabled':''}>Geschenk · ${ludusGiftCost(n)} Gold (Beziehung +1)</button></p>
-    ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':!solo?(ludusCanPoach(n)?`<button id="luPoach" class="menuMain" ${ludus.gold>=ludusTransferFee(n)&&ludusSlotsFree()>0?'':'disabled'}>Abwerben · ${ludusTransferFee(n)} Gold Ablöse an ${ludusEsc(ludusTeamName(n))}</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`:`<p class="luHint">${ludusEsc(n.name)} steht bei ${ludusEsc(ludusTeamName(n))} unter Vertrag und ist nicht zu haben.</p>`):`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
+    ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':!solo?(ludusCanPoach(n)?`<button id="luPoach" class="menuMain" ${ludus.gold>=ludusTransferFee(n)&&ludusSlotsFree()>0?'':'disabled'}>Abwerben · ${ludusTransferFee(n)} Gold Ablöse an ${ludusEsc(ludusTeamName(n))}</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (höchstens 12 Gladiatoren).</span>'}`:`<p class="luHint">${ludusEsc(n.name)} steht bei ${ludusEsc(ludusTeamName(n))} unter Vertrag und ist nicht zu haben.</p>`):`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (höchstens 12 Gladiatoren).</span>'}`}
     <button id="luPickClose">Schließen</button></div>`;
 }
 function ludusPaint(){

@@ -118,7 +118,7 @@ i18nRegister({
 i18nRegister({
 "Platz {0}":"Place {0}", "Platz {0} (Champion)":"Place {0} (champion)", "{0} Siege, {1} Niederlagen":"{0} wins, {1} defeats", "{0} Siege, {1} Niederlagen, {2} getötet":"{0} wins, {1} defeats, {2} killed",
 "Leben {0} %":"Life {0} %", "heute {0}":"today {0}", "Ausrüstung: {0}":"Gear: {0}", "keine":"none",
-"Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.":"The champion cannot be hired. One meets him in the tournament.", "Kein Platz frei (die Taverne gibt mehr Plätze).":"No place free (the tavern gives more places)."
+"Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.":"The champion cannot be hired. One meets him in the tournament.", "Kein Platz frei (höchstens 12 Gladiatoren).":"No place free (at most 12 gladiators).", "Kein Platz frei (die Taverne gibt mehr Plätze).":"No place free (the tavern gives more places)."
 });
 // fame and the verdict
 i18nRegister({

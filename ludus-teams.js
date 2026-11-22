@@ -4,7 +4,7 @@
 // Teams form when a region is filled (1 to 3), every rookie founds his own; a team with gold hires a lone gladiator (the price the school pays);
 // two small teams who like each other merge; a team with nobody left is gone. There is no rank inside a team (no captain who could change).
 // ludus.teams={ [id]: { id, name, region, gold, founded } }; a gladiator of the world carries `team` (the id).
-const LUDUS_TEAMS={ hireDays:10, mergeLike:3, mergeMax:2, joinLike:0 };
+const LUDUS_TEAMS={ hireDays:5, mergeLike:2, mergeMax:3, joinLike:0 };
 const ludusTeam=id=>(ludus&&ludus.teams||{})[id]||null;
 const ludusTeamOf=n=>n&&!ludusMember(n.id)?ludusTeam(n.team):null;
 const ludusTeamMembers=id=>(ludus.world||[]).filter(n=>n.team===id&&n.status==='active');
@@ -44,14 +44,14 @@ function ludusTeamsTidy(){
     if(!reg.champ){ const best=Object.values(ludus.teams).filter(t=>t.region===+k).sort((a,b)=>ludusTeamMembers(b.id).reduce((s,n)=>s+(n.honor||0),0)-ludusTeamMembers(a.id).reduce((s,n)=>s+(n.honor||0),0))[0]; if(best) reg.champ={ t:'team', id:best.id }; }
   });
 }
-// a region is filled: the boss with the two strongest, the rest in teams of 1 to 3 (a fixed rule from the region's dice, no dice in the run)
+// a region is filled: the boss with the two strongest, the rest in teams of 1 to 4 (mostly 2 or 3) (a fixed rule from the region's dice, no dice in the run)
 function ludusTeamsFill(id,r){
   const l=ludusRegionNpcs(id).filter(n=>!n.team||!ludusTeam(n.team)); if(!l.length) return;
   const boss=l.find(n=>n.boss), rest=l.filter(n=>n!==boss).sort((a,b)=>b.level-a.level);
   const make=g=>{ const t=ludusTeamNew(id,g[0],g.reduce((s,n)=>s+ludusStartPurse(n),0)); g.slice(1).forEach(n=>{ n.team=t.id; }); g.forEach(n=>{ delete n.gold; }); };
   if(boss) make([boss].concat(rest.splice(0,2)));
   const shuf=rest.map(n=>[r(),n]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-  while(shuf.length){ const k=Math.min(shuf.length,1+Math.floor(r()*3)); make(shuf.splice(0,k)); }
+  while(shuf.length){ const k=Math.min(shuf.length,[1,2,2,3,3,4][Math.floor(r()*6)]); make(shuf.splice(0,k)); }       // mostly two or three
 }
 // how much the members of one group like those of another (the relations both ways added, per pair); a team's relation is never kept, only worked out
 const ludusTeamLiking=(a,b)=>ludusLiking(a,b);       // both ways added: 3 = they like each other well
@@ -62,7 +62,7 @@ function ludusTeamsUpkeep(){
   Object.values(ludus.teams||{}).forEach(t=>{ const node=ludusMapWorld().nodes[t.region]; if(!node) return; t.gold=Math.max(0,(t.gold||0)-ludusUpkeep(node.col)*ludusTeamMembers(t.id).length); });
 }
 const ludusTeamPoor=t=>{ const node=ludusMapWorld().nodes[t.region]; return !node||(t.gold||0)<3*ludusUpkeep(node.col)*Math.max(1,ludusTeamMembers(t.id).length); };
-// hiring: a team that can pay the price and 10 days of board for one more hires the best lone gladiator of its region who does not dislike it
+// hiring: a team that can pay the price and 5 days of board for one more hires the best lone gladiator of its region who does not dislike it
 // (at most one in a region per day; not the boss, not a champion, not a rival); his purse goes into the team's
 function ludusTeamsHire(){
   const done=new Set();
@@ -77,7 +77,7 @@ function ludusTeamsHire(){
   });
 }
 const ludusTeamHirePrice=n=>Math.round(20+22*n.level);       // what the school pays for a stranger (ludusRecruitPrice without the relation)
-// merging: two teams of at most two in one region whose members like each other (2 and more) become one (the one with more gold keeps its name); one a day per region
+// merging: two teams of at most three in one region whose members like each other (their relations both ways add up to 2 and more) become one (the one with more gold keeps its name); one a day per region
 function ludusTeamsMerge(){
   const done=new Set(), ts=Object.values(ludus.teams||{});
   ts.forEach(a=>{ if(done.has(a.region)||!ludus.teams[a.id]) return; const A=ludusTeamMembers(a.id); if(!A.length||A.length>LUDUS_TEAMS.mergeMax||A.some(n=>n.boss)) return;
@@ -168,7 +168,7 @@ function ludusWireAccords(el){ el.querySelectorAll('[data-accord]').forEach(b=>b
 // ---- transfers: a gladiator under contract can be bought from his team; the fee goes to the team's purse ----
 // The fee is twice what a lone one costs (2 × (20 + 22 × level)); the school pays less the better he stands to it (−10 % per step of his relation).
 // He must not dislike the buyer (relation above −2); not the boss, a champion or a rival. A team with only him is no transfer (he is hired as a lone one).
-// Teams of the world buy too: the richest of a region, when it can pay the fee and 10 days of board for one more, buys the best gladiator of another
+// Teams of the world buy too: the richest of a region, when it can pay the fee and 5 days of board for one more, buys the best gladiator of another
 // (not allied) team who is better than its own weakest and does not dislike it; one transfer a region per day.
 const ludusTransferFee=n=>Math.round(2*ludusTeamHirePrice(n)*(1-0.1*(n.bond||0)));
 const ludusCanPoach=n=>!!n&&n.status==='active'&&ludusTeamSize(n)>=2&&!n.boss&&!n.rival&&!ludusIsChamp(n.region,'npc',n.id)&&(n.bond||0)>-2&&!ludusAlliedSchool(n);
