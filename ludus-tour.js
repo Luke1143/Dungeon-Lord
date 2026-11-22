@@ -71,7 +71,9 @@ function ludusRegionEnsure(id){
   ludus.world=ludus.world||[]; ludus.world.push(boss);
   for(let i=0;i<LUDUS_TOUR.roster;i++){ const f=1.15-0.06*i+(r()-0.5)*0.1, n=ludusNpcMake(r,id,f,i<2?1:(i>6?-1:0)); n.honor=Math.round(10*(LUDUS_TOUR.roster-i)+r()*6); ludus.world.push(n); }
   ludus.regions[id]={ champ:{ t:'npc', id:boss.id }, ghost:ghost||null };
+  ludusTeamsFill(id,r);       // the region's gladiators in teams (ludus-teams.js)
   ludusRivalPlace(id);       // an old enemy whose strength fits this region waits here
+  ludusTeamsTidy();
   return ludus.regions[id];
 }
 const ludusChamp=id=>(ludus.regions[id]||{}).champ||null;
@@ -367,9 +369,9 @@ function ludusMapWire(el){
 // the ladder of the region and, while it runs, the tournament tree
 function ludusBoardHTML(){
   const n=ludusRegionNode(), rows=ludusBoard(n.id);
-  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.ghost?' · früheres Team':''}${x.rival?' · '+x.rival:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
+  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.t==='npc'&&ludusTeamSize(ludusNpc(x.id))>1?' · '+ludusEsc(ludusTeamName(ludusNpc(x.id))):''}${x.ghost?' · früheres Team':''}${x.rival?' · '+x.rival:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
   return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
-    ${ludus.tourney?ludusTourneyHTML():''}${rows.map(row).join('')}${ludusChronicleHTML()}</div>`;
+    ${ludus.tourney?ludusTourneyHTML():''}${ludusTeamTableHTML(n.id)}<h3>Gladiatoren</h3>${rows.map(row).join('')}${ludusChronicleHTML()}</div>`;
 }
 function ludusTourneyHTML(){
   const t=ludus.tourney, pairs=ludusTourneyPairs();

@@ -62,7 +62,7 @@ function ludusRivalHunt(){
   const goal=ludus.map.region, w=ludusMapWorld();
   (ludus.world||[]).filter(n=>n.rival&&n.status==='active'&&n.region!==goal&&!ludusIsChamp(n.region,'npc',n.id)).forEach(n=>{
     const to=ludusRivalStep(n.region,goal); if(to===null||to===n.region) return;
-    n.region=to; n.boss=false; ludusRegionEnsure(to);
+    const t=ludusTeamOf(n); (t?ludusTeamMembers(t.id):[n]).forEach(m=>{ m.region=to; m.boss=false; }); if(t) t.region=to; ludusRegionEnsure(to);       // his team hunts with him
     ludusChron(to,'rival',to===goal?`${n.name} ist in ${w.nodes[to].name} angekommen und sucht deine Schule.`:`${n.name} folgt deiner Schule nach ${w.nodes[to].name}.`);
   });
 }

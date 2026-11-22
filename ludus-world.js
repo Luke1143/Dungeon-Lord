@@ -46,7 +46,8 @@ function ludusTavernGuests(){
   if(!ludus||ludus.over) return [];
   const r=ludusRng('tav'+ludus.day), act=(ludus.world||[]).filter(n=>n.status==='active');
   const shuf=l=>l.map(x=>[r(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-  const here=act.filter(n=>!n.boss&&n.region===ludus.map.region&&!ludusIsChamp(n.region,'npc',n.id)), known=shuf(here.filter(n=>n.met)), rest=shuf(here.filter(n=>!n.met));
+  const here=act.filter(n=>!n.boss&&n.region===ludus.map.region&&!ludusIsChamp(n.region,'npc',n.id)&&ludusTeamSize(n)<=1), known=       // only who is alone can be hired; the others are under contract
+    shuf(here.filter(n=>n.met)), rest=shuf(here.filter(n=>!n.met));
   return known.slice(0,3).concat(rest.slice(0,2)).slice(0,5);
 }
 // after a match: what happened to the characters who fought in it. A gladiator of the world keeps what the bout did to him (life, experience, gear), like the team does

@@ -18,7 +18,7 @@ function ludusEquip(n){
   if(n.inventory) return n;
   if(n.member){ const m=n.member; n.inventory=JSON.parse(JSON.stringify(m.inventory||[])); n.learned=(m.learned||[]).slice(); n.gifts=JSON.parse(JSON.stringify(m.gifts||[])); n.xp=m.xp||xpForLevel(n.level); delete n.member; }
   else { const c=arenaMake(n.kind,0,0); c.level=n.level; const g=arenaGroup(n.kind,1,n.level); g.tier=n.tier; g.seed=n.seed; n.inventory=JSON.parse(JSON.stringify(arenaGear(c,g,0))); n.learned=[]; n.gifts=[]; n.xp=xpForLevel(n.level); }
-  n.hp=undefined; n.energy=100; n.gold=n.gold||10+5*n.level; n.wins=n.wins||0; n.losses=n.losses||0; n.kills=n.kills||0; if(n.bold===undefined) n.bold=(arenaHash(n.id)%100)/100;
+  n.hp=undefined; n.energy=100; n.wins=n.wins||0; n.losses=n.losses||0; n.kills=n.kills||0; if(n.bold===undefined) n.bold=(arenaHash(n.id)%100)/100;
   return n;
 }
 const ludusGladTier=n=>{ const l=(n.inventory||[]).filter(i=>instDef(i)); return l.length?Math.round(l.reduce((a,i)=>a+ludusTierIndex(i),0)/l.length):0; };
@@ -82,14 +82,14 @@ function ludusLifeLoot(winner,loser){
   loser.inventory.splice(loser.inventory.indexOf(it),1);
   const d=instDef(it), worn=(winner.inventory||[]).filter(i=>instDef(i)&&instDef(i).type===d.type);
   if(!worn.length||Math.max(...worn.map(ludusTierIndex))<ludusTierIndex(it)){ worn.forEach(w=>winner.inventory.splice(winner.inventory.indexOf(w),1)); winner.inventory.push(it); }
-  else winner.gold=(winner.gold||0)+ludusSellPrice(it);
+  else ludusGoldAdd(winner,ludusSellPrice(it));
   return it;
 }
 // the bookkeeping of a bout between gladiators: wins, honour, gold, the dead
 function ludusLifeAfterBout(sides,res,kind,region){
   sides.forEach(l=>l.forEach(n=>{ n.foughtToday=true; }));
   const win=sides[res.winner]||[], lose=[].concat(...sides.filter((x,k)=>k!==res.winner)), L=ludusRegionLevel(ludusMapWorld().nodes[region].col);
-  win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'||kind==='tourney') n.fame=ludusFame(n)+1; if(kind==='arena'){ n.gold=(n.gold||0)+10+6*L; n.honor=(n.honor||0)+10*lose.length; } });
+  win.forEach(n=>{ n.wins=(n.wins||0)+1; if(kind==='arena'||kind==='tourney') n.fame=ludusFame(n)+1; if(kind==='arena'){ ludusGoldAdd(n,10+6*L); n.honor=(n.honor||0)+10*lose.length; } });
   lose.forEach(n=>{ n.losses=(n.losses||0)+1; if(kind==='arena') n.honor=Math.max(0,(n.honor||0)-5); });
   if(kind==='pit'&&win[0]&&lose[0]){ const it=ludusLifeLoot(win[0],lose[0]); if(it&&region===ludus.map.region) ludusChron(region,'loot',`${win[0].name} nimmt ${lose[0].name} in der Grube ${instLabel(it)} ab.`); }
   res.dead.forEach(n=>{ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; const k=win[0]; if(k&&res.dead.indexOf(k)<0) k.kills=(k.kills||0)+1;
@@ -108,7 +108,7 @@ const ludusFame=g=>g&&g.fame||0;
 function ludusRel(a,b){ if(!a||!b) return 0; const own=x=>!!ludusMember(x.id); if(own(b)&&!own(a)) return a.bond||0; return (a.rel&&a.rel[b.id])||0; }
 function ludusRelAdd(a,b,v){ if(!a||!b) return; const own=x=>!!ludusMember(x.id); if(own(b)&&!own(a)){ a.bond=Math.max(-3,Math.min(3,(a.bond||0)+v)); return; } a.rel=a.rel||{}; a.rel[b.id]=Math.max(-3,Math.min(3,(a.rel[b.id]||0)+v)); }
 const ludusExecGain=l=>LUDUS_VERDICT.fame+Math.round(LUDUS_VERDICT.fameShare*ludusFame(l));
-const ludusRansom=(l,region)=>{ const L=ludusRegionLevel(ludusMapWorld().nodes[region].col), want=10+6*L, has=ludusMember(l.id)?ludus.gold:(l.gold||0); return Math.max(0,Math.min(want,has)); };
+const ludusRansom=(l,region)=>{ const L=ludusRegionLevel(ludusMapWorld().nodes[region].col), want=10+6*L, has=ludusGold(l); return Math.max(0,Math.min(want,has)); };
 const ludusAiExecutes=(w,l)=>0.7*(w.bold===undefined?0.5:w.bold)+0.03*ludusFame(l)+0.12*(l.execs||0)-0.25*ludusRel(w,l)>LUDUS_VERDICT.ai;
 // carries a verdict out; returns the line for the chronicle and the result
 function ludusVerdict(w,l,execute,region){
@@ -123,8 +123,7 @@ function ludusVerdict(w,l,execute,region){
     const rv=ownW?ludusRevenge(l):''; return rv?t+' · '+rv:t;
   }
   const pay=ludusRansom(l,region);
-  if(ownL) ludus.gold-=pay; else l.gold=(l.gold||0)-pay;
-  if(ownW) ludus.gold+=pay; else w.gold=(w.gold||0)+pay;
+  ludusGoldAdd(l,-pay); ludusGoldAdd(w,pay);       // out of the loser's team's purse into the winner's
   ludusRelAdd(l,w,pay>0?LUDUS_VERDICT.spare:LUDUS_VERDICT.sparePoor);
   const t=`${w.name} verschont ${l.name}${pay?` (Lösegeld ${pay} Gold)`:''}.`; if(region===ludus.map.region) ludusChron(region,'spare',t); return t;
 }
@@ -203,7 +202,7 @@ const ludusSidePactFee=(o,s)=>{ const f=ludusSideNpcs(o,s).map(ludusPactFee); re
 function ludusPactOffer(i,s){
   const o=ludusArenaOffers()[i]; if(!o||!o.ffa||o.pact||ludusAiPacts(o).some(p=>p.includes(s))) return;
   const ns=ludusSideNpcs(o,s), fee=ludusSidePactFee(o,s); if(!ns.length||fee===null||ludus.gold<fee) return;
-  ludus.gold-=fee; ns.forEach(n=>{ n.gold=(n.gold||0)+ludusPactFee(n); }); o.pact=s; ludus.arenaEst=null;
+  ludus.gold-=fee; ns.forEach(n=>{ ludusGoldAdd(n,ludusPactFee(n)); }); o.pact=s; ludus.arenaEst=null;
   ludusNote=`Bündnis mit ${ludusSideName(o,s)}: ihr kämpft zusammen, bis nur noch ihr übrig seid${fee?` (${fee} Gold)`:''}.`; ludusSave(); ludusRender();
 }
 // after the bout: betrayals and pacts that held
@@ -223,11 +222,11 @@ const ludusSellTo=(n,inst)=>Math.max(1,Math.round(ludusPrice(asInstance(inst).id
 function ludusWantsItem(n,inst){ const d=instDef(inst); if(!d||!['weapon','armor','shield'].includes(d.type)) return false; const worn=(n.inventory||[]).filter(i=>instDef(i)&&instDef(i).type===d.type); return !worn.length||Math.max(...worn.map(ludusTierIndex))<ludusTierIndex(inst); }
 // a gift of gold: a step of relation for 5 gold per level of his
 const ludusGiftCost=n=>5*n.level;
-function ludusTradeBuy(id,k){ const n=ludusNpc(id), inst=n&&n.inventory&&n.inventory[k]; if(!inst) return; const pr=ludusBuyPrice(n,inst); if(ludus.gold<pr) return; ludus.gold-=pr; n.gold=(n.gold||0)+pr; n.inventory.splice(k,1); ludus.stash.push(inst); ludusNote=`Gekauft: ${instLabel(inst)} für ${pr} Gold.`; ludusSave(); ludusRender(); }
-function ludusTradeSell(id,k){ const n=ludusNpc(id), inst=ludus.stash[k]; if(!n||!inst||!ludusWantsItem(n,inst)) return; const pr=ludusSellTo(n,inst); if((n.gold||0)<pr) return;
-  n.gold-=pr; ludus.gold+=pr; ludus.stash.splice(k,1); const d=instDef(inst); n.inventory=(n.inventory||[]).filter(i=>!(instDef(i)&&instDef(i).type===d.type)); n.inventory.push(inst); n.tier=ludusGladTier(n); ludusRelAdd(n,ludus.fighter,1);
+function ludusTradeBuy(id,k){ const n=ludusNpc(id), inst=n&&n.inventory&&n.inventory[k]; if(!inst) return; const pr=ludusBuyPrice(n,inst); if(ludus.gold<pr) return; ludus.gold-=pr; ludusGoldAdd(n,pr); n.inventory.splice(k,1); ludus.stash.push(inst); ludusNote=`Gekauft: ${instLabel(inst)} für ${pr} Gold.`; ludusSave(); ludusRender(); }
+function ludusTradeSell(id,k){ const n=ludusNpc(id), inst=ludus.stash[k]; if(!n||!inst||!ludusWantsItem(n,inst)) return; const pr=ludusSellTo(n,inst); if(ludusGold(n)<pr) return;
+  ludusGoldAdd(n,-pr); ludus.gold+=pr; ludus.stash.splice(k,1); const d=instDef(inst); n.inventory=(n.inventory||[]).filter(i=>!(instDef(i)&&instDef(i).type===d.type)); n.inventory.push(inst); n.tier=ludusGladTier(n); ludusRelAdd(n,ludus.fighter,1);
   ludusNote=`Verkauft: ${instLabel(inst)} an ${n.name} für ${pr} Gold.`; ludusSave(); ludusRender(); }
-function ludusTradeGift(id){ const n=ludusNpc(id); if(!n) return; const c=ludusGiftCost(n); if(ludus.gold<c||(n.bond||0)>=3) return; ludus.gold-=c; n.gold=(n.gold||0)+c; n.bond=Math.min(3,(n.bond||0)+1); ludusNote=`${n.name} nimmt das Geschenk an.`; ludusSave(); ludusRender(); }
+function ludusTradeGift(id){ const n=ludusNpc(id); if(!n) return; const c=ludusGiftCost(n); if(ludus.gold<c||(n.bond||0)>=3) return; ludus.gold-=c; ludusGoldAdd(n,c); n.bond=Math.min(3,(n.bond||0)+1); ludusNote=`${n.name} nimmt das Geschenk an.`; ludusSave(); ludusRender(); }
 const LUDUS_BOND_WORD=b=>b>=2?'befreundet':(b>=1?'wohlgesinnt':(b<=-2?'verfeindet':(b<=-1?'misstrauisch':'neutral')));
 
 // ---- the evening: the bouts of the day without the player ----
@@ -271,30 +270,30 @@ function ludusLifeShop(){
   (ludus.world||[]).forEach(n=>{
     if(n.status!=='active'||!ludusLifePoor(n)||!(n.inventory||[]).length) return;
     const it=n.inventory.slice().sort((a,b)=>ludusPrice(b.id)-ludusPrice(a.id))[0];
-    const buyer=ludusRegionNpcs(n.region).filter(b=>b!==n&&!ludusLifePoor(b)&&ludusWantsItem(b,it)).map(b=>({ b, pr:Math.round(ludusPrice(it.id)*(0.8+0.05*ludusRel(b,n))) })).filter(x=>(x.b.gold||0)>=x.pr).sort((p,q)=>(q.b.gold||0)-(p.b.gold||0))[0];
+    const buyer=ludusRegionNpcs(n.region).filter(b=>b!==n&&b.team!==n.team&&!ludusLifePoor(b)&&ludusWantsItem(b,it)).map(b=>({ b, pr:Math.round(ludusPrice(it.id)*(0.8+0.05*ludusRel(b,n))) })).filter(x=>ludusGold(x.b)>=x.pr).sort((p,q)=>ludusGold(q.b)-ludusGold(p.b))[0];
     if(!buyer) return;
-    const b=buyer.b, d=instDef(it); n.inventory.splice(n.inventory.indexOf(it),1); n.gold=(n.gold||0)+buyer.pr; b.gold-=buyer.pr;
+    const b=buyer.b, d=instDef(it); n.inventory.splice(n.inventory.indexOf(it),1); ludusGoldAdd(n,buyer.pr); ludusGoldAdd(b,-buyer.pr);
     b.inventory=(b.inventory||[]).filter(i=>!(instDef(i)&&instDef(i).type===d.type)); b.inventory.push(it); ludusRelAdd(n,b,1);
     if(n.region===ludus.map.region) ludusChron(n.region,'trade',`${n.name} verkauft ${instLabel(it)} an ${b.name} für ${buyer.pr} Gold.`);
   });
   (ludus.world||[]).forEach(n=>{
-    if(n.status!=='active'||!n.inventory||(n.gold||0)<20) return;
+    if(n.status!=='active'||!n.inventory||ludusGold(n)<20) return;
     const node=ludusMapWorld().nodes[n.region]; if(!node) return; const top=Math.min(3,ludusRegionTier(node.col)+1);
     for(const it of n.inventory.slice()){
       const d=instDef(it); if(!d||!['weapon','armor','shield'].includes(d.type)) continue;
       const t=ludusTierIndex(it); if(t>=top) continue; const id=d.family+'_'+TIER_IDS[t+1]; if(!ITEMS[id]) continue;
-      const pr=ludusPrice(id); if(n.gold<pr) continue;
-      n.gold-=pr; n.inventory.splice(n.inventory.indexOf(it),1,{ id, q:1, s:arenaHash(n.id+':'+ludus.day+':'+id) }); break;
+      const pr=ludusPrice(id); if(ludusGold(n)<pr) continue;
+      ludusGoldAdd(n,-pr); n.inventory.splice(n.inventory.indexOf(it),1,{ id, q:1, s:arenaHash(n.id+':'+ludus.day+':'+id) }); break;
     }
   });
 }
 // the day ends (called before the day is counted on)
-// board and lodging, the same as for the player's school: whoever cannot pay is poor (and works or fights for gold tomorrow)
-const ludusLifePoor=n=>(n.gold||0)<3*ludusUpkeep(ludusMapWorld().nodes[n.region].col);
-function ludusLifeWork(n){ n.gold=(n.gold||0)+ludusWage(ludusMapWorld().nodes[n.region].col); n.energy=Math.max(10,(n.energy||100)-10); }
-function ludusLifeUpkeep(){ (ludus.world||[]).forEach(n=>{ if(n.status!=='active') return; const node=ludusMapWorld().nodes[n.region]; if(node) n.gold=Math.max(0,(n.gold||0)-ludusUpkeep(node.col)); }); }
+// board and lodging, the same as for the player's school (paid by the team, ludus-teams.js): a gladiator of a poor team works or fights for gold tomorrow
+const ludusLifePoor=n=>{ const t=ludusTeamOf(n); return !t||ludusTeamPoor(t); };
+function ludusLifeWork(n){ ludusGoldAdd(n,ludusWage(ludusMapWorld().nodes[n.region].col)); n.energy=Math.max(10,(n.energy||100)-10); }
+function ludusLifeUpkeep(){ ludusTeamsUpkeep(); }
 function ludusLifeEvening(){
-  ludusLifeEveningHere(); ludusLifeEveningElsewhere(); ludusLifeShop(); ludusLifeUpkeep();
+  ludusTeamsTidy(); ludusLifeEveningHere(); ludusLifeEveningElsewhere(); ludusLifeShop(); ludusLifeUpkeep(); ludusTeamsEvening();
   (ludus.world||[]).forEach(n=>{ delete n.foughtToday; });
   (ludus.world||[]).forEach(n=>{ if(n.status==='active') n.tier=ludusGladTier(n); });
 }
@@ -314,28 +313,29 @@ function ludusLifeTourneys(){
   });
   ludusLifeMigrate();
 }
-// ---- after a tournament: who has outgrown his region moves on to the right; rookies start on the left; empty regions get wanderers ----
+// ---- after a tournament: a team that has outgrown its region moves on to the right; rookies start on the left; empty regions get wanderers ----
+// A team moves as one: when its gladiators' average level stands 2 above its region's (3 with a champion among them). In the last column it retires as legends.
 function ludusLifeMigrate(){
   const w=ludusMapWorld(), r=ludusRng('mig'+ludus.day);
-  (ludus.world||[]).filter(n=>n.status==='active').forEach(n=>{
-    const node=w.nodes[n.region]; if(!node||n.region===ludus.map.region&&ludus.tourney||n.rival) return;       // a rival does not wander off: he hunts
-    const champ=ludusIsChamp(n.region,'npc',n.id);
-    if(n.level<ludusRegionLevel(node.col)+LUDUS_LIFE.outgrow+(champ?LUDUS_LIFE.champExtra:0)) return;
+  ludusTeamsTidy();
+  Object.values(ludus.teams||{}).forEach(t=>{
+    const mem=ludusTeamMembers(t.id), node=w.nodes[t.region]; if(!mem.length||!node||t.region===ludus.map.region&&ludus.tourney||mem.some(n=>n.rival)) return;       // a rival's team does not wander off: it hunts
+    const champ=mem.find(n=>ludusIsChamp(t.region,'npc',n.id)), avg=mem.reduce((s,n)=>s+n.level,0)/mem.length;
+    if(avg<ludusRegionLevel(node.col)+LUDUS_LIFE.outgrow+(champ?LUDUS_LIFE.champExtra:0)) return;
     const next=ludusMapNeighbours(node.id).map(i=>w.nodes[i]).filter(m=>m.col>node.col);
     // a waypoint is passed on the way: the next region behind it
     const regions=[]; next.forEach(m=>{ if(ludusIsRegion(m)) regions.push(m); else ludusMapNeighbours(m.id).map(i=>w.nodes[i]).filter(x=>x.col>m.col&&ludusIsRegion(x)).forEach(x=>regions.push(x)); });
     if(!regions.length){       // nowhere further to go: the land's best retire as legends
       if(champ) return;
-      n.status='gone'; n.goneDay=ludus.day; ludusChron(n.region,'champ',`${n.name} (Stufe ${n.level}) tritt als Legende ab.`); return; }
-    if(champ){       // the champion lays down his title: the one with the most honour takes place 1
-      const next=ludusRegionNpcs(n.region).filter(x=>x!==n&&!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0];
-      if(next){ ludus.regions[n.region].champ={ t:'npc', id:next.id }; ludusChron(n.region,'champ',`${n.name} legt den Titel von ${node.name} nieder, ${next.name} ist neuer Champion.`); }
+      mem.forEach(n=>{ n.status='gone'; n.goneDay=ludus.day; }); ludusChron(t.region,'champ',`${t.name} (${mem.map(n=>n.name).join(', ')}) tritt als Legende ab.`); return; }
+    if(champ){       // the champion lays down his title: the one with the most honour (of another team) takes place 1
+      const nx=ludusRegionNpcs(t.region).filter(x=>x.team!==t.id&&!x.maimed).sort((a,b)=>(b.honor||0)-(a.honor||0))[0];
+      if(nx){ ludus.regions[t.region].champ={ t:'npc', id:nx.id }; ludusChron(t.region,'champ',`${champ.name} legt den Titel von ${node.name} nieder, ${nx.name} ist neuer Champion.`); }
     }
-    n.boss=false;
     const crowd=m=>ludusRegionNpcs(m.id).length+r()*0.5, to=regions.sort((x,y)=>crowd(x)-crowd(y))[0]; ludusRegionEnsure(to.id);       // the least crowded of the next regions
-    ludusChron(n.region,'move',`${n.name} (Stufe ${n.level}) zieht weiter nach ${to.name}.`);
-    if(to.id===ludus.map.region) ludusChron(to.id,'move',`${n.name} (Stufe ${n.level}) kommt aus ${ludusRegionName(n.region)}.`);
-    n.region=to.id; n.honor=0; n.maimed=false;
+    ludusChron(t.region,'move',`${t.name} zieht weiter nach ${to.name}.`);
+    if(to.id===ludus.map.region) ludusChron(to.id,'move',`${t.name} kommt aus ${ludusRegionName(t.region)}.`);
+    mem.forEach(n=>{ n.region=to.id; n.honor=0; n.maimed=false; n.boss=false; }); t.region=to.id;
   });
   Object.keys(ludus.regions||{}).forEach(k=>{
     const id=+k, node=w.nodes[id], have=ludusRegionNpcs(id).filter(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)).length;
@@ -343,6 +343,7 @@ function ludusLifeMigrate(){
     else if(have<LUDUS_LIFE.minRoster){ for(let i=have;i<LUDUS_LIFE.minRoster;i++){ const n=ludusNpcMake(r,id,0.8+0.2*r(),-1); n.honor=0; ludus.world.push(n); } }
   });
   ludus.world=ludus.world.filter(n=>n.status==='active'||n.status==='team'||(n.status==='dead'&&ludus.day-(n.diedDay||0)<30));
+  ludusTeamsTidy();       // the rookies and wanderers found their teams
 }
 
 // ---- on screen ----

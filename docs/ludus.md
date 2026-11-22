@@ -6,6 +6,24 @@ Status: Entwurf zum Ausarbeiten. Die Creature Arena (`arena.js`) bleibt zugleich
 
 Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiatoren sollen wie der Spieler leben (kämpfen, aufsteigen, Beute sammeln, sterben), unabhängig von ihm. Zuerst wird das Gerüst umgebaut, die lebende Welt kommt danach darauf.
 
+### Teams (Umbau beschlossen im November 2026, in Arbeit)
+Vom Nutzer: Vorbild ist Sport (Blood Bowl, The Finals, echte Ligen).
+- **Jeder Gladiator gehört immer zu einem Team**; ein Einzelner ist ein Team mit einem Mitglied. Teams entstehen, wachsen, schrumpfen und lösen sich auf; die Schule des Spielers ist eines davon und lebt nach denselben Regeln.
+- **Beides wird geführt:** eine Tabelle der Teams und die Statistik der einzelnen Gladiatoren (wie Mannschafts- und Spielerwertung).
+- **Teams dürfen groß sein**, auch beim Spieler: viele schwache Gladiatoren oder wenige Profis; Verletzte ruhen, die Ersatzbank springt ein. Das Gleichgewicht kommt über die Kosten je Gladiator (Kost und Logis), keine feste Obergrenze.
+- **Diplomatie:** die Beziehung bestimmt direkt, wie sich die KI nach dem Kampf verhält (bei guter Beziehung keine Hinrichtung). Ein **Schonungsabkommen** schließt aus, dass man sich gegenseitig hinrichtet. Bei einem **Bündnis** steigt man gar nicht mehr gegeneinander in den Ring, außer in der Grube.
+- **Abwerben:** mit Gold kann man Gladiatoren aus anderen Teams kaufen; die KI ebenso.
+
+Von Claude entschieden (änderbar):
+- **Gold gehört dem Team**, nicht dem einzelnen Gladiator: Kost und Logis, Arbeitslohn, Preise, Lösegeld, Einkäufe laufen über die Teamkasse.
+- **Entstehen:** beim Füllen einer Region bilden die Gladiatoren Teams aus 1 bis 3; jeder Neuling gründet sein eigenes Team („Haus“ und sein Familienname). **Wachsen:** ein Team mit genug Gold heuert einen Einzelnen an (derselbe Preis wie für die Schule); zwei kleine Teams, die sich mögen, schließen sich zusammen. **Auflösen:** wenn niemand mehr übrig ist.
+- **Team-Beziehung** wird nicht gespeichert, sondern aus den Beziehungen der Mitglieder gemittelt. Abkommen und Bündnisse mit deiner Schule entstehen nur auf dein Angebot (wegen des Patents: kein Gegner ändert sich von selbst, weil du mit einem anderen etwas getan hast).
+- **Keine Rangordnung im Team** (kein Kapitän, der wechselt), aus demselben Grund.
+- **Turnier der Teams:** jedes Team stellt bis zu drei Gladiatoren je Kampf. Treffen zwei Verbündete aufeinander, lässt das schwächere Team (Tabelle) dem stärkeren den Vortritt.
+- **Schritte:** 1. Teams in der Welt (Entstehen, Kasse, Tabelle). 2. Kämpfe und Turnier nach Teams. 3. Abkommen und Bündnisse. 4. Abwerben. 5. Doku, Bot, Balancing.
+- **Stand Schritt 1** (`ludus-teams.js`): Teams entstehen beim Füllen einer Region (der Boss mit den zwei Stärksten, der Rest zu 1 bis 3), Neulinge und Wanderer gründen ihr eigenes. Die Kasse gehört dem Team (Kost und Logis je Mitglied, Lohn, Arenagold, Lösegeld, Handel, Einkäufe). Ein Team heuert einen Einzelnen an, wenn es dessen Preis (20 + 22 × Stufe) und 10 Tage Kost für alle zahlen kann und der Einzelne es nicht ablehnt (Beziehung zu den Mitgliedern mindestens 0); zwei Teams von höchstens zwei, die sich mögen (Beziehungen beider Richtungen zusammen 3 oder mehr), schließen sich zusammen. Je Region und Tag höchstens ein Anheuern und ein Zusammenschluss. Ein Team zieht als Ganzes weiter, wenn die Durchschnittsstufe seiner Gladiatoren 2 über der Region liegt; das Team eines Rivalen jagt mit ihm. Die Rangliste zeigt die Tabelle der Teams (Ehre der Mitglieder zusammen, Siege, Kasse) und darunter die Gladiatoren mit ihrem Team; die Karte nennt Team, Kameraden und Kasse. Anheuern kann die Schule vorerst nur Einzelne (die anderen stehen unter Vertrag; Abwerben folgt in Schritt 4).
+- Gemessen (zwei Bots, 90 Tage): rund 110 Teams in der Welt, davon 70 bis 85 Einzelne, 25 bis 35 Zweier, wenige Dreier; 116 Zusammenschlüsse und 8 Anheuerungen in einem Lauf. Die Teams bleiben klein (Neulinge, Tode); das Gleichgewicht folgt in Schritt 5.
+
 ### Die Regeln auf einen Blick (gilt für die Schule des Spielers und alle Gladiatoren der Welt gleich)
 1. **Ein Tag:** Jeder Gladiator hat eine Aufgabe: **Kämpft**, **Ruht**, **Trainiert** oder **Arbeitet**. Pro Tag hat die Schule höchstens einen Kampf (Grube oder Arena); es treten die an, die auf Kämpft stehen. Der Kampf beendet den Tag, sonst „Tag beenden“.
 2. **Am Abend** tut jeder seine Aufgabe: Ruhen heilt (das Bett der Taverne, 50 bis 85 %), Training gibt Erfahrung gegen Gold (Trainingsraum nötig), Arbeit bringt das Doppelte der eigenen Kost. Wer auf Kämpft stand und nicht gekämpft hat, ruht. Wer gekämpft hat, heilt an diesem Abend nicht (ein Huhn hilft sofort).

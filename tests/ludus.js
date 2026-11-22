@@ -20,6 +20,19 @@ const { open, finish }=require('./lib');
     out.board=board.map(x=>x.rank+'.'+x.name+(x.champ?'*':'')+' L'+x.level+' '+x.honor).join(' | ');
     if(board.length!==LUDUS_TOUR.roster+2) bad('board size '+board.length);
     if(!board[0].champ) bad('no champion on place 1');
+    // teams: every gladiator of the world in a team of his region; the table; hiring a lone one, two small teams merging; an old save's purse
+    { const id=ludus.map.region, act=(ludus.world||[]).filter(n=>n.status==='active');
+      if(act.some(n=>!ludusTeam(n.team)||ludusTeam(n.team).region!==n.region)) bad('a gladiator without a team of his region');
+      if(act.some(n=>n.gold!==undefined)) bad('gold still on a gladiator');
+      out.teams0=ludusTeamTable(id).map(x=>x.name+':'+x.size).join(' | '); if(!ludusTeamTable(id).some(x=>x.t==='own')) bad('the school is not in the table');
+      ludus.event=null; ludus.forced=null; ludusTab='tour'; ludusRender(); if(!document.body.innerText.includes(Tr('Tabelle der Teams'))) bad('no team table on the board');
+      const solos=ludusRegionNpcs(id).filter(n=>ludusTeamSize(n)===1&&!n.boss&&!n.rival&&!ludusIsChamp(id,'npc',n.id));
+      const big=Object.values(ludus.teams).find(t=>t.region===id&&ludusTeamMembers(t.id).length>=2&&!ludusTeamMembers(t.id).some(n=>n.boss));
+      if(solos.length&&big){ const k0=ludusTeamMembers(big.id).length; ludusTeamMembers(big.id).forEach(m=>{ m.rel={}; }); solos.forEach(n=>{ n.rel={}; n.maimed=false; }); big.gold=5000; ludusTeamsHire(); out.hire=big.name+' '+k0+'->'+ludusTeamMembers(big.id).length; if(ludusTeamMembers(big.id).length!==k0+1) bad('a rich team did not hire a lone gladiator'); }
+      const two=ludusRegionNpcs(id).filter(n=>ludusTeamSize(n)===1&&!n.boss); if(two.length>=2){ const [a2,b2]=two; a2.rel=Object.assign({},a2.rel,{ [b2.id]:2 }); b2.rel=Object.assign({},b2.rel,{ [a2.id]:2 }); ludusTeamsMerge(); if(a2.team!==b2.team) bad('two lone friends did not merge'); }
+      const old={ id:'nOld', name:'Alter Mann', kind:'ork', level:2, status:'active', region:id, gold:77, inventory:[], learned:[], gifts:[] }; ludus.world.push(old); ludusTeamsTidy(); if(!ludusTeamOf(old)||ludusGold(old)!==77||old.gold!==undefined) bad('an old purse was not taken over');
+      old.status='dead'; ludusTeamsTidy(); if(Object.values(ludus.teams).some(t=>!ludusTeamMembers(t.id).length)) bad('an empty team is left');
+      const anyone=ludusRegionNpcs(id).find(n=>!n.boss); ludusPicked=anyone.id; ludusRender(); if(!document.body.innerText.includes('Team:')&&!document.body.innerText.includes(Tr('Team: {0} (allein) · Kasse {1} Gold').slice(0,4))) bad('no team on the card'); ludusPicked=null; ludusRender(); }
     // the pit: scouting for the line-up, a bout, no gold, loot
     // somebody has to come to the pit: a day without anyone there passes
     for(let d=0;d<8;d++){ ludus.options=null; ludusBusy=false; ludusTab='pit'; ludusRender(); for(let i=0;i<300&&!ludus.options;i++) await sleep(50); if(ludus.options&&ludus.options.length) break; ludus.forced=null; ludus.event=null; ludusEndDay(); ludus.forced=null; ludus.event=null; }
@@ -39,7 +52,7 @@ const { open, finish }=require('./lib');
       a.fame=6; const f0=ludusFame(w), g0=ludus.gold; ludus.verdict={ w:w.id, list:[a.id,b.id] }; ludusRender();
       if(!document.querySelector('[data-verdict]')) bad('no verdict panel');
       document.querySelector(`[data-verdict="${a.id}:exec"]`).click(); if(a.status!=='dead') bad('execution did not kill'); if(ludusFame(w)!==f0+2+3) bad('execution fame '+(ludusFame(w)-f0));
-      b.gold=30; const bond0=b.bond||0; document.querySelector(`[data-verdict="${b.id}:spare"]`).click(); if(b.status!=='active') bad('spared one died'); if(ludus.gold<=g0) bad('no ransom'); if((b.bond||0)<=bond0) bad('no gratitude');
+      ludusTeamOf(b).gold=30; const bond0=b.bond||0; document.querySelector(`[data-verdict="${b.id}:spare"]`).click(); if(b.status!=='active') bad('spared one died'); if(ludus.gold<=g0) bad('no ransom'); if((b.bond||0)<=bond0) bad('no gratitude');
       if(ludus.verdict) bad('verdict not finished'); out.verdict=ludusNote;
       // the world's rule: bold and a famous executioner as loser -> the axe; a friend -> mercy
       const c=ns[2], d=ns[3]; c.bold=1; d.fame=10; d.execs=3; if(!ludusAiExecutes(c,d)) bad('a bold winner spared a famous executioner');
@@ -52,7 +65,7 @@ const { open, finish }=require('./lib');
       ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.giftChoice=null; ludus.followup=null;
       ludus.gold=500; const k0=n.inventory.length, s0=ludus.stash.length; ludusPicked=n.id; ludusRender(); document.querySelector('[data-tbuy="0"]').click();
       if(n.inventory.length!==k0-1||ludus.stash.length!==s0+1) bad('buying failed');
-      const best={ id:'sword_epic', q:1, s:7 }; ludus.stash.push(best); n.gold=999; ludusRender(); const sb=[...document.querySelectorAll('[data-tsell]')].find(b=>ludus.stash[+b.dataset.tsell]===best); if(!sb) bad('no sell offer for a better piece'); else { sb.click(); if(!n.inventory.includes(best)) bad('selling failed'); }
+      const best={ id:'sword_epic', q:1, s:7 }; ludus.stash.push(best); ludusTeamOf(n).gold=999; ludusRender(); const sb=[...document.querySelectorAll('[data-tsell]')].find(b=>ludus.stash[+b.dataset.tsell]===best); if(!sb) bad('no sell offer for a better piece'); else { sb.click(); if(!n.inventory.includes(best)) bad('selling failed'); }
       const b0=n.bond||0; document.getElementById('luGift').click(); if((n.bond||0)!==Math.min(3,b0+1)) bad('gift failed'); ludusPicked=null; ludusRender(); } }
     // challenges: the player challenges a bold gladiator from his card, the duel is an arena offer the next day with the own gladiator named in it
     { const id=ludus.map.region, ns=ludusRegionNpcs(id).filter(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'), n=ns[0];
@@ -140,7 +153,7 @@ const { open, finish }=require('./lib');
     showAll();
     // the rival: the killer of this run outlives it, grows a level and waits in the next run, in the region that fits him; revenge strikes him off
     { const id=ludus.map.region, k=ludusRegionNpcs(id).find(n=>!n.boss&&!ludusIsChamp(id,'npc',n.id)); k.level=1; k.xp=0; k.rival=undefined; ludusMeta.rivals=[];
-      ludusRivalMark(k,[ludus.team[0]],'exec'); const e=(ludusMeta.rivals||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no rival saved');
+      revive(); ludus.over=false; ludusRivalMark(k,[ludus.team[0]],'exec'); const e=(ludusMeta.rivals||[])[0]; if(!e||e.victims.length!==1||e.victims[0].how!=='exec') bad('no rival saved');
       ludus.over=true; ludusTab='start'; ludusRender(); if(!document.body.innerText.includes(Tr('Deine Rivalen'))) bad('no rivals at the end of the run');
       ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.rival===e.id);
       if(!n) bad('rival not in the new world'); else { out.rival=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('rival not grown or not hostile');
