@@ -118,7 +118,9 @@ function ludusRivalTrait(e,weak){
 }
 function ludusRivalGrowTraits(e){
   e.traits=e.traits||[];
-  if(!e.traits.length){ [ludusRivalTrait(e,false),ludusRivalTrait(e,true)].forEach(t=>{ if(t) e.traits.push(t); }); }
+  e.traits=e.traits.filter((t,i)=>!(t.role==='bane'&&e.traits.some((x,j)=>j!==i&&x.k===t.k)));       // never a strength and a weakness of one kind (an old save could have both)
+  if(!e.traits.some(t=>t.role==='boon')){ const t=ludusRivalTrait(e,false); if(t) e.traits.push(t); }
+  if(!e.traits.some(t=>t.role==='bane')){ const t=ludusRivalTrait(e,true); if(t) e.traits.push(t); }       // one after the other, so the second sees the first
   const want=1+LUDUS_RIVAL.ranks.length-1-LUDUS_RIVAL.ranks.findIndex(([k])=>(e.victims||[]).length+(e.runs||0)>=k);       // 1 strength as Rivale, 2 as Geißel, 3 as Schrecken
   while(e.traits.filter(t=>t.role==='boon').length<want){ const t=ludusRivalTrait(e,false); if(!t) break; e.traits.push(t); }
 }

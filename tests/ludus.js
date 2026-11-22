@@ -58,7 +58,7 @@ const { open, finish }=require('./lib');
       ludusTeamOf(b).gold=30; const bond0=b.bond||0; document.querySelector(`[data-verdict="${b.id}:spare"]`).click(); if(b.status!=='active') bad('spared one died'); if(ludus.gold<=g0) bad('no ransom'); if((b.bond||0)<=bond0) bad('no gratitude');
       if(ludus.verdict) bad('verdict not finished'); out.verdict=ludusNote;
       // the world's rule: bold and a famous executioner as loser -> the axe; a friend -> mercy
-      const c=ns[2], d=ns[3]; c.bold=1; d.fame=10; d.execs=3; if(!ludusAiExecutes(c,d)) bad('a bold winner spared a famous executioner');
+      const c=ns[2], d=ns[3]; ludus.accords=[]; c.rel={}; c.bold=1; d.fame=10; d.execs=3; if(!ludusAiExecutes(c,d)) bad('a bold winner spared a famous executioner');
       c.bold=0.2; d.fame=0; d.execs=0; c.rel={}; c.rel[d.id]=3; if(ludusAiExecutes(c,d)) bad('a friend was executed');
       // over an own gladiator: a spare one joins for it, then is executed by a merciless winner
       const extra={ id:'mX', name:'Opfer', kind:'goblin', level:1, xp:0, inventory:[], learned:[], gifts:[], seed:1, honor:0 }; ludus.team.push(extra); c.bold=1;
@@ -139,6 +139,15 @@ const { open, finish }=require('./lib');
       out.tsLen=ts2.length; if(ts2.length>=2){ const [a,b]=ts2.slice(-2), A=ludusTeamMembers(a.id), B=ludusTeamMembers(b.id); A.forEach(x=>{ x.rel=x.rel||{}; B.forEach(y=>{ x.rel[y.id]=3; }); }); B.forEach(y=>{ y.rel=y.rel||{}; A.forEach(x=>{ y.rel[x.id]=3; }); });
         ludusAccordsEvening(); const ac=ludusAccord(a.id,b.id); if(!ac||ac.type!=='ally') bad('teams of the world made no alliance'); out.accordAi=ac&&ac.type;
         if(ludusFeudPairs([A[0],B[0]]).length) bad('allies paired in the arena'); } }
+    // transfers: the school poaches a gladiator under contract (the fee goes to his team); a rich team of the world buys one from another
+    { const id=ludus.map.region, n=ludusRegionNpcs(id).find(x=>ludusCanPoach(x));
+      if(n){ const t=ludusTeamOf(n), g0=t.gold||0, fee=ludusTransferFee(n); ludus.gold=fee+500; ludus.rooms.inn=Math.max(ludus.rooms.inn||1,3); ludus.forced=null; ludus.event=null; ludus.verdict=null;
+        ludusPicked=n.id; ludusRender(); const pb=document.getElementById('luPoach'); if(!pb) bad('no poach button'); else pb.click();
+        if(!ludusMember('m'+n.id)) bad('poaching failed'); else if((t.gold||0)!==g0+fee) bad('the fee did not reach the team'); out.poach=fee; ludusPicked=null; }
+      for(let k=0;k<3;k++) ludus.world.push(ludusNpcMake(ludusRng('tr'+k),id,1,0)); ludusTeamsTidy();
+      const fresh=ludus.world.slice(-3); const buyer=ludusTeamOf(fresh[0]); fresh[1].team=fresh[2].team; ludusTeamsTidy(); const seller=ludusTeamOf(fresh[1]);
+      if(buyer&&seller&&buyer!==seller){ fresh.forEach(x=>{ x.rel={}; x.bond=0; }); fresh[1].level=fresh[0].level+3; Object.values(ludus.teams).forEach(x=>{ if(x!==buyer) x.gold=Math.min(x.gold||0,1); }); buyer.gold=9999;
+        const k0=ludusTeamMembers(buyer.id).length; ludusTeamsTransfer(); out.transferAi=buyer.name+' '+k0+'->'+ludusTeamMembers(buyer.id).length; if(ludusTeamMembers(buyer.id).length!==k0+1) bad('a rich team bought nobody'); } }
     // the day's tasks: one works, one trains (with a training room), the day ends without a bout
     ludus.rooms.training=1; ludus.gold=200; ludus.forced=null; ludus.event=null;
     ludus.team[0].job='work'; if(ludus.team[1]) ludus.team[1].job='train';
@@ -185,7 +194,8 @@ const { open, finish }=require('./lib');
         ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no rival line on the card'); ludusPicked=null;
         // his traits: a strength and a weakness, real in the fight; the stage when he steps into the sand
         const ne=ludusRivalOf(n); if(!ne||(ne.traits||[]).filter(t=>t.role==='boon').length<1||(ne.traits||[]).filter(t=>t.role==='bane').length!==1||!(n.gifts||[]).some(g=>g.id==='rival')) bad('no traits: '+JSON.stringify(ne&&ne.traits));
-        out.traits=ludusRivalTraitsText(n);
+        out.traits=ludusRivalTraitsText(n); if(new Set(ne.traits.map(t=>t.k)).size!==ne.traits.length) bad('a trait kind twice');
+        { const e2={ id:'xx', victims:[], runs:0, traits:[{ k:'taken_cut', v:0.6, role:'boon' },{ k:'taken_cut', v:1.6, role:'bane' }] }; ludusRivalGrowTraits(e2); if(new Set(e2.traits.map(t=>t.k)).size!==e2.traits.length||!e2.traits.some(t=>t.role==='bane')) bad('an old conflicting trait was not mended'); }
         { const c=ludusMemberCreature(n), w=ne.traits.find(t=>t.k.startsWith('taken_')&&t.role==='bane'); if(w&&resistOf(c,DMG_KINDS.indexOf(w.k.slice(6)))<=resistOf(arenaMake(n.kind,0,0),DMG_KINDS.indexOf(w.k.slice(6)))) bad('weakness has no effect'); }
         ludus.event=null; ludus.forced=null; ludus.verdict=null; ludusFight({ arena:true, mode:'duel', variant:'duel', foes:[ludusNpcFoe(n)], kind:n.kind, level:n.level, name:n.name, title:n.name, layout:'pit', reward:10, members:[ludus.team[0].id] });
         const stg=document.getElementById('rivalStage'); out.stage=stg&&stg.innerText.replace(/\n+/g,' | '); if(!stg) bad('no rival stage'); else document.getElementById('rivalStageGo').click();

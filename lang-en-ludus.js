@@ -195,7 +195,7 @@ i18nRegister({
 "Tabelle der Teams":"Team table", "Gladiatoren":"Gladiators", "Gladiator":"gladiator", "{0} · {1} Gladiatoren":"{0} · {1} gladiators", "{0} · {1} Gladiator":"{0} · {1} gladiator",
 "{0} Ehre · {1} Siege · {2} Gold":"{0} honour · {1} wins · {2} gold", "Deine Schule":"Your school",
 "Team: {0} (mit {1}) · Kasse {2} Gold":"Team: {0} (with {1}) · purse {2} gold", "Team: {0} (allein) · Kasse {1} Gold":"Team: {0} (alone) · purse {1} gold",
-"{0} steht bei {1} unter Vertrag.":"{0} is under contract with {1}.", "{0} tritt {1} bei ({2} Gold).":"{0} joins {1} ({2} gold).", "{0} geht in {1} auf.":"{0} merges into {1}.",
+"{0} steht bei {1} unter Vertrag und ist nicht zu haben.":"{0} is under contract with {1} and not for sale.", "{0} tritt {1} bei ({2} Gold).":"{0} joins {1} ({2} gold).", "{0} geht in {1} auf.":"{0} merges into {1}.",
 "{0} zieht weiter nach {1}.":"{0} moves on to {1}.", "{0} kommt aus {1}.":"{0} comes from {1}.", "{0} ({1}) tritt als Legende ab.":"{0} ({1}) retire as legends.",
 "Haus {0}":"House {0}"
 });
@@ -211,4 +211,9 @@ i18nRegister({
 "Deine Schule kündigt das {0} mit {1}.":"Your school cancels the {0} with {1}.", "{0} und {1} schließen ein {2}.":"{0} and {1} conclude a {2}.", "{0} und {1} beenden ihr {2}.":"{0} and {1} end their {2}.",
 "{0} lässt {1} als Verbündetem den Vortritt":"{0} gives way to its ally {1}", "Abkommen mit {0}: keine Hinrichtung":"Accord with {0}: no execution",
 "{0} · {1} Gladiatoren · {2}":"{0} · {1} gladiators · {2}", "{0} · {1} Gladiator · {2}":"{0} · {1} gladiator · {2}"
+});
+// transfers
+i18nRegister({
+"Abwerben · {0} Gold Ablöse an {1}":"Poach · {0} gold transfer fee to {1}", "{0} wechselt von {1} zu deiner Schule ({2} Gold Ablöse).":"{0} moves from {1} to your school ({2} gold transfer fee).",
+"{0} wechselt von {1} zu {2} ({3} Gold Ablöse).":"{0} moves from {1} to {2} ({3} gold transfer fee)."
 });

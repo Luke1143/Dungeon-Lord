@@ -593,6 +593,7 @@ function ludusRender(){
   el.querySelectorAll('[data-tsell]').forEach(b=>b.addEventListener('click',()=>ludusTradeSell(ludusPicked,+b.dataset.tsell)));
   on('luGift',()=>ludusTradeGift(ludusPicked));
   ludusWireAccords(el);
+  on('luPoach',()=>{ const id=ludusPicked; ludusPicked=null; if(!ludusPoach(id)){ ludusPicked=id; ludusRender(); } });
   on('luChallenge',()=>ludusChallenge(ludusPicked));
   on('luPickJoin',()=>{ const id=ludusPicked; ludusPicked=null; if(!ludusRecruit(id)) ludusRender(); });
   on('luEndDay',ludusEndDay); on('luForcedGo',()=>{ const o=ludusForcedBout(); if(o) ludusFight(o.members?o:Object.assign({},o,{ members:[ludus.fighter.id] })); });
@@ -654,7 +655,7 @@ function ludusPickHTML(){
     ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${ludusGold(n)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}
     ${ludusAccordHTML(n)}<h3>Herausforderung</h3>${ludusChallenged(n.id)?`<p class="luHint">${ludusEsc(n.name)} hat schon eine Verabredung in der Arena.</p>`:(ludusCanChallenge(n)&&ludus.fighter?`<p><button id="luChallenge">${ludusEsc(ludus.fighter.name)} fordert ${ludusEsc(n.name)} heraus</button></p><p class="luHint">Ein Duell morgen in der Arena, um den anderthalbfachen Preis und ${LUDUS_CHALLENGE.bonus} Ehre mehr.<br>${ludusAccepts(n,ludus.fighter)?`${ludusEsc(n.name)} wird annehmen.`:`${ludusEsc(n.name)} wird wohl ablehnen und ${LUDUS_CHALLENGE.decline} Ehre verlieren.`}<br>Wer am Tag des Duells nicht antritt, kneift: −${LUDUS_CHALLENGE.coward} Ehre.</p>`:'<p class="luHint">Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.</p>')}
     <p><button id="luGift" ${ludus.gold<ludusGiftCost(n)||(n.bond||0)>=3?'disabled':''}>Geschenk · ${ludusGiftCost(n)} Gold (Beziehung +1)</button></p>
-    ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':!solo?`<p class="luHint">${ludusEsc(n.name)} steht bei ${ludusEsc(ludusTeamName(n))} unter Vertrag.</p>`:`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
+    ${champ||n.boss?'<p class="luHint">Der Champion lässt sich nicht anheuern. Man trifft ihn im Turnier.</p>':!solo?(ludusCanPoach(n)?`<button id="luPoach" class="menuMain" ${ludus.gold>=ludusTransferFee(n)&&ludusSlotsFree()>0?'':'disabled'}>Abwerben · ${ludusTransferFee(n)} Gold Ablöse an ${ludusEsc(ludusTeamName(n))}</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`:`<p class="luHint">${ludusEsc(n.name)} steht bei ${ludusEsc(ludusTeamName(n))} unter Vertrag und ist nicht zu haben.</p>`):`<button id="luPickJoin" class="menuMain" ${canJoin&&ludus.gold>=price?'':'disabled'}>Anheuern · ${price} Gold</button>${ludusSlotsFree()>0?'':' <span class="luHint">Kein Platz frei (die Taverne gibt mehr Plätze).</span>'}`}
     <button id="luPickClose">Schließen</button></div>`;
 }
 function ludusPaint(){

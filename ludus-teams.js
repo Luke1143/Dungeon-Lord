@@ -87,7 +87,7 @@ function ludusTeamsMerge(){
     ludusChron(keep.region,'team',`${go.name} geht in ${keep.name} auf.`);
   });
 }
-function ludusTeamsEvening(){ ludusTeamsTidy(); ludusTeamsHire(); ludusTeamsMerge(); ludusTeamsTidy(); ludusAccordsEvening(); }
+function ludusTeamsEvening(){ ludusTeamsTidy(); ludusTeamsHire(); ludusTeamsTransfer(); ludusTeamsMerge(); ludusTeamsTidy(); ludusAccordsEvening(); }
 
 // ---- the table: teams of the region by honour (the sum of their gladiators'), the school among them ----
 function ludusTeamTable(id){
@@ -164,3 +164,28 @@ function ludusAccordHTML(n){
   return h;
 }
 function ludusWireAccords(el){ el.querySelectorAll('[data-accord]').forEach(b=>b.addEventListener('click',()=>{ const [id,what]=b.dataset.accord.split(':'); if(what==='cancel') ludusAccordCancel(id); else ludusAccordOffer(id,what); })); }
+
+// ---- transfers: a gladiator under contract can be bought from his team; the fee goes to the team's purse ----
+// The fee is twice what a lone one costs (2 × (20 + 22 × level)); the school pays less the better he stands to it (−10 % per step of his relation).
+// He must not dislike the buyer (relation above −2); not the boss, a champion or a rival. A team with only him is no transfer (he is hired as a lone one).
+// Teams of the world buy too: the richest of a region, when it can pay the fee and 10 days of board for one more, buys the best gladiator of another
+// (not allied) team who is better than its own weakest and does not dislike it; one transfer a region per day.
+const ludusTransferFee=n=>Math.round(2*ludusTeamHirePrice(n)*(1-0.1*(n.bond||0)));
+const ludusCanPoach=n=>!!n&&n.status==='active'&&ludusTeamSize(n)>=2&&!n.boss&&!n.rival&&!ludusIsChamp(n.region,'npc',n.id)&&(n.bond||0)>-2&&!ludusAlliedSchool(n);
+function ludusPoach(id){
+  const n=ludusNpc(id); if(!ludusCanPoach(n)||ludusSlotsFree()<1) return false;
+  const fee=ludusTransferFee(n), t=ludusTeamOf(n); if(ludus.gold<fee||!t) return false;
+  ludus.gold-=fee; t.gold=(t.gold||0)+fee; ludusJoinTeam(n); ludusTeamsTidy();
+  const txt=`${n.name} wechselt von ${t.name} zu deiner Schule (${fee} Gold Ablöse).`; ludusChron(n.region,'team',txt); ludusNote=txt; ludusSave(); ludusRender(); return true;
+}
+function ludusTeamsTransfer(){
+  const done=new Set();
+  Object.values(ludus.teams||{}).sort((a,b)=>(b.gold||0)-(a.gold||0)).forEach(t=>{
+    if(done.has(t.region)) return; const node=ludusMapWorld().nodes[t.region], mem=ludusTeamMembers(t.id); if(!node||!mem.length) return;
+    const weakest=Math.min(...mem.map(ludusGladWorth));
+    const cands=ludusRegionNpcs(t.region).filter(n=>n.team!==t.id&&ludusTeamMembers(n.team).length>=2&&!n.boss&&!n.rival&&!ludusIsChamp(t.region,'npc',n.id)&&!ludusAllied(n,mem[0])&&ludusGladWorth(n)>weakest&&ludusTeamLiking([n],mem)>=0);
+    const n=cands.sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)).find(x=>(t.gold||0)>=2*ludusTeamHirePrice(x)+LUDUS_TEAMS.hireDays*ludusUpkeep(node.col)*(mem.length+1)); if(!n) return;
+    const from=ludusTeamOf(n), fee=2*ludusTeamHirePrice(n); t.gold-=fee; from.gold=(from.gold||0)+fee; n.team=t.id; done.add(t.region);
+    ludusChron(t.region,'team',`${n.name} wechselt von ${from.name} zu ${t.name} (${fee} Gold Ablöse).`);
+  });
+}
