@@ -41,7 +41,7 @@ function ludusLifePlan(){
   ludusRegionNpcs(id).forEach(n=>{
     ludusEquip(n);
     if(n.maimed||ludusHurtPct(n)<LUDUS_LIFE.restBelow||tIn<=1) { plans[n.id]='rest'; return; }
-    if(n.boss||ludusIsChamp(id,'npc',n.id)){ plans[n.id]=r()<0.35?'arena':'rest'; return; }      // the champion fights now and then, but nobody may challenge him outside the tournament
+    if(n.boss||ludusIsChamp(id,'npc',n.id)){ const x=r(); plans[n.id]=x<0.35?'pit':(x<0.55?'arena':'rest'); return; }      // the champion fights now and then, but nobody may challenge him outside the tournament
     if(ludusLifePoor(n)){ plans[n.id]=r()<n.bold?'arena':'work'; return; }       // gold for board and lodging: the bold fight for it, the others work
     const x=r(); plans[n.id]=x<0.15?'rest':(x<0.15+0.35+0.3*n.bold?'arena':'pit');
   });
@@ -51,7 +51,7 @@ function ludusLifePlan(){
 }
 const ludusPlanOf=id=>ludus.life&&ludus.life.day===ludus.day?ludus.life.plans[id]:undefined;
 // who is free in the pit / the arena today (not the champion: he only meets the player in the tournament)
-const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&!ludusChallenged(n.id));       // who has an appointment in the arena keeps himself for it
+const ludusGoers=what=>ludusRegionNpcs(ludus.map.region).filter(n=>ludusPlanOf(n.id)===what&&!(ludus.life.busy||[]).includes(n.id)&&(what==='pit'||!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id))&&!ludusChallenged(n.id));       // the champion's team trains in the pit but meets nobody in the arena outside the tournament; who has an appointment in the arena keeps himself for it
 const ludusLifeBusy=ids=>{ ids.forEach(id=>{ const n=id&&ludusNpc(id); if(n) n.foughtToday=true; }); if(ludus.life) ludus.life.busy=(ludus.life.busy||[]).concat(ids.filter(Boolean)); };
 
 // ---- a bout between gladiators, fought by the engine; everything that happens to them stays ----

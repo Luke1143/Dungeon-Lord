@@ -93,6 +93,8 @@ const { open, finish }=require('./lib');
       // never two of one team against each other in the arena
       const mates=ludusRegionNpcs(id).filter(q=>ludusTeamSize(q)>=2); if(mates.length>=2){ const t0=mates[0].team, pair=ludusRegionNpcs(id).filter(q=>q.team===t0).slice(0,2); pair[0].rel={ [pair[1].id]:-3 }; if(ludusFeudPairs(pair).length) bad('teammates paired in the arena'); } }
     // free for all: one of the own among three gladiators, every one a side of his own
+    const fresh=()=>ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&n.status==='active');
+      for(let k=0;fresh().length<3&&k<5;k++){ ludus.world.push(ludusNpcMake(ludusRng('extra'+k),ludus.map.region,1,0)); ludusTeamsTidy(); }       // enough strangers for a free for all
     { const npcs=ludusRegionNpcs(ludus.map.region).filter(n=>!n.boss&&!ludusIsChamp(ludus.map.region,'npc',n.id)&&n.status==='active').slice(0,3); npcs.forEach(n=>{ n.bond=3; n.rel={}; }); const foes=npcs.map(ludusNpcFoe);
       const o={ arena:true, ffa:true, mode:'ffa', variant:'ffa', foes, kind:foes[0].kind, level:foes[0].level, name:foes[0].name, title:'FFA', layout:'pit', members:[ludus.team[0].id], reward:20 };
       const setup=ludusMatchSetup(o,'t'); if(setup.teams.length!==4) bad(`ffa sides ${setup.teams.length} (${npcs.length} gladiators, day ${ludus.day})`);
