@@ -119,7 +119,7 @@ function ludusVerdict(w,l,execute,region){
     else { l.status='dead'; l.diedDay=ludus.day; l.last={ t:'died', d:ludus.day }; }
     (ludus.world||[]).forEach(n=>{ if(n.status==='active'&&n!==w&&n.rel&&(n.rel[l.id]||0)>=1) ludusRelAdd(n,w,-2); });       // his friends do not forget
     const t=`${w.name} richtet ${l.name} hin (+${gain} Ruhm).`; ludusChron(region,'death',t);
-    if(ownL&&!ownW) ludusArchMark(w,[l],'exec');       // whoever executes one of yours becomes your arch-enemy
+    if(ownL&&!ownW){ ludusArchMark(w,[l],'exec'); ludusHallAdd(l,'exec',w.name); }       // whoever executes one of yours becomes your arch-enemy
     const rv=ownW?ludusRevenge(l):''; return rv?t+' · '+rv:t;
   }
   const pay=ludusRansom(l,region);

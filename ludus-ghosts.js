@@ -88,7 +88,7 @@ function ludusArchText(n){
 // revenge: one of yours has killed or executed him
 function ludusRevenge(n){
   if(!n||!n.arch||n.avenged||n.status==='active') return '';
-  n.avenged=true; ludus.fame+=LUDUS_ARCH.revenge; ludusMeta.archEnemies=(ludusMeta.archEnemies||[]).filter(e=>e.id!==n.arch);
+  n.avenged=true; ludus.fame+=LUDUS_ARCH.revenge; ludusTrophyAdd(n,ludusArchOf(n)); ludusMeta.archEnemies=(ludusMeta.archEnemies||[]).filter(e=>e.id!==n.arch);
   const t=`Rache: ${n.name} ist tot (+${LUDUS_ARCH.revenge} Ruhm).`; ludusChron(n.region,'arch',t);
   // his friends do not forget: a grudge against the school (each of them; nobody takes his place)
   (ludus.world||[]).filter(x=>x.status==='active'&&x!==n&&x.rel&&(x.rel[n.id]||0)>=1).forEach(x=>{ x.bond=Math.max(-3,(x.bond||0)-2); });

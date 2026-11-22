@@ -283,7 +283,7 @@ function ludusTourneyEnd(w){
       const beat=prev&&prev.t==='npc'?ludusNpc(prev.id):null; if(beat&&beat.ghost){ const g=(ludusMeta.ghosts||[]).find(x=>x.id===beat.ghost); if(g){ ludusMeta.ghosts=ludusMeta.ghosts.filter(x=>x!==g); t+=` ${g.name} tritt ab.`; } }
       t+=` ${m.name} gewinnt das Turnier von ${n.name} und steht nun auf Platz 1! +${gold} Gold.`;
       ludusLog(`Turniersieg in ${n.name}`);
-      if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusArchSync(); ludusSaveGhost(ludus.team,'',true); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
+      if(last){ ludus.over=true; ludus.cause='Platz 1 der Hauptstadt: du bist Champion des Landes!'; ludusMeta.titles=(ludusMeta.titles||0)+1; ludusArchSync(); ludusSaveGhost(ludus.team,'',true); ludusLegacyEnd(ludus.team); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); t+=' Das Land liegt dir zu Füßen.'; }
     } else t+=` ${ludusEntryName(w)} gewinnt das Turnier von ${n.name}.`;
   }
   ludusRegionAfterTourney(id);

@@ -88,6 +88,12 @@ Leitsatz des Nutzers: **Simulation zuerst, Spiel danach.** Die anderen Gladiator
 - **Die Bühne:** steht ein Erzfeind im Kampf, hält der Kampf am Anfang an: Name und Rang, Art, Stufe und Ruhm, seine Opfer, seine Eigenheiten und ein Spruch. „Kämpfen“ lässt ihn los.
 - Ein nicht beendeter Lauf schreibt seine Erzfeinde so zurück, wie sie gerade sind; die Tafel am Ende eines Laufs zeigt alle.
 
+### Das Vermächtnis (`ludus-legacy.js`, Leitsatz „Verlieren macht Spaß“)
+- **Arten lernt man durch Taten:** eine neue Schule kann eine der sechs Anfangsarten sein oder jede Art, gegen die eine deiner Schulen einen Kampf gewonnen hat oder die für sie gekämpft hat (angeheuert). Die Chronik meldet jede neu gelernte Art. Der Debug-Schalter „alle Kreaturen“ ist aus (alte Spielstände werden einmal umgestellt).
+- **Das Erbstück:** am Ende eines Laufs (Tod, Hinrichtung oder Titel des Landes) bietet die Tafel die drei besten Stücke der Schule an (was die letzten Kämpfer trugen und was im Vorrat lag); eins wählst du, sonst das beste. Der erste Gladiator der nächsten Schule trägt es.
+- **Trophäen:** jeder Erzfeind, an dem du Rache nimmst, ist eine Trophäe; jede gibt neuen Schulen 5 Gold mehr zum Start, höchstens 50.
+- **Halle der Gefallenen:** die letzten 24 Toten deiner Schulen: Name, Art, Stufe, Tag, gefallen oder hingerichtet und durch wen. Der Startbildschirm zeigt die letzten acht.
+
 ### Das Dungeon der Region (`hub3d.js`)
 - Vom Nutzer: Die 3D-Ansicht im Ludus ist ein prozedural erzeugtes, zusammenhängendes Dungeon, neu für jede Region; alle Gladiatoren sind darin sichtbar, in dem Raum, der zu ihrer Tätigkeit passt. Anklicken soll später Diplomatie öffnen (Verhandeln, Handel, Beitritt, Bündnisse für Jeder-gegen-jeden), die auch die KI nutzt.
 - **Räume:** Taverne, Grube, Trainingsraum, Schmiede, Bücherei (die Gebäude der Schule, mit ihren Ausbaustufen oder als Bauplatz), dazu Arena (Tribünen, Banner), Werkstatt, Turnierhalle (Sitz des Champions, immer da) und die Gasse der Ereignisse. Sie liegen in einer aus dem Lauf und der Region gewürfelten Ordnung auf einem 3 × 3-Raster, ein wenig versetzt; Gänge mit dunklen Wänden und Fackeln verbinden Nachbarn (ein Baum und zwei Schleifen mehr), nur dort, wo kein Raum steht. Ein Reiter fährt die Kamera zu seinem Raum (Karte und Rangliste: Turnierhalle), ein angeklickter Gladiator holt sie zu seinem.

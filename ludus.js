@@ -6,7 +6,7 @@ const LUDUS_STORE='dungeon-lord-ludus-v1';
 const LUDUS_START_GOLD=40;
 const LUDUS_STARTER_KINDS=['ork','goblin','skeleton','barbarian','thief','troll'];   // what is known before the campaign has shown more (the debug switch opens everything)
 const LUDUS_NAMES=['Marcus','Livia','Brutus','Cassia','Titus','Varro','Nerva','Drusa','Rufus','Sabina','Cato','Valeria','Gaius','Aurelia','Lucan','Fulvia','Decimus','Octavia','Cornelius','Silvia'];
-let ludus=null, ludusMeta={ unlockAll:true, roomsAll:false, bestWins:0, bestDays:0, runs:0 };
+let ludus=null, ludusMeta={ unlockAll:false, roomsAll:false, bestWins:0, bestDays:0, runs:0, v:2 };
 // ---- the Ludus as a place: rooms that are built during a run (paid with standing, which wins bring) and that grow in tiers ----
 // cost[i] = standing to reach tier i+1. The forge's tier is the quality of what it sells; its categories (weapon kinds, armour weights, shields) are bought separately.
 const LUDUS_ROOMS={
@@ -43,10 +43,10 @@ let ludusSel=-1, ludusActive=false, ludusResolved=false, ludusResultText='', lud
 // ---- persistence ----
 async function ludusSave(){ try{ await window.storage.set(LUDUS_STORE, JSON.stringify({ run:ludus, meta:ludusMeta }), false); }catch(e){} }
 async function ludusLoad(){
-  try{ const r=await window.storage.get(LUDUS_STORE,false); if(r&&r.value){ const d=JSON.parse(r.value); ludus=d.run&&!d.run.over?d.run:(d.run||null); if(ludus&&!ludus.over&&ludus.mode!=='tour'){ ludus.over=true; ludus.cause='Ein Spielstand von vor der Tournee: bitte neu beginnen.'; } ludusMeta=Object.assign(ludusMeta,d.meta||{}); ['renown','rooms','cats'].forEach(k=>delete ludusMeta[k]); ludusArchMigrate(); if(ludus){ ludusLink(ludus); } if(ludus&&!ludus.over){ ludus.rooms=ludus.rooms||{ inn:1, pit:1 }; ludus.renown=ludus.renown||0; ludus.cats=ludus.cats||{}; if(!ludus.world) ludusPopulate(); if(ludus.event&&!ludus.event.cast) ludus.event=null; if(ludus.forced&&ludus.forced.type==='tour') ludus.forced={ type:'week' }; } } }catch(e){}
+  try{ const r=await window.storage.get(LUDUS_STORE,false); if(r&&r.value){ const d=JSON.parse(r.value); ludus=d.run&&!d.run.over?d.run:(d.run||null); if(ludus&&!ludus.over&&ludus.mode!=='tour'){ ludus.over=true; ludus.cause='Ein Spielstand von vor der Tournee: bitte neu beginnen.'; } ludusMeta=Object.assign(ludusMeta,d.meta||{}); ['renown','rooms','cats'].forEach(k=>delete ludusMeta[k]); ludusArchMigrate(); ludusLegacyMigrate(); if(ludus){ ludusLink(ludus); } if(ludus&&!ludus.over){ ludus.rooms=ludus.rooms||{ inn:1, pit:1 }; ludus.renown=ludus.renown||0; ludus.cats=ludus.cats||{}; if(!ludus.world) ludusPopulate(); if(ludus.event&&!ludus.event.cast) ludus.event=null; if(ludus.forced&&ludus.forced.type==='tour') ludus.forced={ type:'week' }; } } }catch(e){}
 }
 const ludusRng=(salt)=>seededRng(arenaHash((ludus?ludus.seed:'x')+':'+salt));
-function ludusKinds(){ const all=arenaKinds(); return ludusMeta.unlockAll?all:all.filter(k=>LUDUS_STARTER_KINDS.includes(k)); }
+function ludusKinds(){ const all=arenaKinds(); return ludusMeta.unlockAll?all:all.filter(ludusKnownKind); }       // the starters and what the schools have learnt (ludus-legacy.js)
 
 // ---- the team: the fighter and the mates recruited in the tavern, each with gear, wounds and gifts of their own. `ludus.fighter` is the member shown and worked on (a getter on the run) ----
 function ludusLink(l){ if(!l) return l; if(!l.team){ l.team=l.fighter?[l.fighter]:[]; delete l.fighter; l.companion=null; } l.sel=Math.max(0,Math.min(l.team.length-1,l.sel|0)); l.team.forEach((m,i)=>{ if(!m.id) m.id='m'+i+Math.floor(Math.random()*1e6); if(!m.gifts) m.gifts=[]; });
@@ -95,8 +95,8 @@ function ludusNewRun(kind,name){
   const seed=String(Math.floor(Math.random()*1e9));
   ludus={ seed, mode:'tour', day:1, gold:LUDUS_START_GOLD, fame:0, wins:0, losses:0, over:false, cause:'', log:[], opp:null, options:null, rooms:{ inn:1, pit:1, forge:1 }, renown:0, cats:{}, world:[], forced:null, event:null, followup:null, giftChoice:null, lastFight:1,
     scrolls:{}, sel:0, pick:[], team:[{ id:'m0', gifts:[], kind, name:name||LUDUS_NAMES[Math.floor(Math.random()*LUDUS_NAMES.length)], level:1, xp:0, hp:undefined, inventory:[], learned:[], books:[], seed:Math.floor(Math.random()*1e9), honor:0, job:'fight' }] };
-  ludusLink(ludus); ludusMapInit();
-  ludusMeta.runs++; ludusTab='map'; ludusNote='';
+  ludusLink(ludus); ludusMapInit(); ludusLegacyStart();
+  ludusMeta.runs++; ludusTab='map'; ludusNote=ludus.heirloom?`${ludus.team[0].name} trägt das Erbstück: ${ludus.heirloom}.`:'';
   ludusSave(); ludusRender();
 }
 function ludusLog(t){ ludus.log.unshift(`Tag ${ludus.day}: ${t}`); ludus.log=ludus.log.slice(0,8); }
@@ -298,10 +298,10 @@ function ludusResolve(st){
   ludusLifeBusy(foes.map(f=>f.npc));
   fallen.forEach(p=>{ const n=p.m.npc&&ludusNpc(p.m.npc); if(n){ n.status='dead'; n.diedDay=ludus.day; n.last={ t:'died', d:ludus.day }; } });
   ludus.team=ludus.team.filter(m=>!fallen.some(p=>p.m===m)); ludus.sel=Math.max(0,Math.min(ludus.sel,ludus.team.length-1));
-  if(fallen.length) ludusArchMark(ludusKillerOf(st),fallen.map(p=>p.m),'kill');       // whoever killed one of yours becomes your arch-enemy
+  if(fallen.length){ const killer=ludusKillerOf(st); ludusArchMark(killer,fallen.map(p=>p.m),'kill'); fallen.forEach(p=>ludusHallAdd(p.m,'kill',killer&&killer.name)); }       // whoever killed one of yours becomes your arch-enemy; the fallen go to the hall
   const fell=fallen.map(p=>p.m.name).join(', ');
   if(!ludus.team.length){
-    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; ludusArchSync(); text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
+    ludus.over=true; ludus.cause=`Gefallen gegen ${o.title||o.name}`; head='Gefallen'; ludusArchSync(); ludusLegacyEnd(team); text=`${fell} ${team.length>1?'sind':'ist'} in der Arena gestorben. Die Schule ist leer: der Lauf endet nach ${ludus.wins} Siegen und ${ludus.day} Tagen.`;
     ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day);
     ludusSaveGhost(team,o.title||o.name,false);
   } else {
@@ -313,6 +313,7 @@ function ludusResolve(st){
       m.energy=Math.max(10,(Number.isFinite(c.energy)?c.energy:(m.energy===undefined?100:m.energy))-12);
     });
     if(won){
+      foes.forEach(f=>ludusLearnKind(f.kind));       // a kind beaten is a kind known
       ludus.wins++; head='Sieg';
       if(o.pit){
         // the pit pays in gear: the best piece the beaten foes carried
@@ -343,7 +344,7 @@ function ludusResolve(st){
       if(o.arena&&!o.rent&&!st.arena.mercy){
         const wi=st.arena.winner, ws=(st.arena.roster[wi]||[]).filter(c=>c.npcId&&!c.removed&&!c.dead&&!c.unconscious&&st.creatures.includes(c)).map(c=>ludusNpc(c.npcId)).filter(n=>n&&n.status==='active').sort((a,b)=>b.level-a.level), w=ws[0];
         if(w) alive.forEach(({m})=>{ const t=ludusVerdict(w,m,ludusAiExecutes(w,m),ludus.map.region); text+=' · '+t; });
-        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusArchSync(); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
+        if(!ludus.team.length){ ludus.over=true; ludus.cause=`Hingerichtet von ${w?w.name:''}`; ludusArchSync(); ludusLegacyEnd(team); ludusMeta.bestWins=Math.max(ludusMeta.bestWins,ludus.wins); ludusMeta.bestDays=Math.max(ludusMeta.bestDays,ludus.day); ludusSaveGhost(team,o.title||o.name,false); }
       }
     }
     { const pt=ludusPactsAfter(o,st,alive[0]&&alive[0].m); if(pt) text+=' · '+pt; }
@@ -671,13 +672,14 @@ function ludusStartHTML(){
   const kinds=ludusKinds().map(k=>[k,SPECIES[k].label]).sort((a,b)=>a[1].localeCompare(b[1],'de'));
   return `<div class="luPanel"><h2>Neue Schule</h2><p class="luHint">Gründe eine Gladiatorenschule und führe sie auf Tournee durch das Land: in der Grube üben, in der Arena um Gold und Ehre kämpfen, alle ${LUDUS_TOUR.tourneyEvery} Tage das Turnier der Region gewinnen und weiterziehen, bis du Platz 1 der Hauptstadt bist. Dein erster Kämpfer beginnt auf Stufe 1, ohne Ausrüstung.</p><p>Kreatur <select id="luKind">${arenaOpts(kinds,kinds[0]&&kinds[0][0])}</select> Name <input id="luName" maxlength="16" placeholder="zufällig"></p>
       <p><label><input type="checkbox" id="luUnlock" ${ludusMeta.unlockAll?'checked':''}> Debug: alle Kreaturen freigeschaltet</label><br><label><input type="checkbox" id="luRooms" ${ludusMeta.roomsAll?'checked':''}> Debug: alle Räume voll ausgebaut</label></p>
-      <p class="luHint">Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage. Läufe: ${ludusMeta.runs}</p>
+      <p class="luHint">Rekord: ${ludusMeta.bestWins} Siege, ${ludusMeta.bestDays} Tage. Läufe: ${ludusMeta.runs}</p>${ludusLegacyHTML()}
       <button id="luStart" class="menuMain">Beginnen</button></div>`;
 }
 function ludusWireStart(el){
   document.getElementById('luStart').addEventListener('click',()=>ludusNewRun(document.getElementById('luKind').value,document.getElementById('luName').value.trim()));
   document.getElementById('luUnlock').addEventListener('change',e=>{ ludusMeta.unlockAll=e.target.checked; ludusSave(); ludusRender(); });
   document.getElementById('luRooms').addEventListener('change',e=>{ ludusMeta.roomsAll=e.target.checked; ludusSave(); ludusRender(); });
+  ludusWireLegacy(el||document);
 }
 async function ludusOpen(){ await ludusLoad(); ludusNote=''; ludusTab=(ludus&&!ludus.over)?'map':'start'; showScreen('ludus'); ludusRender(); }
 document.getElementById('menuLudus').addEventListener('click',ludusOpen);

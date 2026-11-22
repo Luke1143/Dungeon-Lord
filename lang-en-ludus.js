@@ -180,3 +180,13 @@ i18nRegister({
 "Ich kenne deine Schule. Ich kenne ihre Gräber.":"I know your school. I know its graves.", "Noch einer aus dieser Schule? Der Sand wartet schon.":"Another one from that school? The sand is waiting.",
 "Ich bin zurückgekommen. Für dich.":"I came back. For you.", "Letztes Mal hat mich niemand aufgehalten.":"Last time nobody stopped me.", "Sag mir deinen Namen, damit ich ihn mir merke.":"Tell me your name, so that I remember it."
 });
+// the legacy
+i18nRegister({
+"Vermächtnis":"Legacy", "Wähle ein Erbstück für die nächste Schule (sonst erbt sie das erste):":"Choose an heirloom for the next school (otherwise it inherits the first):", "Vererben":"Bequeath",
+"Erbstück für die nächste Schule: {0}":"Heirloom for the next school: {0}", "Erbstück für die nächste Schule: {0}.":"Heirloom for the next school: {0}.", "{0} trägt das Erbstück: {1}.":"{0} carries the heirloom: {1}.",
+"Gelernte Arten: {0} (eine Art lernt deine Schule, wenn sie einen Kampf gegen sie gewinnt oder ein Gladiator dieser Art für sie kämpft).":"Kinds learnt: {0} (your school learns a kind when it wins a bout against it or a gladiator of that kind fights for it).",
+"noch keine":"none yet", "Trophäen: {0} (jeder Erzfeind, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} (every arch-enemy you take revenge on gives 5 more gold at the start, at most 50).",
+"Trophäen: {0} · +{1} Startgold (jeder Erzfeind, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} · +{1} starting gold (every arch-enemy you take revenge on gives 5 more gold at the start, at most 50).",
+"Halle der Gefallenen":"Hall of the Fallen", "hingerichtet von {0}, Tag {1}":"executed by {0}, day {1}", "gefallen durch {0}, Tag {1}":"fallen to {0}, day {1}", "hingerichtet, Tag {0}":"executed, day {0}", "gefallen, Tag {0}":"fallen, day {0}",
+"Deine Schulen kennen jetzt die Art {0}: neue Schulen können sie wählen.":"Your schools now know the kind {0}: new schools can choose it."
+});

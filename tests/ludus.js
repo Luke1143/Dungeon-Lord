@@ -167,6 +167,17 @@ const { open, finish }=require('./lib');
       const g=ludusRegionNpcs(ludus.map.region)[0]; g.nemesis='neX'; g.gifts=[{ id:'nemesis', fx:[] }]; ludusArchMigrate();
       if(ludusMeta.nemeses||!ludusMeta.archEnemies.some(e=>e.id==='neX'&&!e.sworn)||g.arch!=='neX'||g.nemesis||g.gifts[0].id!=='arch') bad('old save not taken over');
       delete g.arch; g.gifts=[]; ludusMeta.archEnemies=keep; }
+    // the legacy: kinds learnt by deed, the heirloom, trophies, the hall of the fallen
+    { ludusMeta.unlockAll=false; ludusMeta.known=[]; const other=arenaKinds().find(k=>!LUDUS_STARTER_KINDS.includes(k));
+      if(ludusKinds().some(k=>!LUDUS_STARTER_KINDS.includes(k))) bad('unknown kinds offered'); ludusLearnKind(other); if(!ludusKinds().includes(other)) bad('a learnt kind is not offered');
+      if(!(ludusMeta.trophies||[]).length) bad('no trophy for the revenge'); if(!(ludusMeta.fallen||[]).length) bad('nobody in the hall of the fallen');
+      ludus.stash.push({ id:'sword_epic', q:1, s:3 }); ludusLegacyEnd(ludus.team); ludus.over=true; ludusTab='start'; ludusRender();
+      const hb=document.querySelector('[data-heir="0"]'); if(!hb) bad('no heirloom choice'); else hb.click();
+      const heir=ludusMeta.heirloom; if(!heir) bad('no heirloom kept'); out.heirloom=heir&&instLabel(heir);
+      if(!document.body.innerText.includes(Tr('Halle der Gefallenen'))) bad('no hall of the fallen on the start screen');
+      ludusNewRun(other,'Quinta'); out.legacyStart={ gold:ludus.gold, note:ludusNote, kind:ludus.team[0].kind };
+      if(ludus.gold!==LUDUS_START_GOLD+ludusTrophyGold()) bad('no trophy gold: '+ludus.gold);
+      if(heir&&!(ludus.team[0].inventory||[]).some(i=>i.id===heir.id)) bad('the heirloom is not worn'); if(ludusMeta.heirloom) bad('the heirloom was not spent'); }
     ludus.over=true; ludusTab='start'; ludusRender();
     out.misses=[...I18N_MISSES];
     return out;

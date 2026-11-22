@@ -73,7 +73,7 @@ function ludusNpcOutcomes(st,won,o){
 const ludusMateLevel=n=>n.level;       // a gladiator joins as what he is
 const ludusRecruitPrice=n=>Math.round((20+22*ludusMateLevel(n))*((n.bond||0)>=2?0.5:((n.bond||0)<0?1.6:1)));
 function ludusJoinTeam(n){
-  ludusEquip(n);
+  ludusEquip(n); ludusLearnKind(n.kind);       // a kind that fights for the school is known from now on
   ludus.team.push({ id:'m'+n.id, npc:n.id, gifts:JSON.parse(JSON.stringify(n.gifts||[])), kind:n.kind, name:n.name, level:n.level, xp:n.xp||xpForLevel(n.level), hp:n.hp, energy:n.energy, inventory:JSON.parse(JSON.stringify(n.inventory||[])), learned:(n.learned||[]).slice(), books:[], seed:n.seed, honor:n.honor||0 });
   ludusNormalizeGear(ludus.team[ludus.team.length-1]); n.status='team'; n.maimed=false; n.met=1; n.last={ t:'joined', d:ludus.day };
 }
