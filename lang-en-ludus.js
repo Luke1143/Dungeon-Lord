@@ -162,17 +162,17 @@ i18nRegister({
 i18nRegister({
 "{0} und {1} verbünden sich für Jeder gegen jeden.":"{0} and {1} join forces for a free for all.", "Jeder gegen jeden: {0}. {1} bleibt als Letzter stehen.":"Free for all: {0}. {1} is the last one standing.",
 });
-// the arch-enemy
+// the rival
 i18nRegister({
-"{0} ist wieder da und hat deine Schule nicht vergessen.":"{0} is back and has not forgotten your school.", "Erzfeind":"Arch-enemy", " · Erzfeind":" · arch-enemy",
-"Geißel":"Scourge", "Schrecken der Schulen":"Terror of the Schools", "{0} deiner Schule.":"{0} of your school.",
-"{0} wird zum Erzfeind deiner Schule.":"{0} becomes the arch-enemy of your school.", "{0} steigt auf: {1}.":"{0} rises: {1}.",
+"{0} ist wieder da und hat deine Schule nicht vergessen.":"{0} is back and has not forgotten your school.", "Rivale":"Rival", " · Rivale":" · rival",
+"Erzrivale":"Arch-rival", "Angstgegner":"Dreaded rival", "{0} deiner Schule.":"{0} of your school.",
+"{0} wird zum Rivalen deiner Schule.":"{0} becomes a rival of your school.", "{0} steigt auf: {1}.":"{0} rises: {1}.",
 "{0} ist in {1} angekommen und sucht deine Schule.":"{0} has arrived in {1} and seeks your school.", "{0} folgt deiner Schule nach {1}.":"{0} follows your school to {1}.", "{0} · {1} Opfer":"{0} · {1} victims", "hingerichtet: {0} (Tag {1})":"executed: {0} (day {1})", "getötet: {0} (Tag {1})":"killed: {0} (day {1})",
 "Rache: {0} ist tot (+{1} Ruhm).":"Revenge: {0} is dead (+{1} fame).", "Rache: {0} ist tot (+{1} Ruhm)":"Revenge: {0} is dead (+{1} fame)",
-"Deine Erzfeinde":"Your arch-enemies", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
+"Deine Rivalen":"Your rivals", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
 "Sie wachsen mit jedem Lauf um eine Stufe und warten in der Region, die zu ihnen passt. Wer einen von ihnen tötet oder hinrichtet, nimmt Rache (+{0} Ruhm).":"They grow a level with every run and wait in the region that fits them. Whoever of yours kills or executes one of them takes revenge (+{0} fame)."
 });
-// the arch-enemy's traits and stage
+// the rival's traits and stage
 i18nRegister({
 "Schaden durch Schnitt ×{0}":"Damage from cuts ×{0}", "Schaden durch Stich ×{0}":"Damage from thrusts ×{0}", "Schaden durch Hieb ×{0}":"Damage from blows ×{0}",
 "Schnittfest":"Cut-proof", "Stichfest":"Thrust-proof", "Hiebfest":"Blow-proof",
@@ -185,8 +185,8 @@ i18nRegister({
 "Vermächtnis":"Legacy", "Wähle ein Erbstück für die nächste Schule (sonst erbt sie das erste):":"Choose an heirloom for the next school (otherwise it inherits the first):", "Vererben":"Bequeath",
 "Erbstück für die nächste Schule: {0}":"Heirloom for the next school: {0}", "Erbstück für die nächste Schule: {0}.":"Heirloom for the next school: {0}.", "{0} trägt das Erbstück: {1}.":"{0} carries the heirloom: {1}.",
 "Gelernte Arten: {0} (eine Art lernt deine Schule, wenn sie einen Kampf gegen sie gewinnt oder ein Gladiator dieser Art für sie kämpft).":"Kinds learnt: {0} (your school learns a kind when it wins a bout against it or a gladiator of that kind fights for it).",
-"noch keine":"none yet", "Trophäen: {0} (jeder Erzfeind, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} (every arch-enemy you take revenge on gives 5 more gold at the start, at most 50).",
-"Trophäen: {0} · +{1} Startgold (jeder Erzfeind, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} · +{1} starting gold (every arch-enemy you take revenge on gives 5 more gold at the start, at most 50).",
+"noch keine":"none yet", "Trophäen: {0} (jeder Rivale, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} (every rival you take revenge on gives 5 more gold at the start, at most 50).",
+"Trophäen: {0} · +{1} Startgold (jeder Rivale, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).":"Trophies: {0} · +{1} starting gold (every rival you take revenge on gives 5 more gold at the start, at most 50).",
 "Halle der Gefallenen":"Hall of the Fallen", "hingerichtet von {0}, Tag {1}":"executed by {0}, day {1}", "gefallen durch {0}, Tag {1}":"fallen to {0}, day {1}", "hingerichtet, Tag {0}":"executed, day {0}", "gefallen, Tag {0}":"fallen, day {0}",
 "Deine Schulen kennen jetzt die Art {0}: neue Schulen können sie wählen.":"Your schools now know the kind {0}: new schools can choose it."
 });

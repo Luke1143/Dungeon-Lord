@@ -2,7 +2,7 @@
 // Policy: sleep when someone is badly hurt; fight in the arena when the chances for the line-up are good, else in the pit (fair); buy better gear, recruit when there is room;
 // pay the rent (or fight for it), fight every own bout of a tournament, move on to the right as soon as a region is won.
 // Usage: NODE_PATH=$(npm root -g) node tools/ludus-tour-bot.js [kinds=ork] [maxDay=150] [repeats=1] [arenaMin=0.6]
-// CHAIN=1: the repeats of a kind are played one after another in the same page, so that what outlives a run (the arch-enemies) carries over
+// CHAIN=1: the repeats of a kind are played one after another in the same page, so that what outlives a run (the rivals) carries over
 const { chromium }=require('playwright'); const path=require('path');
 const GAME=process.env.GAME||path.resolve(__dirname,'..');
 const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, REPEAT=+process.argv[4]||1, ARENA_MIN=+(process.argv[5]||0.6);
@@ -67,7 +67,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
       const world=Object.keys(cols).sort((a,c)=>a-c).map(c=>`c${c}:${cols[c].n}x L${(cols[c].lv/cols[c].n).toFixed(1)}/${cols[c].max}`).join(' ');
       const chron=(ludus.chronicle||[]), count=re=>chron.filter(e=>re.test(e.t)).length;
       const deadNpc=(ludus.world||[]).filter(n=>n.status==='dead').length, execs=(ludus.world||[]).reduce((t,n)=>t+(n.execs||0),0), topFame=(ludus.world||[]).filter(n=>n.status==='active').map(n=>n.fame||0).sort((a,b)=>b-a).slice(0,3);
-      const nem=(ludusMeta.archEnemies||[]).map(e=>`${e.name}:${e.kind}${e.level}:${e.victims.length}v:${ludusArchRank(e)}`).join(' ');
+      const nem=(ludusMeta.rivals||[]).map(e=>`${e.name}:${e.kind}${e.level}:${e.victims.length}v:${ludusRivalRank(e)}`).join(' ');
       return { nem, chall:chal, execs, topFame, tourneys, world, deaths:count(/fällt|richtet/), moves:count(/zieht weiter/), rookies:count(/Neuling/), msPerDay:Math.round((performance.now()-t0)/ludus.day), kind, over:ludus.over, cause:ludus.cause, day:ludus.day, level:ludusLevel(), team:ludus.team.map(m=>m.kind+m.level).join('+'), gold:ludus.gold, cleared:ludus.map.cleared.length, col:ludusHere().col, stats, log:log.slice(-8) };
     },[kind,MAXDAY,ARENA_MIN]);
     console.log(JSON.stringify(Object.assign(res,{ errs:errs.slice(0,3) })));

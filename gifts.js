@@ -19,7 +19,7 @@ const GIFT_MUL={
   procMul:     { good:1, w:0.5, name:'Tückisch',    text:v=>`Chance auf Zustände (Betäubung, Blutung, Verlangsamung) ×${v}` },
   xp:          { good:1, w:0.5, max:2, name:'Lernbegierig', text:v=>`Erfahrung ×${v}` },
   gold:        { good:1, w:0.5, max:2, name:'Goldgierig',  text:v=>`Gold aus Kämpfen ×${v}` },
-  // only an arch-enemy's traits use these (the generator leaves them out): damage taken of one kind
+  // only a rival's traits use these (the generator leaves them out): damage taken of one kind
   taken_cut:   { good:-1, w:0.7, trait:true, name:'Schnittfest', text:v=>`Schaden durch Schnitt ×${v}` },
   taken_pierce:{ good:-1, w:0.7, trait:true, name:'Stichfest',   text:v=>`Schaden durch Stich ×${v}` },
   taken_blunt: { good:-1, w:0.7, trait:true, name:'Hiebfest',    text:v=>`Schaden durch Hieb ×${v}` }

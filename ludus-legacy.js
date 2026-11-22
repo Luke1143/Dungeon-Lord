@@ -1,7 +1,7 @@
 // The legacy: what a school leaves to the next one (docs/ludus.md, "Das Vermächtnis"). Losing is part of the game; it should move something forward.
 // 1. Kinds are learnt by deed: a new school may be of a starter kind, or of any kind a school of yours has beaten in a bout or had fight for it.
 // 2. The heirloom: at the end of a run the player picks one of the three best pieces the school owned (none picked: the best); the first gladiator of the next school starts with it.
-// 3. Trophies: every arch-enemy avenged is a trophy; each gives the next schools 5 gold more at the start (at most 50).
+// 3. Trophies: every rival avenged is a trophy; each gives the next schools 5 gold more at the start (at most 50).
 // 4. The hall of the fallen: who of yours died, when, how and by whose hand (the last 24).
 // ludusMeta: { known:[kind], heirloom:inst|null, heirloomChoice:[inst], trophies:[{ name, kind, level, rank, run }], fallen:[{ name, kind, level, day, how, by, run }], v }
 const LUDUS_LEGACY={ trophyGold:5, trophyGoldMax:50, fallen:24, choice:3 };
@@ -22,7 +22,7 @@ function ludusHallAdd(m,how,by){
 
 // ---- trophies ----
 function ludusTrophyAdd(n,e){
-  ludusMeta.trophies=(ludusMeta.trophies||[]).concat([{ name:n.name, kind:n.kind, level:n.level, rank:e?ludusArchRank(e):'', run:ludusMeta.runs||0 }]);
+  ludusMeta.trophies=(ludusMeta.trophies||[]).concat([{ name:n.name, kind:n.kind, level:n.level, rank:e?ludusRivalRank(e):'', run:ludusMeta.runs||0 }]);
 }
 const ludusTrophyGold=()=>Math.min(LUDUS_LEGACY.trophyGoldMax,LUDUS_LEGACY.trophyGold*(ludusMeta.trophies||[]).length);
 
@@ -52,7 +52,7 @@ function ludusLegacyHTML(){
   if(choice.length) h+=`<p>Wähle ein Erbstück für die nächste Schule (sonst erbt sie das erste):</p>${choice.map((i,k)=>`<div class="luItem"><span>${ludusEsc(instLabel(i))}</span><button data-heir="${k}">Vererben</button></div>`).join('')}`;
   else if(ludusMeta.heirloom) h+=`<p>Erbstück für die nächste Schule: ${ludusEsc(instLabel(ludusMeta.heirloom))}</p>`;
   h+=`<p class="luHint">Gelernte Arten: ${known.length?known.map(k=>ludusEsc(SPECIES[k].label)).join(', '):'noch keine'} (eine Art lernt deine Schule, wenn sie einen Kampf gegen sie gewinnt oder ein Gladiator dieser Art für sie kämpft).</p>`;
-  h+=`<p class="luHint">Trophäen: ${t.length?t.map(x=>ludusEsc(x.name)).join(', '):'noch keine'}${t.length?` · +${ludusTrophyGold()} Startgold`:''} (jeder Erzfeind, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).</p>`;
+  h+=`<p class="luHint">Trophäen: ${t.length?t.map(x=>ludusEsc(x.name)).join(', '):'noch keine'}${t.length?` · +${ludusTrophyGold()} Startgold`:''} (jeder Rivale, an dem du Rache nimmst, gibt 5 Gold mehr zum Start, höchstens 50).</p>`;
   if(f.length) h+=`<h3>Halle der Gefallenen</h3>${f.slice(0,8).map(x=>`<div class="luItem"><span>${ludusEsc(x.name)} — ${SPECIES[x.kind]?SPECIES[x.kind].label:x.kind}, Stufe ${x.level}</span><span>${x.how==='exec'?'hingerichtet':'gefallen'}${x.by?' '+(x.how==='exec'?'von':'durch')+' '+ludusEsc(x.by):''}, Tag ${x.day}</span></div>`).join('')}`;
   return h;
 }
