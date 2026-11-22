@@ -172,3 +172,12 @@ i18nRegister({
 "Deine Erzfeinde":"Your nemeses", "{0} Opfer":"{0} victims", "{0} — {1}, Stufe {2}":"{0} — {1}, level {2}",
 "Sie wachsen mit jedem Lauf um eine Stufe und warten in der Region, die zu ihnen passt. Wer einen von ihnen tötet oder hinrichtet, nimmt Rache (+{0} Ruhm).":"They grow a level with every run and wait in the region that fits them. Whoever of yours kills or executes one of them takes revenge (+{0} fame)."
 });
+// the nemesis's traits and stage
+i18nRegister({
+"Schaden durch Schnitt ×{0}":"Damage from cuts ×{0}", "Schaden durch Stich ×{0}":"Damage from thrusts ×{0}", "Schaden durch Hieb ×{0}":"Damage from blows ×{0}",
+"Schnittfest":"Cut-proof", "Stichfest":"Thrust-proof", "Hiebfest":"Blow-proof",
+"Stärken: {0}":"Strengths: {0}", "Schwäche: {0}":"Weakness: {0}", "{0}, {1} deiner Schule":"{0}, {1} of your school", "{0} · Stufe {1} · Ruhm {2}":"{0} · level {1} · fame {2}", "Opfer: {0}":"Victims: {0}",
+"Ich kenne deine Schule. Ich kenne ihre Gräber.":"I know your school. I know its graves.", "Noch einer aus dieser Schule? Der Sand wartet schon.":"Another one from that school? The sand is waiting.",
+"Ich bin zurückgekommen. Für dich.":"I came back. For you.", "Letztes Mal hat mich niemand aufgehalten.":"Last time nobody stopped me.", "Sag mir deinen Namen, damit ich ihn mir merke.":"Tell me your name, so that I remember it.",
+"Für {0}!":"For {0}!"
+});

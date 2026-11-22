@@ -279,6 +279,7 @@ function ludusFight(o){
   const setup=ludusMatchSetup(o,'');
   arenaStart(setup);
   document.getElementById('levelSubtitle').textContent=Tr(o.tourney?'Ludus — Turnierkampf':(o.pit?'Ludus — Grubenkampf':'Ludus — Arenakampf'));
+  const nem=ludusFoes(o).map(f=>f.npc&&ludusNpc(f.npc)).filter(n=>n&&ludusNemesisOf(n)); if(nem.length) ludusNemesisStage(nem[0]);       // a nemesis steps into the sand
 }
 // called once when the match is over (or left): applies the outcome to the run; returns the headline
 function ludusResolve(st){
@@ -290,8 +291,8 @@ function ludusResolve(st){
   let head, text;
   if(ludus.forced&&ludus.forced.type!=='tourney') ludus.forced=null;
   ludus.lastFight=ludus.day;
-  if(o.rent) team.forEach(m=>{ m.debtPaidDay=ludus.day; });
-  if(o.challenge){ const c=(ludus.challenges||[]).find(x=>x.id===o.challenge); if(c) c.done=true; }       // the duel was fought: nobody is a coward       // the debt bout settles the debt and pays the day's board of whoever fought it
+  if(o.rent) team.forEach(m=>{ m.debtPaidDay=ludus.day; });       // the debt bout settles the debt and pays the day's board of whoever fought it
+  if(o.challenge){ const c=(ludus.challenges||[]).find(x=>x.id===o.challenge); if(c) c.done=true; }       // the duel was fought: nobody is a coward
   ludusNpcOutcomes(st,won,o);
   const revenge=foes.map(f=>ludusRevenge(f.npc&&ludusNpc(f.npc))).filter(Boolean);       // a nemesis who fell in the fight
   ludusLifeBusy(foes.map(f=>f.npc));
@@ -368,7 +369,7 @@ function ludusLeaveMatch(){
   if(!ludusResolved){ if(state.arena&&state.arena.deathmatch&&!state.arena.over) return; ludusResolve(state); }       // a bout to the death cannot be left half-fought (the retreat scroll is the way out)
   ludusActive=false; arenaSpell=null; uiTab('info');
   document.body.classList.remove('arenaMode','ludusMode'); debugNoFog=false; possessed=null; fpRestoreOnLeave();
-  document.getElementById('arenaResult').hidden=true; document.getElementById('ludusContinue').hidden=true;
+  document.getElementById('arenaResult').hidden=true; document.getElementById('ludusContinue').hidden=true; const ns=document.getElementById('nemStage'); if(ns) ns.remove();
   state=makeDefaultState(); ludusNote=ludusResultText.replace('\n',' — '); ludusTab=ludus.over?'start':ludusTab; showScreen('ludus'); ludusRender();
 }
 
@@ -646,7 +647,7 @@ function ludusPickHTML(){
   const gear=(n.inventory||[]).map(i=>ludusEsc(instLabel(i))).join(', ')||'keine', story=ludusNpcStory(n);
   const canJoin=!champ&&!n.boss&&ludusSlotsFree()>0&&(n.bond||0)>-2, price=ludusRecruitPrice(n);
   return `<div class="luPanel"><h2>${ludusEsc(n.name)}</h2><div class="luOpp"><canvas id="luPickPrev" width="110" height="110"></canvas><div>${SPECIES[n.kind].label} · Stufe ${n.level}<br>Platz ${rank}${champ?' (Champion)':''} · ${n.honor||0} Ehre<br>${n.wins||0} Siege, ${n.losses||0} Niederlagen${n.kills?`, ${n.kills} getötet`:''}<br>Ruhm ${ludusFame(n)}${n.execs?` · ${n.execs} hingerichtet`:''}<br>Leben ${ludusHurtPct(n)} %${plan?' · heute '+LUDUS_PLAN_LABEL[plan]:''}</div></div>
-    ${ludusNemesisText(n)?`<p class="luBane">${ludusEsc(ludusNemesisText(n))}</p>`:''}<p class="luHint">Ausrüstung: ${gear}${story?'<br>Zuletzt: <span>'+ludusEsc(story)+'</span>':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0}) · Gold ${n.gold||0}</p>
+    ${ludusNemesisText(n)?`<p class="luBane">${ludusEsc(ludusNemesisText(n))}</p>`:''}${ludusNemesisTraitsText(n)?`<p class="luHint">${ludusEsc(ludusNemesisTraitsText(n))}</p>`:''}<p class="luHint">Ausrüstung: ${gear}${story?'<br>Zuletzt: <span>'+ludusEsc(story)+'</span>':''}<br>Zur Schule: ${LUDUS_BOND_WORD(n.bond||0)} (${n.bond||0}) · Gold ${n.gold||0}</p>
     <h3>Handel</h3>${(n.inventory||[]).map((inst,k)=>`<div class="luItem"><span>${ludusEsc(instLabel(inst))}</span><button data-tbuy="${k}" ${ludus.gold<ludusBuyPrice(n,inst)?'disabled':''}>Kaufen · ${ludusBuyPrice(n,inst)} Gold</button></div>`).join('')||'<p class="luHint">Nichts zu verkaufen.</p>'}
     ${ludus.stash.map((inst,k)=>ludusWantsItem(n,inst)?`<div class="luItem"><span>${ludusEsc(instLabel(inst))} <small>(aus deinem Vorrat)</small></span><button data-tsell="${k}" ${(n.gold||0)<ludusSellTo(n,inst)?'disabled':''}>Verkaufen · ${ludusSellTo(n,inst)} Gold</button></div>`:'').join('')}
     <h3>Herausforderung</h3>${ludusChallenged(n.id)?`<p class="luHint">${ludusEsc(n.name)} hat schon eine Verabredung in der Arena.</p>`:(ludusCanChallenge(n)&&ludus.fighter?`<p><button id="luChallenge">${ludusEsc(ludus.fighter.name)} fordert ${ludusEsc(n.name)} heraus</button></p><p class="luHint">Ein Duell morgen in der Arena, um den anderthalbfachen Preis und ${LUDUS_CHALLENGE.bonus} Ehre mehr.<br>${ludusAccepts(n,ludus.fighter)?`${ludusEsc(n.name)} wird annehmen.`:`${ludusEsc(n.name)} wird wohl ablehnen und ${LUDUS_CHALLENGE.decline} Ehre verlieren.`}<br>Wer am Tag des Duells nicht antritt, kneift: −${LUDUS_CHALLENGE.coward} Ehre.</p>`:'<p class="luHint">Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.</p>')}

@@ -37,6 +37,7 @@ function ludusNemesisMark(killer,victims,how,sworn){
   if(list.length>LUDUS_NEMESIS.max){ list.sort((a,b)=>(b.victims||[]).length-(a.victims||[]).length); list=list.slice(0,LUDUS_NEMESIS.max); }
   ludusMeta.nemeses=list;
   if(!list.includes(e)) return;
+  ludusNemesisDress(killer,e);
   const region=killer.region, rank=ludusNemesisRank(e);
   if(!before) ludusChron(region,'nemesis',sworn?`${killer.name} schwört Rache für ${sworn}: ein neuer Erzfeind.`:`${killer.name} wird zum Erzfeind deiner Schule.`);
   else if(rank!==before) ludusChron(region,'nemesis',`${killer.name} steigt auf: ${rank}.`);
@@ -74,6 +75,7 @@ function ludusNemesisPlace(id){
     if(here.has(e.id)||Math.min(ludusNemesisCol(e),LUDUS_TOUR.cap-1)!==Math.min(col,LUDUS_TOUR.cap-1)) return;
     const n=ludusEquip({ id:'n'+e.id, name:e.name, kind:e.kind, level:e.level, xp:e.xp, seed:e.seed, inventory:JSON.parse(JSON.stringify(e.inventory||[])), learned:(e.learned||[]).slice(),
       status:'active', bond:-3, met:1, last:null, region:id, honor:60, born:ludus.day, bold:e.bold||0.8, fame:e.fame||0, execs:e.execs||0, nemesis:e.id });
+    ludusNemesisDress(n,e);
     ludus.world.push(n); ludusChron(id,'nemesis',`${n.name} ist wieder da und hat deine Schule nicht vergessen.`);
   });
 }
@@ -98,4 +100,56 @@ function ludusRevenge(n){
 function ludusNemesesHTML(){
   const l=ludusMeta.nemeses||[]; if(!l.length) return '';
   return `<h3>Deine Erzfeinde</h3>${l.map(e=>`<div class="luItem"><span>${ludusEsc(e.name)} — ${SPECIES[e.kind]?SPECIES[e.kind].label:e.kind}, Stufe ${e.level}</span><span>${ludusNemesisRank(e)} · ${e.victims.length} Opfer</span></div>`).join('')}<p class="luHint">Sie wachsen mit jedem Lauf um eine Stufe und warten in der Region, die zu ihnen passt. Wer einen von ihnen tötet oder hinrichtet, nimmt Rache (+${LUDUS_NEMESIS.revenge} Ruhm).</p>`;
+}
+
+// ---- a nemesis's traits: one strength and one weakness when he becomes one, another strength at every rise in rank ----
+// They are real rules of the fight (gift effects, docs/gaben.md), shown on his card, so that a school can prepare: the right weapon against his weakness.
+const NEMESIS_STRENGTHS=[
+  { k:'fearless', v:true }, { k:'stunImmune', v:true }, { k:'bleedImmune', v:true }, { k:'lifesteal', v:0.18 }, { k:'thorns', v:0.25 }, { k:'rage', v:0.7 },
+  { k:'maxHp', v:1.3 }, { k:'strength', v:1.25 }, { k:'defense', v:1.3 }, { k:'onKillHeal', v:0.25 }, { k:'taken_cut', v:0.6 }, { k:'taken_pierce', v:0.6 }, { k:'taken_blunt', v:0.6 }
+];
+const NEMESIS_WEAKNESSES=[
+  { k:'taken_cut', v:1.6 }, { k:'taken_pierce', v:1.6 }, { k:'taken_blunt', v:1.6 }, { k:'frail', v:true }, { k:'noFlight', v:true }, { k:'staminaCost', v:1.4 }, { k:'tempo', v:0.8 }
+];
+// the next trait for an entry, chosen by a fixed rule from his id (no dice in the run): never a second of the same kind, never a strength against his own weakness
+function ludusNemesisTrait(e,weak){
+  const pool=(weak?NEMESIS_WEAKNESSES:NEMESIS_STRENGTHS).filter(t=>!(e.traits||[]).some(x=>x.k===t.k));
+  if(!pool.length) return null;
+  const t=pool[arenaHash(e.id+':'+(e.traits||[]).length)%pool.length];
+  return { k:t.k, v:t.v, role:weak?'bane':'boon' };
+}
+function ludusNemesisGrowTraits(e){
+  e.traits=e.traits||[];
+  if(!e.traits.length){ [ludusNemesisTrait(e,false),ludusNemesisTrait(e,true)].forEach(t=>{ if(t) e.traits.push(t); }); }
+  const want=1+LUDUS_NEMESIS.ranks.length-1-LUDUS_NEMESIS.ranks.findIndex(([k])=>(e.victims||[]).length+(e.runs||0)>=k);       // 1 strength as Erzfeind, 2 as Geißel, 3 as Schrecken
+  while(e.traits.filter(t=>t.role==='boon').length<want){ const t=ludusNemesisTrait(e,false); if(!t) break; e.traits.push(t); }
+}
+// his traits as a gift of his (the fight reads gifts)
+function ludusNemesisDress(n,e){
+  ludusNemesisGrowTraits(e);
+  n.gifts=(n.gifts||[]).filter(g=>g.id!=='nemesis').concat([{ id:'nemesis', name:'Erzfeind', rarity:0, fx:e.traits.map(t=>({ k:t.k, v:t.v, role:t.role })) }]);
+}
+const ludusTraitText=t=>GIFT_MUL[t.k]?GIFT_MUL[t.k].text(t.v):(GIFT_FLAG[t.k]?GIFT_FLAG[t.k].text(t.v===true?0:t.v):t.k);
+// the card's lines: what he is good at, where he is weak
+function ludusNemesisTraitsText(n){
+  const e=ludusNemesisOf(n); if(!e||!(e.traits||[]).length) return '';
+  const s=e.traits.filter(t=>t.role==='boon').map(ludusTraitText), w=e.traits.filter(t=>t.role==='bane').map(ludusTraitText);
+  return [s.length?`Stärken: ${s.join(', ')}`:'', w.length?`Schwäche: ${w.join(', ')}`:''].filter(Boolean).join(' · ');
+}
+
+// ---- the stage: when a nemesis steps into the sand, the bout waits for a moment: who he is, whom he killed, what he can and cannot, what he says ----
+const NEMESIS_TAUNTS=['Ich kenne deine Schule. Ich kenne ihre Gräber.','Noch einer aus dieser Schule? Der Sand wartet schon.','Ich bin zurückgekommen. Für dich.','Letztes Mal hat mich niemand aufgehalten.','Sag mir deinen Namen, damit ich ihn mir merke.'];
+function ludusNemesisLines(n){
+  const e=ludusNemesisOf(n); if(!e) return null;
+  const v=(e.victims||[]).slice(-4).map(x=>x.name), taunt=e.sworn?`Für ${e.sworn}!`:NEMESIS_TAUNTS[arenaHash(e.id+':'+ludus.day)%NEMESIS_TAUNTS.length];
+  return { title:`${n.name}, ${ludusNemesisRank(e)} deiner Schule`, kind:`${SPECIES[n.kind].label} · Stufe ${n.level} · Ruhm ${n.fame||0}`, victims:v.length?`Opfer: ${v.join(', ')}`:'', traits:ludusNemesisTraitsText(n), taunt };
+}
+function ludusNemesisStage(n){
+  const l=ludusNemesisLines(n), res=document.getElementById('arenaResult'); if(!l||!res) return;
+  const old=document.getElementById('nemStage'); if(old) old.remove();
+  setSpeed(0);
+  const d=document.createElement('div'); d.id='nemStage'; d.className='arResult nemStage';
+  d.innerHTML=`<div class="endBox"><h2>${ludusEsc(l.title)}</h2><p>${ludusEsc(l.kind)}</p>${l.victims?`<p>${ludusEsc(l.victims)}</p>`:''}${l.traits?`<p class="luHint">${ludusEsc(l.traits)}</p>`:''}<p><i><span>„</span>${ludusEsc(l.taunt)}<span>“</span></i></p><button id="nemStageGo" class="menuMain">Kämpfen</button></div>`;
+  res.parentElement.appendChild(d);
+  d.querySelector('#nemStageGo').addEventListener('click',()=>{ d.remove(); setSpeed(1); });
 }

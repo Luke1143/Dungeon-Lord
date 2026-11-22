@@ -145,6 +145,14 @@ const { open, finish }=require('./lib');
       ludusNewRun('ork','Quarta'); const n=(ludus.world||[]).find(x=>x.nemesis===e.id);
       if(!n) bad('nemesis not in the new world'); else { out.nemesis=n.name+' L'+n.level+' r'+n.region+' col '+ludusMapWorld().nodes[n.region].col; if(n.level!==2||n.bond!==-3) bad('nemesis not grown or not hostile');
         ludusMapDraw(); ludus.event=null; ludus.forced=null; ludusPicked=n.id; ludus.map.region=n.region; ludusRender(); if(!document.querySelector('.luBane')) bad('no nemesis line on the card'); ludusPicked=null;
+        // his traits: a strength and a weakness, real in the fight; the stage when he steps into the sand
+        const ne=ludusNemesisOf(n); if(!ne||(ne.traits||[]).filter(t=>t.role==='boon').length<1||(ne.traits||[]).filter(t=>t.role==='bane').length!==1||!(n.gifts||[]).some(g=>g.id==='nemesis')) bad('no traits: '+JSON.stringify(ne&&ne.traits));
+        out.traits=ludusNemesisTraitsText(n);
+        { const c=ludusMemberCreature(n), w=ne.traits.find(t=>t.k.startsWith('taken_')&&t.role==='bane'); if(w&&resistOf(c,DMG_KINDS.indexOf(w.k.slice(6)))<=resistOf(arenaMake(n.kind,0,0),DMG_KINDS.indexOf(w.k.slice(6)))) bad('weakness has no effect'); }
+        ludus.event=null; ludus.forced=null; ludus.verdict=null; ludusFight({ arena:true, mode:'duel', variant:'duel', foes:[ludusNpcFoe(n)], kind:n.kind, level:n.level, name:n.name, title:n.name, layout:'pit', reward:10, members:[ludus.team[0].id] });
+        const stg=document.getElementById('nemStage'); out.stage=stg&&stg.innerText.replace(/\n+/g,' | '); if(!stg) bad('no nemesis stage'); else document.getElementById('nemStageGo').click();
+        if(document.getElementById('nemStage')) bad('stage did not close'); { const st=state; let k=0; while(arenaStep(st)&&k<8000) k++; ludusResolve(st); ludusLeaveMatch(); ludus.verdict=null; revive(); }
+        if(n.status!=='active'){ n.status='active'; ludusMeta.nemeses=(ludusMeta.nemeses||[]).concat([ne]); n.avenged=false; }       // he fell in the stage bout: back for the rest of the test
         // the hunt: from elsewhere he comes one region nearer every 4 days
         const far=ludusMapWorld().nodes.filter(x=>ludusIsRegion(x)&&x.col===2)[0], home=ludus.map.region; n.region=far.id; ludus.map.region=home; ludus.day=8; ludus.tourney=null;
         const d0=ludusNemesisStep(far.id,home); ludusNemesisHunt(); out.hunt=far.col+'->'+ludusMapWorld().nodes[n.region].col; if(n.region===far.id||ludusMapWorld().nodes[n.region].col>=far.col) bad('the nemesis did not hunt: '+out.hunt);

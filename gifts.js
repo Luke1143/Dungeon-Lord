@@ -18,7 +18,11 @@ const GIFT_MUL={
   fatigueTaken:{ good:-1, w:0.4, name:'Wach',       text:v=>`Müdigkeitsschaden ×${v}` },
   procMul:     { good:1, w:0.5, name:'Tückisch',    text:v=>`Chance auf Zustände (Betäubung, Blutung, Verlangsamung) ×${v}` },
   xp:          { good:1, w:0.5, max:2, name:'Lernbegierig', text:v=>`Erfahrung ×${v}` },
-  gold:        { good:1, w:0.5, max:2, name:'Goldgierig',  text:v=>`Gold aus Kämpfen ×${v}` }
+  gold:        { good:1, w:0.5, max:2, name:'Goldgierig',  text:v=>`Gold aus Kämpfen ×${v}` },
+  // only a nemesis's traits use these (the generator leaves them out): damage taken of one kind
+  taken_cut:   { good:-1, w:0.7, trait:true, name:'Schnittfest', text:v=>`Schaden durch Schnitt ×${v}` },
+  taken_pierce:{ good:-1, w:0.7, trait:true, name:'Stichfest',   text:v=>`Schaden durch Stich ×${v}` },
+  taken_blunt: { good:-1, w:0.7, trait:true, name:'Hiebfest',    text:v=>`Schaden durch Hieb ×${v}` }
 };
 // rules: boon cost = power; param (if any) scales with rarity; bane = the same rule seen from the other side
 const GIFT_FLAG={
@@ -73,10 +77,10 @@ function giftWeight(key,c){
 }
 function pickWeighted(r,keys,c){ const ws=keys.map(k=>giftWeight(k,c)), tot=ws.reduce((a,b)=>a+b,0); let x=r()*tot; for(let i=0;i<keys.length;i++){ x-=ws[i]; if(x<=0) return keys[i]; } return keys[keys.length-1]; }
 function genGift(r,rarity,c,avoid){
-  const boonKeys=Object.keys(GIFT_MUL).concat(Object.keys(GIFT_FLAG).filter(k=>GIFT_FLAG[k].power&&!GIFT_FLAG[k].cost)).filter(k=>!(avoid&&avoid.has(k)));
+  const boonKeys=Object.keys(GIFT_MUL).filter(k=>!GIFT_MUL[k].trait).concat(Object.keys(GIFT_FLAG).filter(k=>GIFT_FLAG[k].power&&!GIFT_FLAG[k].cost)).filter(k=>!(avoid&&avoid.has(k)));
   const fx=[], used=new Set();
   const addBane=(budgetLeft)=>{
-    const mulBane=r()<0.6, keys=mulBane?Object.keys(GIFT_MUL):BANE_FLAGS;
+    const mulBane=r()<0.6, keys=mulBane?Object.keys(GIFT_MUL).filter(k=>!GIFT_MUL[k].trait):BANE_FLAGS;
     const k=pickWeighted(r,keys,c); if(used.has(k)) return 0; used.add(k);
     if(mulBane){ const p=Math.min(budgetLeft,0.6+r()*1.2); const v=mulValue(k,p,false); fx.push({ k, v, role:'bane' }); return mulPower(k,v); }
     fx.push({ k, v:true, role:'bane' }); return GIFT_FLAG[k].cost;

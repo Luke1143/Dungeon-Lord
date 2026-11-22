@@ -70,7 +70,7 @@ function defenseVs(c,kind){
   if(usesEquipment(c)&&c.inventory) wornItems(c).forEach(inst=>{ const def=instDef(inst); if(!def) return; const v=instStat(inst,'defense'); if(!v) return; d+=v*(def.type==='armor'&&ARMOR_MULT[def.family]?ARMOR_MULT[def.family][i]:1); });
   return Math.max(0,d);
 }
-const resistOf=(c,i)=>(SPECIES_RESIST[c.kind]||[1,1,1])[i]*SIZE_DMG[sizeClassOf(c.kind||'imp')][i];
+const resistOf=(c,i)=>(SPECIES_RESIST[c.kind]||[1,1,1])[i]*SIZE_DMG[sizeClassOf(c.kind||'imp')][i]*(c.gifts&&c.gifts.length&&typeof giftMul!=='undefined'?giftMul(c,'taken_'+DMG_KINDS[i]):1);       // a nemesis's known weakness
 // how well a creature stands against each kind (for the inspector): damage taken per kind relative to a plain blow
 function takenVs(c){ return DMG_KINDS.map((k,i)=>{ const d=defenseVs(c,k); return (1-d/(d+DEFENSE_K))*resistOf(c,i); }); }
 function profileText(v){ return DMG_KINDS.map((k,i)=>v[i]>=0.05?`${DMG_LABEL[k]} ${Math.round(v[i]*100)} %`:'').filter(Boolean).join(' · '); }
