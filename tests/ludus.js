@@ -84,7 +84,7 @@ const { open, finish }=require('./lib');
       const m=ludus.team[0], v=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'), h=m.honor=40; ludus.challenges=[{ id:'cx', own:m.id, npc:v.id, day:ludus.day, by:'npc' }]; ludus.forced=null; ludus.event=null; ludusEndDay();
       if((m.honor||0)!==h-LUDUS_CHALLENGE.coward) bad('the coward kept his honour: '+m.honor);
       // the world challenges: a bold gladiator who hates the school
-      const g=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'&&!x.maimed); g.bold=1; g.bond=-3; g.hp=undefined; ludus.lastAiChallenge=-99; ludus.challenges=[]; ludusLifePlan();
+      let g=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id)&&x.status==='active'&&!x.maimed); if(!g){ g=ludusNpcMake(ludusRng('chal'),id,1,0); ludus.world.push(g); ludusTeamsTidy(); } g.bold=1; g.bond=-3; g.hp=undefined; ludus.lastAiChallenge=-99; ludus.challenges=[]; ludusLifePlan();
       if(!(ludus.challenges||[]).some(c=>c.by==='npc'&&c.day===ludus.day)) bad(`no challenge from the world (day ${ludus.day}, tourney in ${ludusTourneyIn()}, ${g.status})`);
       ludus.challenges=[]; ludus.arenaOffers=null;
       // enemies settle it among themselves first
@@ -163,6 +163,12 @@ const { open, finish }=require('./lib');
       // a stranger who is unhappy asks to join
       const id=ludus.map.region, d=ludusRegionNpcs(id).find(n=>ludusFeels(n)&&!n.boss&&!n.rival&&!ludusIsChamp(id,'npc',n.id)&&!ludusAlliedSchool(n));
       if(d){ d.happiness=10; d.bond=0; const def=ludusEventDef('defector'), ev=def.make(()=>0); if(!ev) bad('no event for an unhappy stranger'); else { ludus.event=Object.assign({ id:'defector' },ev,{ npc:d.id }); ludusEventChoose(0); ludus.followup=null; if(!ludusMember('m'+d.id)) bad('the stranger did not join'); } } }
+    // an offer of a rich team for one of the school's gladiators: selling moves him over, the fee comes in
+    { const id=ludus.map.region; while(ludus.team.length<2) ludus.team.push({ id:'mO'+ludus.team.length, name:'Sextus', kind:'ork', level:3, xp:xpForLevel(3), inventory:[], learned:[], gifts:[], seed:6, honor:0, job:'rest' });
+      ludus.team.forEach(m=>{ m.level=Math.max(m.level,6); m.xp=xpForLevel(m.level); }); ludus.lastOffer=-99;
+      const t=Object.values(ludus.teams).find(x=>x.region===id&&ludusTeamMembers(x.id).length&&!ludusTeamMembers(x.id).some(n=>n.boss)); if(t){ Object.values(ludus.teams).forEach(x=>{ if(x!==t) x.gold=0; }); t.gold=9999;
+        const def=ludusEventDef('offer'), ev=def.make(); if(!ev) bad('no offer from a rich team'); else { const m=ludusMember(ev.member), g0=ludus.gold, k0=ludus.team.length; ludus.event=Object.assign({ id:'offer' },ev); ludus.forced=null; ludusRender(); ludusEventChoose(0); ludus.followup=null;
+          out.offer=ev.fee; if(ludus.team.length!==k0-1||ludus.gold!==g0+ev.fee||!ludusTeamMembers(t.id).some(n=>n.name===m.name)) bad('the sale did not go through'); if(def.make()) bad('a second offer at once'); } } }
     // the day's tasks: one works, one trains (with a training room), the day ends without a bout
     ludus.rooms.training=1; ludus.gold=200; ludus.forced=null; ludus.event=null;
     ludus.team[0].job='work'; if(ludus.team[1]) ludus.team[1].job='train';

@@ -31,7 +31,7 @@ const KINDS=(process.argv[2]||'ork').split(','), MAXDAY=+process.argv[3]||150, R
         if(ludus.giftChoice){ const g=ludus.giftChoice.slice().sort((a,c)=>c.power-a.power)[0]; ludus.team[0].gifts.push(g); ludus.giftChoice=null; }
         ludus.followup=null;
         if(ludus.verdict){ const v=ludus.verdict, w=ludusMember(v.w)||ludus.fighter; v.list.slice().forEach(id=>{ const n=ludusNpc(id); if(!n) return; const ex=ludusExecGain(n)>=5; ludusVerdict(w,n,ex,ludus.map.region); stats.verdicts=stats.verdicts||[0,0]; stats.verdicts[ex?0:1]++; }); ludus.verdict=null; }
-        if(ludus.event){ const d=ludusEventDef(ludus.event.id), opts=ludusEventOptions(d); let pick=opts.findIndex(o=>!o.when||o.when(ludus.event)); ludusEventChoose(Math.max(0,pick)); ludus.followup=null; continue; }
+        if(ludus.event){ const d=ludusEventDef(ludus.event.id), opts=ludusEventOptions(d); let pick=ludus.event.id==='offer'?1:opts.findIndex(o=>!o.when||o.when(ludus.event));       // the bot keeps its gladiators ludusEventChoose(Math.max(0,pick)); ludus.followup=null; continue; }
         build(); shop(); wear();
         for(const g of ludusTavernGuests().slice().sort((x,y)=>y.level-x.level)){ if(ludusSlotsFree()>0&&ludus.gold>=ludusRecruitPrice(g)+ludusRent()+20&&(g.bond||0)>-2){ ludusRecruit(g.id); break; } }
         if(ludus.forced){

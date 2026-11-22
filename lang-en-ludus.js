@@ -238,3 +238,11 @@ i18nRegister({
 "{0} verlässt {1} und schließt sich deiner Schule an.":"{0} leaves {1} and joins your school.", "{0} atmet auf und packt seine Sachen. Von nun an kämpft er für deine Schule.":"{0} breathes again and packs his things. From now on he fights for your school.",
 "Du schüttelst den Kopf. Er nickt nur und geht.":"You shake your head. He only nods and leaves."
 });
+// offers for the school's gladiators
+i18nRegister({
+"Ein Angebot für einen deiner Gladiatoren":"An offer for one of your gladiators", "Das Angebot gilt nicht mehr.":"The offer no longer stands.",
+"{0} möchte {1} in sein Team holen und bietet {2} Gold Ablöse. {3} ist es gleich.":"{0} would like to bring {1} into its team and offers a transfer fee of {2} gold. {3} does not mind.",
+"{0} möchte {1} in sein Team holen und bietet {2} Gold Ablöse. {3} ist unzufrieden und würde gern gehen; lehnst du ab, sinkt die Zufriedenheit um {4}.":"{0} would like to bring {1} into its team and offers a transfer fee of {2} gold. {3} is discontent and would like to go; if you refuse, happiness falls by {4}.",
+"Verkaufen ({0} Gold)":"Sell ({0} gold)", "{0} wechselt von deiner Schule zu {1} ({2} Gold Ablöse).":"{0} moves from your school to {1} ({2} gold transfer fee).",
+"Du lehnst ab. {0} nimmt es dir übel.":"You refuse. {0} holds it against you.", "Du lehnst ab.":"You refuse."
+});

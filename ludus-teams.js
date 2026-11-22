@@ -189,3 +189,26 @@ function ludusTeamsTransfer(){
     ludusChron(t.region,'team',`${n.name} wechselt von ${from.name} zu ${t.name} (${fee} Gold Ablöse).`);
   });
 }
+
+// ---- an offer for one of the school's gladiators: the teams of the world buy from the school as they buy from each other ----
+// A team of the region that could pay the fee (2 × (20 + 22 × level)) and 5 days of board for one more asks for the school's best gladiator who is better than
+// its own weakest (never the school's last one; at most every 5 days). The player sells or refuses; the gladiator has a say: one who is unhappy (below 40) wants
+// to go, and a refusal costs his happiness 10. Sold, he joins that team (and bears the school no grudge).
+const LUDUS_OFFER={ every:5, wants:40, refuse:10 };
+function ludusOfferFor(){
+  if(ludus.team.length<2||ludus.day-(ludus.lastOffer||-99)<LUDUS_OFFER.every) return null;
+  const node=ludusRegionNode(); if(!node) return null;
+  const best=Object.values(ludus.teams||{}).filter(t=>t.region===ludus.map.region&&ludusTeamMembers(t.id).length&&!ludusTeamMembers(t.id).some(n=>n.boss)).sort((a,b)=>(b.gold||0)-(a.gold||0));
+  for(const t of best){
+    const mem=ludusTeamMembers(t.id), weakest=Math.min(...mem.map(ludusGladWorth));
+    const m=ludus.team.filter(x=>ludusGladWorth(x)>weakest).sort((a,b)=>ludusGladWorth(b)-ludusGladWorth(a)).find(x=>(t.gold||0)>=2*ludusTeamHirePrice(x)+LUDUS_TEAMS.hireDays*ludusUpkeep(node.col)*(mem.length+1));
+    if(m) return { team:t.id, member:m.id, fee:2*ludusTeamHirePrice(m) };
+  }
+  return null;
+}
+function ludusOfferAccept(ev){
+  const t=ludusTeam(ev.team), m=ludusMember(ev.member); if(!t||!m||ludus.team.length<2||(t.gold||0)<ev.fee) return 'Das Angebot gilt nicht mehr.';
+  t.gold-=ev.fee; ludus.gold+=ev.fee; ludusLeaveSchool(m); const n=(ludus.world||[]).find(x=>x.name===m.name&&x.region===ludus.map.region&&x.status==='active'&&x.last&&x.last.t==='left'&&x.last.d===ludus.day);
+  if(n){ n.team=t.id; n.bond=Math.max(0,n.bond||0); n.happiness=Math.min(100,(n.happiness||50)+10); ludusTeamsTidy(); }
+  const txt=`${m.name} wechselt von deiner Schule zu ${t.name} (${ev.fee} Gold Ablöse).`; ludusChron(ludus.map.region,'team',txt); return txt;
+}

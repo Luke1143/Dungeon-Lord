@@ -83,6 +83,13 @@ const LUDUS_EVENTS=[
       { label:'Aufnehmen', when:()=>ludusSlotsFree()>0, run:(f,ev)=>{ const n=ludusNpc(ev.npc), t=ludusTeamName(n); ludusJoinTeam(n); const m=ludusMember('m'+n.id); if(m) m.happiness=Math.max(ludusMood(m)||0,55); ludusTeamsTidy(); ludusChron(ludus.map.region,'team',`${n.name} verlässt ${t} und schließt sich deiner Schule an.`); return { text:`${n.name} atmet auf und packt seine Sachen. Von nun an kämpft er für deine Schule.` }; } },
       { label:'Ablehnen', run:(f,ev)=>({ text:'Du schüttelst den Kopf. Er nickt nur und geht.', exit:true }) }
     ] },
+  { id:'offer', title:'Ein Angebot für einen deiner Gladiatoren', story:true,
+    make:()=>{ const o=ludusOfferFor(); if(!o) return null; const m=ludusMember(o.member); return Object.assign({ cast:[Object.assign(ludusNpcFoe(ludusTeamMembers(o.team)[0]),{ role:'friend' })] },o,{ wants:ludusFeels(m)&&ludusMood(m)<LUDUS_OFFER.wants }); },
+    text:ev=>{ const t=ludusTeam(ev.team), m=ludusMember(ev.member); if(!t||!m) return 'Das Angebot gilt nicht mehr.'; return `${t.name} möchte ${m.name} in sein Team holen und bietet ${ev.fee} Gold Ablöse. ${ev.wants?`${m.name} ist unzufrieden und würde gern gehen; lehnst du ab, sinkt die Zufriedenheit um ${LUDUS_OFFER.refuse}.`:`${m.name} ist es gleich.`}`; },
+    options:[
+      { label:ev=>`Verkaufen (${ev.fee} Gold)`, run:(f,ev)=>{ ludus.lastOffer=ludus.day; return { text:ludusOfferAccept(ev) }; } },
+      { label:'Ablehnen', run:(f,ev)=>{ ludus.lastOffer=ludus.day; const m=ludusMember(ev.member); if(m&&ev.wants) ludusMoodAdd(m,-LUDUS_OFFER.refuse); return { text:m&&ev.wants?`Du lehnst ab. ${m.name} nimmt es dir übel.`:'Du lehnst ab.', exit:true }; } }
+    ] },
   { id:'revenge', title:'Eine alte Rechnung', story:true,
     make:r=>{ const l=ludusNpcPool().filter(n=>(n.bond||0)<=-2&&n.last&&ludus.day-n.last.d>=3); if(!l.length) return null; const n=ludusPick(r,l); return { cast:[Object.assign(ludusNpcFoe(n),{ role:'foe' })], npc:n.id, toll:20+3*ludus.fighter.level }; },
     text:ev=>{ const n=ludusNpc(ev.npc); return `${n.name} hat auf dich gewartet. "Du erinnerst dich an mich? Heute zahlst du zurück."`; },
