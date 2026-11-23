@@ -29,7 +29,7 @@ const SvgRig=(()=>{
       düster:{ skin:'#3c4730', light:'#4c583b', dark:'#20271a', shade:'rgba(0,0,0,0.3)', leg:'#2f3827', foot:'#15120f', belt:'#261c15', gold:'#9c907a', bone:'#c4b89c', line:'#070504', brow:'#11160d', eye:'#ff4a1e', pupil:'#200300', glow:'rgba(255,60,20,0.42)', mouth:'#140403', tongue:'#4a1410', iron:'#2c2c33', ironDark:'#17171b', wood:'#30231a', leather:'#261c15', cloth:'#3a0f0c', rust:'#6e3320', scar:'#7e705f' }
     },
     imp:{
-      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#5e4c33', sackDark:'#33281b', cloth:'#2e140c', rust:'#6e3320', scar:'#b07050' }
+      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#5e4c33', sackDark:'#33281b', cloth:'#2e140c', rust:'#6e3320', scar:'#d89a70' }
     }
   };
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
@@ -60,7 +60,7 @@ const SvgRig=(()=>{
       pauldron:[[ell(-16.5,-33,5.5,3.6),'iron',1.8]], pauldronAt:[-16,-33], pauldronR:[[ell(16.5,-33,5.5,3.6),'iron',1.8]],
       cloth:[['M-5.5 -14 L5.5 -14 L6.5 -4.5 Q0 -2.5 -6.5 -4.5z','cloth',1.6]],
       fist:fist(17,-21,3.4,3.1,1.8), handAt:[17,-21], handGap:3,
-      headY:0, legK:1, weapons:['axe','club','sword'], weapon:'axe', px:48
+      headY:0, legK:1, weapons:['axe','club','sword'], weapon:'axe', px:48, headBox:[-8,-48,8,-37], bodyBox:[-12,-34,12,-20]
     },
     düster:{
       H:66, shadow:[[ell(0,1.5,15,2.6),'shadowC',0]],
@@ -83,7 +83,7 @@ const SvgRig=(()=>{
       cloth:[['M-6 -13 L6 -13 L7 -3 L5 -5.5 L3 -1.5 L1 -4.5 L-1 -0.5 L-3 -4.5 L-5 -1.5 L-7 -4.5z','cloth',1.4]],
       fist:fist(17,-21,3.4,3.1,1.6), handAt:[17,-21], handGap:3,
       axe:[['M23 -5 L24.6 -5 L24.6 -44 L23 -44z','wood',1.4],['M24.6 -43 L35 -47 L33 -40 L36 -34 L33 -27 L24.6 -30z','iron',1.4],['M30 -44 L31 -41 M33 -33 L31.5 -31',null,1,'rust']],
-      headY:1.6, legK:1.15, weapons:['axe','club','sword'], weapon:'axe', px:48
+      headY:1.6, legK:1.15, weapons:['axe','club','sword'], weapon:'axe', px:48, headBox:[-7,-49,7,-38], bodyBox:[-10,-34,10,-20]
     } },
     imp:{ düster:{
       // small and bent: a big head with ears and horns, eye pits with a glowing spark, a grin with fangs, thin limbs, a tail, a sack on the back, a pick in the claw
@@ -118,12 +118,27 @@ const SvgRig=(()=>{
     tip:[['M-14.2 -40.6 L-18 -42.4 L-14.5 -38z','skin',1.4],['M-14.6 -39.8 L-16.4 -41.2 L-14.8 -38.8z','dark',0]], at:[-9.9,-35.5], kink:[-14.35,-39.3] };
   const EAR_LOBE={ root:[['M-7.4 -39.2 Q-12.5 -42.4 -17.2 -40 Q-17.8 -37.4 -15 -35.8 Q-11 -34.6 -7.6 -34.4z','skin',1.4],['M-8.6 -38.2 Q-12.4 -40.4 -15.6 -38.8 Q-13.4 -36.6 -8.8 -35.8z','dark',0]], at:[-7.6,-36.8] };
   const IMP_PRESETS={
-    bestie:{ kopf:0.35, kinn:1, tief:0.7, koerper:0.4, beine:0.35, augen:0.45, haut:0.5, augenFarbe:0, ohren:'spitz' },
-    wicht:{ kopf:0.8, kinn:0.5, tief:0.3, koerper:0, beine:1, augen:0.95, haut:1, augenFarbe:1, ohren:'spitz' },
-    knolle:{ kopf:0.75, kinn:0, tief:0.95, koerper:1, beine:0, augen:0.95, haut:0, augenFarbe:0, ohren:'spitz' }
+    bestie:{ kopf:0.35, kinn:1, kopfForm:0.35, koerperForm:0.5, tief:0.7, koerper:0.4, beine:0.35, augen:0.45, haut:0.5, augenFarbe:0, ohren:'spitz' },
+    wicht:{ kopf:0.8, kinn:0.5, kopfForm:0.4, koerperForm:0.25, tief:0.3, koerper:0, beine:1, augen:0.95, haut:1, augenFarbe:1, ohren:'spitz' },
+    knolle:{ kopf:0.75, kinn:0, kopfForm:0.5, koerperForm:0.5, tief:0.95, koerper:1, beine:0, augen:0.95, haut:0, augenFarbe:0, ohren:'spitz' }
   };
   const mix=(a,b,k)=>{ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const A=p(a), B=p(b); return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*k).toString(16).padStart(2,'0')).join(''); };
   const mix3=(a,b,c,k)=>k<0.5?mix(a,b,k*2):mix(b,c,(k-0.5)*2);       // three colours along one gene
+  // a closed form around (cx, cy), half width a, half height b: form 0 oval (narrower), 0.5 round, 1 angular (a superellipse towards a rectangle);
+  // chin: the lower half runs to a point; top, bot: the width at the top and at the bottom (a taper: shoulders against hips)
+  function formPts(cx,cy,a,b,form,chin,top,bot){
+    const N=56, n=form<=0.5?2:2+8*(form-0.5)/0.5, ax=a*(form<0.5?0.8+0.4*form:1), pts=[];
+    for(let i=0;i<N;i++){ const t=i/N*Math.PI*2-Math.PI/2, c=Math.cos(t), sn=Math.sin(t), u=Math.sign(c)*Math.abs(c)**(2/n), v=Math.sign(sn)*Math.abs(sn)**(2/n);
+      let wv=((1-v)/2)*(top===undefined?1:top)+((1+v)/2)*(bot===undefined?1:bot); if(v>0&&chin) wv*=1-chin*0.85*v**1.5;
+      pts.push([cx+u*ax*wv,cy+v*b]); }
+    return pts;
+  }
+  const ptsPath=pts=>'M'+pts.map(([x,y])=>x.toFixed(2)+' '+y.toFixed(2)).join(' L')+'z';
+  // the shaded side of a form: its right edge and a curve inside it
+  function formShade(pts,cx){
+    const mx=Math.max(...pts.map(q=>q[0])), right=pts.filter(([x])=>x>cx+0.25*(mx-cx)); if(right.length<3) return 'M0 0z';
+    return ptsPath(right.concat(right.slice().reverse().map(([x,y])=>[cx+(x-cx)*0.62,y])));
+  }
   function impPal(g){
     const P=Object.assign({},PAL.imp.düster), k=g.haut, e=g.augenFarbe;
     P.skin=mix3('#8c3a1c','#7a3219','#5a3a34',k); P.light=mix3('#a8522a','#94431f','#6e4a42',k); P.dark=mix3('#46160a','#3e140a','#2a1714',k); P.leg=mix3('#7a3018','#6a2b15','#4e322d',k); P.brow=mix3('#2a0c06','#260a04','#1a0d0b',k);
@@ -131,31 +146,31 @@ const SvgRig=(()=>{
     const g0=[255,150,30], g1=[120,220,255]; P.glow=`rgba(${g0.map((v,i)=>Math.round(v+(g1[i]-v)*e)).join(',')},0.48)`;
     return P;
   }
-  function impShapes(g){
+  function impShapes(g,t){
+    t=t||{ stark:0.5 };
     const f=v=>(+v).toFixed(2), mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
-    const plump=g.koerper, hipY=-10, bodyH=13.6+3.8*plump, topY=hipY-bodyH, wHip=5.6+6*plump, wSh=6+3*plump, midY=hipY-bodyH*0.57;
+    const plump=g.koerper, hipY=-10, bodyH=13.6+3.8*plump, topY=hipY-bodyH, wHip=(5.6+6*plump)*(0.95+0.1*t.stark), wSh=(6+3*plump)*(0.8+0.5*t.stark), midY=hipY-bodyH*0.57;       // strength: the shoulders more than the hips
     // legs: thin and long or short and stout
     const xc=-4.3, lw=2+1.6*plump, L=xc-lw/2, Rx=xc+lw/2;
     const leg=[[`M${f(L)} ${hipY} L${f(L+0.4)} -3.2 L${f(L-1.2)} 0 L${f(Rx+0.6)} 0 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'leg',1.4],
       [`M${f(xc-3.2)} 0 l0.9 -1.5 M${f(xc-1)} 0 l0.5 -1.7 M${f(xc+1.1)} 0 l0.4 -1.5`,null,1,'bone'],[`M${f(xc+0.1)} ${hipY} L${f(xc+0.5)} -3.2 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'shade',0]];
     // the body: from the hips up to the shoulders, a waist or a belly
-    const wMid=wHip*1.31;
-    const body=[[`M${f(-wHip)} ${hipY} Q${f(-wMid)} ${f(midY)} ${f(-wSh)} ${f(topY)} Q0 ${f(topY-4)} ${f(wSh)} ${f(topY)} Q${f(wMid)} ${f(midY)} ${f(wHip)} ${hipY} Q0 ${hipY+2.5} ${f(-wHip)} ${hipY}z`,'skin',1.5],
-      [`M${f(wSh*0.35)} ${f(topY-2.8)} Q${f(wSh*1.05)} ${f(topY-0.6)} ${f(wMid*0.98)} ${f(midY)} Q${f(wHip*1.25)} ${hipY-3} ${f(wHip)} ${hipY} Q${f(wHip*0.75)} ${hipY+1.3} ${f(wHip*0.55)} ${hipY+1.4} Q${f(wHip*1.05)} ${f(midY)} ${f(wSh*0.35)} ${f(topY-2.8)}z`,'shade',0]];
+    // the form of the body between oval, round and angular, from the shoulders (top) to the hips (bottom)
+    const bf=g.koerperForm===undefined?0.5:g.koerperForm, bTop=topY-1.4, bBot=hipY+1.6, bPts=formPts(0,(bTop+bBot)/2,1,(bBot-bTop)/2,bf,0,wSh*1.12,wHip*1.3);
+    const body=[[ptsPath(bPts),'skin',1.5],[formShade(bPts,0),'shade',0]];
     if(plump<0.35){ const rx=wSh*0.62, rows=[0.32,0.5,0.68].map(t=>hipY-bodyH*t); body.push([rows.map(y=>`M${f(-rx)} ${f(y)} l2.4 0.7 M${f(rx)} ${f(y)} l-2.4 0.7`).join(' '),null,0.9,'dark']); }
     const bx=wHip*0.5, by1=hipY-bodyH*0.55, by2=hipY-1;
     const belly=plump>=0.3?[[`M${f(-bx)} ${f(by1)} Q0 ${f(by1+3.5)} ${f(bx)} ${f(by1)} Q${f(bx*0.75)} ${f(by2-0.5)} 0 ${f(by2)} Q${f(-bx*0.75)} ${f(by2-0.5)} ${f(-bx)} ${f(by1)}z`,'light',0]]:[];
     // the head: round on top; the chin from round to a point; eyes, brows and lids follow its size
     const w=7+2.6*g.kopf, p=g.kinn, h=(16.5+4.5*g.kopf)*(1+0.2*p), chinY=topY+1.6, top=chinY-h, cy=top+h*0.45;
-    const sideB=cy+h*(0.2+0.1*(1-p)), cw=w*(0.6-0.5*p), cY=chinY-h*0.04*p;
-    const skull=[[`M${f(-w)} ${f(cy)} C${f(-w)} ${f(cy-h*0.38)} ${f(-w*0.58)} ${f(top)} 0 ${f(top)} C${f(w*0.58)} ${f(top)} ${f(w)} ${f(cy-h*0.38)} ${f(w)} ${f(cy)} C${f(w)} ${f(sideB)} ${f(cw)} ${f(cY)} 0 ${f(chinY)} C${f(-cw)} ${f(cY)} ${f(-w)} ${f(sideB)} ${f(-w)} ${f(cy)}z`,'skin',1.5],
-      [`M${f(w*0.42)} ${f(top+0.4)} C${f(w)} ${f(top+h*0.1)} ${f(w)} ${f(cy-h*0.12)} ${f(w)} ${f(cy)} C${f(w)} ${f(sideB)} ${f(cw)} ${f(cY)} 0 ${f(chinY)} C${f(w*0.55)} ${f(chinY-h*0.22)} ${f(w*0.7)} ${f(cy)} ${f(w*0.68)} ${f(cy-h*0.12)} C${f(w*0.66)} ${f(top+h*0.25)} ${f(w*0.6)} ${f(top+h*0.08)} ${f(w*0.42)} ${f(top+0.4)}z`,'shade',0]];
-    const erx=2.4+1.6*g.augen, ery=erx*1.18, ex=-Math.min(w*0.5,erx+0.6), ey=cy+1, s=erx/3.1;
+    const hf=g.kopfForm===undefined?0.5:g.kopfForm, hPts=formPts(0,top+h/2,w,h/2,hf,p), aw=w*(hf<0.5?0.8+0.4*hf:1);       // the head: oval, round or angular, the chin on top of it
+    const skull=[[ptsPath(hPts),'skin',1.5],[formShade(hPts,0),'shade',0]];
+    const erx=2.4+1.6*g.augen, ery=erx*1.18, ex=-Math.min(aw*0.5,erx+0.6), ey=cy+1, s=erx/3.1;
     const eye=[[ell(+f(ex),+f(ey),+f(erx),+f(ery)),'socket',0]], pupil=[[ell(+f(ex+0.3),+f(ey+0.4),+f(erx*0.55),+f(erx*0.55)),'glow',0],[ell(+f(ex+0.3),+f(ey+0.4),+f(erx*0.27),+f(erx*0.27)),'eye',0]];
     const bp=(dx,dy)=>`${f(ex+dx*s)} ${f(ey+dy*s)}`, brow=[[`M${bp(-3.6,-4.2)} L${bp(2.6,-2.6)} L${bp(2.4,-3.8)} L${bp(-3.2,-5.8)}z`,'brow',0]];
     const lid=[[`M${f(ex-erx)} ${f(ey)} q${f(erx)} 1.4 ${f(2*erx)} 0`,null,1.3,'line']];
     // the ears: pointed with a kink, or lobes; set at the side of the head, as big as the head
-    const ax=-w*0.93, ay=cy-h*0.05, E=g.ohren==='lappen'?EAR_LOBE:EAR_KINK, dx=ax-E.at[0], dy=ay-E.at[1];
+    const ax=-aw*0.93, ay=cy-h*0.05, E=g.ohren==='lappen'?EAR_LOBE:EAR_KINK, dx=ax-E.at[0], dy=ay-E.at[1];
     const ears=g.ohren==='lappen'?{ ear:mvS(E.root,dx,dy), earTip:null, earAt:[ax,ay], earGrow:true }:{ ear:mvS(E.root,dx,dy), earTip:mvS(E.tip,dx,dy), earAt:[ax,ay], kinkAt:[E.kink[0]+dx,E.kink[1]+dy], earGrow:'kink' };
     const hr=2.4+0.6*plump, handAt=[wSh+4.5,hipY-bodyH*0.42];
     const headY=g.tief*8, legK=0.8+0.6*g.beine;
@@ -168,6 +183,7 @@ const SvgRig=(()=>{
       tail:IMP_T.tail, tailAt:IMP_T.tailAt, cloth:IMP_T.cloth,
       fist:fist(+f(handAt[0]),+f(handAt[1]),+f(hr),+f(hr*0.92),1.3), handAt:[+f(handAt[0]),+f(handAt[1])], handGap:2,
       horn:null, look:{ ears:true, horns:false }, headY, legK, earScale:w/8,
+      headBox:[-aw*0.6,top+h*0.15,aw*0.6,top+h*0.62], bodyBox:[-wSh*0.6,topY+2,wSh*0.6,hipY-3],
       H:Math.round((10*legK-10)+(-top)-headY+3)
     },ears);
   }
@@ -187,7 +203,7 @@ const SvgRig=(()=>{
   const stylesOf=kind=>Object.keys(SHAPES[kind]||SHAPES.ork);
   function roll(seed,kind){
     const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)]; kind=kind||'ork'; const st=pick(stylesOf(kind)), S=SHAPES[kind][st];
-    const genes=kind==='imp'?{ kopf:r(), kinn:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' }:undefined;
+    const genes=kind==='imp'?{ kopf:r(), kinn:r(), kopfForm:r(), koerperForm:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' }:undefined;
     return { kind, style:kind==='imp'?'eigen':st, genes, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*(kind==='imp'?12:22), scar:r()<0.4,
       gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none'].concat(S.weapons)), hands:true, load:pick(['none','gold','ore']), ears:kind==='imp'||r()<0.5, horns:kind!=='imp'&&r()<0.6 }, level:1+Math.floor(r()*12), seed };       // an imp always has its ears (they show its level)
   }
@@ -205,11 +221,17 @@ const SvgRig=(()=>{
     const to=v=>Math.round((v+m)*255).toString(16).padStart(2,'0'); return '#'+to(rr)+to(gg)+to(bb);
   }
   // ---- building a rig from a spec: the tree of parts (pivot, shapes, children) and each part's resting transform ----
+  // scars (user: whoever is knocked out gets one): each has a fixed place from the seed and its number, every other one on the head, the rest on the body
+  function scarShapes(n,box,seed,odd){
+    const out=[]; for(let i=odd?1:0;i<n;i+=2){ const r=rng((seed||17)*7919+i*104729+1), x=box[0]+(box[2]-box[0])*r(), y=box[1]+(box[3]-box[1])*r(), a=r()*Math.PI, L=3.6+2.8*r(), dx=Math.cos(a)*L/2, dy=Math.sin(a)*L/2, nx=-dy/L*1.6, ny=dx/L*1.6;
+      out.push([`M${(x-dx).toFixed(2)} ${(y-dy).toFixed(2)} L${(x+dx).toFixed(2)} ${(y+dy).toFixed(2)} M${(x-nx-dx*0.3).toFixed(2)} ${(y-ny-dy*0.3).toFixed(2)} l${(2*nx).toFixed(2)} ${(2*ny).toFixed(2)} M${(x-nx+dx*0.3).toFixed(2)} ${(y-ny+dy*0.3).toFixed(2)} l${(2*nx).toFixed(2)} ${(2*ny).toFixed(2)}`,null,1.25,'scar']); }
+    return out;
+  }
   function build(spec){
     const kind=(spec&&spec.kind)||'ork'; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
     if(!SHAPES[kind][spec.style]) spec.style=stylesOf(kind)[0];
     const genes=kind==='imp'?Object.assign({},IMP_PRESETS.bestie,IMP_PRESETS[spec.style]||{},spec.genes||{}):null;
-    const S=kind==='imp'?impShapes(genes):SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
+    const t0=Object.assign({},defaults(kind).traits,spec.traits), S=kind==='imp'?impShapes(genes,t0):SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
     const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },kind==='imp'?impPal(genes):PAL[kind][spec.style]); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
     const armoured=!!(G.pauldrons&&S.pauldron); pal.hand=armoured?pal.iron:pal.skin; pal.handLine=armoured?pal.ironDark:pal.dark;       // the hands: skin, or armour with the shoulder plates
     const P=(id,pivot,shapes,kids)=>({ id, pivot, shapes:shapes||[], kids:(kids||[]).filter(Boolean) });
@@ -218,10 +240,13 @@ const SvgRig=(()=>{
     const ex=S.eyeAt, br=S.browAt, R=v=>[-v[0],v[1]], look=S.look||{}, ears=G.ears!==undefined?G.ears:look.ears!==false, horns=G.horns!==undefined?G.horns:look.horns!==false;
     const lvl=Math.max(1,Math.min(12,spec.level||1)), hornK=0.5+0.1*(lvl-1), earK=S.earGrow?(lvl-1)/11:0;       // earK: how far the ears have grown (0 at level 1, 1 at 12)
     const grow=Math.min(1,(lvl-1)/5), sag=Math.max(0,(lvl-6)/6);       // kinked ears: out until level 6, then down       // the horns grow with the level: half size at 1, half again as long at 11
-    const headKids=[
-      P('skull',[0,S.neck[1]-4],S.skull,[spec.scar&&S.scar?P('scar',[0,S.neck[1]-7],S.scar):null,
-        ears&&S.ear?P('earL',S.earAt,S.ear,S.earTip?[P('earTipL',S.kinkAt,S.earTip)]:[]):null, ears&&S.ear?P('earR',R(S.earAt),mirrorShapes(S.ear),S.earTip?[P('earTipR',R(S.kinkAt),mirrorShapes(S.earTip))]:[]):null,
-        horns&&S.horn?P('hornL',S.hornAt,S.horn):null, horns&&S.horn?P('hornR',R(S.hornAt),mirrorShapes(S.horn)):null]),
+    const back=spec.view==='back', nScars=spec.scars||0, seed=spec.seed||17;
+    const earParts=ears&&S.ear?[P('earL',S.earAt,S.ear,S.earTip?[P('earTipL',S.kinkAt,S.earTip)]:[]),P('earR',R(S.earAt),mirrorShapes(S.ear),S.earTip?[P('earTipR',R(S.kinkAt),mirrorShapes(S.earTip))]:[])]:[];
+    const skullPart=P('skull',[0,S.neck[1]-4],S.skull,[!back&&spec.scar&&S.scar?P('scar',[0,S.neck[1]-7],S.scar):null,
+        nScars&&S.headBox?P('scarsHead',[0,S.neck[1]-4],scarShapes(nScars,S.headBox,seed,false)):null,
+        horns&&S.horn?P('hornL',S.hornAt,S.horn):null, horns&&S.horn?P('hornR',R(S.hornAt),mirrorShapes(S.horn)):null]);
+    const headKids=back?[skullPart].concat(earParts,[G.helmet&&S.helmet?P('helmet',[0,S.neck[1]-8],S.helmet):null]):earParts.concat([       // seen from the front the ears lie behind the head (no seam)
+      skullPart,
       G.helmet&&S.helmet?P('helmet',[0,S.neck[1]-8],S.helmet):null,
       P('mouth',S.mouthAt,S.mouth),
       P('jaw',S.jawAt,S.jaw,S.tusk?[P('tuskL',S.tuskAt,S.tusk),P('tuskR',R(S.tuskAt),mirrorShapes(S.tusk))]:[]),
@@ -229,11 +254,14 @@ const SvgRig=(()=>{
       P('eyeR',R(ex),shiftX(S.eye,-2*ex[0]),[P('pupilR',R(ex),shiftX(S.pupil,-2*ex[0]-2*(S.pupilIn||0)))]),
       P('lidL',ex,S.lid), P('lidR',R(ex),mirrorShapes(S.lid)),
       P('browL',br,S.brow), P('browR',R(br),mirrorShapes(S.brow))
-    ];
+    ]);
+    const bb=S.bodyBox||[-6,-24,6,-12];
     const bodyKids=[
-      P('belly',[0,-20],S.belly), G.chest&&S.chest?P('chest',[0,-28],S.chest):null,
+      back?P('spine',[0,-20],[[`M0 ${(bb[1]-1).toFixed(2)} L0 ${(bb[3]+2).toFixed(2)}`,null,1.1,'dark']]):P('belly',[0,-20],S.belly),
+      nScars>1&&S.bodyBox?P('scarsBody',[0,-20],scarShapes(nScars,S.bodyBox,seed,true)):null,
+      G.chest&&S.chest?P('chest',[0,-28],S.chest):null,
       G.cloth&&S.cloth?P('cloth',[0,-14],S.cloth):null,
-      P('belt',[0,-14],S.belt), P('buckle',[0,-14],S.buckle),
+      P('belt',[0,-14],S.belt), back?null:P('buckle',[0,-14],S.buckle),
       G.pauldrons&&S.pauldron?P('pauldronL',S.pauldronAt,S.pauldron):null, G.pauldrons&&S.pauldron?P('pauldronR',R(S.pauldronAt),S.pauldronR||mirrorShapes(S.pauldron)):null,
       P('head',S.neck,[],headKids)
     ];
@@ -242,15 +270,17 @@ const SvgRig=(()=>{
     const weapon=wShapes?P('weapon',hands?grip:[24,-22],wShapes):null;
     const handKids=hands?[P('handL',R(ha),[],[P('fistL',R(ha),mirrorShapes(S.fist))]),P('handR',ha,[],[weapon,P('fistR',ha,S.fist)])]:[weapon];
     const sack=S.sack&&G.load&&G.load!=='none'?P('sack',S.sackAt,S.sack.concat(S.load[G.load]||[])):null;
-    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow), S.tail?P('tail',S.tailAt,S.tail):null, sack,
-      P('legL',S.hip,S.leg),P('legR',R(S.hip),mirrorShapes(S.leg)),P('body',[0,S.hip[1]],S.body,bodyKids)].concat(handKids));
+    const tail=S.tail?P('tail',S.tailAt,S.tail):null, legsBody=[P('legL',S.hip,S.leg),P('legR',R(S.hip),mirrorShapes(S.leg)),P('body',[0,S.hip[1]],S.body,bodyKids)];
+    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow)].concat(back?legsBody.concat([tail,sack]):[tail,sack].concat(legsBody),handKids));       // from behind: tail and sack in front of the body
     // the stats as proportions
-    const ls=(0.85+0.45*t.flink)*S.legK, bw=(0.85+0.4*t.stark)*(1.1-0.2*t.flink), hs=0.85+0.45*t.klug, js=1.15-0.35*t.klug, ts=0.6+0.9*t.wild, ps=0.8+0.4*t.stark;
+    let bw;
+    const ls=(0.85+0.45*t.flink)*S.legK, bw0=(0.85+0.4*t.stark)*(1.1-0.2*t.flink), hs=0.85+0.45*t.klug, js=1.15-0.35*t.klug, ts=0.6+0.9*t.wild, ps=0.8+0.4*t.stark;
+    bw=bw0; if(kind==='imp') bw=(1.1-0.2*t.flink)*(0.97+0.06*t.stark);
     const hip=-S.hip[1], lift=-(hip*ls-hip), half=Math.abs(ha[0]);
     const base={
       shadow:{ sx:bw }, legL:{ x:-(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, legR:{ x:(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, body:{ y:lift, sx:bw },
       head:{ y:S.headY, sx:hs/bw, sy:hs }, jaw:{ sx:js, sy:js }, tuskL:{ sy:ts }, tuskR:{ sy:ts }, pauldronL:{ sx:ps, sy:ps }, pauldronR:{ sx:ps, sy:ps },
-      sack:{ y:lift }, tail:{ y:lift },
+      root:back?{ sx:-1 }:{}, sack:{ y:lift }, tail:{ y:lift },
       earL:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:-30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:-68*earK }:{}),
       earR:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:68*earK }:{}),       // longer, broader, and hanging lower
       earTipL:{ sx:1+0.35*sag, r:-100*sag }, earTipR:{ sx:1+0.35*sag, r:100*sag },       // the tip folds at the kink
@@ -262,7 +292,7 @@ const SvgRig=(()=>{
     return { tree, base, pal, spec, hands, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px||48, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack, ears:!!S.ear, horns:!!S.horn, level:!!(S.horn||S.earGrow) }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
-  const TURN={ skull:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
+  const TURN={ skull:0.6, earL:0.6, earR:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
   // the parts pulled apart (the "parts" view): where each one drifts
   const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4], earL:[-6,-2], earR:[6,-2], earTipL:[-3,0], earTipR:[3,0], hornL:[-3,-6], hornR:[3,-6], tail:[8,2], sack:[-8,-4] };
   const MOODS={ ruhig:[0,0], wütend:[16,0.6], überrascht:[-8,-2.2], traurig:[-16,-0.4] };       // brow turn (degrees, inner end down), brow lift
@@ -384,7 +414,7 @@ const SvgOrkViewer=(()=>{
   }
   const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
   // the imp's genes (procedural, every look between the presets)
-  const GENES=[['kopf','Kopfgröße'],['kinn','Kinn spitz'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Haut: Glut bis Asche'],['augenFarbe','Augen: Bernstein bis Eis']];
+  const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Haut: Glut bis Asche'],['augenFarbe','Augen: Bernstein bis Eis']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
   let lastViewer=null;       // the viewer opened last (tests hold its blinking)
   function open(host){
@@ -414,10 +444,11 @@ const SvgOrkViewer=(()=>{
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
   <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"></select>
   <label for="orkvLoad" data-for="load">Last</label><select id="orkvLoad" data-for="load"><option value="none">keine</option><option value="gold">Gold</option><option value="ore">Erz</option></select>
-  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
+  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
   <label class="orkv-slider" for="orkvLevel" id="orkvLevelBox">Stufe <input type="range" id="orkvLevel" min="1" max="12" value="1"><output id="orkvLevelOut">1</output></label>
 </div>
 <div class="orkv-row">
+  <label for="orkvView">Ansicht</label><select id="orkvView"><option value="front">vorn</option><option value="back">hinten</option></select>
   <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(SvgRig.MOODS).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
   <label for="orkvFx">Nachbearbeitung</label><select id="orkvFx"><option value="vector">Vektor (SVG)</option><option value="boil">Wackel-Linie</option><option value="pixel">Pixel</option><option value="smooth" selected>Pixel, glatt hochgerechnet</option><option value="soft">Weich</option></select>
   <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32">32 px</option><option value="48" selected>48 px</option><option value="64">64 px</option><option value="128">128 px</option></select>
@@ -435,7 +466,7 @@ const SvgOrkViewer=(()=>{
       ['helmet','chest','pauldrons'].forEach(k=>{ $('orkvG_'+k).hidden=!rig.has[k]; });
       root.querySelectorAll('[data-for="load"]').forEach(e=>{ e.hidden=!rig.has.load; });
       const lk=SvgRig.lookOf(spec.kind,rig.spec.style); ['ears','horns'].forEach(k=>{ const b=$('orkvG_'+k); b.hidden=!rig.has[k]; b.setAttribute('aria-pressed',spec.gear[k]!==undefined?!!spec.gear[k]:lk[k]!==false); });
-      $('orkvLevelBox').hidden=!rig.has.level;
+      $('orkvLevelBox').hidden=!rig.has.level; $('orkvView').value=spec.view||'front'; $('orkvScarN').textContent=(spec.scars||0)?`${spec.scars||0} ×`:'';
       $('orkvGenes').hidden=spec.kind!=='imp'; if(spec.kind==='imp'){ const gn=Object.assign({},SvgRig.IMP_PRESETS.bestie,SvgRig.IMP_PRESETS[spec.style]||{},spec.genes||{}); GENES.forEach(([k])=>{ $('orkvGn_'+k).value=Math.round(gn[k]*100); }); $('orkvEars').value=gn.ohren; } $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); show(); };
@@ -454,6 +485,9 @@ const SvgOrkViewer=(()=>{
     ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=!spec.gear[k]; rebuild(); }));
     $('orkvG_hands').addEventListener('click',()=>{ spec.gear.hands=spec.gear.hands===false; rebuild(); });
     $('orkvScar').addEventListener('click',()=>{ spec.scar=!spec.scar; rebuild(); });
+    $('orkvKo').addEventListener('click',()=>{ spec.scars=(spec.scars||0)+1; if(!spec.seed) spec.seed=1+Math.floor(Math.random()*1e6); rebuild(); });       // knocked out: one scar more (user)
+    $('orkvHeal').addEventListener('click',()=>{ spec.scars=0; spec.scar=false; rebuild(); });
+    $('orkvView').addEventListener('change',e=>{ spec.view=e.target.value; rebuild(); });
     $('orkvRoll').addEventListener('click',()=>{ spec=SvgRig.roll(Math.floor(Math.random()*1e9),spec.kind); rebuild(); });
     const toggle=(id,key)=>{ const b=$(id); b.addEventListener('click',()=>{ opt[key]=!opt[key]; b.setAttribute('aria-pressed',opt[key]); if(key==='followMouse'&&!opt[key]) opt.mouse=null; }); };
     toggle('orkvWalk','walk'); toggle('orkvMouse','followMouse'); toggle('orkvParts','explode');
