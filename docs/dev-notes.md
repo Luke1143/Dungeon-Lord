@@ -29,7 +29,7 @@ All in `prototypes/`, open the files directly in a browser. Three.js 0.160 (MIT)
 - Location types so far only change name and text; level generation per type (roots, dwarf structures, rivers) is still to do.
 
 ## 0.2 - Game loop (war)
-- **Weltportal** (`portal` room, 2x2, placed 30+ tiles from the throne, not buildable/demolishable). Conquering all portal tiles = **victory**.
+- **Weltportal** (`portal` room, 3x3 since November 2026, placed 30+ tiles from the throne, not buildable/demolishable). Conquering all portal tiles = **victory**.
 - **Waves**: as soon as a walkable path from portal to throne exists (`portalConnected`, checked every 5 ticks), heroes spawn at the portal. First wave after 150 ticks, then every `max(180, 340 - 12*wave)` ticks. Wave size `1 + 0.8*wave` (max 10), hero level `1 + (wave-1)/2`.
 - **Heroes** (faction `good`, category `hero`): Barbar, Dieb, Zauberer (wave 3+), Ritter (wave 5+). They fight hostiles within 8 tiles, otherwise march to the throne (`tickHero`). They never flee. Killing a hero pays a bounty (30 gold per level).
 - **Defeat**: heroes standing in the throne room reduce `war.throneHp` (strength x 0.25 per tick); it regenerates when no hero is inside. 0 = defeat.

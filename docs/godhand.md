@@ -415,7 +415,7 @@ Jeder Raum vergibt Jobs unter Bedingungen. Alle besitzen zusätzlich `entlassen`
 | Raum | Baubar | Mindestgröße | Jobs | Bedingung für Vergabe |
 |---|---|---|---|---|
 | **Thronsaal** | nein (Start) | 3×3 | — | Sitz des Dungeon Lords. **Verlust = Niederlage** |
-| **Eingang** | nein | 2×2 | — | Portal aus der Anderswelt; neue Kreaturen erscheinen hier |
+| **Eingang** | nein | 3×3 | — | Portal aus der Anderswelt; neue Kreaturen erscheinen hier |
 | **Weltportal** | **nein** | — | — | **immer feindlich**; Eroberung = Sieg über die Karte |
 | **Schlafsaal** | ja | 1 | — | Kreaturen richten selbst ein Lair ein |
 | **Hühnerfarm** | ja | 3×3 | füttern | Futtervorrat unter Schwelle |

@@ -343,6 +343,70 @@ const View3D=(()=>{
     const f=it.face||{ dx:0, dz:1 };
     m.position.set(it.x+0.5,0,it.y+0.5); m.rotation.y=Math.atan2(f.dx,f.dz);
   }
+
+  // ---- the entrance and the world portal as places (in 2D they are pictures on the floor) ----
+  // The entrance is a round shaft: one flat disc over the floor whose shader sends a ray from the eye into an imagined well (radius R, depth D) and draws
+  // either its brick wall or, deep below, the turning blue spiral (the same trick as the relief's parallax: depth without geometry). A ring of stones frames it.
+  // The world portal is a standing stone gate with a burning membrane. Both are built once per place and kept; time drives their animation.
+  const gates=new Map(); let gateFrame=0, gateStone=null;
+  const SRGB_TO_LIN='vec3 lin(vec3 c){ return pow(max(c,vec3(0.0)),vec3(2.2)); }\nfloat hsh(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }\n';
+  const gbox=(w,h,d,m,x,y,z,g)=>{ const o=new T.Mesh(new T.BoxGeometry(w,h,d),m); o.position.set(x,y+h/2,z); g.add(o); return o; };
+  function stoneMat(){ if(!gateStone) gateStone=new T.MeshLambertMaterial({ map:pixTex(16,16,(g,w,h)=>{ g.fillStyle='#6d6772'; g.fillRect(0,0,w,h); g.fillStyle='#4a4550'; g.fillRect(0,7,w,1); g.fillRect(7,0,1,7); g.fillRect(3,8,1,8); g.fillStyle='#8a8490'; g.fillRect(1,1,5,1); g.fillRect(9,9,5,1); }) }); return gateStone; }
+  function buildWell(cx,cz,size){
+    const R=0.42*size, D=1.25*R, group=new T.Group();       // shallow enough that the spiral below is seen from the usual view
+    const mat=new T.ShaderMaterial({ uniforms:{ time:{ value:0 }, center:{ value:new T.Vector3(cx,0.02,cz) }, R:{ value:R }, D:{ value:D }, spiral:{ value:texOfCanvas(portalArt(false,0)) } },
+      vertexShader:'varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
+      fragmentShader:`uniform float time; uniform vec3 center; uniform float R; uniform float D; uniform sampler2D spiral; varying vec3 vW;
+        ${SRGB_TO_LIN}
+        void main(){
+          vec3 o=vW-center; vec2 p=o.xz; if(dot(p,p)>R*R) discard;
+          vec3 dir=normalize(vW-cameraPosition); dir.y=min(dir.y,-0.02);
+          vec2 d2=dir.xz; float a=dot(d2,d2), b=2.0*dot(p,d2), c=dot(p,p)-R*R;
+          float tw=a>1e-6?(-b+sqrt(max(b*b-4.0*a*c,0.0)))/(2.0*a):1e9, tb=-D/dir.y;
+          vec3 col;
+          if(tb<tw){       // the bottom: the spiral, turning, in pixels
+            vec2 q=p+d2*tb; float ang=-time*0.7; vec2 uv=mat2(cos(ang),-sin(ang),sin(ang),cos(ang))*(q/(2.0*R))+0.5; uv=(floor(uv*32.0)+0.5)/32.0;
+            vec4 s=texture2D(spiral,uv); col=mix(vec3(0.01,0.02,0.06),s.rgb*1.15,s.a)*(0.55+0.45*smoothstep(R,0.2*R,length(q)));
+          } else {         // the wall: bricks in pixels, darker with depth, lit blue from below
+            vec3 h=o+dir*tw; float depth=-h.y, u=atan(h.z,h.x)*R;
+            vec2 bp=floor(vec2(u,depth)*10.0); float row=floor(bp.y/3.0); float bx=bp.x+mod(row,2.0)*3.0;
+            vec2 cell=vec2(floor(bx/6.0),row); bool mortar=mod(bx,6.0)<1.0||mod(bp.y,3.0)<1.0;
+            vec3 stone=vec3(0.46,0.43,0.48)*(0.75+0.35*hsh(cell)); col=mortar?vec3(0.14,0.13,0.16):stone;
+            col*=0.25+0.75*exp(-depth*0.8); col+=vec3(0.08,0.22,0.5)*exp(-(D-depth)*1.4);
+          }
+          gl_FragColor=vec4(lin(col),1.0);
+          #include <colorspace_fragment>
+        }` });
+    const geo=new T.PlaneGeometry(2*R,2*R); geo.rotateX(-Math.PI/2); const disc=new T.Mesh(geo,mat); disc.position.set(cx,0.02,cz); group.add(disc);
+    const n=Math.round(8*size); for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, st=gbox(2*Math.PI*(R+0.07)/n*0.92,0.14,0.16,stoneMat(),cx+Math.cos(a)*(R+0.07),0,cz+Math.sin(a)*(R+0.07),group); st.rotation.y=-a+Math.PI/2; }
+    return { group, mat };
+  }
+  function buildPortal(cx,cz,size){
+    const group=new T.Group(), half=size/2-0.25, H=0.8*size;       // a gate as wide as the room, a little higher than wide is tall
+    gbox(0.36,H,0.4,stoneMat(),cx-half,0,cz,group); gbox(0.36,H,0.4,stoneMat(),cx+half,0,cz,group); gbox(2*half+0.5,0.34,0.46,stoneMat(),cx,H,cz,group); gbox(2*half+0.7,0.12,0.56,stoneMat(),cx,0,cz,group);
+    const mat=new T.ShaderMaterial({ side:T.DoubleSide, uniforms:{ time:{ value:0 } },
+      vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader:`uniform float time; varying vec2 vUv;
+        ${SRGB_TO_LIN}
+        void main(){
+          vec2 p=floor((vUv-0.5)*vec2(28.0,34.0))/vec2(28.0,34.0)*vec2(1.0,1.2);       // in pixels
+          float r=length(p)*2.0, a=atan(p.y,p.x);
+          float sw=sin(6.0*a+r*11.0-time*4.5)+0.5*sin(3.0*a-r*7.0+time*2.0);
+          float edge=0.92+0.06*sw+0.04*hsh(floor(vec2(a*12.0,time*6.0)));
+          if(r>edge) discard;
+          float k=clamp(1.0-r/edge+0.15*sw,0.0,1.0);
+          vec3 col=mix(vec3(0.35,0.03,0.0),vec3(1.0,0.5,0.08),smoothstep(0.1,0.6,k)); col=mix(col,vec3(1.0,0.93,0.55),smoothstep(0.7,1.0,k));
+          gl_FragColor=vec4(lin(col),1.0);
+          #include <colorspace_fragment>
+        }` });
+    const m=new T.Mesh(new T.PlaneGeometry(2*half-0.36,H-0.12),mat); m.position.set(cx,0.12+(H-0.12)/2,cz); group.add(m);
+    return { group, mat };
+  }
+  function placeGate(it){
+    const key=it.gate+':'+it.x+':'+it.y; let g=gates.get(key);
+    if(!g){ const size=Math.min(it.w||2,it.h||2); g=it.gate==='portal'?buildPortal(it.x+0.5,it.y+0.5,size):buildWell(it.x+0.5,it.y+0.5,size); scene.add(g.group); gates.set(key,g); }
+    g.seen=gateFrame; g.group.visible=true; g.mat.uniforms.time.value=performance.now()/1000;
+  }
   const pendingFlash=[];
   // the overlay: emotes and thought bubbles live on their own layer; the picture filter (postfx.js) never sees them, they are drawn on top afterwards
   const OVERLAY_LAYER=1; let overlayUsed=0;
@@ -351,6 +415,7 @@ const View3D=(()=>{
     if(it.kind==='stain'){ placeStain(it); return; }
     if(it.kind==='light') return;       // a light source without a picture (see updateLights)
     if(it.kind==='wallTorch'){ placeTorch(it); return; }
+    if(it.kind==='gate'){ placeGate(it); return; }
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
     }
@@ -468,7 +533,7 @@ const View3D=(()=>{
     if(!ready||!active) return;
     lastInfo=tileInfo; syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now()); updateLiquids(performance.now());
-    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0;
+    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0; gateFrame++;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
@@ -476,6 +541,7 @@ const View3D=(()=>{
     for(let i=wallUsed;i<wallPool.length;i++) wallPool[i].visible=false;
     { const cr=camRight(); pendingFlash.forEach(({f,s})=>{ f.position.set(s.position.x+Math.sin(yaw)*0.02, s.position.y, s.position.z+Math.cos(yaw)*0.02); f.scale.copy(s.scale); f.renderOrder=3; }); }
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
+    gates.forEach(g=>{ if(g.seen!==gateFrame) g.group.visible=false; });
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
     if(!post.render(renderer,scene,camera)) renderer.render(scene,camera);

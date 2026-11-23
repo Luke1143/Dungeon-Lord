@@ -2508,22 +2508,24 @@ function growBedrock(g,x,y,size){
   });
 }
 
+// the entrance (and the world portal): 3 x 3 tiles of floor dug into rock (user, November 2026; before 2 x 2)
+const GATE_SIZE=3;
 function placeEntrance(g, minDist, maxDist, room){
   room=room||'entrance';
   const throneCenter={x:2,y:2};
   for(let attempt=0; attempt<250; attempt++){
-    const cx=randInt(2,WORLD_COLS-3), cy=randInt(2,WORLD_ROWS-3);
+    const cx=randInt(2,WORLD_COLS-2-GATE_SIZE), cy=randInt(2,WORLD_ROWS-2-GATE_SIZE);
     const dist=Math.abs(cx-throneCenter.x)+Math.abs(cy-throneCenter.y);
     if(dist<minDist || dist>maxDist) continue;
     let ok=true;
-    for(let y=cy;y<=cy+1 && ok;y++){
-      for(let x=cx;x<=cx+1;x++){
+    for(let y=cy;y<cy+GATE_SIZE && ok;y++){
+      for(let x=cx;x<cx+GATE_SIZE;x++){
         const t=g[y][x];
         if(t.type!=='rock' || t.gold || t.gem || t.ore || t.room){ ok=false; break; }
       }
     }
     if(!ok) continue;
-    for(let y=cy;y<=cy+1;y++) for(let x=cx;x<=cx+1;x++){
+    for(let y=cy;y<cy+GATE_SIZE;y++) for(let x=cx;x<cx+GATE_SIZE;x++){
       const t=g[y][x];
       t.type='floor'; t.owned=false; t.room=room; t.natural=false;
     }
@@ -6421,7 +6423,7 @@ function draw2d(){
     }
   });
 
-  // Der Eingang bekommt eine grosse Spirale ueber seine ganze 2x2-Flaeche
+  // the entrance and the portal: a big spiral (a fire ring) over their whole 3x3 area in 2D; in 3D a shaft and a standing gate
   allRooms.filter(r=>r.type==='entrance' || r.type==='portal').forEach(room=>{
     const minX=Math.min(...room.tiles.map(t=>t.x));
     const minY=Math.min(...room.tiles.map(t=>t.y));
@@ -6429,6 +6431,7 @@ function draw2d(){
     const h=Math.max(...room.tiles.map(t=>t.y))-minY+1;
     // Portal-Effekt: dreht sich stufenweise gegen den Uhrzeigersinn
     const spin=-(Math.floor(Date.now()/400)%4)*Math.PI/2;
+    if(capture){ const gx=minX+(w-1)/2, gy=minY+(h-1)/2; if(!fogHidden(gx,gy)) capture.push({ kind:'gate', gate:room.type, x:gx, y:gy, w, h }); return; }       // in 3D: a shaft and a standing gate (view3d.js)
     drawFloorArt(portalArt(room.type==='portal', Math.floor(Date.now()/220)%2), minX+(w-1)/2, minY+(h-1)/2, { scale:Math.max(w,h)*1.9, alpha:room.type==='portal'?0.8:0.7, rotation:room.type==='portal' ? 0 : spin });
   });
 
