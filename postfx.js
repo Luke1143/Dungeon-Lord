@@ -10,7 +10,9 @@ const FIGURE_LAYER=2;
 // styled there and laid over the filtered world: the world keeps its filter (and its relief), the figures get theirs.
 // 0 like the world (no split; the painted world still keeps them out of its paint), 1 sharp, 2 soft (shrunk and grown back), 3 coarse (big pixels),
 // 4 tube (scan lines and a sideways smear, as on a picture tube), 5 layers (coarse inside, the sharp silhouette around it),
-// 6 glow (the sharp figure in a soft halo of its own colours). The outline (option "Umriss") is a dark line of one screen pixel around the silhouette.
+// 6 glow (the sharp figure in a soft halo of its own colours). Apart from the look, the sprites themselves can be grown smoothly first (option "Figuren glatt",
+// a pixel-art upscaler in view3d.js); that stacks with every look: smooth + soft, smooth + tube ...
+// The cells follow each figure's own distance (read from the depth of the figures' picture), so a far figure is not smeared away. The outline (option "Umriss") is a dark line of one screen pixel around the silhouette.
 const FIG_LOOKS=[['Wie die Welt',0],['Scharf',1],['Weich',2],['Grob',3],['Röhre',4],['Schichten',5],['Schein',6]];
 // relief (bump mapping, docs/ui.md): the height of a pixel texture is the brightness of its pattern (bright = high, dark = low: mortar and cracks sink,
 // stones and planks rise); the light then falls on every texel as on a slope. RELIEF_SCALE: the strength of the levels light and strong.
@@ -140,19 +142,30 @@ function createPostFX(T){
           #include <colorspace_fragment>
         }` });
     // the figures' picture: their own colour target at full size with its own depth (filled by a depth pass of the world)
-    rtF=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true });
+    rtF=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true }); rtF.depthTexture=new T.DepthTexture(2,2);
     figScene=new T.Scene();
     figMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false, transparent:true, blending:T.CustomBlending, blendSrc:T.OneFactor, blendDst:T.OneMinusSrcAlphaFactor,
-      uniforms:{ tFig:{ value:rtF.texture }, size:{ value:new T.Vector2(2,2) }, mode:{ value:1 }, spx:{ value:4 }, outline:{ value:0 }, ow:{ value:1 }, vig:{ value:0 } },
+      uniforms:{ tFig:{ value:rtF.texture }, tDep:{ value:rtF.depthTexture }, cam:{ value:new T.Vector3(0.1,200,0.4) }, size:{ value:new T.Vector2(2,2) }, mode:{ value:1 }, spx0:{ value:4 }, outline:{ value:0 }, ow:{ value:1 }, vig:{ value:0 } },
       vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
-      fragmentShader:`uniform sampler2D tFig; uniform vec2 size; uniform float mode; uniform float spx; uniform float outline; uniform float ow; uniform float vig; varying vec2 vUv;
+      fragmentShader:`uniform sampler2D tFig; uniform sampler2D tDep; uniform vec3 cam; uniform vec2 size; uniform float mode; uniform float spx0; uniform float outline; uniform float ow; uniform float vig; varying vec2 vUv;
         vec4 at(vec2 p){ return texture2D(tFig,p/size); }                       // p in pixels of the figures' picture; colours are premultiplied
         vec4 cm(vec2 c,float k){ vec2 o=c*k; return (at(o+vec2(0.25,0.25)*k)+at(o+vec2(0.75,0.25)*k)+at(o+vec2(0.25,0.75)*k)+at(o+vec2(0.75,0.75)*k))*0.25; }   // a coarse cell's mean
+        // how big one pixel of a figure's sprite is here (in pixels of this picture): from the distance of the nearest figure around (the depth of its pixels);
+        // cam = near, far, tan(half the vertical field of view); a figure's sprite is 16 pixels to its 0.88 tiles
+        float dep(vec2 p){ return texture2D(tDep,p/size).r; }
+        float spxAt(vec2 px){
+          float d=1.0; if(at(px).a>0.3) d=dep(px);
+          for(int r=0;r<3;r++){ float rr=(r==0?3.0:(r==1?8.0:16.0))*ow;
+            for(int j=0;j<4;j++){ vec2 q=px+vec2(j==0?rr:(j==1?-rr:0.0),j==2?rr:(j==3?-rr:0.0)); if(at(q).a>0.3) d=min(d,dep(q)); } }
+          if(d>=1.0) return spx0;
+          float z=cam.x*cam.y/(cam.y-d*(cam.y-cam.x));
+          return size.y/(2.0*z*cam.z)*0.88/16.0;
+        }
         void main(){
-          vec2 px=vUv*size; vec4 c=at(px); float k;
+          vec2 px=vUv*size; vec4 c=at(px); float k, spx=mode>1.5&&mode<6.5?spxAt(px):spx0;
           if(mode<1.5){ }
-          else if(mode<2.5){       // soft: shrunk to cells of one sprite pixel, grown back smoothly
-            k=max(2.0,spx); vec2 g=px/k-0.5, i=floor(g), f=fract(g);
+          else if(mode<2.5){       // soft: shrunk to cells of up to one sprite pixel, grown back smoothly
+            k=max(1.0,spx*clamp((spx-1.5)/3.0,0.3,1.0)); vec2 g=px/k-0.5, i=floor(g), f=fract(g);       // a small (far) figure is softened less, so it stays readable
             c=mix(mix(cm(i,k),cm(i+vec2(1.0,0.0),k),f.x),mix(cm(i+vec2(0.0,1.0),k),cm(i+1.0,k),f.x),f.y);
           } else if(mode<3.5){     // coarse: cells of two sprite pixels
             k=max(3.0,spx*2.0); c=cm(floor(px/k),k);
@@ -228,7 +241,7 @@ function createPostFX(T){
     get level(){ return level; }, setLevel(n){ level=Math.max(0,Math.min(POST_LEVELS.length-1,n|0)); applied=-1; },
     get figLook(){ return figLook; }, setFigLook(n,line){ figLook=Math.max(0,Math.min(FIG_LOOKS.length-1,n|0)); outline=line?1:0; applied=-1; },
     // how big one pixel of a figure's sprite is on the screen (in pixels of the picture), so that soft, coarse and tube follow the zoom
-    setTexel(v){ texel=v; if(figMat) figMat.uniforms.spx.value=Math.max(1,v); },
+    setTexel(v){ texel=v; if(figMat) figMat.uniforms.spx0.value=Math.max(1,v); },
     resize(cssW,cssH,dpr){ w=cssW; h=cssH; dprNow=dpr||1; sizePost(); },
     // true when it drew the picture (the caller draws it plain otherwise)
     render(renderer,scene,camera){
@@ -244,6 +257,7 @@ function createPostFX(T){
         renderer.autoClear=auto; renderer.setClearColor(cc,ca); scene.background=bg;
       } else { if(own) camera.layers.set(0); renderer.setRenderTarget(rt); renderer.render(scene,camera); }
       if(own){
+        figMat.uniforms.cam.value.set(camera.near,camera.far,Math.tan((camera.fov||45)*Math.PI/360));
         // the figures' picture: the world's depth only (no colour: the colour mask is locked shut), then the figures in colour
         const bg=scene.background, cc=renderer.getClearColor(new T.Color()), ca=renderer.getClearAlpha(), auto=renderer.autoClear, cb=renderer.state.buffers.color;
         scene.background=null; renderer.setClearColor(0x000000,0); renderer.setRenderTarget(rtF); renderer.clear(true,true,false); renderer.autoClear=false;

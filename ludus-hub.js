@@ -148,7 +148,7 @@ const LudusHub=(()=>{
   }
   function start(){ if(running||!ready) return; running=true; last=performance.now(); requestAnimationFrame(frame); resize(); }
   function stop(){ running=false; }
-  function setLook(o){ if(!ready) return; if(o.post!==undefined) view.setPost(o.post); if(o.relief!==undefined) view.setRelief(o.relief); if(o.mood!==undefined) view.setMood(o.mood); if(o.shadows!==undefined) view.setShadows(o.shadows); if(o.figLook!==undefined) view.setFigLook(o.figLook,o.outline); }
+  function setLook(o){ if(!ready) return; if(o.post!==undefined) view.setPost(o.post); if(o.relief!==undefined) view.setRelief(o.relief); if(o.mood!==undefined) view.setMood(o.mood); if(o.shadows!==undefined) view.setShadows(o.shadows); if(o.figLook!==undefined) view.setFigLook(o.figLook,o.outline,o.figSmooth); }
   return { init, sync, focus, start, stop, resize, setLook, set onPick(f){ onPick=f; }, get ready(){ return ready; }, get current(){ return current; },
     get dungeon(){ return dungeon; }, get people(){ return people; },
     // where a person stands on the screen (pixels in the host), for tests and pointers

@@ -12,8 +12,8 @@ const { open, finish }=require('./lib');
   // the deepest relief (parallax occlusion) and every picture effect must compile
   await p.evaluate(()=>setOption('relief',3)); for(let l=0;l<6;l++){ await p.evaluate(v=>setPostLevel(v),l); await p.waitForTimeout(300); } await p.evaluate(()=>setPostLevel(1));
   // every figure look (with and without outline), over no filter and over the painted world
-  for(const post of [0,5]){ await p.evaluate(v=>setPostLevel(v),post); const nf=await p.evaluate(()=>FIG_LOOKS.length); for(let f=1;f<nf;f++){ await p.evaluate(f=>{ setOption('outline',f%2===0); setOption('figLook',f); },f); await p.waitForTimeout(250); } }
-  await p.evaluate(()=>{ setOption('figLook',0); setOption('outline',false); setPostLevel(1); });
+  for(const post of [0,5]){ await p.evaluate(v=>setPostLevel(v),post); const nf=await p.evaluate(()=>FIG_LOOKS.length); for(let f=1;f<nf;f++){ await p.evaluate(f=>{ setOption('outline',f%2===0); setOption('figSmooth',f%3===0); setOption('figLook',f); },f); await p.waitForTimeout(250); } }
+  await p.evaluate(()=>{ setOption('figLook',0); setOption('outline',false); setOption('figSmooth',false); setPostLevel(1); });
   await p.evaluate(()=>{ setOption('relief',1); });
   if(shaderErr.length) problem+='shader: '+shaderErr[0]+'; ';
   await p.evaluate(()=>{ arenaStart({ teams:[{name:'A',groups:[arenaGroup('ork',2,3)]},{name:'B',groups:[arenaGroup('knight',2,3)]}], map:{layout:'ring',dims:'S',seed:'s',lava:1,water:1,crystal:0,near:1}, fog:true, batch:1 }); });

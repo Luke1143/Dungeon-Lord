@@ -43,8 +43,8 @@ function makeView3D(){
   function setShadows(on){ shadows=!!on; }
   let shadowTex=null;
   function blobTex(){ if(!shadowTex){ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,2,16,16,15); gr.addColorStop(0,'rgba(0,0,0,0.55)'); gr.addColorStop(0.6,'rgba(0,0,0,0.3)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); shadowTex=texOfCanvas(c); } return shadowTex; }
-  let figLook=0, figLine=false, dprV=1;
-  function setFigLook(n,line){ figLook=n|0; figLine=!!line; if(post) post.setFigLook(figLook,figLine); }
+  let figLook=0, figLine=false, figSmooth=false, dprV=1;
+  function setFigLook(n,line,smooth){ figLook=n|0; figLine=!!line; figSmooth=!!smooth; if(post) post.setFigLook(figLook,figLine); }
   function setPost(level){ postLevel=Math.max(0,Math.min(5,level|0)); if(post) post.setLevel(postLevel); }
   // another region, another map size: drop the old tile meshes
   function setSize(worldCols, worldRows){
@@ -177,6 +177,26 @@ function makeView3D(){
   }
 
   // ---- sprites ----
+  // the option "Figuren glatt" (with any figure look, postfx.js): a creature's sprite grown four times by an edge-directed pixel-art upscaler (EPX, twice) before it is drawn,
+  // so stair steps become diagonals and the edges stay crisp; read smoothly (linear, mip maps), it stays clean when small and when big
+  const smoothTex=new Map();
+  function epx2(src){
+    const w=src.width, h=src.height, a=src.getContext('2d').getImageData(0,0,w,h).data, c=document.createElement('canvas'); c.width=w*2; c.height=h*2;
+    const g=c.getContext('2d'), out=g.createImageData(w*2,h*2), o=out.data;
+    const px=(x,y)=>{ x=Math.max(0,Math.min(w-1,x)); y=Math.max(0,Math.min(h-1,y)); const i=(y*w+x)*4; return (a[i]<<24|a[i+1]<<16|a[i+2]<<8|a[i+3])>>>0; };
+    const put=(x,y,v)=>{ const i=(y*w*2+x)*4; o[i]=v>>>24; o[i+1]=(v>>>16)&255; o[i+2]=(v>>>8)&255; o[i+3]=v&255; };
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+      const P=px(x,y), A=px(x,y-1), B=px(x+1,y), C=px(x-1,y), D=px(x,y+1);
+      put(2*x,2*y,(C===A&&C!==D&&A!==B)?A:P); put(2*x+1,2*y,(A===B&&A!==C&&B!==D)?B:P);
+      put(2*x,2*y+1,(D===C&&D!==B&&C!==A)?C:P); put(2*x+1,2*y+1,(B===D&&B!==A&&D!==C)?D:P);
+    }
+    g.putImageData(out,0,0); return c;
+  }
+  function texOfSmooth(cv){
+    let t=smoothTex.get(cv);
+    if(!t){ t=new T.CanvasTexture(epx2(epx2(cv))); t.magFilter=T.LinearFilter; t.minFilter=T.LinearMipmapLinearFilter; t.generateMipmaps=true; t.colorSpace=T.SRGBColorSpace; smoothTex.set(cv,t); }
+    return t;
+  }
   function texOfCanvas(cv){
     let t=canvasTex.get(cv);
     if(!t){ t=new T.CanvasTexture(cv); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace; canvasTex.set(cv,t); }
@@ -440,7 +460,7 @@ function makeView3D(){
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
     }
-    const tex=it.canvas?texOfCanvas(it.canvas):emojiTex(it.emoji);
+    const tex=it.canvas?((it.kind==='creature'&&figSmooth)?texOfSmooth(it.canvas):texOfCanvas(it.canvas)):emojiTex(it.emoji);
     const ox=(it.ox||0)/32, oy=(it.oy||0)/32, alpha=it.alpha===undefined?1:it.alpha;
     if((it.emoji||it.flat) && it.scale>=1.5){
       const d=takeDecal(); d.material.map=tex; d.material.opacity=alpha; d.material.needsUpdate=true;
@@ -459,7 +479,7 @@ function makeView3D(){
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
     else if(it.kind==='emoji'){ anchorY=0.5; py=0.28+size/2; }
     s.center.set(0.5,it.kind==='emoji'?0.5:0);
-    if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; f.layers.mask=s.layers.mask; pendingFlash.push({ f, s }); }
+    if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=figSmooth?texOfSmooth(it.flashCanvas):texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; f.layers.mask=s.layers.mask; pendingFlash.push({ f, s }); }
     s.scale.set(size,size,1);
     if(it.kind==='emoji') s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5-ox*Math.sin(yaw));
     else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py+(it.lift||0), it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer

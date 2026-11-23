@@ -3,7 +3,7 @@
 //   look-outline.png    the same with the outline on
 //   look-world.png      world effects (rows) x zoom (columns), figures sharp: is the parallax still there under each filter?
 //   look-mix.png        a few hand-picked mixes of world effect and figure look, near and middle
-// Usage: NODE_PATH=$(npm root -g) node tools/look-sheet.js [figures,outline,world,mix,paint]   (pictures into tests/out/; without a list all but paint)
+// Usage: NODE_PATH=$(npm root -g) node tools/look-sheet.js [figures,outline,world,mix,paint,fp]   (pictures into tests/out/; without a list all but paint)
 const { open, buildScene, OUT }=require('../tests/lib');
 const path=require('path');
 (async()=>{
@@ -12,14 +12,17 @@ const path=require('path');
   const cam=await p.evaluate(buildScene);
   // seven creatures of different kinds in a row in the corridor next to the rooms, standing still (the game is paused)
   await p.evaluate(c=>{ gameSpeed=0; const kinds=['ork','goblin','troll','darkelf','vampire','skeleton','warlock']; const pick=kinds.map(k=>state.creatures.find(x=>x.kind===k)).filter(Boolean);
-    pick.forEach((x,i)=>{ x.x=c.x-6+i*2; x.y=c.y+(i%2); x.renderX=x.x; x.renderY=x.y; x.state='idle'; x.path=null; }); window.__look={ x:c.x, y:c.y+0.5 }; },cam);
+    window.__row=pick; pick.forEach((x,i)=>{ x.x=c.x-6+i*2; x.y=c.y+(i%2); x.renderX=x.x; x.renderY=x.y; x.state='idle'; x.path=null; }); window.__look={ x:c.x, y:c.y+0.5 }; },cam);
   await p.evaluate(()=>{ setView3d(true); gameSpeed=0; OPTIONS.relief=3; applyLook(); });
   await p.waitForTimeout(1500);
   const ZOOMS=[[0.8,'weit'],[1.4,'mittel'],[2.2,'nah']];
   const FIG=[['Wie die Welt',0],['Scharf',1],['Weich',2],['Grob',3],['Röhre',4],['Schichten',5],['Schein',6]];
   const WORLD=[['Aus',0],['Weich',1],['Röhre',2],['Pixel glatt',4],['Gemalt',5]];
   // one picture: the middle of the board around the scene
-  const grab=async({ zoom, post, fig, line })=>{
+  const grab=async({ zoom, post, fig, line, fp, smooth })=>{
+    await p.evaluate(v=>{ OPTIONS.figSmooth=!!v; },smooth);
+    if(fp) return grabFp({ post, fig, line });
+    await p.evaluate(()=>{ if(possessed) endPossession(); });
     // the camera on the row of creatures; the picture is cut around where that spot lands on the screen
     await p.evaluate(([zoom,post,fig,line])=>{ OPTIONS.figLook=fig; OPTIONS.outline=line; applyLook(); setPostLevel(post); setZoom(zoom);
       jumpCameraTo(window.__look.x,window.__look.y); },[zoom,post,fig,line]);
@@ -29,10 +32,20 @@ const path=require('path');
     const x=Math.max(box.x,Math.min(box.x+box.width-W,box.x+at.x-W/2)), y=Math.max(box.y,Math.min(box.y+box.height-H,box.y+at.y-H/2));
     return (await p.screenshot({ clip:{ x:Math.round(x), y:Math.round(y), width:W, height:H } })).toString('base64');
   };
+  // through the eyes of a creature at the start of the corridor, looking along the row of creatures (the nearest 4 tiles away, the farthest 16)
+  const grabFp=async({ post, fig, line })=>{
+    await p.evaluate(([post,fig,line])=>{ OPTIONS.figLook=fig; OPTIONS.outline=line; applyLook(); setPostLevel(post);
+      let v=window.__viewer; if(!v){ v=window.__viewer=state.creatures.find(c=>!window.__row.includes(c)); }
+      v.x=Math.round(window.__look.x)-10; v.y=Math.round(window.__look.y-0.5); v.renderX=v.x; v.renderY=v.y; v.fpYaw=0; if(possessed!==v) startPossession(v); v.fpYaw=0; },[post,fig,line]);
+    await p.waitForTimeout(900);
+    const box=await (await p.$('#viewport')).boundingBox(), W=480, H=300;
+    return (await p.screenshot({ clip:{ x:Math.round(box.x+box.width/2-W/2), y:Math.round(box.y+box.height/2-H/2), width:W, height:H } })).toString('base64');
+  };
+  const leaveFp=()=>p.evaluate(()=>{ if(possessed) endPossession(); });
   // a sheet: rows x columns of pictures with their names, drawn on a canvas in a blank page
   const ONLY=(process.argv[2]||'').split(',').filter(Boolean);
   const sheet=async(file,title,rows,cols,cell)=>{
-    const name=file.replace(/^look-|\.png$/g,''); if(ONLY.length?!ONLY.includes(name):name==='paint') return;
+    const name=file.replace(/^look-|\.png$/g,''); if(ONLY.length?!ONLY.includes(name):(name==='paint'||name==='fp')) return;
     const pics=[]; for(const r of rows){ const line=[]; for(const c of cols) line.push(await grab(cell(r,c))); pics.push(line); }
     const q=await browser.newPage({ viewport:{ width:200+cols.length*490, height:70+rows.length*310 } });
     await q.setContent('<body style="margin:0;background:#111"><canvas id=c></canvas></body>');
@@ -49,6 +62,8 @@ const path=require('path');
   await sheet('look-outline.png','Figuren-Stil mit Umriss × Zoom',FIG.slice(1),ZOOMS,(f,z)=>({ zoom:z[0], post:0, fig:f[1], line:true }));
   await sheet('look-world.png','Bildeffekt der Umgebung × Zoom (Figuren scharf, Relief Tief)',WORLD,ZOOMS,(w,z)=>({ zoom:z[0], post:w[1], fig:1, line:false }));
   await sheet('look-paint.png','Gemalt: Relief bleibt? (Relief Tief, Figuren scharf)',[['Aus',0],['Gemalt',5],['Pixel glatt',4]],ZOOMS.slice(1),(w,z)=>({ zoom:z[0], post:w[1], fig:1, line:false }));
+  await sheet('look-fp.png','Glatt kombiniert: Ich-Sicht und Draufsicht (Abstand je Figur)',[['Scharf',1,false],['Glatt',1,true],['Weich',2,false],['Glatt + Weich',2,true],['Glatt + Röhre',4,true],['Glatt + Schein',6,true],['Glatt + Schichten',5,true]],[[0,'Ich-Sicht'],[2.2,'Draufsicht nah'],[0.8,'Draufsicht weit']],(f,z)=>({ zoom:z[0]||1, post:0, fig:f[1], smooth:f[2], line:false, fp:!z[0] }));
+  await leaveFp();
   const MIX=[['Röhre + Röhre',2,4,false],['Gemalt + Schichten',5,5,true],['Gemalt + Weich',5,2,true],['Pixel glatt + Grob',4,3,true],['Weich + Schein',1,6,false],['Röhre + Scharf/Umriss',2,1,true]];
   await sheet('look-mix.png','Mischungen: Umgebung + Figuren',MIX,ZOOMS.slice(1),(m,z)=>({ zoom:z[0], post:m[1], fig:m[2], line:m[3] }));
   console.log(errs.length?'errors:\n  '+errs.slice(0,8).join('\n  '):'no errors');
