@@ -1,4 +1,4 @@
-// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; the imps as SVG figures; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
+// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; the imps as SVG figures; the hand pointer; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
 // Usage: NODE_PATH=$(npm root -g) node tests/smoke.js
 const { open, finish }=require('./lib');
 (async()=>{
@@ -16,6 +16,9 @@ const { open, finish }=require('./lib');
     setView3d(false); draw(); setOption('figures','pixel'); draw(); setOption('figures','svg'); setView3d(true); await new Promise(r=>setTimeout(r,300));
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
+  // the Dungeon Lord's hand: the pointer over the 3D board hides the system pointer and lights the dungeon
+  { const box=await (await p.$('#board')).boundingBox(); await p.mouse.move(box.x+box.width/2,box.y+box.height/2); await p.waitForTimeout(400);
+    const cur=await p.evaluate(()=>document.getElementById('board').style.cursor); if(cur!=='none') problem+='the hand pointer did not take over; '; await p.mouse.move(2,2); }
   // the deepest relief (parallax occlusion) and every picture effect must compile
   await p.evaluate(()=>setOption('relief',3)); for(let l=0;l<6;l++){ await p.evaluate(v=>setPostLevel(v),l); await p.waitForTimeout(300); } await p.evaluate(()=>setPostLevel(1));
   // every figure look (with and without outline), over no filter and over the painted world

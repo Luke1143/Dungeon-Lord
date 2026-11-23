@@ -21,4 +21,4 @@ NODE_PATH=$(npm root -g) node tests/shots.js arena,ludus   # only some pictures 
 `lib.js` holds what they share: `open()` (browser, page, collected errors), `buildScene()` (a test dungeon with rooms and creatures next to the throne),
 `startArena(layout)`, `shot()`, `finish()`. Any page error or console error fails a test.
 
-Longer measurements (balancing) are in `tools/`: `balance-sim.js`, `balance-campaign.js`, `ludus-tour-bot.js` (plays whole Ludus runs).
+Longer measurements (balancing) and picture sheets are in `tools/` (`look-sheet.js`: effects and figure looks; `light-scene.js`: the imps under different light): `balance-sim.js`, `balance-campaign.js`, `ludus-tour-bot.js` (plays whole Ludus runs).

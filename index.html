@@ -5944,7 +5944,7 @@ function spriteDark(c){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return '#000
 // A creature's picture. Most are one cell (16x16); a figure with parts that reach beyond it (wings, tails, hats) comes on a bigger square
 // with its cell in the bottom middle: spriteK(cv) says how many cells wide the picture is, spriteCell(cv) gives the cell alone (for icons).
 // Graphics options (the options dialog, options.js): kept in the browser; the 3D view and its picture effect have keys of their own
-const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true, relief:1, figLook:0, outline:false, figSmooth:false, figures:'svg' },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
+const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true, relief:1, figLook:0, outline:false, figSmooth:false, figures:'svg', hand:true },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
 const spriteK=cv=>cv._cells||cv.width/16;       // an SVG figure's picture says how many tiles it covers (svg-figures.js)
 function spriteCell(cv){
   if(cv.width===16) return cv;
@@ -6264,6 +6264,8 @@ function draw(){
   fpPose=fpActive()?currentPose(possessed):null;
   View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw, kick:fpPose?fpPose.kick:0, hop:fpPose?fpPose.hop*0.6:0 }:null);
   View3D.setFog(fpActive()?5:26, fpActive()?15:70);       // through a creature's eyes nobody sees far
+  const hand=OPTIONS.hand!==false&&boardPointer&&!fpActive()?View3D.pickPoint(boardPointer.x,boardPointer.y):null;
+  View3D.setHand(hand); canvas.style.cursor=hand?'none':'';
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
   updateFpHud();
   drawOverlay3d();
@@ -8785,7 +8787,11 @@ canvas.addEventListener('mousedown', e=>{
   }
 });
 
+// the pointer over the board: in 3D the Dungeon Lord's hand follows it (view3d.js) and the system pointer is hidden there
+let boardPointer=null;
+canvas.addEventListener('mouseleave', ()=>{ boardPointer=null; });
 canvas.addEventListener('mousemove', e=>{
+  { const r=canvas.getBoundingClientRect(); boardPointer={ x:e.clientX-r.left, y:e.clientY-r.top }; }
   if(!dragStart) return;
   const {x,y}=tileFromEvent(e);
   if(!inBounds(x,y)) return;

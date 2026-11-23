@@ -476,7 +476,7 @@ function makeView3D(){
     const s=takeSprite(); s.material.map=tex; s.material.opacity=alpha; s.material.rotation=it.kind==='creature'?(it.rotation||0):0; s.material.needsUpdate=true;
     if(it.kind==='creature') s.layers.set(FIGURE_LAYER);
     let size, base, anchorY=0, py=0;
-    if(it.kind==='creature'){ size=0.88*(it.scale||1);
+    if(it.kind==='creature'){ size=0.88*(it.scale||1); if(it.canvas&&it.canvas._svg&&shadows&&!(it.lift>0.3)&&!it.rotation) castShadow(it,tex,size);
       if(shadows){ const d=takeDecal(), w=0.62*(it.scale||1)/(it.cells||1); d.material.map=blobTex(); d.material.opacity=alpha; d.material.needsUpdate=true; d.scale.set(w,1,w*0.7); d.position.set(it.x+0.5,0.025,it.y+0.5); d.rotation.y=0; } }       // a soft shadow on the floor: the figure stands instead of floating
     else if(it.kind==='prop'){ size=0.78*(it.scale||1); }
     else { size=0.5*(it.scale||1)*1.25; }
@@ -569,17 +569,64 @@ function makeView3D(){
     camera.lookAt(cx,0,cy);
     camera.updateMatrixWorld();
   }
-  const LIGHT_KEYS={ torch:[0xff9a40,3.4,5.5], throne:[0xc060ff,3,6], lava:[0xff5a18,4,5], candle:[0xffb060,4,6], fire:[0xff7a2a,5,8], kiln:[0xff6a20,5,7], furnace:[0xff6a20,3,5] };
+  const LIGHT_KEYS={ torch:[0xff9a40,3.4,6.9], throne:[0xc060ff,3,7.5], lava:[0xff5a18,4,6.2], candle:[0xffb060,4,7.5], fire:[0xff7a2a,5,10], kiln:[0xff6a20,5,8.8], furnace:[0xff6a20,3,6.2], hand:[0xc8a6ff,2.6,5.2] };       // reach a quarter further than before (user, November 2026)
   const MAX_LIGHTS=14;
+  // ---- the Dungeon Lord's hand: the cursor in the 3D view (user, November 2026), a floating hand that casts light; the hardware pointer is hidden over the board ----
+  let handAt=null, handSprite=null, handRing=null;
+  const activeLights=[];       // the lights of this frame: the creatures' shadows fall away from them
+  function handCanvas(){
+    const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
+    const glow=g.createRadialGradient(32,30,4,32,30,30); glow.addColorStop(0,'rgba(200,166,255,0.55)'); glow.addColorStop(1,'rgba(200,166,255,0)'); g.fillStyle=glow; g.fillRect(0,0,64,64);
+    g.lineJoin='round'; g.lineCap='round'; g.strokeStyle='#0b0710'; g.lineWidth=2.4;
+    // a grim open hand seen from the back, fingers reaching down: the palm, four fingers, the thumb (the same hand as the creatures', only bigger)
+    const palm=new Path2D('M20 14 Q32 8 44 14 Q47 24 43 32 Q32 36 21 32 Q17 24 20 14z');
+    const fingers=[[23,32,21,47],[29,34,28.5,52],[35,34,36,51],[41,32,43,46]].map(([x1,y1,x2,y2])=>{ const p=new Path2D(); p.moveTo(x1,y1); p.lineTo(x2,y2); return p; });
+    const thumb=new Path2D('M20 22 Q12 26 11 34');
+    g.fillStyle='#4a3c58'; g.fill(palm); g.stroke(palm);
+    fingers.concat([thumb]).forEach(f=>{ g.lineWidth=6.2; g.strokeStyle='#0b0710'; g.stroke(f); g.lineWidth=3.8; g.strokeStyle='#5a4a6c'; g.stroke(f); });
+    g.fillStyle='#e8d8ff'; [[21,47],[28.5,52],[36,51],[43,46]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,1.3,0,7); g.fill(); });       // glowing finger tips
+    g.strokeStyle='#2a2034'; g.lineWidth=1; g.beginPath(); g.moveTo(25,20); g.quadraticCurveTo(32,23,39,20); g.stroke();
+    return c;
+  }
+  function setHand(at){ handAt=at; }
+  function placeHand(now){
+    if(!handSprite){ handSprite=new T.Sprite(new T.SpriteMaterial({ map:texOfCanvas(handCanvas()), transparent:true, depthTest:false })); handSprite.center.set(0.5,0.08); handSprite.renderOrder=10; scene.add(handSprite);
+      const geo=new T.RingGeometry(0.16,0.24,24); geo.rotateX(-Math.PI/2); handRing=new T.Mesh(geo,new T.MeshBasicMaterial({ color:0xc8a6ff, transparent:true, opacity:0.55, depthWrite:false })); scene.add(handRing); }
+    const on=!!handAt&&!fp; handSprite.visible=on; handRing.visible=on; if(!on) return;
+    const bob=Math.sin(now/320)*0.05; handSprite.position.set(handAt.x,handAt.y+0.42+bob,handAt.z); handSprite.scale.set(0.62,0.62,1);
+    handRing.position.set(handAt.x,handAt.y+0.04,handAt.z); handRing.scale.setScalar(1+0.12*Math.sin(now/260));
+  }
+  // where the pointer meets the dungeon: the top of a wall, or the floor
+  function pickPoint(px,py){
+    if(!ready||!active) return null;
+    const ray=new T.Raycaster(); ray.setFromCamera(new T.Vector2(px/w*2-1,-(py/h)*2+1),camera);
+    const hit=ray.intersectObjects(rayTarget,false)[0]; if(hit) return { x:hit.point.x, y:Math.max(0,hit.point.y), z:hit.point.z };
+    const o=ray.ray.origin, d=ray.ray.direction; if(Math.abs(d.y)<1e-6) return null; const t=-o.y/d.y; return t>0?{ x:o.x+d.x*t, y:0, z:o.z+d.z*t }:null;
+  }
+  // ---- the creatures' shadows (the SVG figures): their silhouette lies on the floor, away from the nearest light, longer the farther it is ----
+  const castPool=[]; let castUsed=0;
+  function castShadow(it,tex,size){
+    const fx=it.x+0.5, fz=it.y+0.5; let best=null, bd=1e9;
+    activeLights.forEach(L=>{ const d=Math.hypot(fx-L.x,fz-L.z); if(d<L.dist&&d<bd){ bd=d; best=L; } });
+    if(!best||bd<0.15) return;
+    let m=castPool[castUsed];
+    if(!m){ const geo=new T.PlaneGeometry(1,1); geo.translate(0,0.5,0); geo.rotateX(-Math.PI/2); m=new T.Mesh(geo,new T.MeshBasicMaterial({ color:0x000000, transparent:true, depthWrite:false, alphaTest:0.05 })); m.renderOrder=1; spriteGroup.add(m); castPool.push(m); }
+    castUsed++; m.visible=true;
+    const dx=(fx-best.x)/bd, dz=(fz-best.z)/bd, near=1-bd/best.dist;
+    m.material.map=tex; m.material.opacity=Math.min(0.55,0.22+0.45*near)*(it.alpha===undefined?1:it.alpha); m.material.needsUpdate=true;
+    m.position.set(fx,0.028,fz); m.rotation.set(0,Math.atan2(-dx,-dz),0); m.scale.set(size*0.9,1,size*Math.max(0.5,Math.min(1.7,0.55+bd*0.32)));
+  }
   function updateLights(items,cx,cy,now){
     while(lights.length<MAX_LIGHTS){ const l=new T.PointLight(0xffa040,0,6,1.6); scene.add(l); lights.push(l); }
     const lp=it=>it.wx!==undefined?[it.wx,it.wz]:[it.x+0.5,it.y+0.5];
     const cand=items.filter(it=>(it.kind==='prop'||it.kind==='wallTorch'||it.kind==='light')&&LIGHT_KEYS[it.key]).map(it=>{ const [lx,lz]=lp(it); return { it, d:(lx-cx)*(lx-cx)+(lz-cy)*(lz-cy) }; }).sort((a,b)=>a.d-b.d).slice(0,MAX_LIGHTS);
+    if(handAt){ const hi={ kind:'light', key:'hand', wx:handAt.x, wz:handAt.z, wy:handAt.y+0.55 }; cand.unshift({ it:hi, d:0 }); if(cand.length>MAX_LIGHTS) cand.pop(); }
+    activeLights.length=0;
     cand.forEach(({it},i)=>{
       const l=lights[i];
       const [col,inten,dist]=LIGHT_KEYS[it.key];
       l.color.setHex(col); l.distance=dist*(mood?1.25:1); l.intensity=(inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15)*(mood?1.5:1);
-      { const [lx,lz]=lp(it); l.position.set(lx, it.wy!==undefined?it.wy:0.8, lz); }
+      { const [lx,lz]=lp(it); l.position.set(lx, it.wy!==undefined?it.wy:0.8, lz); activeLights.push({ x:lx, z:lz, dist:l.distance, inten:inten }); }
     });
     for(let i=cand.length;i<lights.length;i++) lights[i].intensity=0;   // keep all lights alive: toggling them would recompile the shaders
   }
@@ -587,7 +634,7 @@ function makeView3D(){
     if(!ready||!active) return;
     lastInfo=tileInfo; syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now()); updateLiquids(performance.now());
-    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0; gateFrame++; ringUsed=0;
+    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0; gateFrame++; ringUsed=0; castUsed=0;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
@@ -597,6 +644,8 @@ function makeView3D(){
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
     gates.forEach(g=>{ if(g.seen!==gateFrame) g.group.visible=false; });
     for(let i=ringUsed;i<ringPool.length;i++) ringPool[i].visible=false;
+    for(let i=castUsed;i<castPool.length;i++) castPool[i].visible=false;
+    placeHand(performance.now());
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
     if(!post.render(renderer,scene,camera)) renderer.render(scene,camera);
@@ -615,7 +664,7 @@ function makeView3D(){
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
   VIEW3D_ALL.push({ dropCanvas });
-  return self={ onLost:null, dropCanvas, init, setSize, resize, setActive, setFog, setPost, setFigLook, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  return self={ onLost:null, dropCanvas, setHand, pickPoint, init, setSize, resize, setActive, setFog, setPost, setFigLook, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 }
 var View3D=makeView3D();       // var: the Ludus screen lends its own view to the shared draw code while it draws (ludus-hub.js)
