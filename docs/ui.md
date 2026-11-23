@@ -12,7 +12,11 @@ Die Welt füllt das ganze Fenster, links liegt das Menü (`ui-panel.js` und das 
 ## Bildeffekt in 3D
 Über das 3D-Bild der Level-Ansicht legt `view3d.js` einen kleinen Nachbearbeitungsschritt: Das Bild wird zuerst in eine Textur gerendert, dann weichzeichnet ein Shader es leicht (die harten Pixelkanten der Sprites verschmelzen mit der Welt), helle Stellen leuchten etwas nach, die Ecken werden dunkler. Stufen: aus, weich, dunstig (Knopf 🌫 oder Taste F, wird gemerkt). Die Stufe „weich" ist voreingestellt.
 
-Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das Bild wird klein gerendert, die Farbe verschmiert seitlich wie bei Composite-Video (Farbe breiter als Helligkeit), Scanlines lassen dunkle Lücken zwischen den Zeilen, eine feine Maske aus Rot-Grün-Blau-Streifen liegt darüber, das Glas wölbt sich leicht; Stufe 3 reduziert zusätzlich die Farben mit geordnetem Dithering.
+Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das Bild wird klein gerendert, die Farbe verschmiert seitlich wie bei Composite-Video (Farbe breiter als Helligkeit), Scanlines lassen dunkle Lücken zwischen den Zeilen, eine feine Maske aus Rot-Grün-Blau-Streifen liegt darüber; Stufe 3 reduziert zusätzlich die Farben mit geordnetem Dithering. Das Glas ist flach (Nutzer, November 2026: die Krümmung an den Rändern sollte weg, der Effekt bleiben).
+
+Stufen 4 und 5 (Idee des Nutzers: das Bild erst verzerren, dann mit einer Art Anti-Aliasing oder Hochskalieren wiederherstellen; das systematische Raten der Wiederherstellung wird zum Stil):
+- **Pixel glatt** (4): das 3D-Bild wird klein gerendert (halbe Größe, davon je vier Bildpunkte gemittelt, damit Texturen nicht flimmern) und mit einem eigenen kantengerichteten Hochskalierer zurückgeholt: eine Ecke, deren zwei Nachbarn einander gleichen, aber deutlich vom Bildpunkt abweichen, wird weich entlang der Diagonale abgeschnitten (bei längeren Kanten flacher). Die ganze Welt hat so dieselbe Pixelgröße wie die Sprites, mit sauberen Kanten.
+- **Gemalt** (5): ein Kuwahara-Filter (klassisches, freies Verfahren): von den vier Quadraten um einen Punkt gibt das mit der geringsten Farbstreuung seinen Mittelwert. Flächen werden zu Pinselstrichen, Kanten bleiben scharf.
 
 ## Eigene Pixelsymbole
 `icons.js` zeichnet alle Symbole des Menüs selbst (12 × 12, aus Rechtecken, Kreisen und Linien, mit dunklem Rand): Gebäude, Zauber, Reiter und die Meldungen. Die Brücke in den Arenen hat jetzt die Bohlen der Kampagnenbrücke. Der Bildeffekt liegt in `postfx.js` und gilt auch für den Ludus-Hof.

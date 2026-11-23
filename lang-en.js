@@ -90,7 +90,7 @@ i18nRegister({"Thronsaal":"Throne Room",
 "Fackeln und Feuer leuchten warm, der Rest ist dunkler, der Bildrand dunkelt ab (nur 3D).":"Torches and fires glow warm, the rest is darker, the rim of the picture darkens (3D only).",
 "Ein weicher Schatten am Boden (nur 3D).":"A soft shadow on the floor (3D only).",
 "Eine dunkle Kopie hinter jeder Figur lässt sie dicker wirken.":"A dark copy behind every figure makes it look thicker.",
-"Weichzeichner oder Röhrenmonitor über dem 3D-Bild. Taste F wechselt.":"A soft blur or a CRT monitor over the 3D picture. Key F switches.",
+"Ein Filter über dem 3D-Bild: weich, Röhrenmonitor, geglättete Pixel oder gemalt. Taste F wechselt.":"A filter over the 3D picture: soft, CRT monitor, smoothed pixels or painted. Key F switches.", "Pixel glatt":"Smooth pixels", "Gemalt":"Painted",
 "Optionen: Ansicht und Grafik (O)":"Options: view and graphics (O)",
 
 "Spinne":"Spider",

@@ -5,7 +5,7 @@ const OPTION_ROWS=[
   { label:'Stimmungslicht', hint:'Fackeln und Feuer leuchten warm, der Rest ist dunkler, der Bildrand dunkelt ab (nur 3D).', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.mood, set:v=>setOption('mood',v) },
   { label:'Schatten unter Kreaturen', hint:'Ein weicher Schatten am Boden (nur 3D).', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.shadows, set:v=>setOption('shadows',v) },
   { label:'Tiefe der Figuren', hint:'Eine dunkle Kopie hinter jeder Figur lässt sie dicker wirken.', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.depth, set:v=>setOption('depth',v) },
-  { label:'Bildeffekt', hint:'Weichzeichner oder Röhrenmonitor über dem 3D-Bild. Taste F wechselt.', choices:[['Aus',0],['Weich',1],['Röhre',2],['Röhre stark',3]], get:()=>View3D.post||0, set:v=>setPostLevel(v) }
+  { label:'Bildeffekt', hint:'Ein Filter über dem 3D-Bild: weich, Röhrenmonitor, geglättete Pixel oder gemalt. Taste F wechselt.', choices:[['Aus',0],['Weich',1],['Röhre',2],['Röhre stark',3],['Pixel glatt',4],['Gemalt',5]], get:()=>View3D.post||0, set:v=>setPostLevel(v) }
 ];
 function optionsRender(){
   const body=document.getElementById('optionsBody'); if(!body||document.getElementById('optionsDlg').hidden) return;

@@ -1,10 +1,14 @@
 // The picture finish for the 3D views (level and Ludus courtyard): the render goes to a texture first, a shader then softens or imitates a CRT screen; see docs/ui.md.
-// Levels: 0 off, 1 soft, 2 CRT, 3 CRT strong.
+// Levels: 0 off, 1 soft, 2 CRT, 3 CRT strong (both flat: the scan lines, mask and glow of a tube without its curved glass),
+// 4 smooth pixels (the picture rendered small, then grown back with an edge-directed upscaler that turns stair steps into diagonals and curves),
+// 5 painted (a Kuwahara filter: every point takes the colour of its calmest neighbourhood, so surfaces become brush strokes and edges stay sharp).
 function createPostFX(T){
-  let rt, postScene, postCam, postMat, crtMat, postMesh, level=1, applied=-1, w=0, h=0, dprNow=1;
+  let rt, postScene, postCam, postMat, crtMat, smoothMat, paintMat, postMesh, level=1, applied=-1, w=0, h=0, dprNow=1;
   const POST_LEVELS=[null,{ blur:1.0, bloom:0.12, vig:0.16, scale:1 },
-    { crt:true, scale:0.5,  smear:1.0, scan:0.4,  mask:0.12, curve:0.06, vig:0.3,  bloom:0.35, quant:0 },
-    { crt:true, scale:0.34, smear:1.35, scan:0.62, mask:0.25, curve:0.11, vig:0.45, bloom:0.5,  quant:24 }];
+    { crt:true, scale:0.5,  smear:1.0, scan:0.4,  mask:0.12, curve:0, vig:0.3,  bloom:0.35, quant:0 },
+    { crt:true, scale:0.34, smear:1.35, scan:0.62, mask:0.25, curve:0, vig:0.45, bloom:0.5,  quant:24 },
+    { smooth:true, scale:0.5, vig:0.2 },       // rendered at half size; the shader works on a grid of half that again
+    { paint:true, scale:0.5, radius:3, vig:0.25 }];
   function initPost(){
     rt=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true });
     postCam=new T.OrthographicCamera(-1,1,1,-1,0,1); postScene=new T.Scene();
@@ -24,6 +28,53 @@ function createPostFX(T){
           #include <colorspace_fragment>
         }` });
     postMesh=new T.Mesh(new T.PlaneGeometry(2,2),postMat); postScene.add(postMesh);
+    // smooth pixels: for every point of the screen, its pixel of the small picture and where in it the point lies; a corner whose two neighbours agree with each other
+    // (and not with the pixel) is cut along the diagonal, softly, as the upscalers of pixel art do; the cut grows rounder where the neighbours of those agree too
+    smoothMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
+      uniforms:{ tDiffuse:{ value:rt.texture }, texSize:{ value:new T.Vector2(2,2) }, vig:{ value:0.2 } },
+      vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
+      fragmentShader:`uniform sampler2D tDiffuse; uniform vec2 texSize; uniform float vig; varying vec2 vUv;
+        // the coarse picture is half the rendered one: each coarse pixel is the mean of four fine ones (one linear read at their shared corner), so textures do not flicker
+        vec2 grid(){ return floor(texSize*0.5); }
+        vec3 at(vec2 p){ return texture2D(tDiffuse,(p*2.0+1.0)/texSize).rgb; }
+        bool same(vec3 a,vec3 b){ vec3 d=a-b; return dot(d,d)<0.006; }
+        bool edge(vec3 a,vec3 b){ vec3 d=a-b; return dot(d,d)>0.05; }       // a real edge, not the grain of a texture
+        void main(){
+          vec2 q=vUv*grid(), p=floor(q), f=q-p-0.5;       // f: -0.5 .. 0.5 inside the coarse pixel
+          vec2 s=sign(f+1e-5);                             // the corner the point lies towards
+          vec3 C=at(p), H=at(p+vec2(s.x,0.0)), V=at(p+vec2(0.0,s.y)), D=at(p+s);
+          vec3 col=C;
+          if(same(H,V)&&edge(C,H)){
+            // how far the point lies past the diagonal of its corner; a longer edge (the neighbours beyond agree as well) cuts at a flatter angle
+            bool longH=same(at(p+vec2(-s.x,s.y)),V), longV=same(at(p+vec2(s.x,-s.y)),H);
+            vec2 a=abs(f)*2.0; float t=(longH&&!longV)?a.x*0.5+a.y:((longV&&!longH)?a.x+a.y*0.5:a.x+a.y);
+            float cut=smoothstep(0.95,1.25,t);
+            col=mix(C,(H+V)*0.5,cut);
+          }
+          vec2 e=vUv-0.5; col*=1.0-vig*dot(e,e)*2.4;
+          gl_FragColor=vec4(col,1.0);
+          #include <colorspace_fragment>
+        }` });
+    // painted: Kuwahara; of the four squares around the point (radius r), the one whose colours vary least gives its mean
+    paintMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
+      uniforms:{ tDiffuse:{ value:rt.texture }, px:{ value:new T.Vector2(1,1) }, radius:{ value:3 }, vig:{ value:0.25 } },
+      vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
+      fragmentShader:`uniform sampler2D tDiffuse; uniform vec2 px; uniform float radius; uniform float vig; varying vec2 vUv;
+        void main(){
+          vec3 m[4]; vec3 s2[4];
+          for(int k=0;k<4;k++){ m[k]=vec3(0.0); s2[k]=vec3(0.0); }
+          float n=0.0;
+          for(int j=0;j<=4;j++){ for(int i=0;i<=4;i++){
+            if(float(i)>radius||float(j)>radius) continue;
+            vec2 o=vec2(float(i),float(j))*px;
+            vec3 a=texture2D(tDiffuse,vUv+vec2(-o.x,-o.y)).rgb, b=texture2D(tDiffuse,vUv+vec2(o.x,-o.y)).rgb, c=texture2D(tDiffuse,vUv+vec2(-o.x,o.y)).rgb, d=texture2D(tDiffuse,vUv+o).rgb;
+            m[0]+=a; s2[0]+=a*a; m[1]+=b; s2[1]+=b*b; m[2]+=c; s2[2]+=c*c; m[3]+=d; s2[3]+=d*d; n+=1.0; } }
+          vec3 col=vec3(0.0); float best=1e9;
+          for(int k=0;k<4;k++){ vec3 mu=m[k]/n; vec3 v=s2[k]/n-mu*mu; float sv=v.r+v.g+v.b; if(sv<best){ best=sv; col=mu; } }
+          vec2 e=vUv-0.5; col*=1.0-vig*dot(e,e)*2.4;
+          gl_FragColor=vec4(col,1.0);
+          #include <colorspace_fragment>
+        }` });
     crtMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
       uniforms:{ tDiffuse:{ value:rt.texture }, texSize:{ value:new T.Vector2(2,2) }, smear:{ value:1 }, scan:{ value:0.4 }, mask:{ value:0.1 }, curve:{ value:0.06 }, vig:{ value:0.3 }, bloom:{ value:0.3 }, quant:{ value:0 } },
       vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
@@ -58,16 +109,18 @@ function createPostFX(T){
         }` });
   }
   let rtScale=1;
-  function sizePost(){ if(!w) return; const p=POST_LEVELS[level]||POST_LEVELS[1], pr=Math.min(2,dprNow||1); rtScale=p.scale; const rtW=Math.max(2,Math.round(w*pr*p.scale)), rtH=Math.max(2,Math.round(h*pr*p.scale)); rt.setSize(rtW,rtH); postMat.uniforms.px.value.set(1/rtW,1/rtH); crtMat.uniforms.texSize.value.set(rtW,rtH); }
+  function sizePost(){ if(!w) return; const p=POST_LEVELS[level]||POST_LEVELS[1], pr=Math.min(2,dprNow||1); rtScale=p.scale; const rtW=Math.max(2,Math.round(w*pr*p.scale)), rtH=Math.max(2,Math.round(h*pr*p.scale)); rt.setSize(rtW,rtH); postMat.uniforms.px.value.set(1/rtW,1/rtH); crtMat.uniforms.texSize.value.set(rtW,rtH); smoothMat.uniforms.texSize.value.set(rtW,rtH); paintMat.uniforms.px.value.set(1/rtW,1/rtH); }
   function applyPost(){
     const p=POST_LEVELS[level]; if(!p) return;
     if(p.crt){ Object.keys(p).forEach(k=>{ if(crtMat.uniforms[k]) crtMat.uniforms[k].value=p[k]; }); postMesh.material=crtMat; }
+    else if(p.smooth){ smoothMat.uniforms.vig.value=p.vig; postMesh.material=smoothMat; }
+    else if(p.paint){ paintMat.uniforms.radius.value=p.radius; paintMat.uniforms.vig.value=p.vig; postMesh.material=paintMat; }
     else { postMat.uniforms.blur.value=p.blur; postMat.uniforms.bloom.value=p.bloom; postMat.uniforms.vig.value=p.vig; postMesh.material=postMat; }
     sizePost(); applied=level;
   }
   initPost();
   return {
-    get level(){ return level; }, setLevel(n){ level=Math.max(0,Math.min(3,n|0)); applied=-1; },
+    get level(){ return level; }, setLevel(n){ level=Math.max(0,Math.min(POST_LEVELS.length-1,n|0)); applied=-1; },
     resize(cssW,cssH,dpr){ w=cssW; h=cssH; dprNow=dpr||1; sizePost(); },
     // true when it drew the picture (the caller draws it plain otherwise)
     render(renderer,scene,camera){ if(!level) return false; if(applied!==level) applyPost(); renderer.setRenderTarget(rt); renderer.render(scene,camera); renderer.setRenderTarget(null); renderer.render(postScene,postCam); return true; }

@@ -10260,7 +10260,7 @@ document.getElementById('zoomOut').addEventListener('click', ()=> setZoom(zoom/1
 document.getElementById('zoomReset').addEventListener('click', ()=> setZoom(1));
 document.getElementById('homeBtn').addEventListener('click', jumpToThrone);
 document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!minimapOn));
-function setPostLevel(n){ n=((n%4)+4)%4; View3D.setPost(n); try{ localStorage.setItem('dungeon-lord-post',String(n)); }catch(e){} if(typeof optionsRender==='function') optionsRender(); }
+function setPostLevel(n){ n=((n%6)+6)%6; View3D.setPost(n); try{ localStorage.setItem('dungeon-lord-post',String(n)); }catch(e){} if(typeof optionsRender==='function') optionsRender(); }
 { let n=1; try{ const s=localStorage.getItem('dungeon-lord-post'); if(s!==null) n=+s; }catch(e){} View3D.setPost(n); }
 // what the options say reaches the 3D view (mood light, shadows) and the rim darkening over it
 function applyLook(){ View3D.setMood(OPTIONS.mood); View3D.setShadows(OPTIONS.shadows); const v=document.getElementById('vignette'); if(v) v.classList.toggle('on',!!(view3dOn&&OPTIONS.mood)); }

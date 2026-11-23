@@ -41,7 +41,7 @@ const View3D=(()=>{
   function setShadows(on){ shadows=!!on; }
   let shadowTex=null;
   function blobTex(){ if(!shadowTex){ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,2,16,16,15); gr.addColorStop(0,'rgba(0,0,0,0.55)'); gr.addColorStop(0.6,'rgba(0,0,0,0.3)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); shadowTex=texOfCanvas(c); } return shadowTex; }
-  function setPost(level){ postLevel=Math.max(0,Math.min(3,level|0)); if(post) post.setLevel(postLevel); }
+  function setPost(level){ postLevel=Math.max(0,Math.min(5,level|0)); if(post) post.setLevel(postLevel); }
   // another region, another map size: drop the old tile meshes
   function setSize(worldCols, worldRows){
     if(cols===worldCols && rows===worldRows) return;
