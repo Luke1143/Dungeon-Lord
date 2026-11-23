@@ -39,7 +39,7 @@ const ludusCastLine=s=>`${s.name} — ${SPECIES[s.kind].label}, Stufe ${s.level}
 function ludusLookOf(s){
   const c=ludusFoeCreature(s.npc?s:Object.assign({ npc:s.id&&ludusNpc(s.id)?s.id:undefined },s));
   const extra=typeof equipLook==='function'?equipLook(c):undefined;
-  return { kind:s.kind, extra:extra||undefined, sig:JSON.stringify(extra||null) };
+  return { kind:s.kind, c, extra:extra||undefined, sig:JSON.stringify(extra||null) };
 }
 // who sits in the tavern today: those the fighter knows, and a few strangers (the same for the whole day)
 function ludusTavernGuests(){

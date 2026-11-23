@@ -1,7 +1,9 @@
 // 3D view for the level: block terrain with pixel textures, sprites as billboards (Three.js, lib/three.min.js, loaded on demand).
 // The game keeps its 2D logic; index.html feeds this view with the terrain (tileInfo) and a list of things to draw ("capture" of the 2D draw calls).
 // Input stays on the 2D canvas, which lies on top as a transparent overlay (marks, selection, drag rectangle).
-const View3D=(()=>{
+// a factory: the level has one view (View3D), the Ludus screen its own (ludus-hub.js); both draw the same world with the same pieces
+function makeView3D(){
+  let self=null;
   const PITCH=0.85, FOV=45, WALL=1.0;
   let T, host, renderer, postLevel=1, scene, camera, tileGroup, spriteGroup, ready=false, loading=null, active=false;
   let yaw=0, w=1, h=1, cols=0, rows=0;
@@ -16,12 +18,12 @@ const View3D=(()=>{
     if(loading) return loading;
     return loading=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='lib/three.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
   }
-  async function init(hostEl, worldCols, worldRows){
+  async function init(hostEl, worldCols, worldRows, canvasId){
     await load();
     T=window.THREE; host=hostEl; cols=worldCols; rows=worldRows;
     renderer=new T.WebGLRenderer({ antialias:false, alpha:false });
-    renderer.domElement.id='board3d';
-    renderer.domElement.addEventListener('webglcontextlost', e=>{ e.preventDefault(); if(View3D.onLost) View3D.onLost(); });
+    renderer.domElement.id=canvasId||'board3d';
+    renderer.domElement.addEventListener('webglcontextlost', e=>{ e.preventDefault(); if(self.onLost) self.onLost(); });
     Object.assign(renderer.domElement.style,{ position:'absolute', left:'0', top:'0', width:'100%', height:'100%', display:'none' });
     host.insertBefore(renderer.domElement, host.firstChild);
     scene=new T.Scene(); scene.background=new T.Color(0x0f0b09); scene.fog=new T.Fog(0x0f0b09,26,70);
@@ -432,6 +434,7 @@ const View3D=(()=>{
     if(it.kind==='light') return;       // a light source without a picture (see updateLights)
     if(it.kind==='wallTorch'){ placeTorch(it); return; }
     if(it.kind==='gate'){ placeGate(it); return; }
+    if(it.kind==='ring'){ placeRing(it); return; }
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
     }
@@ -467,6 +470,13 @@ const View3D=(()=>{
     let d=wallPool[wallUsed];
     if(!d){ d=new T.Mesh(wallGeo, new T.MeshBasicMaterial({ transparent:true, depthWrite:false })); spriteGroup.add(d); wallPool.push(d); }
     wallUsed++; d.visible=true; return d;
+  }
+  // a ring on the floor under a figure (the Ludus marks its own gladiators and the selected one): { kind:'ring', x, y, color }
+  const ringPool=[]; let ringUsed=0;
+  function placeRing(it){
+    let r=ringPool[ringUsed];
+    if(!r){ const geo=new T.RingGeometry(0.34,0.47,24); geo.rotateX(-Math.PI/2); r=new T.Mesh(geo,new T.MeshBasicMaterial({ transparent:true, opacity:0.8, depthWrite:false })); spriteGroup.add(r); ringPool.push(r); }
+    ringUsed++; r.visible=true; r.material.color.set(it.color||'#e63c32'); r.position.set(it.x+0.5,0.035,it.y+0.5);
   }
   function placeStain(it){
     const tex=particleTex('puff');
@@ -549,7 +559,7 @@ const View3D=(()=>{
     if(!ready||!active) return;
     lastInfo=tileInfo; syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now()); updateLiquids(performance.now());
-    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0; gateFrame++;
+    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0; gateFrame++; ringUsed=0;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
@@ -558,6 +568,7 @@ const View3D=(()=>{
     { const cr=camRight(); pendingFlash.forEach(({f,s})=>{ f.position.set(s.position.x+Math.sin(yaw)*0.02, s.position.y, s.position.z+Math.cos(yaw)*0.02); f.scale.copy(s.scale); f.renderOrder=3; }); }
     for(let i=poolUsed;i<pool.length;i++) pool[i].visible=false;
     gates.forEach(g=>{ if(g.seen!==gateFrame) g.group.visible=false; });
+    for(let i=ringUsed;i<ringPool.length;i++) ringPool[i].visible=false;
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
     if(!post.render(renderer,scene,camera)) renderer.render(scene,camera);
@@ -575,6 +586,7 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  return self={ onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
-})();
+}
+var View3D=makeView3D();       // var: the Ludus screen lends its own view to the shared draw code while it draws (ludus-hub.js)

@@ -15,7 +15,7 @@ NODE_PATH=$(npm root -g) node tests/shots.js arena,ludus   # only some pictures 
 | `work.js` | forge station, smelter (bellows, anvil) and digging at work; their effects (sparks, embers, chips) are emitted |
 | `ludus.js` | the Ludus tour without the match screen: ladder, pit (no gold, loot), arena, rent paid and unpaid, a whole tournament, travelling on; the living world runs along (gladiators fight each other every evening) |
 | `emoji.js` | which emojis still reach the screen as emojis on the main screens (`STRICT=1` fails on any) |
-| `ludus-walk.js` | the Ludus through its real page (clicks): new school, map, ladder, arena, pit, a bout, a tournament with its rounds, the map, a debt, a gladiator's card, the sheet, temple and bath, an offer, a stranger asking to join, the end of a run; pictures `walk-*.png` (part of `run.sh shots`) |
+| `ludus-walk.js` | the Ludus through its real page (clicks): new school, map, ladder, arena, pit, a bout, a tournament with its rounds, the map, a debt, the region's dungeon (all rooms, everyone in it, a real click on a stranger), a gladiator's card, the sheet, temple and bath, an offer, a stranger asking to join, the end of a run; pictures `walk-*.png` (part of `run.sh shots`) |
 | `shots.js` | screenshots: menu, world map (also revealed), dungeon 2D/3D, toolbar, panel, portal, arena layouts, Ludus, options |
 
 `lib.js` holds what they share: `open()` (browser, page, collected errors), `buildScene()` (a test dungeon with rooms and creatures next to the throne),

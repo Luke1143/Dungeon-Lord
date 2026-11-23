@@ -25,6 +25,22 @@ const { open, shot, finish }=require('./lib');
   await p.evaluate(()=>{ ludus.event=null; ludusTab='map'; ludusRender(); }); await take('10-map');
   await p.evaluate(()=>{ ludus.gold=0; ludus.event=null; ludus.forced=null; ludusRender(); }); const e=await p.$('#luEndDay'); if(e) await e.click();
   await p.evaluate(()=>{ ludus.event=null; ludusRender(); }); await take('11-debt');
+  // the dungeon of the region (ludus-hub.js): every room of the generator is there, everyone stands in it, a real click on a stranger opens his card
+  { await p.evaluate(()=>{ ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.followup=null; ludusPicked=null; ludusRender(); }); await p.waitForTimeout(600);
+    const info=await p.evaluate(()=>{ const d=LudusHub.dungeon, ppl=[...LudusHub.people.values()], n=ppl.find(q=>!q.own&&q.placed&&!q.hidden);
+      if(n) LudusHub.focus(n.room,true); return { rooms:Object.keys(d.rooms).length, people:ppl.length, expect:ludusHubPeople(false).length, id:n&&n.id }; });
+    if(info.rooms<11) throw new Error('hub: rooms missing '+JSON.stringify(info));
+    if(info.people!==info.expect) throw new Error('hub: people '+JSON.stringify(info));
+    if(info.id){ await (await p.$('#hubHost')).scrollIntoViewIfNeeded(); await p.waitForTimeout(500);
+      // a stranger who stands alone on the screen (the click takes the nearest figure)
+      info.id=await p.evaluate(()=>{ const ppl=[...LudusHub.people.values()].filter(q=>q.placed&&!q.hidden), at=q=>LudusHub.screenOf(q.id);
+        const lone=ppl.filter(q=>!q.own).find(q=>{ const a=at(q); return a&&a.x>20&&a.y>20&&a.x<1000&&a.y<380&&ppl.every(o=>{ if(o===q) return true; const b=at(o); return !b||Math.hypot(a.x-b.x,a.y-b.y)>70; }); });
+        return lone?lone.id:null; }) || info.id;
+      const at=await p.evaluate(id=>LudusHub.screenOf(id),info.id), box=await (await p.$('#hubHost')).boundingBox();
+      await p.mouse.click(box.x+at.x,box.y+at.y); await p.waitForTimeout(300);
+      if(await p.evaluate(()=>ludusPicked)!==info.id){ const diag=await p.evaluate(([id,x,y])=>{ const e=document.elementFromPoint(x,y), n=ludusNpc(id); return { el:e&&(e.id||e.tagName), status:n&&n.status, over:ludus.over, sel:ludus.sel, now:LudusHub.screenOf(id), hidden:document.getElementById('ludusScreen').hidden }; },[info.id,box.x+at.x,box.y+at.y]);
+        throw new Error('hub: the click did not pick '+info.id+' '+JSON.stringify(at)+' '+JSON.stringify(diag)); }
+      await take('11b-hub-click'); await p.evaluate(()=>{ ludusPicked=null; ludusRender(); }); } }
   // the newer parts: a gladiator's card (its folds opened), the sheet with happiness, temple and bath, an offer for a gladiator, a stranger who asks to join, the end of a run
   await p.evaluate(()=>{ ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.followup=null; ludus.giftChoice=null; ludus.gold=300; const id=ludus.map.region, n=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id))||ludusRegionNpcs(id)[0]; ludusOnPick(n.id); });
   await take('12-card'); for(const sm of await p.$$('details.luMore summary')) await sm.click(); await take('12-card-open');

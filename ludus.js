@@ -619,10 +619,10 @@ function ludusRender(){
 // the 3D courtyard shows the meta progress; the camera belongs to the selected room, the fighter of the run walks in after it
 let hubState='idle', ludusEventShown=false;
 function ludusHubTiers(){ const t={ event:1 }; Object.keys(LUDUS_ROOMS).forEach(id=>{ t[id]=(ludus&&!ludus.over)||ludusMeta.roomsAll?ludusRoomTier(id):(id==='inn'||id==='pit'?1:0); }); return t; }
-// the dungeon of the region (hub3d.js): which room each tab looks at, and who stands where (the room of what he does today)
+// the dungeon of the region (ludus-hub.js, built by dungeon-gen.js): which room each tab looks at, and who stands where (the room of what he does today)
 const LUDUS_HUB_ROOM={ map:'hall', tour:'hall', arena:'arena', pit:'pit', inn:'inn', train:'training', smith:'forge', lib:'library', temple:'temple', bath:'bath', gear:'inn', sheet:'inn', start:'inn' };
 const LUDUS_PLAN_ROOM={ pit:'pit', arena:'arena', work:'work', rest:'inn' }, LUDUS_JOB_ROOM={ fight:'hall', rest:'inn', bath:'bath', train:'training', work:'work' };
-const ludusLookSig=c=>{ const extra=typeof equipLook==='function'?equipLook(c):undefined; return { extra:extra||undefined, sig:JSON.stringify(extra||null) }; };
+const ludusLookSig=c=>{ const extra=typeof equipLook==='function'?equipLook(c):undefined; return { c, extra:extra||undefined, sig:JSON.stringify(extra||null) }; };
 function ludusHubPeople(showEv){
   if(!ludus||ludus.over||!ludus.map) return [];
   const id=ludus.map.region, out=[];
@@ -637,16 +637,15 @@ function ludusHubSync(tab){
   if(hubState==='failed') return;
   if(hubState==='idle'){
     hubState='loading';
-    Hub3D.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; Hub3D.onPick=ludusOnPick; Hub3D.start(); ludusHubSync(ludusTab); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
+    LudusHub.init(document.getElementById('hubHost')).then(()=>{ hubState='ready'; LudusHub.onPick=ludusOnPick; LudusHub.start(); ludusHubSync(ludusTab); }).catch(e=>{ console.error(e); hubState='failed'; document.getElementById('hubHost').hidden=true; });
     return;
   }
   if(hubState!=='ready') return;
   const live=!!(ludus&&!ludus.over), showEv=live&&ludusEventShown;
-  if(typeof View3D!=='undefined') Hub3D.setPost(View3D.post||0);
-  if(typeof OPTIONS!=='undefined') Hub3D.setRelief(OPTIONS.relief);
-  Hub3D.sync(ludusHubTiers(),live&&ludus.map?'r'+ludus.seed+':'+ludus.map.region:'start',showEv?ludusEventCast():null,ludusHubPeople(showEv));
+  LudusHub.setLook({ post:View3D.post||0, relief:OPTIONS.relief, mood:OPTIONS.mood, shadows:OPTIONS.shadows });
+  LudusHub.sync(ludusHubTiers(),live&&ludus.map?'r'+ludus.seed+':'+ludus.map.region:'start',showEv?ludusEventCast():null,ludusHubPeople(showEv));
   const picked=live&&ludusPicked&&ludusHubPeople(false).find(x=>x.id===ludusPicked);       // the camera follows a clicked gladiator to his room
-  Hub3D.focus(showEv?'event':(picked?picked.room:(LUDUS_HUB_ROOM[tab]||'inn'))); Hub3D.start(); Hub3D.resize();
+  LudusHub.focus(showEv?'event':(picked?picked.room:(LUDUS_HUB_ROOM[tab]||'inn'))); LudusHub.start(); LudusHub.resize();
 }
 // a click on a gladiator in the dungeon: an own one is selected, any other shows his card
 function ludusOnPick(id){

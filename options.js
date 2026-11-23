@@ -11,7 +11,7 @@ const OPTION_ROWS=[
 function optionsRender(){
   const body=document.getElementById('optionsBody'); if(!body||document.getElementById('optionsDlg').hidden) return;
   body.innerHTML=OPTION_ROWS.map((r,i)=>`<div class="optRow"><div><b>${r.label}</b><small>${r.hint}</small></div><div class="optBtns">${r.choices.map((c,j)=>`<button data-opt="${i}:${j}" class="${r.get()===c[1]?'on':''}">${c[0]}</button>`).join('')}</div></div>`).join('');
-  body.querySelectorAll('[data-opt]').forEach(b=>b.addEventListener('click',()=>{ const [i,j]=b.dataset.opt.split(':').map(Number); OPTION_ROWS[i].set(OPTION_ROWS[i].choices[j][1]); if(typeof Hub3D!=='undefined'&&Hub3D.setPost) Hub3D.setPost(View3D.post||0); optionsRender(); }));
+  body.querySelectorAll('[data-opt]').forEach(b=>b.addEventListener('click',()=>{ const [i,j]=b.dataset.opt.split(':').map(Number); OPTION_ROWS[i].set(OPTION_ROWS[i].choices[j][1]); if(typeof LudusHub!=='undefined') LudusHub.setLook({ post:View3D.post||0 }); optionsRender(); }));
 }
 function optionsOpen(){ document.getElementById('optionsDlg').hidden=false; optionsRender(); }
 function optionsClose(){ document.getElementById('optionsDlg').hidden=true; }
