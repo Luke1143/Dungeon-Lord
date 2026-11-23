@@ -1,38 +1,43 @@
-// SVG rig (an experiment, user November 2026): the ork as a vector figure made of parts that move on their own: legs from the hip, the body,
-// the belly, belt and buckle, the head, the jaw with its tusks, the eyes (blinking, looking), the brows (mood), and the gear on them (helmet,
-// breastplate, shoulder plates, loincloth), and, as a test (user, November 2026), two floating hands without arms that hold the weapon (switchable: without them the
-// weapon floats alone, as the game's style rule has it: creatures have no hands, what they hold is their hand).
-// A kit, not one drawing: two styles (classic, grim) share the parts and the motion and differ in shapes and colours; the proportions follow
-// values (cleverness: a bigger head, a smaller jaw; strength: a broader body; agility: longer legs, slimmer; savagery: longer tusks, darker brows),
-// and a seed rolls them with the skin's hue, a scar and the gear (deterministic: the same seed, the same ork).
-// One set of path data feeds two outputs: real SVG (crisp at any size) and a canvas (Path2D), which also gives the after-effects: pixel (the vector
-// figure drawn as a small sprite), smooth (pixel, then grown with EPX), soft, and a boiling line (SVG turbulence).
+// SVG figures (user, November 2026: the game moves to them step by step, the pixel sprites stay as legacy until then; see CLAUDE.md, docs/ui.md).
+// A kit of creature kinds (ork, imp) built from parts that move on their own: legs from the hip, the body with belly, belt and buckle, the head with
+// skull, jaw, eyes (blinking, looking), brows (mood) and what a kind has of its own (tusks, ears, a tail, a sack on the back), the gear on the parts
+// (helmet, breastplate, shoulder plates, loincloth), and two floating hands without arms that hold the weapon or tool (the style rule, CLAUDE.md).
+// Every kind shares the part names, the motion and the stats, so parts of one kind can later go onto another (a creature sewn from others).
+// Styles: "düster" (grim, the chosen direction) for every kind, "klassisch" for the ork. The stats shape the body (cleverness: a bigger head, a smaller
+// jaw; strength: broader; agility: longer legs, slimmer; savagery: longer tusks, darker brows), a seed rolls them with the skin's hue, a scar and the
+// gear (deterministic: the same seed, the same creature). One set of path data feeds two outputs: real SVG (crisp at any size) and a canvas (Path2D),
+// which also gives the after-effects: pixel (the figure drawn as a small sprite), smooth (pixel, then grown with EPX), soft, and a boiling line.
 // The in-game viewer opens with "#svgork" at the end of the address; the same file is the whole of the published viewer page. The game does not use it yet.
-const OrkRig=(()=>{
+const SvgRig=(()=>{
   const ell=(cx,cy,rx,ry)=>`M${cx-rx} ${cy} a${rx} ${ry} 0 1 0 ${2*rx} 0 a${rx} ${ry} 0 1 0 ${-2*rx} 0z`;
-  // a path mirrored left to right (x negated); paths without arcs only
+  // a path mirrored left to right: x negated (1), y kept (0); in an arc the end point's x is negated and the sweep turned round (2)
   function mirror(d){
-    const X={ M:[1,0], m:[1,0], L:[1,0], l:[1,0], T:[1,0], t:[1,0], Q:[1,0,1,0], q:[1,0,1,0], C:[1,0,1,0,1,0], c:[1,0,1,0,1,0], H:[1], h:[1], V:[0], v:[0], Z:[], z:[] };
-    let cmd='M', i=0; return d.replace(/[a-zA-Z]|-?\d*\.?\d+/g,tok=>{ if(/[a-zA-Z]/.test(tok)){ cmd=tok; i=0; return tok; } const pat=X[cmd]||[0]; const neg=pat.length&&pat[i%pat.length]; i++; return neg?String(-parseFloat(tok)):tok; });
+    const X={ M:[1,0], m:[1,0], L:[1,0], l:[1,0], T:[1,0], t:[1,0], Q:[1,0,1,0], q:[1,0,1,0], C:[1,0,1,0,1,0], c:[1,0,1,0,1,0], H:[1], h:[1], V:[0], v:[0], A:[0,0,0,0,2,1,0], a:[0,0,0,0,2,1,0], Z:[], z:[] };
+    let cmd='M', i=0; return d.replace(/[a-zA-Z]|-?\d*\.?\d+/g,tok=>{ if(/[a-zA-Z]/.test(tok)){ cmd=tok; i=0; return tok; } const pat=X[cmd]||[0], k=pat.length?pat[i%pat.length]:0; i++;
+      return k===1?String(-parseFloat(tok)):(k===2?String(1-parseFloat(tok)):tok); });
   }
-  // ---- the two styles: colours and shapes; a shape is [path, fill key or null, stroke width (0 none), stroke key] ----
+  // ---- colours of each kind and style; shapes: [path, fill key or null, stroke width (0 none), stroke key] ----
   const PAL={
-    klassisch:{ skin:'#5f8f3a', light:'#86b05a', dark:'#3d6224', leg:'#4e6b30', foot:'#324a20', belt:'#6b4a35', gold:'#c8a040', bone:'#f2e8d5', line:'#14100c', brow:'#2a3f18', eye:'#ffffff', pupil:'#14100c', glow:'rgba(0,0,0,0)', mouth:'#3a120c', tongue:'#a8443a', iron:'#8a9096', ironDark:'#5d6268', wood:'#8a6446', leather:'#7a5a3a', cloth:'#6b4a35', rust:'#7a4a2a', scar:'#b8c890' },
-    düster:{ skin:'#4a5638', light:'#5e6b48', dark:'#2c3522', leg:'#3a4530', foot:'#1e1a16', belt:'#2e221a', gold:'#a89c86', bone:'#cfc3a8', line:'#0a0806', brow:'#1c2216', eye:'#ff5a2a', pupil:'#2a0400', glow:'rgba(255,70,30,0.35)', mouth:'#1a0604', tongue:'#5a1a14', iron:'#3a3a42', ironDark:'#1f1f24', wood:'#3a2a20', leather:'#2e221a', cloth:'#4a1612', rust:'#7a3a22', scar:'#8a7a6a' }
+    ork:{
+      klassisch:{ skin:'#5f8f3a', light:'#86b05a', dark:'#3d6224', shade:'rgba(0,0,0,0)', leg:'#4e6b30', foot:'#324a20', belt:'#6b4a35', gold:'#c8a040', bone:'#f2e8d5', line:'#14100c', brow:'#2a3f18', eye:'#ffffff', pupil:'#14100c', glow:'rgba(0,0,0,0)', mouth:'#3a120c', tongue:'#a8443a', iron:'#8a9096', ironDark:'#5d6268', wood:'#8a6446', leather:'#7a5a3a', cloth:'#6b4a35', rust:'#7a4a2a', scar:'#b8c890' },
+      düster:{ skin:'#3c4730', light:'#4c583b', dark:'#20271a', shade:'rgba(0,0,0,0.3)', leg:'#2f3827', foot:'#15120f', belt:'#261c15', gold:'#9c907a', bone:'#c4b89c', line:'#070504', brow:'#11160d', eye:'#ff4a1e', pupil:'#200300', glow:'rgba(255,60,20,0.42)', mouth:'#140403', tongue:'#4a1410', iron:'#2c2c33', ironDark:'#17171b', wood:'#30231a', leather:'#261c15', cloth:'#3a0f0c', rust:'#6e3320', scar:'#7e705f' }
+    },
+    imp:{
+      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#5e4c33', sackDark:'#33281b', cloth:'#2e140c', rust:'#6e3320', scar:'#b07050' }
+    }
   };
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
-  const SHAPES={
+  // the ork's parts in both styles, the imp's in the grim one; a missing part is simply not there (the imp has no tusks, the ork no tail)
+  const SHAPES={ ork:{
     klassisch:{
-      shadow:[[ell(0,1.5,17,3),'shadow',0]],
-      leg:[['M-11 -12 q-1 9 2 12 h7 q2 -6 0 -12z','leg',2],['M-10 -1.5 h8',null,1.4,'foot']],
+      H:66, shadow:[[ell(0,1.5,17,3),'shadowC',0]],
+      leg:[['M-11 -12 q-1 9 2 12 h7 q2 -6 0 -12z','leg',2],['M-10 -1.5 h8',null,1.4,'foot']], hip:[-7,-12],
       body:[['M-18 -24 q0 -14 18 -15 q18 1 18 15 q1 14 -18 15 q-19 -1 -18 -15z','skin',2],['M-14 -28 q4 4 2 9',null,1.5,'dark']],
       belly:[['M-10 -21 q10 9 20 0 q0 8 -10 9 q-10 -1 -10 -9z','light',0]],
-      belt:[['M-17 -16 q17 6 34 0 l0 4 q-17 6 -34 0z','belt',2]],
-      buckle:[['M-3 -16.5 h6 v5 h-6z','gold',2]],
-      skull:[['M-10 -44 q10 -10 20 0 q3 6 0 10 q-10 5 -20 0 q-3 -4 0 -10z','skin',2]],
-      scar:[['M-8 -47 L-3 -42.5',null,1.2,'scar']],
-      mouth:[[ell(0,-32.5,9,3.2),'mouth',1.6],[ell(0,-31,4.5,1.4),'tongue',0]],
-      jaw:[['M-13 -36 q13 10 26 0 q2 8 -4 11 q-9 4 -18 0 q-6 -3 -4 -11z','light',2]],
+      belt:[['M-17 -16 q17 6 34 0 l0 4 q-17 6 -34 0z','belt',2]], buckle:[['M-3 -16.5 h6 v5 h-6z','gold',2]],
+      neck:[0,-37], skull:[['M-10 -44 q10 -10 20 0 q3 6 0 10 q-10 5 -20 0 q-3 -4 0 -10z','skin',2]], scar:[['M-8 -47 L-3 -42.5',null,1.2,'scar']],
+      mouth:[[ell(0,-32.5,9,3.2),'mouth',1.6],[ell(0,-31,4.5,1.4),'tongue',0]], mouthAt:[0,-33],
+      jaw:[['M-13 -36 q13 10 26 0 q2 8 -4 11 q-9 4 -18 0 q-6 -3 -4 -11z','light',2]], jawAt:[0,-36],
       tusk:[['M-10 -32 l0 -7 l3 0 l0 5z','bone',1.5]], tuskAt:[-8.5,-32],
       eye:[[ell(-4.5,-40,2.6,2.2),'eye',0]], eyeAt:[-4.5,-40], pupil:[[ell(-4,-39.6,1.2,1.2),'pupil',0]], pupilIn:0.5, lookK:1.1,
       lid:[['M-7.3 -40 q2.8 1.6 5.6 0',null,1.6,'line']],
@@ -41,49 +46,76 @@ const OrkRig=(()=>{
       chest:[['M-15.5 -33 Q0 -39 15.5 -33 L13.5 -19 Q0 -15.5 -13.5 -19z','leather',1.8],['M0 -36 L0 -17.5',null,1.2,'dark'],['M-9 -31 l3 0 M6 -31 l3 0',null,1.2,'dark']],
       pauldron:[[ell(-16.5,-33,5.5,3.6),'iron',1.8]], pauldronAt:[-16,-33], pauldronR:[[ell(16.5,-33,5.5,3.6),'iron',1.8]],
       cloth:[['M-5.5 -14 L5.5 -14 L6.5 -4.5 Q0 -2.5 -6.5 -4.5z','cloth',1.6]],
-      axe:[['M23 -7 L25 -7 L25 -41 L23 -41z','wood',1.6],['M25 -40 Q34 -42 34 -32 Q34 -26 25 -28z','iron',1.6]],
-      fist:[[ell(17,-21,3.4,3.1),'skin',1.8],['M14.6 -22.2 q2.4 -1.6 4.8 0',null,1.2,'dark'],['M15.2 -19.6 q1.8 1 3.6 0',null,1,'dark']],
-      headY:0, legK:1
+      fist:[[ell(17,-21,3.4,3.1),'skin',1.8],['M14.6 -22.2 q2.4 -1.6 4.8 0',null,1.2,'dark'],['M15.2 -19.6 q1.8 1 3.6 0',null,1,'dark']], handAt:[17,-21], handGap:3,
+      headY:0, legK:1, weapons:['axe','club','sword'], weapon:'axe'
     },
     düster:{
-      shadow:[[ell(0,1.5,15,2.6),'shadow',0]],
-      leg:[['M-9.5 -12 L-8.5 0 L-3 0 L-3.5 -12z','leg',1.8],['M-9.2 -2.6 L-2.8 -2.6 L-2.8 0 L-9.3 0z','foot',1.2]],
-      body:[['M-13 -13 L-14.5 -26 L-16.5 -35 L-11 -39.5 L11 -39.5 L16.5 -35 L14.5 -26 L13 -13 Q0 -10.5 -13 -13z','skin',1.8],['M-9 -31 l4 1 M-9 -27 l4 1 M9 -31 l-4 1 M9 -27 l-4 1',null,1.2,'dark']],
+      H:66, shadow:[[ell(0,1.5,15,2.6),'shadowC',0]],
+      leg:[['M-9.5 -12 L-8.5 0 L-3 0 L-3.5 -12z','leg',1.8],['M-9.2 -2.6 L-2.8 -2.6 L-2.8 0 L-9.3 0z','foot',1.2],['M-6.2 -12 L-5.6 0 L-3 0 L-3.5 -12z','shade',0]], hip:[-7,-12],
+      body:[['M-13 -13 L-14.5 -26 L-16.5 -35 L-11 -39.5 L11 -39.5 L16.5 -35 L14.5 -26 L13 -13 Q0 -10.5 -13 -13z','skin',1.8],['M5.5 -39.5 L11 -39.5 L16.5 -35 L14.5 -26 L13 -13 Q9 -11.6 6.5 -11.8 L9.5 -26z','shade',0],['M-9 -31 l4 1 M-9 -27 l4 1 M9 -31 l-4 1 M9 -27 l-4 1',null,1.2,'dark']],
       belly:[['M-5 -25 L5 -25 L4 -17 L-4 -17z','light',0],['M0 -25 L0 -17',null,1,'dark']],
       belt:[['M-13.5 -16.5 L13.5 -16.5 L13 -12.5 L-13 -12.5z','belt',1.6]],
       buckle:[[ell(0,-14.6,2.6,2.3),'gold',1.2],[ell(-0.9,-14.8,0.6,0.6),'line',0],[ell(0.9,-14.8,0.6,0.6),'line',0]],
-      skull:[['M-8 -46.5 L-3 -50.5 L3 -50.5 L8 -46.5 L9.5 -40.5 L6.5 -36 L-6.5 -36 L-9.5 -40.5z','skin',1.8]],
+      neck:[0,-37], skull:[['M-8 -46.5 L-3 -50.5 L3 -50.5 L8 -46.5 L9.5 -40.5 L6.5 -36 L-6.5 -36 L-9.5 -40.5z','skin',1.8],['M-9.2 -41.5 L9.2 -41.5 L9.5 -40.5 L6.5 -36 L-6.5 -36 L-9.5 -40.5z','shade',0],['M3 -50.5 L8 -46.5 L9.5 -40.5 L6.5 -36 L4.5 -36 L6.5 -41 L5 -47z','shade',0]],
       scar:[['M-7.5 -46 L-2 -38.5',null,1.1,'scar']],
-      mouth:[[ell(0,-33.8,6.8,2.4),'mouth',1.4],[ell(0,-33.2,3,0.9),'tongue',0]],
-      jaw:[['M-10.5 -37.5 L10.5 -37.5 L9.5 -32.5 L5 -29.5 L-5 -29.5 L-9.5 -32.5z','light',1.8]],
+      mouth:[[ell(0,-33.8,6.8,2.4),'mouth',1.4],[ell(0,-33.2,3,0.9),'tongue',0]], mouthAt:[0,-33],
+      jaw:[['M-10.5 -37.5 L10.5 -37.5 L9.5 -32.5 L5 -29.5 L-5 -29.5 L-9.5 -32.5z','light',1.8],['M4 -37.5 L10.5 -37.5 L9.5 -32.5 L5 -29.5 L2.5 -29.6 L6 -33z','shade',0]], jawAt:[0,-36],
       tusk:[['M-8 -33 Q-10 -38 -7.6 -43 L-6.4 -38.5 Q-6.4 -35.5 -5.8 -33z','bone',1.3]], tuskAt:[-7,-33],
-      eye:[[ell(-4.3,-41.6,2.6,1.6),'glow',0],[ell(-4.3,-41.6,1.7,0.9),'eye',0]], eyeAt:[-4.3,-41.6], pupil:[[ell(-4.1,-41.6,0.4,0.8),'pupil',0]], pupilIn:0.2, lookK:0.45,
+      eye:[[ell(-4.3,-41.6,2.9,1.8),'glow',0],[ell(-4.3,-41.6,1.7,0.9),'eye',0]], eyeAt:[-4.3,-41.6], pupil:[[ell(-4.1,-41.6,0.4,0.8),'pupil',0]], pupilIn:0.2, lookK:0.45,
       lid:[['M-6.2 -41.6 l3.8 0',null,1.4,'line']],
       brow:[['M-9 -44.6 L-1.6 -42.6 L-1.8 -44.2 L-8.6 -46.6z','brow',0]], browAt:[-5,-44],
-      helmet:[['M-9.5 -44.5 L-8.5 -50.5 L-3 -53.5 L3 -53.5 L8.5 -50.5 L9.5 -44.5 L4 -45.5 L0 -44 L-4 -45.5z','iron',1.6],['M-8.5 -50.5 Q-15 -52.5 -17 -61 Q-11.5 -56 -6 -52.5z','bone',1.4],['M8.5 -50.5 Q15 -52.5 17 -61 Q11.5 -56 6 -52.5z','bone',1.4],['M-0.6 -53 L0.6 -53 L0.6 -46 L-0.6 -46z','ironDark',0]],
-      chest:[['M-12 -37 L12 -37 L10.5 -21 L0 -17.5 L-10.5 -21z','iron',1.6],['M0 -36.5 L0 -18.5',null,1,'ironDark'],['M-8 -33 L-6 -27 M7 -34 L8 -29',null,1,'rust']],
+      helmet:[['M-9.5 -44.5 L-8.5 -50.5 L-3 -53.5 L3 -53.5 L8.5 -50.5 L9.5 -44.5 L4 -45.5 L0 -44 L-4 -45.5z','iron',1.6],['M-8.5 -50.5 Q-15 -52.5 -17 -61 Q-11.5 -56 -6 -52.5z','bone',1.4],['M8.5 -50.5 Q15 -52.5 17 -61 Q11.5 -56 6 -52.5z','bone',1.4],['M-0.6 -53 L0.6 -53 L0.6 -46 L-0.6 -46z','ironDark',0],['M3 -53.5 L8.5 -50.5 L9.5 -44.5 L4 -45.5z','shade',0]],
+      chest:[['M-12 -37 L12 -37 L10.5 -21 L0 -17.5 L-10.5 -21z','iron',1.6],['M0 -36.5 L0 -18.5',null,1,'ironDark'],['M-8 -33 L-6 -27 M7 -34 L8 -29',null,1,'rust'],['M0 -37 L12 -37 L10.5 -21 L0 -17.5z','shade',0]],
       pauldron:[['M-18 -35.5 L-11.5 -40.5 L-9 -34.5 L-13 -30 L-18.5 -31.5z','iron',1.6],['M-15.5 -38.5 L-21 -46 L-13 -39.5z','ironDark',1.2]], pauldronAt:[-14,-35],
       cloth:[['M-6 -13 L6 -13 L7 -3 L5 -5.5 L3 -1.5 L1 -4.5 L-1 -0.5 L-3 -4.5 L-5 -1.5 L-7 -4.5z','cloth',1.4]],
+      fist:[['M13.6 -23.6 L19.6 -24.4 L21.2 -21 L19.6 -17.6 L14.4 -18 L13.2 -21z','iron',1.5],['M14.8 -23.8 L15.4 -26.6 L16.5 -23.9 M17.9 -24.2 L18.7 -26.9 L19.5 -24.3',null,1.2,'ironDark'],['M14.6 -21 L19.8 -21',null,1,'ironDark']], handAt:[17,-21], handGap:3,
       axe:[['M23 -5 L24.6 -5 L24.6 -44 L23 -44z','wood',1.4],['M24.6 -43 L35 -47 L33 -40 L36 -34 L33 -27 L24.6 -30z','iron',1.4],['M30 -44 L31 -41 M33 -33 L31.5 -31',null,1,'rust']],
-      fist:[['M13.6 -23.6 L19.6 -24.4 L21.2 -21 L19.6 -17.6 L14.4 -18 L13.2 -21z','iron',1.5],['M14.8 -23.8 L15.4 -26.6 L16.5 -23.9 M17.9 -24.2 L18.7 -26.9 L19.5 -24.3',null,1.2,'ironDark'],['M14.6 -21 L19.8 -21',null,1,'ironDark']],
-      headY:1.6, legK:1.15
-    }
+      headY:1.6, legK:1.15, weapons:['axe','club','sword'], weapon:'axe'
+    } },
+    imp:{ düster:{
+      // small and bent: a big head with ears and horns, eye pits with a glowing spark, a grin with fangs, thin limbs, a tail, a sack on the back, a pick in the claw
+      H:50, shadow:[[ell(0,1.2,10,2),'shadowC',0]],
+      leg:[['M-6 -10 L-5.4 -3.2 L-7 0 L-2.4 0 L-3 -3.2 L-2.6 -10z','leg',1.4],['M-7.6 0 l1 -1.6 M-5.4 0 l0.6 -1.8 M-3.2 0 l0.4 -1.6',null,1,'bone'],['M-4.2 -10 L-3.8 -3.2 L-3 -3.2 L-2.6 -10z','shade',0]], hip:[-4.3,-10],
+      body:[['M-8 -10 Q-10.5 -18 -7.5 -24 Q0 -28 7.5 -24 Q10.5 -18 8 -10 Q0 -7.5 -8 -10z','skin',1.5],['M3 -26.5 Q7.5 -25 9.5 -19 Q10 -13 8 -10 Q6 -9 4.5 -9 Q7 -16 3 -26.5z','shade',0],['M-6 -20 l3 0.8 M-6 -17 l3 0.8 M6 -20 l-3 0.8 M6 -17 l-3 0.8',null,1,'dark']],
+      belly:[['M-4 -17.5 Q0 -14 4 -17.5 Q3 -11.5 0 -11 Q-3 -11.5 -4 -17.5z','light',0]],
+      belt:[['M-8.6 -12.4 Q0 -9.6 8.6 -12.4',null,1.6,'belt']], buckle:[[ell(-4.4,-10.6,1.9,1.7),'leather',1.1]],
+      neck:[0,-25], skull:[['M-10 -33 Q-11 -42 -4 -45 Q0 -46 4 -45 Q11 -42 10 -33 Q8 -26 0 -25.5 Q-8 -26 -10 -33z','skin',1.6],['M-6 -43.4 Q-8.4 -48 -6.4 -51.5 Q-5 -47.5 -3.4 -44.8z','bone',1.2],['M6 -43.4 Q8.4 -48 6.4 -51.5 Q5 -47.5 3.4 -44.8z','bone',1.2],['M4 -45 Q11 -42 10 -33 Q8 -26 2 -25.6 Q7 -31 6.5 -38 Q6 -43 4 -45z','shade',0]],
+      scar:[['M5.5 -42 L8.5 -36',null,1,'scar']],
+      ear:[['M-9.6 -38.4 L-18 -42.4 L-10.2 -32.6z','skin',1.4],['M-10.6 -37.4 L-15.2 -40 L-10.8 -34.4z','dark',0]], earAt:[-9.8,-36],
+      mouth:[[ell(0,-29,4.4,2.2),'mouth',1.2]], mouthAt:[0,-29],
+      jaw:[['M-5.6 -30 Q0 -26.6 5.6 -30',null,1.4,'line'],['M-3.2 -29 l0.8 2.2 l0.8 -2z','bone',0.8],['M3.2 -29 l-0.8 2.2 l-0.8 -2z','bone',0.8]], jawAt:[0,-29],
+      eye:[[ell(-4,-35.6,3.1,3.5),'socket',0]], eyeAt:[-4,-35.6], pupil:[[ell(-3.7,-35.2,1.7,1.7),'glow',0],[ell(-3.7,-35.2,0.85,0.85),'eye',0]], pupilIn:0.3, lookK:0.9,
+      lid:[['M-7 -35.6 q3 1.4 6 0',null,1.3,'line']],
+      brow:[['M-7.6 -39.8 L-1.4 -38.2 L-1.6 -39.4 L-7.2 -41.4z','brow',0]], browAt:[-4.5,-39.6],
+      tail:[['M2.5 -12 Q12 -9 14 -16 Q15.4 -21.6 19.6 -21',null,2.4,'line'],['M2.5 -12 Q12 -9 14 -16 Q15.4 -21.6 19.6 -21',null,1.3,'skin'],['M18.6 -23.6 L23 -20.4 L18.2 -18.8z','dark',1]], tailAt:[2.5,-12],
+      sack:[['M-13.5 -21 Q-17 -31 -10 -35.4 Q-4 -36.6 -3.2 -29.6 L-5.6 -21.4z','sack',1.4],['M-11.2 -35 l2 -2.6 l1.6 2.4',null,1.2,'sackDark'],['M-12.4 -27 q2.4 1.4 5 0',null,1,'sackDark']], sackAt:[-8,-24],
+      load:{ gold:[[ell(-9.6,-32.2,1.2,1),'gold',0.6],[ell(-7.4,-31,1,0.9),'gold',0.6]], ore:[['M-10.8 -33 l2 -1.2 l1.4 1.6 l-1.8 1.2z','ore',0.6]] },
+      cloth:[['M-4.6 -11 L4.6 -11 L5.4 -4.4 L3.6 -5.8 L2 -3 L0 -5.2 L-2 -3 L-3.6 -5.8 L-5.4 -4.4z','cloth',1.1]],
+      fist:[[ell(12,-16,2.6,2.4),'skin',1.3],['M10.2 -17.6 l-1 -1.6 M12 -18.4 l0 -1.8 M13.8 -17.6 l1 -1.6',null,1,'bone']], handAt:[12,-16], handGap:2,
+      headY:0, legK:1, weapons:['pick','club'], weapon:'pick'
+    } }
   };
-  // where each weapon is held (its grip, in the weapon's own coordinates)
-  const GRIP={ axe:[24,-15], club:[23.5,-12], sword:[24,-10] };
+  // tools and weapons any kind can hold (the ork's axe is its own, per style)
   const WEAPONS={
     club:[['M22 -6 L25 -6 L28.5 -37 Q24 -45 18.5 -37z','wood',1.6],['M19 -36 l-3 -1 M28 -36 l3 -1 M20.5 -30 l-3 0 M27 -30 l3 0',null,1.4,'ironDark']],
-    sword:[['M23.2 -15 L24.8 -15 L24.8 -45 L24 -48 L23.2 -45z','iron',1.3],['M19.5 -15 L28.5 -15 L28.5 -13 L19.5 -13z','ironDark',1.2],['M23.2 -13 L24.8 -13 L24.8 -7 L23.2 -7z','wood',1]]
+    sword:[['M23.2 -15 L24.8 -15 L24.8 -45 L24 -48 L23.2 -45z','iron',1.3],['M19.5 -15 L28.5 -15 L28.5 -13 L19.5 -13z','ironDark',1.2],['M23.2 -13 L24.8 -13 L24.8 -7 L23.2 -7z','wood',1]],
+    pick:[['M23.2 -4 L24.8 -4 L24.8 -30 L23.2 -30z','wood',1.2],['M15 -29 Q24 -34.4 33 -29 L33 -27.4 Q24 -31.6 15 -27.4z','iron',1.2]]
   };
-  // ---- a spec: style, values 0..1, gear, hue shift, scar; the seed rolls one ----
+  // where each is held (its grip, in its own coordinates)
+  const GRIP={ axe:[24,-15], club:[23.5,-12], sword:[24,-10], pick:[24,-12] };
+  // ---- a spec: kind, style, stats 0..1, gear, hue shift, scar; the seed rolls one ----
   function rng(seed){ let a=seed>>>0||1; return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
-  function roll(seed,style){
-    const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)];
-    return { style:style||pick(['klassisch','düster']), traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*22, scar:r()<0.4,
-      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none','axe','club','sword']), hands:true }, seed };
+  const stylesOf=kind=>Object.keys(SHAPES[kind]||SHAPES.ork);
+  function roll(seed,kind){
+    const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)]; kind=kind||'ork'; const st=pick(stylesOf(kind)), S=SHAPES[kind][st];
+    return { kind, style:st, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*(kind==='imp'?12:22), scar:r()<0.4,
+      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none'].concat(S.weapons)), hands:true, load:pick(['none','gold','ore']) }, seed };
   }
-  const DEFAULT={ style:'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:true, gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:'axe', hands:true } };
-  // colours: the style's, the skin turned by the hue shift
+  function defaults(kind){
+    const S=SHAPES[kind]&&SHAPES[kind].düster;
+    return { kind, style:'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:kind!=='imp', gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:S?S.weapon:'none', hands:true, load:'gold' } };
+  }
+  // colours: the kind's and style's, the skin turned by the hue shift
   function hueShift(hex,deg){
     if(!deg||hex[0]!=='#') return hex; const n=parseInt(hex.slice(1),16); let r=(n>>16&255)/255, g=(n>>8&255)/255, b=(n&255)/255;
     const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, d=mx-mn; let h=0, s=0;
@@ -94,49 +126,55 @@ const OrkRig=(()=>{
   }
   // ---- building a rig from a spec: the tree of parts (pivot, shapes, children) and each part's resting transform ----
   function build(spec){
-    spec=Object.assign({},DEFAULT,spec||{}); const S=SHAPES[spec.style]||SHAPES.klassisch, t=Object.assign({},DEFAULT.traits,spec.traits), G=Object.assign({},DEFAULT.gear,spec.gear);
-    const pal=Object.assign({ shadow:'rgba(0,0,0,0.35)' },PAL[spec.style]||PAL.klassisch); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
-    const P=(id,pivot,shapes,kids)=>({ id, pivot, shapes:shapes||[], kids:kids||[] });
+    const kind=(spec&&spec.kind)||'ork'; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
+    if(!SHAPES[kind][spec.style]) spec.style=stylesOf(kind)[0];
+    const S=SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
+    const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },PAL[kind][spec.style]); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
+    const P=(id,pivot,shapes,kids)=>({ id, pivot, shapes:shapes||[], kids:(kids||[]).filter(Boolean) });
     const mirrorShapes=sh=>sh.map(([d,f,w,st])=>[mirror(d),f,w,st]);
-    const ex=S.eyeAt, br=S.browAt, ta=S.tuskAt;
-    // the right eye: the left one moved over (ellipses keep their shape; the pupil sits towards the nose on both sides)
-    const shiftX=(sh,dx)=>sh.map(([d,f,w,st])=>[d.replace(/^M(-?[\d.]+)/,(m0,x)=>'M'+(parseFloat(x)+dx).toFixed(2)),f,w,st]), pupilIn=S.pupilIn||0;
+    const shiftX=(sh,dx)=>sh.map(([d,f,w,st])=>[d.replace(/^M(-?[\d.]+)/,(m0,x)=>'M'+(parseFloat(x)+dx).toFixed(2)),f,w,st]);       // ellipses moved over keep their shape
+    const ex=S.eyeAt, br=S.browAt, R=v=>[-v[0],v[1]];
     const headKids=[
-      P('skull',[0,-41],S.skull,spec.scar?[P('scar',[0,-44],S.scar)]:[]),
-      G.helmet?P('helmet',[0,-45],S.helmet):null,
-      P('mouth',[0,-33],S.mouth),
-      P('jaw',[0,-36],S.jaw,[P('tuskL',ta,S.tusk),P('tuskR',[-ta[0],ta[1]],mirrorShapes(S.tusk))]),
+      P('skull',[0,S.neck[1]-4],S.skull,[spec.scar&&S.scar?P('scar',[0,S.neck[1]-7],S.scar):null,
+        S.ear?P('earL',S.earAt,S.ear):null, S.ear?P('earR',R(S.earAt),mirrorShapes(S.ear)):null]),
+      G.helmet&&S.helmet?P('helmet',[0,S.neck[1]-8],S.helmet):null,
+      P('mouth',S.mouthAt,S.mouth),
+      P('jaw',S.jawAt,S.jaw,S.tusk?[P('tuskL',S.tuskAt,S.tusk),P('tuskR',R(S.tuskAt),mirrorShapes(S.tusk))]:[]),
       P('eyeL',ex,S.eye,[P('pupilL',ex,S.pupil)]),
-      P('eyeR',[-ex[0],ex[1]],shiftX(S.eye,-2*ex[0]),[P('pupilR',[-ex[0],ex[1]],shiftX(S.pupil,-2*ex[0]-2*pupilIn))]),
-      P('lidL',ex,S.lid), P('lidR',[-ex[0],ex[1]],mirrorShapes(S.lid)),
-      P('browL',br,S.brow), P('browR',[-br[0],br[1]],mirrorShapes(S.brow))
-    ].filter(Boolean);
+      P('eyeR',R(ex),shiftX(S.eye,-2*ex[0]),[P('pupilR',R(ex),shiftX(S.pupil,-2*ex[0]-2*(S.pupilIn||0)))]),
+      P('lidL',ex,S.lid), P('lidR',R(ex),mirrorShapes(S.lid)),
+      P('browL',br,S.brow), P('browR',R(br),mirrorShapes(S.brow))
+    ];
     const bodyKids=[
-      P('belly',[0,-20],S.belly), G.chest?P('chest',[0,-28],S.chest):null,
-      G.cloth?P('cloth',[0,-14],S.cloth):null,
+      P('belly',[0,-20],S.belly), G.chest&&S.chest?P('chest',[0,-28],S.chest):null,
+      G.cloth&&S.cloth?P('cloth',[0,-14],S.cloth):null,
       P('belt',[0,-14],S.belt), P('buckle',[0,-14],S.buckle),
-      G.pauldrons?P('pauldronL',S.pauldronAt,S.pauldron):null, G.pauldrons?P('pauldronR',[-S.pauldronAt[0],S.pauldronAt[1]],S.pauldronR||mirrorShapes(S.pauldron)):null,
-      P('head',[0,-37],[],headKids)
-    ].filter(Boolean);
-    // the weapon: held by the right hand (its grip in the fist, the fist drawn over the haft), or, without hands, floating beside the ork
-    const hands=G.hands!==false, wShapes=G.weapon&&G.weapon!=='none'?(G.weapon==='axe'?S.axe:WEAPONS[G.weapon]):null, grip=GRIP[G.weapon]||[24,-16];
+      G.pauldrons&&S.pauldron?P('pauldronL',S.pauldronAt,S.pauldron):null, G.pauldrons&&S.pauldron?P('pauldronR',R(S.pauldronAt),S.pauldronR||mirrorShapes(S.pauldron)):null,
+      P('head',S.neck,[],headKids)
+    ];
+    // the weapon or tool: held by the right hand (its grip in the fist, the fist drawn over the haft), or, without hands, floating beside it
+    const hands=G.hands!==false, wName=G.weapon&&G.weapon!=='none'?G.weapon:null, wShapes=wName?((wName==='axe'&&S.axe)||WEAPONS[wName]||SHAPES.ork.düster.axe):null, grip=GRIP[wName]||[24,-16], ha=S.handAt;
     const weapon=wShapes?P('weapon',hands?grip:[24,-22],wShapes):null;
-    const handKids=hands?[P('handL',[-17,-21],[],[P('fistL',[-17,-21],mirrorShapes(S.fist))]),P('handR',[17,-21],[],[weapon,P('fistR',[17,-21],S.fist)].filter(Boolean))]:[weapon].filter(Boolean);
-    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow),P('legL',[-7,-12],S.leg),P('legR',[7,-12],mirrorShapes(S.leg)),P('body',[0,-12],S.body,bodyKids)].concat(handKids));
-    // the values as proportions
-    const ls=(0.85+0.45*t.flink)*S.legK, bw=(0.85+0.4*t.stark)*(1.1-0.2*t.flink), hs=0.85+0.45*t.klug, js=1.15-0.35*t.klug, ts=0.6+0.9*t.wild, ps=0.8+0.4*t.stark, lift=-(12*ls-12);
+    const handKids=hands?[P('handL',R(ha),[],[P('fistL',R(ha),mirrorShapes(S.fist))]),P('handR',ha,[],[weapon,P('fistR',ha,S.fist)])]:[weapon];
+    const sack=S.sack&&G.load&&G.load!=='none'?P('sack',S.sackAt,S.sack.concat(S.load[G.load]||[])):null;
+    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow), S.tail?P('tail',S.tailAt,S.tail):null, sack,
+      P('legL',S.hip,S.leg),P('legR',R(S.hip),mirrorShapes(S.leg)),P('body',[0,S.hip[1]],S.body,bodyKids)].concat(handKids));
+    // the stats as proportions
+    const ls=(0.85+0.45*t.flink)*S.legK, bw=(0.85+0.4*t.stark)*(1.1-0.2*t.flink), hs=0.85+0.45*t.klug, js=1.15-0.35*t.klug, ts=0.6+0.9*t.wild, ps=0.8+0.4*t.stark;
+    const hip=-S.hip[1], lift=-(hip*ls-hip), half=Math.abs(ha[0]);
     const base={
-      shadow:{ sx:bw }, legL:{ x:-(bw-1)*5, y:lift, sy:ls }, legR:{ x:(bw-1)*5, y:lift, sy:ls }, body:{ y:lift, sx:bw },
+      shadow:{ sx:bw }, legL:{ x:-(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, legR:{ x:(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, body:{ y:lift, sx:bw },
       head:{ y:S.headY, sx:hs/bw, sy:hs }, jaw:{ sx:js, sy:js }, tuskL:{ sy:ts }, tuskR:{ sy:ts }, pauldronL:{ sx:ps, sy:ps }, pauldronR:{ sx:ps, sy:ps },
-      handL:{ x:-(bw-1)*18-3, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*18+3, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
-      weapon:hands?{ x:17-grip[0], y:-21-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
+      sack:{ y:lift }, tail:{ y:lift },
+      handL:{ x:-(bw-1)*half-S.handGap, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*half+S.handGap, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
+      weapon:hands?{ x:ha[0]-grip[0], y:ha[1]-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
     };
-    return { tree, base, pal, spec, hands, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
+    return { tree, base, pal, spec, hands, H:S.H, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
-  const TURN={ skull:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
+  const TURN={ skull:0.6, earL:0.6, earR:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
   // the parts pulled apart (the "parts" view): where each one drifts
-  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4] };
+  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4], earL:[-6,-2], earR:[6,-2], tail:[8,2], sack:[-8,-4] };
   const MOODS={ ruhig:[0,0], wütend:[16,0.6], überrascht:[-8,-2.2], traurig:[-16,-0.4] };       // brow turn (degrees, inner end down), brow lift
   // the state of the animation
   function create(){ return { t:0, x:0, dir:1, wait:0.8, walking:false, phase:0, turn:0, blink:0, nextBlink:1.5, twice:false, look:[0,0], roar:0, mood:'ruhig', moodK:[0,0], explode:0 }; }
@@ -172,6 +210,11 @@ const OrkRig=(()=>{
     put('jaw',{ x:turnOf('jaw'), y:3.2*roar });
     put('belly',{ x:turnOf('belly') }); put('chest',{ x:turnOf('chest') }); put('buckle',{ x:turnOf('buckle') });
     put('cloth',{ x:turnOf('cloth'), r:Math.sin(w)*6*walkK+Math.sin(s.t*1.7)*1.5 });
+    // the imp's own: ears that twitch now and then, a tail that lashes, the sack that bounces on the back
+    const twitch=Math.max(0,Math.sin(s.t*0.9))**12;
+    put('earL',{ r:-3*Math.sin(s.t*1.1)-14*twitch+6*roar }); put('earR',{ r:3*Math.sin(s.t*1.1)+14*twitch-6*roar });
+    put('tail',{ r:Math.sin(s.t*2.3)*9+Math.sin(w)*6*walkK+roar*Math.sin(s.t*30)*6 });
+    put('sack',{ y:-1.1*Math.abs(Math.sin(w-0.4))+0.3*breath, r:-2*Math.sin(w)*walkK });
     // the floating hands: they swing against each other while it walks (as arms would), bob a little behind the body, go up when it roars
     put('handL',{ x:s.turn*1.2-0.6*Math.sin(w)*walkK, y:1.6*Math.sin(w)*walkK-1.1*Math.abs(Math.sin(w+0.7))*walkK+Math.sin(s.t*2+1)*0.6-6*roar, r:-8*Math.sin(w)*walkK+12*roar });
     put('handR',{ x:s.turn*1.2+0.6*Math.sin(w)*walkK-2*roar, y:-1.6*Math.sin(w)*walkK-1.1*Math.abs(Math.sin(w+0.7))*walkK+Math.sin(s.t*2)*0.6-9*roar, r:8*Math.sin(w)*walkK-14*roar });
@@ -205,7 +248,7 @@ const OrkRig=(()=>{
       part.kids.forEach(draw); g.restore(); };
     draw(rig.tree); g.restore();
   }
-  return { build, roll, create, step, pose, svg, canvas, MOODS, DEFAULT, STYLES:Object.keys(SHAPES) };
+  return { build, roll, defaults, create, step, pose, svg, canvas, MOODS, KINDS:Object.keys(SHAPES), stylesOf, weaponsOf:(kind,style)=>(SHAPES[kind][style]||SHAPES[kind][stylesOf(kind)[0]]).weapons };
 })();
 
 // ---- the viewer: a stage (a strip of dungeon floor under a torch), the controls, and the ork as sprites from 16 to 128 pixels ----
@@ -243,9 +286,10 @@ const SvgOrkViewer=(()=>{
   const snap=(g,w,h)=>{ const im=g.getImageData(0,0,w,h), d=im.data; for(let i=3;i<d.length;i+=4) d[i]=d[i]>110?255:0; g.putImageData(im,0,0); };       // a pixel sprite has no half pixels
   // one sprite: the ork `size` pixels high (with room for the horns and the weapon: the canvas a little wider and higher)
   function sprite(rig,P,size){
-    const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/66;
-    OrkRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
+    const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
+    SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
+  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
   function open(host){
     if(!document.getElementById('orkv-css')){ const st=document.createElement('style'); st.id='orkv-css'; st.textContent=CSS; document.head.appendChild(st); }
@@ -259,7 +303,8 @@ const SvgOrkViewer=(()=>{
   <canvas id="orkvCanvas" hidden></canvas>
 </div>
 <div class="orkv-row">
-  <label for="orkvStyle">Stil</label><select id="orkvStyle">${OrkRig.STYLES.map(s=>`<option value="${s}">${s==='düster'?'Düster':'Klassisch'}</option>`).join('')}</select>
+  <label for="orkvKind">Art</label><select id="orkvKind">${SvgRig.KINDS.map(k=>`<option value="${k}">${KIND_NAME[k]||k}</option>`).join('')}</select>
+  <label for="orkvStyle">Stil</label><select id="orkvStyle"></select>
   <button id="orkvRoll">Würfeln</button>
   <button id="orkvWalk" aria-pressed="true">Auf und ab</button>
   <button id="orkvMouse" aria-pressed="false">Schaut zur Maus</button>
@@ -269,31 +314,39 @@ const SvgOrkViewer=(()=>{
 </div>
 <div class="orkv-row"><span class="orkv-group">Werte</span>${TRAITS.map(([k,n,what])=>`<label class="orkv-slider" for="orkvT_${k}">${n} <small>(${what})</small><input type="range" id="orkvT_${k}" min="0" max="100" value="50"></label>`).join('')}</div>
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
-  <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"><option value="none">keine</option><option value="axe">Axt</option><option value="club">Keule</option><option value="sword">Schwert</option></select>
+  <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"></select>
+  <label for="orkvLoad" data-for="load">Last</label><select id="orkvLoad" data-for="load"><option value="none">keine</option><option value="gold">Gold</option><option value="ore">Erz</option></select>
   <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvScar" aria-pressed="false">Narbe</button>
 </div>
 <div class="orkv-row">
-  <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(OrkRig.MOODS).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+  <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(SvgRig.MOODS).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
   <label for="orkvFx">Nachbearbeitung</label><select id="orkvFx"><option value="vector">Vektor (SVG)</option><option value="boil">Wackel-Linie</option><option value="pixel">Pixel</option><option value="smooth" selected>Pixel, glatt hochgerechnet</option><option value="soft">Weich</option></select>
   <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32">32 px</option><option value="48" selected>48 px</option><option value="64">64 px</option><option value="128">128 px</option></select>
 </div>
 <div class="orkv-sprites" id="orkvSprites" aria-label="Der Ork als Sprite von 16 bis 128 Pixeln"></div>
 <p class="orkv-note">Ein Baukasten statt einer Zeichnung: zwei Stile mit denselben Teilen und Bewegungen. Die Werte formen den Körper (Klugheit: größerer Kopf und kleinerer Kiefer, Stärke: breiter, Gewandtheit: längere Beine und schlanker, Wildheit: längere Hauer und finsterere Brauen). „Würfeln“ zieht aus einem Seed Stil, Werte, Hautton, Narbe und Ausrüstung. Die Ausrüstung hängt an den Körperteilen und macht jede Bewegung mit. Die Hände schweben ohne Arme neben dem Körper und halten die Waffe; ohne Hände schwebt die Waffe allein. Unten derselbe Ork als Sprite, in der gewählten Nachbearbeitung.</p>`;
     const $=id=>root.querySelector('#'+id), stage=$('orkvStage'), svgEl=$('orkvSvg'), cv=$('orkvCanvas'), turb=$('orkvTurb');
-    let spec=JSON.parse(JSON.stringify(OrkRig.DEFAULT)), rig, out;
-    const s=OrkRig.create(), opt={ walk:true, mouse:null, followMouse:false, explode:false, fx:'smooth', res:48 };
+    let spec=SvgRig.defaults('ork'), rig, out;
+    const s=SvgRig.create(), opt={ walk:true, mouse:null, followMouse:false, explode:false, fx:'smooth', res:48 };
     // the controls show the spec; a change rebuilds the rig
-    const show=()=>{ $('orkvStyle').value=spec.style; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
+    // the choices follow the kind: its styles, its weapons and tools, the gear it can wear, a load for those who carry one
+    const fill=(sel,list,names)=>{ sel.innerHTML=list.map(v=>`<option value="${v}">${names[v]||v}</option>`).join(''); };
+    const show=()=>{ $('orkvKind').value=spec.kind; fill($('orkvStyle'),SvgRig.stylesOf(spec.kind),STYLE_NAME); $('orkvStyle').value=rig.spec.style;
+      fill($('orkvWeapon'),['none'].concat(SvgRig.weaponsOf(spec.kind,rig.spec.style)),WEAPON_NAME);
+      ['helmet','chest','pauldrons'].forEach(k=>{ $('orkvG_'+k).hidden=!rig.has[k]; });
+      root.querySelectorAll('[data-for="load"]').forEach(e=>{ e.hidden=!rig.has.load; }); $('orkvLoad').value=spec.gear.load||'none'; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
-    const rebuild=()=>{ rig=OrkRig.build(spec); out=OrkRig.svg($('orkvRig'),rig); show(); };
+    const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); show(); };
     rebuild();
+    $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); });
     $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; rebuild(); });
+    $('orkvLoad').addEventListener('change',e=>{ spec.gear.load=e.target.value; rebuild(); });
     TRAITS.forEach(([k])=>$('orkvT_'+k).addEventListener('input',e=>{ spec.traits[k]=e.target.value/100; rebuild(); }));
     $('orkvWeapon').addEventListener('change',e=>{ spec.gear.weapon=e.target.value; rebuild(); });
     ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=!spec.gear[k]; rebuild(); }));
     $('orkvG_hands').addEventListener('click',()=>{ spec.gear.hands=spec.gear.hands===false; rebuild(); });
     $('orkvScar').addEventListener('click',()=>{ spec.scar=!spec.scar; rebuild(); });
-    $('orkvRoll').addEventListener('click',()=>{ spec=OrkRig.roll(Math.floor(Math.random()*1e9)); rebuild(); });
+    $('orkvRoll').addEventListener('click',()=>{ spec=SvgRig.roll(Math.floor(Math.random()*1e9),spec.kind); rebuild(); });
     const toggle=(id,key)=>{ const b=$(id); b.addEventListener('click',()=>{ opt[key]=!opt[key]; b.setAttribute('aria-pressed',opt[key]); if(key==='followMouse'&&!opt[key]) opt.mouse=null; }); };
     toggle('orkvWalk','walk'); toggle('orkvMouse','followMouse'); toggle('orkvParts','explode');
     $('orkvBlink').addEventListener('click',()=>{ s.blink=0.16; s.nextBlink=0.3; s.twice=true; });
@@ -310,13 +363,13 @@ const SvgOrkViewer=(()=>{
     let last=performance.now(), spriteT=0, boilT=0, stageT=0, alive=true;
     const frame=now=>{ if(!alive||!root.isConnected){ alive=false; return; } requestAnimationFrame(frame);
       const dt=Math.min(0.05,(now-last)/1000); last=now;
-      OrkRig.step(s,dt,{ walk:opt.walk, mouse:opt.followMouse?opt.mouse:null, range:56, explode:opt.explode });
-      const P=OrkRig.pose(s,rig), vec=opt.fx==='vector'||opt.fx==='boil'; svgEl.style.visibility=vec?'visible':'hidden'; cv.hidden=vec;
+      SvgRig.step(s,dt,{ walk:opt.walk, mouse:opt.followMouse?opt.mouse:null, range:56, explode:opt.explode });
+      const P=SvgRig.pose(s,rig), vec=opt.fx==='vector'||opt.fx==='boil'; svgEl.style.visibility=vec?'visible':'hidden'; cv.hidden=vec;
       if(vec){ out.draw(P); $('orkvRig').setAttribute('filter',opt.fx==='boil'?'url(#orkvBoil)':''); boilT+=dt; if(boilT>0.13){ boilT=0; turb.setAttribute('seed',1+Math.floor(Math.random()*90)); } }
       else if((stageT+=dt)>1/30){ stageT=0;
         // the ork opt.res pixels high (as the sprites below), the stage around it in the same pixels
-        const r=stage.getBoundingClientRect(), k=opt.res/66, small=document.createElement('canvas'); small.width=Math.round(192*k); small.height=Math.round(80*k);
-        const g=small.getContext('2d'); OrkRig.canvas(g,rig,P,k,small.width/2,small.height-8*k);
+        const r=stage.getBoundingClientRect(), k=opt.res/rig.H, small=document.createElement('canvas'); small.width=Math.round(192*k); small.height=Math.round(80*k);
+        const g=small.getContext('2d'); SvgRig.canvas(g,rig,P,k,small.width/2,small.height-8*k);
         let src=small; if(opt.fx!=='soft') snap(g,small.width,small.height); if(opt.fx==='smooth') src=epx2(epx2(small));
         const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
         const cg=cv.getContext('2d'); cg.imageSmoothingEnabled=opt.fx!=='pixel'; const sc=Math.min(cv.width/src.width,cv.height/src.height);
