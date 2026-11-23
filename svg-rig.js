@@ -27,6 +27,13 @@ const SvgRig=(()=>{
     }
   };
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
+  // a hand: a round fist with the fingers drawn on it (three seams across the front, the thumb on the side towards the body); its colour is the skin's,
+  // or the armour's when the creature wears shoulder plates ('hand', 'handLine' are set when the rig is built)
+  function fist(cx,cy,rx,ry,sw){
+    const f=v=>(+v).toFixed(2), seam=x=>`M${f(x)} ${f(cy-ry*0.85)} q${f(-0.12*rx)} ${f(ry*0.4)} 0 ${f(ry*0.8)}`;
+    return [[ell(cx,cy,rx,ry),'hand',sw],[[seam(cx-0.42*rx),seam(cx+0.02*rx),seam(cx+0.46*rx)].join(' '),null,sw*0.55,'handLine'],
+      [`M${f(cx-rx*0.95)} ${f(cy+ry*0.05)} q${f(rx*0.5)} ${f(-ry*0.15)} ${f(rx*0.85)} ${f(ry*0.45)}`,null,sw*0.6,'handLine']];
+  }
   // the ork's parts in both styles, the imp's in the grim one; a missing part is simply not there (the imp has no tusks, the ork no tail)
   const SHAPES={ ork:{
     klassisch:{
@@ -46,8 +53,8 @@ const SvgRig=(()=>{
       chest:[['M-15.5 -33 Q0 -39 15.5 -33 L13.5 -19 Q0 -15.5 -13.5 -19z','leather',1.8],['M0 -36 L0 -17.5',null,1.2,'dark'],['M-9 -31 l3 0 M6 -31 l3 0',null,1.2,'dark']],
       pauldron:[[ell(-16.5,-33,5.5,3.6),'iron',1.8]], pauldronAt:[-16,-33], pauldronR:[[ell(16.5,-33,5.5,3.6),'iron',1.8]],
       cloth:[['M-5.5 -14 L5.5 -14 L6.5 -4.5 Q0 -2.5 -6.5 -4.5z','cloth',1.6]],
-      fist:[[ell(17,-21,3.4,3.1),'skin',1.8],['M14.6 -22.2 q2.4 -1.6 4.8 0',null,1.2,'dark'],['M15.2 -19.6 q1.8 1 3.6 0',null,1,'dark']], handAt:[17,-21], handGap:3,
-      headY:0, legK:1, weapons:['axe','club','sword'], weapon:'axe'
+      fist:fist(17,-21,3.4,3.1,1.8), handAt:[17,-21], handGap:3,
+      headY:0, legK:1, weapons:['axe','club','sword'], weapon:'axe', px:48
     },
     düster:{
       H:66, shadow:[[ell(0,1.5,15,2.6),'shadowC',0]],
@@ -68,9 +75,9 @@ const SvgRig=(()=>{
       chest:[['M-12 -37 L12 -37 L10.5 -21 L0 -17.5 L-10.5 -21z','iron',1.6],['M0 -36.5 L0 -18.5',null,1,'ironDark'],['M-8 -33 L-6 -27 M7 -34 L8 -29',null,1,'rust'],['M0 -37 L12 -37 L10.5 -21 L0 -17.5z','shade',0]],
       pauldron:[['M-18 -35.5 L-11.5 -40.5 L-9 -34.5 L-13 -30 L-18.5 -31.5z','iron',1.6],['M-15.5 -38.5 L-21 -46 L-13 -39.5z','ironDark',1.2]], pauldronAt:[-14,-35],
       cloth:[['M-6 -13 L6 -13 L7 -3 L5 -5.5 L3 -1.5 L1 -4.5 L-1 -0.5 L-3 -4.5 L-5 -1.5 L-7 -4.5z','cloth',1.4]],
-      fist:[['M13.6 -23.6 L19.6 -24.4 L21.2 -21 L19.6 -17.6 L14.4 -18 L13.2 -21z','iron',1.5],['M14.8 -23.8 L15.4 -26.6 L16.5 -23.9 M17.9 -24.2 L18.7 -26.9 L19.5 -24.3',null,1.2,'ironDark'],['M14.6 -21 L19.8 -21',null,1,'ironDark']], handAt:[17,-21], handGap:3,
+      fist:fist(17,-21,3.4,3.1,1.6), handAt:[17,-21], handGap:3,
       axe:[['M23 -5 L24.6 -5 L24.6 -44 L23 -44z','wood',1.4],['M24.6 -43 L35 -47 L33 -40 L36 -34 L33 -27 L24.6 -30z','iron',1.4],['M30 -44 L31 -41 M33 -33 L31.5 -31',null,1,'rust']],
-      headY:1.6, legK:1.15, weapons:['axe','club','sword'], weapon:'axe'
+      headY:1.6, legK:1.15, weapons:['axe','club','sword'], weapon:'axe', px:48
     } },
     imp:{ düster:{
       // small and bent: a big head with ears and horns, eye pits with a glowing spark, a grin with fangs, thin limbs, a tail, a sack on the back, a pick in the claw
@@ -91,8 +98,8 @@ const SvgRig=(()=>{
       sack:[['M-13.5 -21 Q-17 -31 -10 -35.4 Q-4 -36.6 -3.2 -29.6 L-5.6 -21.4z','sack',1.4],['M-11.2 -35 l2 -2.6 l1.6 2.4',null,1.2,'sackDark'],['M-12.4 -27 q2.4 1.4 5 0',null,1,'sackDark']], sackAt:[-8,-24],
       load:{ gold:[[ell(-9.6,-32.2,1.2,1),'gold',0.6],[ell(-7.4,-31,1,0.9),'gold',0.6]], ore:[['M-10.8 -33 l2 -1.2 l1.4 1.6 l-1.8 1.2z','ore',0.6]] },
       cloth:[['M-4.6 -11 L4.6 -11 L5.4 -4.4 L3.6 -5.8 L2 -3 L0 -5.2 L-2 -3 L-3.6 -5.8 L-5.4 -4.4z','cloth',1.1]],
-      fist:[[ell(12,-16,2.6,2.4),'skin',1.3],['M10.2 -17.6 l-1 -1.6 M12 -18.4 l0 -1.8 M13.8 -17.6 l1 -1.6',null,1,'bone']], handAt:[12,-16], handGap:2,
-      headY:0, legK:1, weapons:['pick','club'], weapon:'pick'
+      fist:fist(12,-16,2.6,2.4,1.3), handAt:[12,-16], handGap:2,
+      headY:0, legK:1, weapons:['pick','club'], weapon:'pick', px:24
     } }
   };
   // tools and weapons any kind can hold (the ork's axe is its own, per style)
@@ -130,6 +137,7 @@ const SvgRig=(()=>{
     if(!SHAPES[kind][spec.style]) spec.style=stylesOf(kind)[0];
     const S=SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
     const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },PAL[kind][spec.style]); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
+    const armoured=!!(G.pauldrons&&S.pauldron); pal.hand=armoured?pal.iron:pal.skin; pal.handLine=armoured?pal.ironDark:pal.dark;       // the hands: skin, or armour with the shoulder plates
     const P=(id,pivot,shapes,kids)=>({ id, pivot, shapes:shapes||[], kids:(kids||[]).filter(Boolean) });
     const mirrorShapes=sh=>sh.map(([d,f,w,st])=>[mirror(d),f,w,st]);
     const shiftX=(sh,dx)=>sh.map(([d,f,w,st])=>[d.replace(/^M(-?[\d.]+)/,(m0,x)=>'M'+(parseFloat(x)+dx).toFixed(2)),f,w,st]);       // ellipses moved over keep their shape
@@ -169,7 +177,7 @@ const SvgRig=(()=>{
       handL:{ x:-(bw-1)*half-S.handGap, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*half+S.handGap, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
       weapon:hands?{ x:ha[0]-grip[0], y:ha[1]-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
     };
-    return { tree, base, pal, spec, hands, H:S.H, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
+    return { tree, base, pal, spec, hands, H:S.H, px:S.px||48, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
   const TURN={ skull:0.6, earL:0.6, earR:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
@@ -338,7 +346,7 @@ const SvgOrkViewer=(()=>{
       ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); show(); };
     rebuild();
-    $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); });
+    $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px); });       // each kind its own pixel size (the user: the imp at 24, the ork at 48)
     $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; rebuild(); });
     $('orkvLoad').addEventListener('change',e=>{ spec.gear.load=e.target.value; rebuild(); });
     TRAITS.forEach(([k])=>$('orkvT_'+k).addEventListener('input',e=>{ spec.traits[k]=e.target.value/100; rebuild(); }));
