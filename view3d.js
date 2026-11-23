@@ -181,7 +181,7 @@ const View3D=(()=>{
   function takeSprite(){
     let s=pool[poolUsed];
     if(!s){ s=new T.Sprite(new T.SpriteMaterial({ transparent:true, alphaTest:0.05 })); spriteGroup.add(s); pool.push(s); }
-    poolUsed++; s.visible=true; s.material.color.setHex(0xffffff); return s;
+    poolUsed++; s.visible=true; s.material.color.setHex(0xffffff); s.layers.set(0); return s;
   }
   let chipTex=null, puffTex=null;
   function particleTex(shape){
@@ -339,6 +339,8 @@ const View3D=(()=>{
     m.position.set(it.x+0.5,0,it.y+0.5); m.rotation.y=Math.atan2(f.dx,f.dz);
   }
   const pendingFlash=[];
+  // the overlay: emotes and thought bubbles live on their own layer; the picture filter (postfx.js) never sees them, they are drawn on top afterwards
+  const OVERLAY_LAYER=1; let overlayUsed=0;
   function place(it){
     if(it.kind==='prop' && MODELS[it.key]){ placeModel(it); return; }
     if(it.kind==='stain'){ placeStain(it); return; }
@@ -361,6 +363,7 @@ const View3D=(()=>{
       if(shadows){ const d=takeDecal(), w=0.62*(it.scale||1)/(it.cells||1); d.material.map=blobTex(); d.material.opacity=alpha; d.material.needsUpdate=true; d.scale.set(w,1,w*0.7); d.position.set(it.x+0.5,0.025,it.y+0.5); d.rotation.y=0; } }       // a soft shadow on the floor: the figure stands instead of floating
     else if(it.kind==='prop'){ size=0.78*(it.scale||1); }
     else { size=0.5*(it.scale||1)*1.25; }
+    if(it.kind==='emoji'){ s.layers.set(OVERLAY_LAYER); overlayUsed++; }       // thoughts and markers above the head are drawn after the picture filter, sharp and readable
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
     else if(it.kind==='emoji'){ anchorY=0.5; py=0.28+size/2; }
     s.center.set(0.5,it.kind==='emoji'?0.5:0);
@@ -459,7 +462,7 @@ const View3D=(()=>{
     if(!ready||!active) return;
     lastInfo=tileInfo; syncTiles(tileInfo);
     updateLights(items,cx,cy,performance.now()); updateLiquids(performance.now());
-    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0;
+    poolUsed=0; decalUsed=0; torchUsed=0; wallUsed=0; pendingFlash.length=0; overlayUsed=0;
     Object.keys(modelPool).forEach(k=>{ modelUsed[k]=0; });
     items.forEach(place);
     for(let i=torchUsed;i<torchPool.length;i++) torchPool[i].visible=false;
@@ -470,6 +473,7 @@ const View3D=(()=>{
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
     if(!post.render(renderer,scene,camera)) renderer.render(scene,camera);
+    if(overlayUsed){ const bg=scene.background; scene.background=null; renderer.autoClear=false; renderer.clearDepth(); camera.layers.set(OVERLAY_LAYER); renderer.render(scene,camera); camera.layers.set(0); renderer.autoClear=true; scene.background=bg; }       // a colour background would clear the picture first
   }
   function pick(px,py){
     if(!ready||!active) return null;

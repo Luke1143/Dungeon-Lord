@@ -16,6 +16,7 @@ Stufen 2 und 3 ahmen einen Röhrenmonitor nach (Taste F / Knopf 🌫 📺): Das 
 
 Stufen 4 und 5 (Idee des Nutzers: das Bild erst verzerren, dann mit einer Art Anti-Aliasing oder Hochskalieren wiederherstellen; das systematische Raten der Wiederherstellung wird zum Stil):
 - **Pixel glatt** (4): das 3D-Bild wird klein gerendert (halbe Größe, davon je vier Bildpunkte gemittelt, damit Texturen nicht flimmern) und mit einem eigenen kantengerichteten Hochskalierer zurückgeholt: eine Ecke, deren zwei Nachbarn einander gleichen, aber deutlich vom Bildpunkt abweichen, wird weich entlang der Diagonale abgeschnitten (bei längeren Kanten flacher). Die ganze Welt hat so dieselbe Pixelgröße wie die Sprites, mit sauberen Kanten.
+- **Emotes und Gedankenblasen** über den Köpfen gehen durch keinen Filter (Nutzer: sonst unleserlich): sie liegen in `view3d.js` auf einer eigenen Ebene (Layer 1) und werden nach dem Filter direkt aufs Bild gezeichnet, immer obenauf.
 - **Gemalt** (5): ein Kuwahara-Filter (klassisches, freies Verfahren): von den vier Quadraten um einen Punkt gibt das mit der geringsten Farbstreuung seinen Mittelwert. Flächen werden zu Pinselstrichen, Kanten bleiben scharf.
 
 ## Eigene Pixelsymbole
