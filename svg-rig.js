@@ -29,7 +29,7 @@ const SvgRig=(()=>{
       düster:{ skin:'#3c4730', light:'#4c583b', dark:'#20271a', shade:'rgba(0,0,0,0.3)', leg:'#2f3827', foot:'#15120f', belt:'#261c15', gold:'#9c907a', bone:'#c4b89c', line:'#070504', brow:'#11160d', eye:'#ff4a1e', pupil:'#200300', glow:'rgba(255,60,20,0.42)', mouth:'#140403', tongue:'#4a1410', iron:'#2c2c33', ironDark:'#17171b', wood:'#30231a', leather:'#261c15', cloth:'#3a0f0c', rust:'#6e3320', scar:'#7e705f' }
     },
     imp:{
-      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', rope:'#3a2614', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#8a7452', sackDark:'#5e4c33', cloth:'#2e140c', rust:'#6e3320', scar:'#d89a70' }
+      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', rope:'#a33b29', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#8a7452', sackDark:'#5e4c33', cloth:'#2e140c', rust:'#6e3320', scar:'#d89a70' }
     }
   };
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
@@ -156,10 +156,10 @@ const SvgRig=(()=>{
     // legs: thin and long or short and stout
     // legs: the form axis (slim and oval, round and stout, angular and blocky), the thickness with the body; the foot: claws, paws or clumps
     const xc=-4.3, lw=2.2+1.8*plump, lf=g.beinForm===undefined?0.5:g.beinForm, ft=g.fuss===undefined?0:g.fuss;
-    const lPts=formPts(xc,hipY/2-0.6,lw/2*(lf<0.5?1.15:1),-hipY/2+0.6,lf,0,1.1,0.75), leg=[[ptsPath(lPts),'leg',1.3],[formShade(lPts,xc),'shade',0]];
-    if(ft<0.34) leg.push([`M${f(xc-2.6)} 0.2 l0.9 -1.7 M${f(xc-0.6)} 0.2 l0.4 -1.9 M${f(xc+1.3)} 0.2 l0.1 -1.7`,null,1.1,'bone']);       // claws
-    else if(ft<0.67) leg.push([ell(+f(xc),-0.7,+f(lw*0.8),1.3),'leg',1.2],[`M${f(xc-0.6)} -1.2 l0 1.4 M${f(xc+0.6)} -1.2 l0 1.4`,null,0.8,'dark']);       // round paws with toes
-    else leg.push([`M${f(xc-lw*0.85)} 0 L${f(xc-lw*0.75)} -2.2 L${f(xc+lw*0.8)} -2.2 L${f(xc+lw*0.95)} 0z`,'foot',1.2]);       // clumps
+    const lPts=formPts(xc,hipY/2-0.6,lw/2*(lf<0.5?1.15:1),-hipY/2+0.6,lf,0,1.1,0.75), leg=[[ptsPath(lPts),'leg',1.3],[formShade(lPts,xc),'shade',0]], foot=[];       // the foot is a part of its own: in front of the leg, behind it seen from the back
+    if(ft<0.34) foot.push([`M${f(xc-2.6)} 0.2 l0.9 -1.7 M${f(xc-0.6)} 0.2 l0.4 -1.9 M${f(xc+1.3)} 0.2 l0.1 -1.7`,null,1.1,'bone']);       // claws
+    else if(ft<0.67) foot.push([ell(+f(xc),-0.7,+f(lw*0.8),1.3),'leg',1.2],[`M${f(xc-0.6)} -1.2 l0 1.4 M${f(xc+0.6)} -1.2 l0 1.4`,null,0.8,'dark']);       // round paws with toes
+    else foot.push([`M${f(xc-lw*0.85)} 0 L${f(xc-lw*0.75)} -2.2 L${f(xc+lw*0.8)} -2.2 L${f(xc+lw*0.95)} 0z`,'foot',1.2]);       // clumps
     // the body: from the hips up to the shoulders, a waist or a belly
     // the form of the body between oval, round and angular, from the shoulders (top) to the hips (bottom)
     const bf=g.koerperForm===undefined?0.5:g.koerperForm, bTop=topY-1.4, bBot=hipY+1.6, bPts=formPts(0,(bTop+bBot)/2,1,(bBot-bTop)/2,bf,0,wSh*1.12,wHip*1.3);
@@ -181,11 +181,11 @@ const SvgRig=(()=>{
     const hr=2.4+0.6*plump, handAt=[wSh+4.5,hipY-bodyH*0.42];
     const headY=g.tief*8, legK=0.8+0.6*g.beine;
     return Object.assign({},IMP_T,{
-      shadow:[[ell(0,1.2,+f(wHip+2),2),'shadowC',0]], leg, hip:[xc,hipY], body, belly,
+      shadow:[[ell(0,1.2,+f(wHip+2),2),'shadowC',0]], leg, foot, footClaws:ft<0.34, hip:[xc,hipY], body, belly,
       belt:[[`M${f(-wHip-0.6)} ${hipY-2.4} Q0 ${hipY+0.4} ${f(wHip+0.6)} ${hipY-2.4}`,null,1.6,'belt']], buckle:[[ell(+f(-wHip*0.55),hipY-0.6,1.9,1.7),'leather',1.1]],
       neck:[0,+f(topY+1)], skull, scar:null, mouth:[], jaw:[], mouthAt:[0,+f(cy+4)], jawAt:[0,+f(cy+4)],
       eye, eyeAt:[+f(ex),+f(ey)], pupil, pupilIn:0.3, lookK:0.6+0.6*g.augen, lid, brow, browAt:[+f(ex+0.3*s),+f(ey-4*s)],
-      sack:mvS(IMP_T.sack,-(wSh-7.5),topY+24), sackAt:[-8-(wSh-7.5),topY], load:{ gold:mvS(IMP_T.load.gold,-(wSh-7.5),topY+24), ore:mvS(IMP_T.load.ore,-(wSh-7.5),topY+24) },
+      sack:mvS(IMP_T.sack,-(wSh-7.5),topY+24), sackAt:[-11.5-(wSh-7.5),topY+1], load:{ gold:mvS(IMP_T.load.gold,-(wSh-7.5),topY+24), ore:mvS(IMP_T.load.ore,-(wSh-7.5),topY+24) },
       tail:IMP_T.tail, tailAt:IMP_T.tailAt, cloth:IMP_T.cloth,
       fist:fist(+f(handAt[0]),+f(handAt[1]),+f(hr),+f(hr*0.92),1.3), handAt:[+f(handAt[0]),+f(handAt[1])], handGap:2,
       horn:null, look:{ ears:true, horns:false }, headY, legK, earScale:w/8,
@@ -276,7 +276,8 @@ const SvgRig=(()=>{
     const weapon=wShapes?P('weapon',hands?grip:[24,-22],wShapes):null;
     const handKids=hands?[P('handL',R(ha),[],[P('fistL',R(ha),mirrorShapes(S.fist))]),P('handR',ha,[],[weapon,P('fistR',ha,S.fist)])]:[weapon];
     const sack=S.sack&&G.load&&G.load!=='none'?P('sack',S.sackAt,S.sack.concat(S.load[G.load]||[])):null;
-    const tail=S.tail?P('tail',S.tailAt,S.tail):null, legsBody=[P('legL',S.hip,S.leg),P('legR',R(S.hip),mirrorShapes(S.leg)),P('body',[0,S.hip[1]],S.body,bodyKids)];
+    const feet=side=>S.foot&&S.foot.length&&!(back&&S.footClaws)?[P('foot'+side,[S.hip[0]*(side==='L'?1:-1),0],side==='L'?S.foot:mirrorShapes(S.foot))]:[];
+    const tail=S.tail?P('tail',S.tailAt,S.tail):null, legsBody=[P('legL',S.hip,S.leg,feet('L')),P('legR',R(S.hip),mirrorShapes(S.leg),feet('R')),P('body',[0,S.hip[1]],S.body,bodyKids)];
     const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow)].concat(back?legsBody.concat([tail,sack]):[tail,sack].concat(legsBody),handKids));       // from behind: tail and sack in front of the body
     // the stats as proportions
     let bw;
@@ -286,7 +287,7 @@ const SvgRig=(()=>{
     const base={
       shadow:{ sx:bw }, legL:{ x:-(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, legR:{ x:(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, body:{ y:lift, sx:bw },
       head:{ y:S.headY, sx:hs/bw, sy:hs }, jaw:{ sx:js, sy:js }, tuskL:{ sy:ts }, tuskR:{ sy:ts }, pauldronL:{ sx:ps, sy:ps }, pauldronR:{ sx:ps, sy:ps },
-      root:back?{ sx:-1 }:{}, sack:{ y:lift }, tail:{ y:lift },
+      root:back?{ sx:-1 }:{}, sack:{ x:3.6, y:lift-0.6, sx:1.22, sy:1.22, r:spec.seed?10+30*rng(spec.seed*2654435761+97)():25 },       // nearer the middle, bigger, tilted (user: 10 to 40 degrees) tail:{ y:lift },
       earL:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:-30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:-68*earK }:{}),
       earR:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:68*earK }:{}),       // longer, broader, and hanging lower
       earTipL:{ sx:1+0.35*sag, r:-100*sag }, earTipR:{ sx:1+0.35*sag, r:100*sag },       // the tip folds at the kink
@@ -362,8 +363,8 @@ const SvgRig=(()=>{
   // Front: the tail and the carried sack behind, the legs, the body with what is on it, the ears behind the head, the face, the hands and what they hold in front.
   // Back: the loincloth lowest, the legs, the hands and what they hold, the head with its ears, then the back over them, the carried sack, the tail on top.
   const LAYERS={
-    front:['shadow','tail','sack','leg','body','spine','belly','scarsBody','chest','belt','buckle','cloth','pauldron','ear','earTip','head','skull','scar','scarsHead','horn','helmet','mouth','jaw','tusk','eye','pupil','lid','brow','weapon','hand','fist'],
-    back:['shadow','cloth','leg','weapon','hand','fist','ear','earTip','head','skull','scar','scarsHead','horn','helmet','body','spine','scarsBody','chest','belt','buckle','pauldron','sack','tail']
+    front:['shadow','tail','sack','leg','foot','body','spine','belly','scarsBody','chest','belt','buckle','cloth','pauldron','ear','earTip','head','skull','scar','scarsHead','horn','helmet','mouth','jaw','tusk','eye','pupil','lid','brow','weapon','hand','fist'],
+    back:['shadow','cloth','foot','leg','weapon','hand','fist','ear','earTip','head','skull','scar','scarsHead','horn','helmet','body','spine','scarsBody','chest','belt','buckle','pauldron','sack','tail']
   };
   const baseName=id=>id.replace(/[LR]$/,'');
   // every part with its whole transform (an affine matrix [a b c d e f]) and alpha, in drawing order
