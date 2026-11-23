@@ -90,7 +90,7 @@ i18nRegister({"Thronsaal":"Throne Room",
 "Fackeln und Feuer leuchten warm, der Rest ist dunkler, der Bildrand dunkelt ab (nur 3D).":"Torches and fires glow warm, the rest is darker, the rim of the picture darkens (3D only).",
 "Ein weicher Schatten am Boden (nur 3D).":"A soft shadow on the floor (3D only).",
 "Eine dunkle Kopie hinter jeder Figur lässt sie dicker wirken.":"A dark copy behind every figure makes it look thicker.",
-"Ein Filter über dem 3D-Bild: weich, Röhrenmonitor, geglättete Pixel oder gemalt. Taste F wechselt.":"A filter over the 3D picture: soft, CRT monitor, smoothed pixels or painted. Key F switches.", "Pixel glatt":"Smooth pixels", "Relief":"Relief", "Leicht":"Light", "Stark":"Strong", "Wände und Böden bekommen Tiefe: Fugen und Risse liegen tiefer, Steine und Bretter höher, das Licht fällt darauf (nur 3D).":"Walls and floors get depth: mortar and cracks lie lower, stones and planks higher, the light falls on them (3D only).", "Gemalt":"Painted",
+"Ein Filter über dem 3D-Bild: weich, Röhrenmonitor, geglättete Pixel oder gemalt. Taste F wechselt.":"A filter over the 3D picture: soft, CRT monitor, smoothed pixels or painted. Key F switches.", "Pixel glatt":"Smooth pixels", "Relief":"Relief", "Leicht":"Light", "Stark":"Strong", "Wände und Böden bekommen Tiefe: Fugen und Risse liegen tiefer, Steine und Bretter höher, das Licht fällt darauf. „Tief“ verschiebt die Muster zudem mit dem Blickwinkel (nur 3D).":"Walls and floors get depth: mortar and cracks lie lower, stones and planks higher, the light falls on them. “Deep” also shifts the patterns with the angle of view (3D only).", "Tief":"Deep", "Gemalt":"Painted",
 "Optionen: Ansicht und Grafik (O)":"Options: view and graphics (O)",
 
 "Spinne":"Spider",

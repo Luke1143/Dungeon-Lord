@@ -82,8 +82,8 @@ const View3D=(()=>{
         o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
       }
     }
-    const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
-    const hc=bumpCanvasOf(c), hg=hc.getContext('2d'); t.userData.bump=bumpTextureOf(T,hc);       // the relief: the pattern alone, before tint and light edges
+    const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace; t.wrapS=t.wrapT=T.RepeatWrapping;       // repeating: the parallax may read a little past the edge
+    const hc=bumpCanvasOf(c), hg=hc.getContext('2d'); t.userData.bump=bumpTextureOf(T,hc,true);       // the relief: the pattern alone, before tint and light edges
     if(spec.tint){ g.fillStyle=spec.tint; g.fillRect(0,0,32,32); }
     // shaping the rock: a mass of rock reads dark on top; a wall's top edge over open floor catches the light; its face darkens towards the floor
     if(spec.cap){       // a reinforced wall is capped with cut stone: slabs in staggered rows
@@ -105,12 +105,12 @@ const View3D=(()=>{
     const key=specKey(spec)+'|'+variant+'|'+(extra||'');
     if(matCache.has(key)) return matCache.get(key);
     const tex=texture(spec,variant), m=new T.MeshLambertMaterial(Object.assign({ map:tex }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
-    if(extra!=='water'){ m.userData.bump=tex.userData.bump; reliefOn(m); }
+    if(extra!=='water'){ m.userData.bump=tex.userData.bump; pomInstall(T,m); reliefOn(m); }
     matCache.set(key,m); return m;
   }
   let relief=1;
-  function reliefOn(m){ const on=relief>0&&m.userData.bump; m.bumpMap=on?m.userData.bump:null; m.bumpScale=RELIEF_SCALE[relief]||0; m.needsUpdate=true; }
-  function setRelief(v){ v=Math.max(0,Math.min(2,v|0)); if(v===relief) return; relief=v; matCache.forEach(reliefOn); }
+  function reliefOn(m){ if(m.userData.bump) reliefApply(m,relief); }
+  function setRelief(v){ v=Math.max(0,Math.min(3,v|0)); if(v===relief) return; relief=v; matCache.forEach(reliefOn); }
   // ---- water and lava: one living texture each (redrawn a few times a second), every tile shows its own quarter of it so the pattern does not repeat per tile;
   // lava is unlit (it glows by itself), water is lit and a little see-through
   const liquids=[null,null], liquidMaps=[[],[]];

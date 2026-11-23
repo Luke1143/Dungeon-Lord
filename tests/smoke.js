@@ -1,14 +1,18 @@
-// Smoke test: menu, a campaign level (2D and 3D, 400 ticks), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
+// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; every relief and picture effect compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
 // Usage: NODE_PATH=$(npm root -g) node tests/smoke.js
 const { open, finish }=require('./lib');
 (async()=>{
   const { browser, page:p, errs }=await open({ viewport:{ width:1200, height:800 } });
-  let problem='';
+  let problem=''; const shaderErr=[]; p.on('console',m=>{ if(/Shader Error|Program Info Log|THREE\.WebGLProgram/.test(m.text())) shaderErr.push(m.text().slice(0,200)); });
   await p.click('#menuNew'); await p.waitForTimeout(800);
   await p.evaluate(()=>{ const n=world.nodes.find(n=>n.col===0)||world.nodes[0]; startLevel(n.id); }); await p.waitForTimeout(2500);
   const lv=await p.evaluate(()=>{ setView3d(false); for(let i=0;i<400;i++) gameTick(); setView3d(true); return { screen, ticks:state.tickCount }; });
   await p.waitForTimeout(1500);
   if(lv.screen!=='level') problem+='campaign did not start; ';
+  // the deepest relief (parallax occlusion) and every picture effect must compile
+  await p.evaluate(()=>setOption('relief',3)); for(let l=0;l<6;l++){ await p.evaluate(v=>setPostLevel(v),l); await p.waitForTimeout(300); } await p.evaluate(()=>setPostLevel(1));
+  await p.evaluate(()=>{ setOption('relief',1); });
+  if(shaderErr.length) problem+='shader: '+shaderErr[0]+'; ';
   await p.evaluate(()=>{ arenaStart({ teams:[{name:'A',groups:[arenaGroup('ork',2,3)]},{name:'B',groups:[arenaGroup('knight',2,3)]}], map:{layout:'ring',dims:'S',seed:'s',lava:1,water:1,crystal:0,near:1}, fog:true, batch:1 }); });
   await p.waitForTimeout(2000);
   const ludus=await p.evaluate(async()=>{

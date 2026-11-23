@@ -7,12 +7,49 @@
 const FIGURE_LAYER=2;
 // relief (bump mapping, docs/ui.md): the height of a pixel texture is the brightness of its pattern (bright = high, dark = low: mortar and cracks sink,
 // stones and planks rise); the light then falls on every texel as on a slope. RELIEF_SCALE: the strength of the levels light and strong.
-const RELIEF_SCALE=[0,6,14];
+const RELIEF_SCALE=[0,6,14,6];
 function bumpCanvasOf(src){
   const c=document.createElement('canvas'); c.width=src.width; c.height=src.height; const g=c.getContext('2d'); g.drawImage(src,0,0);
   const im=g.getImageData(0,0,c.width,c.height), d=im.data;
   for(let i=0;i<d.length;i+=4){ const l=Math.round(0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]); d[i]=d[i+1]=d[i+2]=l; d[i+3]=255; }
   g.putImageData(im,0,0); return c;
+}
+// parallax occlusion mapping (relief level 3, "deep"): before the texture is read, a short ray steps from the eye into the height map until it meets
+// the surface; the texture and the relief are then read where it met. Patterns shift with the angle of view, high stones hide the joints behind them.
+// It hooks into three's own Lambert shader (onBeforeCompile): the tangent frame comes from the screen derivatives (no tangents in the geometry needed).
+const POM_SCALE=0.07;
+const POM_GLSL=`
+uniform sampler2D pomMap; uniform float pomScale; vec2 pomUv;
+float pomDepth(vec2 uv){ return 1.0-textureLod(pomMap,uv,0.0).r; }
+vec2 pomFind(){
+  vec3 V=normalize(vViewPosition), p=-vViewPosition, q0=dFdx(p), q1=dFdy(p); vec2 st0=dFdx(vMapUv), st1=dFdy(vMapUv);
+  vec3 N=normalize(vNormal); if(!gl_FrontFacing) N=-N;
+  vec3 q1p=cross(q1,N), q0p=cross(N,q0), Tg=q1p*st0.x+q0p*st1.x, Bg=q1p*st0.y+q0p*st1.y;
+  float det=max(dot(Tg,Tg),dot(Bg,Bg)); if(det<=0.0) return vMapUv;
+  float s=inversesqrt(det); Tg*=s; Bg*=s;
+  vec3 Vt=vec3(dot(V,Tg),dot(V,Bg),dot(V,N));
+  float layers=mix(24.0,8.0,clamp(abs(Vt.z),0.0,1.0)), stepD=1.0/layers;
+  vec2 d=Vt.xy/max(Vt.z,0.2)*pomScale/layers, uv=vMapUv; float cur=0.0, dep=pomDepth(uv);
+  for(int i=0;i<32;i++){ if(cur>=dep||float(i)>=layers) break; uv-=d; dep=pomDepth(uv); cur+=stepD; }
+  vec2 prev=uv+d; float after=dep-cur, before=pomDepth(prev)-cur+stepD; float w=after/(after-before+1e-5);
+  return mix(uv,prev,clamp(w,0.0,1.0));
+}
+`;
+function pomInstall(T,m){
+  m.onBeforeCompile=sh=>{
+    if(!m.defines||m.defines.USE_POM===undefined||!m.userData.bump) return;
+    sh.uniforms.pomMap={ value:m.userData.bump }; sh.uniforms.pomScale={ value:POM_SCALE };
+    const bump=T.ShaderChunk.bumpmap_pars_fragment.split('texture2D( bumpMap, vBumpMapUv').join('texture2D( bumpMap, pomUv');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <bumpmap_pars_fragment>',POM_GLSL+bump)
+      .replace('#include <map_fragment>','pomUv=pomFind();\n'+T.ShaderChunk.map_fragment.split('vMapUv').join('pomUv'));
+  };
+  m.customProgramCacheKey=()=>(m.defines&&m.defines.USE_POM!==undefined)?'pom':'plain';
+}
+// a material's relief by the level (0 off, 1 light, 2 strong, 3 deep: light bump with parallax occlusion)
+function reliefApply(m,level){
+  const on=level>0&&m.userData.bump; m.bumpMap=on?m.userData.bump:null; m.bumpScale=RELIEF_SCALE[level]||0;
+  m.defines=Object.assign({},m.defines||{}); if(level===3&&on) m.defines.USE_POM=''; else delete m.defines.USE_POM;
+  m.needsUpdate=true;
 }
 function bumpTextureOf(T,canvas,repeat){ const t=new T.CanvasTexture(canvas); t.magFilter=T.LinearFilter; t.minFilter=T.LinearFilter;       /* slopes, not lines */ t.generateMipmaps=false; if(repeat) t.wrapS=t.wrapT=T.RepeatWrapping; return t; }
 function createPostFX(T){

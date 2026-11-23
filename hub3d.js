@@ -46,11 +46,11 @@ const Hub3D=(()=>{
   function mat(name){
     if(MAT[name]) return MAT[name];
     const defs={ wood:['planks','#8a5a34','#3a2312'], darkwood:['planks','#5a3820','#2a1608'], stone:['stone','#8d949c','#3a3f46'], darkstone:['stone','#575e66','#22252a'], sand:['plain','#c9ac7a','#8a7248'], cobble:['cobble','#6f6a63','#2c2a27'], cloth:['plain','#a02a2a','#601414'], gold:['plain','#d4af37','#8a6d12'], book:['plain','#5a3a6a','#2a1a35'], dirt:['plain','#4a3a28','#2a2014'], straw:['plain','#b89a4a','#7a6428'] };
-    const d=defs[name], t=tex(d[0],d[1],d[2]), m=MAT[name]=new T.MeshLambertMaterial({ map:t }); m.userData.bump=t.userData.bump; reliefOn(m); return m;
+    const d=defs[name], t=tex(d[0],d[1],d[2]), m=MAT[name]=new T.MeshLambertMaterial({ map:t }); m.userData.bump=t.userData.bump; pomInstall(T,m); reliefOn(m); return m;
   }
   let relief=1;
-  function reliefOn(m){ const on=relief>0&&m.userData.bump; m.bumpMap=on?m.userData.bump:null; m.bumpScale=RELIEF_SCALE[relief]||0; m.needsUpdate=true; }
-  function setRelief(v){ v=Math.max(0,Math.min(2,v|0)); if(v===relief) return; relief=v; Object.values(MAT).forEach(m=>{ if(m&&m.isMaterial) reliefOn(m); });
+  function reliefOn(m){ if(m.userData.bump) reliefApply(m,relief); }
+  function setRelief(v){ v=Math.max(0,Math.min(3,v|0)); if(v===relief) return; relief=v; Object.values(MAT).forEach(m=>{ if(m&&m.isMaterial) reliefOn(m); });
   }
   const flat=(color,emissive)=>new T.MeshLambertMaterial({ color, emissive:emissive||0x000000 });
   function box(w,h,d,m,x,y,z,parent){ const o=new T.Mesh(new T.BoxGeometry(w,h,d),typeof m==='string'?mat(m):m); o.position.set(x,y+h/2,z); parent.add(o); return o; }
