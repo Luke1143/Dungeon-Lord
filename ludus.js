@@ -643,6 +643,7 @@ function ludusHubSync(tab){
   if(hubState!=='ready') return;
   const live=!!(ludus&&!ludus.over), showEv=live&&ludusEventShown;
   if(typeof View3D!=='undefined') Hub3D.setPost(View3D.post||0);
+  if(typeof OPTIONS!=='undefined') Hub3D.setRelief(OPTIONS.relief);
   Hub3D.sync(ludusHubTiers(),live&&ludus.map?'r'+ludus.seed+':'+ludus.map.region:'start',showEv?ludusEventCast():null,ludusHubPeople(showEv));
   const picked=live&&ludusPicked&&ludusHubPeople(false).find(x=>x.id===ludusPicked);       // the camera follows a clicked gladiator to his room
   Hub3D.focus(showEv?'event':(picked?picked.room:(LUDUS_HUB_ROOM[tab]||'inn'))); Hub3D.start(); Hub3D.resize();

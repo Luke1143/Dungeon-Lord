@@ -83,6 +83,7 @@ const View3D=(()=>{
       }
     }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace;
+    const hc=bumpCanvasOf(c), hg=hc.getContext('2d'); t.userData.bump=bumpTextureOf(T,hc);       // the relief: the pattern alone, before tint and light edges
     if(spec.tint){ g.fillStyle=spec.tint; g.fillRect(0,0,32,32); }
     // shaping the rock: a mass of rock reads dark on top; a wall's top edge over open floor catches the light; its face darkens towards the floor
     if(spec.cap){       // a reinforced wall is capped with cut stone: slabs in staggered rows
@@ -95,17 +96,21 @@ const View3D=(()=>{
       for(let i=0;i<4;i++){ g.fillStyle='rgba(6,4,2,'+(0.1+i*0.1)+')'; g.fillRect(0,24+i*2,32,2); } }
     if(spec.crack && typeof TILEGEN!=='undefined'){
       const o=TILEGEN.crack(spec.crack,variant);
-      o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); }));
-      t.needsUpdate=true;
+      o.g.forEach((row,yy)=>row.forEach((ch,xx)=>{ if(ch==='.') return; g.fillStyle=o.pal[ch]; g.fillRect(xx*2,yy*2,2,2); hg.fillStyle='#000'; hg.fillRect(xx*2,yy*2,2,2); }));
+      t.needsUpdate=true; t.userData.bump.needsUpdate=true;
     }
     texCache.set(key,t); return t;
   }
   function material(spec,variant,extra){
     const key=specKey(spec)+'|'+variant+'|'+(extra||'');
     if(matCache.has(key)) return matCache.get(key);
-    const m=new T.MeshLambertMaterial(Object.assign({ map:texture(spec,variant) }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
+    const tex=texture(spec,variant), m=new T.MeshLambertMaterial(Object.assign({ map:tex }, extra==='water'?{ transparent:true, opacity:0.88 }:{}));
+    if(extra!=='water'){ m.userData.bump=tex.userData.bump; reliefOn(m); }
     matCache.set(key,m); return m;
   }
+  let relief=1;
+  function reliefOn(m){ const on=relief>0&&m.userData.bump; m.bumpMap=on?m.userData.bump:null; m.bumpScale=RELIEF_SCALE[relief]||0; m.needsUpdate=true; }
+  function setRelief(v){ v=Math.max(0,Math.min(2,v|0)); if(v===relief) return; relief=v; matCache.forEach(reliefOn); }
   // ---- water and lava: one living texture each (redrawn a few times a second), every tile shows its own quarter of it so the pattern does not repeat per tile;
   // lava is unlit (it glows by itself), water is lit and a little see-through
   const liquids=[null,null], liquidMaps=[[],[]];
@@ -488,6 +493,6 @@ const View3D=(()=>{
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  return { onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 })();

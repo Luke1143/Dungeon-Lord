@@ -4,6 +4,7 @@ const OPTION_ROWS=[
   { label:'Ansicht', hint:'3D mit drehbarer Kamera (Q/E) oder die flache Karte. Taste V wechselt.', choices:[['3D',true],['2D',false]], get:()=>view3dOn, set:v=>setView3d(v) },
   { label:'Stimmungslicht', hint:'Fackeln und Feuer leuchten warm, der Rest ist dunkler, der Bildrand dunkelt ab (nur 3D).', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.mood, set:v=>setOption('mood',v) },
   { label:'Schatten unter Kreaturen', hint:'Ein weicher Schatten am Boden (nur 3D).', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.shadows, set:v=>setOption('shadows',v) },
+  { label:'Relief', hint:'Wände und Böden bekommen Tiefe: Fugen und Risse liegen tiefer, Steine und Bretter höher, das Licht fällt darauf (nur 3D).', choices:[['Aus',0],['Leicht',1],['Stark',2]], get:()=>OPTIONS.relief, set:v=>setOption('relief',v) },
   { label:'Tiefe der Figuren', hint:'Eine dunkle Kopie hinter jeder Figur lässt sie dicker wirken.', choices:[['An',true],['Aus',false]], get:()=>OPTIONS.depth, set:v=>setOption('depth',v) },
   { label:'Bildeffekt', hint:'Ein Filter über dem 3D-Bild: weich, Röhrenmonitor, geglättete Pixel oder gemalt. Taste F wechselt.', choices:[['Aus',0],['Weich',1],['Röhre',2],['Röhre stark',3],['Pixel glatt',4],['Gemalt',5]], get:()=>View3D.post||0, set:v=>setPostLevel(v) }
 ];

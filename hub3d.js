@@ -40,12 +40,17 @@ const Hub3D=(()=>{
     if(kind==='stone'){ for(let y=0;y<32;y+=8){ g.fillRect(0,y,32,1); for(let x=(y/8%2)*8;x<32;x+=16) g.fillRect(x,y,1,8); } }
     if(kind==='cobble'){ for(let y=0;y<32;y+=8){ g.fillRect(0,y,32,1); for(let x=(y/8%2)*5;x<32;x+=10) g.fillRect(x,y,1,8); } }
     const t=new T.CanvasTexture(c); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.wrapS=t.wrapT=T.RepeatWrapping; t.colorSpace=T.SRGBColorSpace;
+    t.userData.bump=bumpTextureOf(T,bumpCanvasOf(c),true);       // the relief (postfx.js)
     texCache.set(key,t); return t;
   }
   function mat(name){
     if(MAT[name]) return MAT[name];
     const defs={ wood:['planks','#8a5a34','#3a2312'], darkwood:['planks','#5a3820','#2a1608'], stone:['stone','#8d949c','#3a3f46'], darkstone:['stone','#575e66','#22252a'], sand:['plain','#c9ac7a','#8a7248'], cobble:['cobble','#6f6a63','#2c2a27'], cloth:['plain','#a02a2a','#601414'], gold:['plain','#d4af37','#8a6d12'], book:['plain','#5a3a6a','#2a1a35'], dirt:['plain','#4a3a28','#2a2014'], straw:['plain','#b89a4a','#7a6428'] };
-    const d=defs[name]; return MAT[name]=new T.MeshLambertMaterial({ map:tex(d[0],d[1],d[2]) });
+    const d=defs[name], t=tex(d[0],d[1],d[2]), m=MAT[name]=new T.MeshLambertMaterial({ map:t }); m.userData.bump=t.userData.bump; reliefOn(m); return m;
+  }
+  let relief=1;
+  function reliefOn(m){ const on=relief>0&&m.userData.bump; m.bumpMap=on?m.userData.bump:null; m.bumpScale=RELIEF_SCALE[relief]||0; m.needsUpdate=true; }
+  function setRelief(v){ v=Math.max(0,Math.min(2,v|0)); if(v===relief) return; relief=v; Object.values(MAT).forEach(m=>{ if(m&&m.isMaterial) reliefOn(m); });
   }
   const flat=(color,emissive)=>new T.MeshLambertMaterial({ color, emissive:emissive||0x000000 });
   function box(w,h,d,m,x,y,z,parent){ const o=new T.Mesh(new T.BoxGeometry(w,h,d),typeof m==='string'?mat(m):m); o.position.set(x,y+h/2,z); parent.add(o); return o; }
@@ -325,5 +330,5 @@ const Hub3D=(()=>{
   function setPost(n){ if(post) post.setLevel(n); }
   function start(){ if(running||!ready) return; running=true; last=performance.now(); requestAnimationFrame(frame); resize(); }
   function stop(){ running=false; }
-  return { init, sync, focus, start, stop, resize, setPost, set onPick(f){ onPick=f; }, get ready(){ return ready; }, get current(){ return current; } };
+  return { init, sync, focus, start, stop, resize, setPost, setRelief, set onPick(f){ onPick=f; }, get ready(){ return ready; }, get current(){ return current; } };
 })();

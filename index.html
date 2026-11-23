@@ -5941,7 +5941,7 @@ function spriteDark(c){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return '#000
 // A creature's picture. Most are one cell (16x16); a figure with parts that reach beyond it (wings, tails, hats) comes on a bigger square
 // with its cell in the bottom middle: spriteK(cv) says how many cells wide the picture is, spriteCell(cv) gives the cell alone (for icons).
 // Graphics options (the options dialog, options.js): kept in the browser; the 3D view and its picture effect have keys of their own
-const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
+const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true, relief:1 },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
 const spriteK=cv=>cv.width/16;
 function spriteCell(cv){
   if(cv.width===16) return cv;
@@ -10263,7 +10263,7 @@ document.getElementById('mapToggle').addEventListener('click', ()=> setMinimap(!
 function setPostLevel(n){ n=((n%6)+6)%6; View3D.setPost(n); try{ localStorage.setItem('dungeon-lord-post',String(n)); }catch(e){} if(typeof optionsRender==='function') optionsRender(); }
 { let n=1; try{ const s=localStorage.getItem('dungeon-lord-post'); if(s!==null) n=+s; }catch(e){} View3D.setPost(n); }
 // what the options say reaches the 3D view (mood light, shadows) and the rim darkening over it
-function applyLook(){ View3D.setMood(OPTIONS.mood); View3D.setShadows(OPTIONS.shadows); const v=document.getElementById('vignette'); if(v) v.classList.toggle('on',!!(view3dOn&&OPTIONS.mood)); }
+function applyLook(){ View3D.setMood(OPTIONS.mood); View3D.setShadows(OPTIONS.shadows); View3D.setRelief(OPTIONS.relief); if(typeof Hub3D!=='undefined') Hub3D.setRelief(OPTIONS.relief); const v=document.getElementById('vignette'); if(v) v.classList.toggle('on',!!(view3dOn&&OPTIONS.mood)); }
 function setOption(key,val){ OPTIONS[key]=val; try{ localStorage.setItem('dungeon-lord-options',JSON.stringify(OPTIONS)); }catch(e){} if(key==='depth'){ Object.keys(SPRITE_CACHE).forEach(k=>delete SPRITE_CACHE[k]); ICON_CACHE.clear(); } applyLook(); if(screen==='level') draw(); }
 View3D.onLost=()=>{ reportError('3D', new Error('Die Grafikkarte hat den 3D-Kontext verloren, ich wechsle zur 2D-Ansicht')); if(possessed) endPossession(); setView3d(false); };
 function toggleMusic(){ SFX.ensure(); SFX.setMusic(!SFX.music); document.getElementById('musicBtn').style.opacity=SFX.music?1:0.45; }

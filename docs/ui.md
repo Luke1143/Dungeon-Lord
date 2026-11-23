@@ -9,6 +9,9 @@ Die Welt füllt das ganze Fenster, links liegt das Menü (`ui-panel.js` und das 
 - **Raus:** die Legende der Materialien (Erz, Eisen, Bronze, Stahl), die Ereignisliste, die Tastenleiste am unteren Rand (steht jetzt in der Übersicht).
 - **Arena und Ludus-Kampf** nutzen dasselbe Menü ohne Reiter: oben die Teams und Zauber, darunter der Zauberreiter.
 
+## Relief (Bump-Mapping) in 3D
+Wände, Böden und die Räume im Ludus-Hof haben ein Relief (Optionen → Relief: Aus, Leicht, Stark; voreingestellt Leicht). Die Höhenkarte ist die Helligkeit des Musters jeder Pixel-Textur, genommen bevor Licht- und Schattenkanten aufgemalt werden (hell = hoch: Fugen und Risse liegen tief, Steine und Bretter hoch; Risse werden zusätzlich schwarz eingeschnitten). Die Höhenkarte wird weich ausgelesen, damit an den Pixelgrenzen Schrägen entstehen statt dünner Linien; Three.js neigt damit das Licht je Bildpunkt (`bumpMap`, `RELIEF_SCALE` in `postfx.js`). Nächster möglicher Schritt: Parallax-Occlusion-Mapping (die Muster verschieben sich mit dem Blickwinkel, hohe Stellen verdecken tiefe).
+
 ## Bildeffekt in 3D
 Über das 3D-Bild der Level-Ansicht legt `view3d.js` einen kleinen Nachbearbeitungsschritt: Das Bild wird zuerst in eine Textur gerendert, dann weichzeichnet ein Shader es leicht (die harten Pixelkanten der Sprites verschmelzen mit der Welt), helle Stellen leuchten etwas nach, die Ecken werden dunkler. Stufen: aus, weich, dunstig (Knopf 🌫 oder Taste F, wird gemerkt). Die Stufe „weich" ist voreingestellt.
 

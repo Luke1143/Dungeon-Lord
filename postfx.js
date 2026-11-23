@@ -5,6 +5,16 @@
 // The painted level paints only the world: the figures (layer 2, FIGURE_LAYER) are drawn into a second target that shares the world's depth (walls still hide them)
 // and laid over the painting unfiltered, so they stay recognisable.
 const FIGURE_LAYER=2;
+// relief (bump mapping, docs/ui.md): the height of a pixel texture is the brightness of its pattern (bright = high, dark = low: mortar and cracks sink,
+// stones and planks rise); the light then falls on every texel as on a slope. RELIEF_SCALE: the strength of the levels light and strong.
+const RELIEF_SCALE=[0,6,14];
+function bumpCanvasOf(src){
+  const c=document.createElement('canvas'); c.width=src.width; c.height=src.height; const g=c.getContext('2d'); g.drawImage(src,0,0);
+  const im=g.getImageData(0,0,c.width,c.height), d=im.data;
+  for(let i=0;i<d.length;i+=4){ const l=Math.round(0.3*d[i]+0.59*d[i+1]+0.11*d[i+2]); d[i]=d[i+1]=d[i+2]=l; d[i+3]=255; }
+  g.putImageData(im,0,0); return c;
+}
+function bumpTextureOf(T,canvas,repeat){ const t=new T.CanvasTexture(canvas); t.magFilter=T.LinearFilter; t.minFilter=T.LinearFilter;       /* slopes, not lines */ t.generateMipmaps=false; if(repeat) t.wrapS=t.wrapT=T.RepeatWrapping; return t; }
 function createPostFX(T){
   let rt, rtFig, postScene, postCam, postMat, crtMat, smoothMat, paintMat, postMesh, level=1, applied=-1, w=0, h=0, dprNow=1;
   const POST_LEVELS=[null,{ blur:1.0, bloom:0.12, vig:0.16, scale:1 },
