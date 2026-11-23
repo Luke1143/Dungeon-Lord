@@ -138,6 +138,15 @@ Vom Nutzer: Zufriedenheit beeinflusst die Kampfleistung und umgekehrt; wer verli
 - **Grube:** bis zu drei Angebote, mit der besten Aussicht zuerst; „Leicht/Fair/Schwer“ richtet sich nach der Aussicht selbst (ab 65 % leicht, ab 35 % fair). Keine Lava-Arenen in der Grube (dort stirbt niemand). Der Ausbau der Grube gibt +25 % und +50 % Erfahrung.
 - **Ergebnis** nennt auch nach einer Niederlage die gewonnene Erfahrung; die Tagesnotiz (Aufgaben, Kost) steht dahinter, mit „·“ getrennt.
 - **Obere Leiste:** Kost und Logis pro Tag (mit Warnung, wenn das Gold nicht reicht), Tage bis zum Turnier bzw. die laufende Turnierrunde.
+- **Wo was ist (Stand nach dem Team-Umbau):**
+  - **Kaderleiste** (links oben): jeder eigene Gladiator mit Leben und Laune, daneben seine Aufgabe (Kämpft, Ruht, Badet, Trainiert, Arbeitet). „Heute Abend“ darunter warnt vor Unglücklichen (unter 30; unter 20 gehen sie am Abend).
+  - **Rangliste:** oben die Tabelle der Teams (mit deinen Abkommen), darunter die Gladiatoren mit ihrem Team; dazu die Chronik.
+  - **Karte eines fremden Gladiators** (im Dungeon anklicken): Werte, Team und Kasse, Zufriedenheit, Rivale; darunter eine Reihe Knöpfe (Herausfordern, Geschenk, Schonungsabkommen, Bündnis, Anheuern oder Abwerben) mit je einer Zeile, was folgt; Handel und die Regeln zum Aufklappen.
+  - **Werte** (Tab): die Zufriedenheit mit ihren Teilen (Kameraden im Raum, Ansprüche, Komfort, Freunde) und die Kampfkraft, die daraus folgt.
+  - **Tempel, Badehaus** (Tabs): Ausbau und die Stimmung der Schule.
+  - **Arena:** Doppel und Trio nennen das Team vorn; bei „Jeder gegen jeden“ stehen Kampfbündnisse für den einen Kampf.
+  - **Ereignisse:** Angebote anderer Teams für deine Gladiatoren, unglückliche Fremde, die zu dir wollen.
+  - **Ende eines Laufs:** Vermächtnis (Erbstück wählen, gelernte Arten, Trophäen), Halle der Gefallenen, deine Rivalen.
 
 ### Die lebende Welt (`ludus-life.js`)
 Vom Nutzer: Die Gegner in Grube und Arena sind echte Gladiatoren, die sich selbst entscheiden, dort anzutreten.
