@@ -1,5 +1,6 @@
 // The Ludus played through its real page (clicks, not calls): a new school, map, ladder, arena, pit, a bout with its result, then a tournament day,
-// the rounds, the end of the tournament, the map, and a debt for board and lodging. Every step is a picture in tests/out/walk-*.png.
+// the rounds, the end of the tournament, the map, a debt for board and lodging, a gladiator's card, the sheet, temple and bath, an offer, a stranger asking to join
+// and the end of a run. Every step is a picture in tests/out/walk-*.png.
 // Usage: NODE_PATH=$(npm root -g) node tests/ludus-walk.js
 const { open, shot, finish }=require('./lib');
 (async()=>{
@@ -24,6 +25,19 @@ const { open, shot, finish }=require('./lib');
   await p.evaluate(()=>{ ludus.event=null; ludusTab='map'; ludusRender(); }); await take('10-map');
   await p.evaluate(()=>{ ludus.gold=0; ludus.event=null; ludus.forced=null; ludusRender(); }); const e=await p.$('#luEndDay'); if(e) await e.click();
   await p.evaluate(()=>{ ludus.event=null; ludusRender(); }); await take('11-debt');
+  // the newer parts: a gladiator's card (its folds opened), the sheet with happiness, temple and bath, an offer for a gladiator, a stranger who asks to join, the end of a run
+  await p.evaluate(()=>{ ludus.forced=null; ludus.event=null; ludus.verdict=null; ludus.followup=null; ludus.giftChoice=null; ludus.gold=300; const id=ludus.map.region, n=ludusRegionNpcs(id).find(x=>!x.boss&&!ludusIsChamp(id,'npc',x.id))||ludusRegionNpcs(id)[0]; ludusOnPick(n.id); });
+  await take('12-card'); for(const sm of await p.$$('details.luMore summary')) await sm.click(); await take('12-card-open');
+  await p.evaluate(()=>{ ludusPicked=null; ludus.rooms.temple=1; ludus.rooms.bath=1; ludusRender(); });
+  for(const [t,n] of [['sheet','13-sheet'],['temple','14-temple'],['bath','15-bath']]){ await p.click(`[data-tab="${t}"]`); await take(n); }
+  await p.evaluate(()=>{ while(ludus.team.length<2) ludus.team.push({ id:'mW'+ludus.team.length, name:'Secundus', kind:'goblin', level:9, xp:xpForLevel(9), inventory:[], learned:[], gifts:[], seed:7, honor:0, job:'rest' });
+    const t=Object.values(ludus.teams).find(x=>x.region===ludus.map.region&&ludusTeamMembers(x.id).length&&!ludusTeamMembers(x.id).some(n=>n.boss)); if(t) t.gold=9999; ludus.lastOffer=-99;
+    const ev=ludusEventDef('offer').make(); if(ev){ ludus.event=Object.assign({ id:'offer' },ev); ludusRender(); } });
+  if(await p.$('[data-event]')){ await take('16-offer'); await p.click('[data-event="1"]'); await p.evaluate(()=>{ ludus.followup=null; ludusRender(); }); }
+  await p.evaluate(()=>{ const id=ludus.map.region, d=ludusRegionNpcs(id).find(n=>ludusFeels(n)&&!n.boss&&!n.rival&&!ludusIsChamp(id,'npc',n.id)&&!ludusAlliedSchool(n)); if(!d) return; d.happiness=10; d.bond=0;
+    const ev=ludusEventDef('defector').make(()=>0); if(ev){ ludus.event=Object.assign({ id:'defector' },ev,{ npc:d.id }); ludusRender(); } });
+  if(await p.$('[data-event]')){ await take('17-defector'); await p.click('[data-event="0"]'); await p.evaluate(()=>{ ludus.followup=null; ludusRender(); }); }
+  await p.evaluate(()=>{ ludusLegacyEnd(ludus.team); ludus.over=true; ludus.cause='Gefallen'; ludusTab='start'; ludusRender(); }); await take('18-end');
   const misses=await p.evaluate(()=>[...I18N_MISSES]);
   finish('ludus walk',errs,misses.length?'missing translations: '+misses.slice(0,6).join(' | '):'');
   await browser.close();

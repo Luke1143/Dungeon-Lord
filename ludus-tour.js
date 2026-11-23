@@ -58,10 +58,10 @@ function ludusBossMake(r,regionId){
   const n=ludusMapWorld().nodes[regionId], L=ludusRegionLevel(n.col), used=new Set(Object.values(ludus.regions||{}).map(x=>x.ghost).filter(Boolean));
   const g=(ludusMeta.ghosts||[]).find(x=>!used.has(x.id)&&Math.abs(ludusGhostLevel(x)-(L+2))<=1);
   if(g){ const m=g.members.slice().sort((a,b)=>b.level-a.level)[0];
-    return { boss:ludusEquip({ id:'n'+Math.floor(r()*1e9), name:g.name, kind:m.kind, level:m.level, tier:3, seed:m.seed, status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true, ghost:g.id, member:JSON.parse(JSON.stringify(m)), bold:0.5 }), ghost:g.id }; }
+    return { boss:ludusEquip({ id:'n'+Math.floor(r()*1e9), name:g.name, kind:m.kind, level:m.level, tier:3, seed:m.seed, status:'active', bond:0, met:0, last:null, region:regionId, honor:100, boss:true, ghost:g.id, member:JSON.parse(JSON.stringify(m)), bold:0.5 }), ghost:g.id }; }
   const strong=ludusRegionKinds(n.col).filter(k=>creatureWorth(k)>=1); const kind=creaturePickWeighted(r,strong.length?strong:ludusRegionKinds(n.col));
   const b={ boss:{ id:'n'+Math.floor(r()*1e9), name:ludusNpcName(r), kind, level:creatureLevelFor(kind,ludusRegionUnit(n.col)*1.6),
-    tier:Math.min(3,ludusRegionTier(n.col)+1), seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null, region:regionId, honor:999, boss:true, bold:0.5 } };
+    tier:Math.min(3,ludusRegionTier(n.col)+1), seed:Math.floor(r()*1e9), status:'active', bond:0, met:0, last:null, region:regionId, honor:100, boss:true, bold:0.5 } };
   ludusEquip(b.boss); return b;
 }
 // a region is filled the first time the run comes near it: its boss and its gladiators, ranked by strength (the stronger, the more honour)
@@ -112,8 +112,9 @@ function ludusEveningHTML(){
     else if(!ludusRoomTier('training')) t='kann nicht trainieren (kein Trainingsraum) und ruht';
     else if(gold-spend<ludusTrainCost(m)) t='kann das Training nicht bezahlen und ruht';
     else { t=`trainiert: +${ludusTrainXp(m)} Erfahrung, −${ludusTrainCost(m)} Gold`; spend+=ludusTrainCost(m); }
-    const duel=ludusChallengesToday().find(c=>c.own===m.id&&!c.done), foe=duel&&ludusNpc(duel.npc);
-    rows.push(`<div><b>${ludusEsc(m.name)}</b> ${t}${job==='fight'&&pct<35?` <span class="luBane">⚠ nur ${pct} % Leben</span>`:''}${foe?` <span class="luBane">⚠ Duell mit ${ludusEsc(foe.name)} offen: wer nicht antritt, kneift (−${LUDUS_CHALLENGE.coward} Ehre)</span>`:''}</div>`);
+    const duel=ludusChallengesToday().find(c=>c.own===m.id&&!c.done), foe=duel&&ludusNpc(duel.npc), h=ludusMood(m);
+    const sad=h!==null&&ludus.team.length>1?(h<LUDUS_MOOD.leave?` <span class="luBane">⚠ Laune ${h}: geht heute Abend, wenn sich nichts bessert</span>`:(h<LUDUS_MOOD.leave+10?` <span class="luBane">⚠ Laune ${h}: unglücklich</span>`:'')):'';
+    rows.push(`<div><b>${ludusEsc(m.name)}</b> ${t}${job==='fight'&&pct<35?` <span class="luBane">⚠ nur ${pct} % Leben</span>`:''}${foe?` <span class="luBane">⚠ Duell mit ${ludusEsc(foe.name)} offen: wer nicht antritt, kneift (−${LUDUS_CHALLENGE.coward} Ehre)</span>`:''}${sad}</div>`);
   });
   const rent=ludusRent(), short=gold-spend<rent;
   rows.push(`<div>Kost und Logis: −${rent} Gold${short?' <span class="luBane">⚠ reicht nicht: morgen Schuldkampf</span>':''}</div>`);
@@ -166,8 +167,9 @@ function ludusArenaOffers(){
   const byTeam={}; pool.forEach(x=>{ (byTeam[x.team]=byTeam[x.team]||[]).push(x); });
   const squads=Object.values(byTeam).sort((a,b)=>(b.length-a.length)||(ludusGladWorth(b[0])-ludusGladWorth(a[0])));
   const t3=squads.find(g=>g.length>=3), t2=squads.find(g=>g.length>=2);
-  if(ludus.team.length>=3&&t3) add('trio',t3.slice(0,3));
-  else if(ludus.team.length>=2&&t2) add('double',t2.slice(0,2));
+  const named=g=>{ const o=list[list.length-1]; o.title=`${ludusTeamName(g[0])} — ${g.map(x=>x.name).join(', ')}`; };       // two or three of one team: the team's name first
+  if(ludus.team.length>=3&&t3){ add('trio',t3.slice(0,3)); named(t3); }
+  else if(ludus.team.length>=2&&t2){ add('double',t2.slice(0,2)); named(t2); }
   if(pool.length>=3) add('pack',pool.slice(-Math.min(4,pool.length)));
   const reps=squads.map(g=>g[0]);
   if(reps.length>=3){ const k=Math.min(4,reps.length), at=Math.floor(r()*(reps.length-k+1)); add('ffa',reps.slice(at,at+k)); }
@@ -366,9 +368,9 @@ function ludusMapHTML(){
   if(region){
     const champ=ludusChamp(n.id), won=ludus.map.cleared.includes(n.id);
     info=`<p>Stufe der Region: <b>${ludusRegionLevel(n.col)}</b> · Platz 1: <b>${ludusEsc(ludusEntryName(champ))}</b>${champ&&champ.t==='own'?' (deine Schule)':''}<br>Nächstes Turnier in ${ludusTourneyIn()} Tagen (Tag ${ludus.day+ludusTourneyIn()}).</p>
-      <p class="${won?'luHint':'luBane'}">${won?'Du hast diese Region gewonnen: du darfst weiterziehen, oder bleiben und den Titel verteidigen.':'Weiter geht es erst, wenn einer deiner Kämpfer das Turnier gewinnt und Platz 1 wird.'}</p>`;
+      <p class="${won?'luHint':'luBane'}">${won?'Du hast diese Region gewonnen: du darfst weiterziehen, oder bleiben und den Titel verteidigen.':'Weiter geht es erst, wenn deine Schule das Turnier gewinnt und Platz 1 hält.'}</p>`;
   }
-  return `<div class="luPanel"><h2>Karte</h2><p class="luHint">Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht ihr Boss. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier: wer es gewinnt, ist Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.</p>
+  return `<div class="luPanel"><h2>Karte</h2><p class="luHint">Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht anfangs das Team ihres Bosses. Alle ${LUDUS_TOUR.tourneyEvery} Tage treffen sich ihre Teams zum Turnier: wer es gewinnt, hält Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.</p>
     <canvas id="luMapCanvas" width="${OW_COLS*OW_TILE}" height="${OW_ROWS*OW_TILE}" style="width:100%;max-width:960px;border:1px solid #5a4a30"></canvas>
     <p><b>${ludusEsc(n.name)}</b>${lt?' — '+Tr(lt.label):''}</p>${info}
     <div class="luOpts">${near.map(m=>`<button data-travel="${m.id}" ${busy||!ludusCanTravel(m.id)?'disabled':''}>${ludusEsc(m.name)}${ludusIsRegion(m)?' · '+Tr('Stufe')+' '+ludusRegionLevel(m.col):''}</button>`).join(' ')}</div></div>`;
@@ -384,8 +386,8 @@ function ludusMapWire(el){
 // the ladder of the region and, while it runs, the tournament tree
 function ludusBoardHTML(){
   const n=ludusRegionNode(), rows=ludusBoard(n.id);
-  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.t==='npc'&&ludusTeamSize(ludusNpc(x.id))>1?' · '+ludusEsc(ludusTeamName(ludusNpc(x.id))):''}${x.ghost?' · früheres Team':''}${x.rival?' · '+x.rival:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.champ?'Platz 1':x.honor+' Ehre'}</span></div>`;
-  return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
+  const row=x=>`<div class="luItem${x.t==='own'?' sel':''}"><span>${x.rank}. ${x.champ?'👑 ':''}${ludusEsc(x.name)} — ${SPECIES[x.kind].label}, Stufe ${x.level}${x.t==='npc'&&ludusTeamSize(ludusNpc(x.id))>1?' · '+ludusEsc(ludusTeamName(ludusNpc(x.id))):''}${x.ghost?' · früheres Team':''}${x.rival?' · '+x.rival:''}${x.maimed?' · verletzt':''}${x.plan?' · '+LUDUS_PLAN_LABEL[x.plan]:''}${x.t==='npc'?` · ${x.wins} Siege${x.kills?', '+x.kills+' getötet':''}`:''}${x.fame?' · Ruhm '+x.fame:''}</span><span>${x.honor} Ehre</span></div>`;
+  return `<div class="luPanel"><h2>Rangliste von ${ludusEsc(n.name)}</h2><p class="luHint">Platz 1 hält das Champion-Team der Region, anfangs das Team ihres Bosses. Darunter zählt die Ehre (die eines Teams ist die seiner Gladiatoren zusammen): Arenasiege bringen Ehre, Niederlagen kosten welche. Alle ${LUDUS_TOUR.tourneyEvery} Tage treffen sich die Teams der Region zum Turnier; jedes schickt bis zu drei Gladiatoren in einen Kampf. Nächstes Turnier in <b>${ludusTourneyIn()} Tagen</b>.</p>
     ${ludus.tourney?ludusTourneyHTML():''}${ludusTeamTableHTML(n.id)}<h3>Gladiatoren</h3>${rows.map(row).join('')}${ludusChronicleHTML()}</div>`;
 }
 function ludusTourneyHTML(){

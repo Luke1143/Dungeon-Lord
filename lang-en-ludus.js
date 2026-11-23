@@ -29,12 +29,12 @@ i18nRegister({
 });
 // the tour (ludus-tour.js)
 i18nRegister({
-"Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht ihr Boss. Alle {0} Tage ist Turnier: wer es gewinnt, ist Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.":"The tour runs from left to right. Every city is a region with a ladder of its own; its boss stands on place 1. Every {0} days there is a tournament: whoever wins it is place 1 and may move on. A journey costs one day per stage. Whoever becomes place 1 of the capital wins.",
+"Die Tournee führt von links nach rechts. Jede Stadt ist eine Region mit eigener Rangliste; auf Platz 1 steht anfangs das Team ihres Bosses. Alle {0} Tage treffen sich ihre Teams zum Turnier: wer es gewinnt, hält Platz 1 und darf weiterziehen. Eine Reise kostet einen Tag je Etappe. Wer Platz 1 der Hauptstadt wird, gewinnt.":"The tour runs from left to right. Every city is a region with a ladder of its own; at first the team of its boss stands on place 1. Every {0} days its teams meet for a tournament: whoever wins it holds place 1 and may move on. A journey costs one day per stage. Whoever becomes place 1 of the capital wins.",
 "Stufe der Region:":"Level of the region:", "· Platz 1:":"· Place 1:", "(dein Kämpfer)":"(your fighter)", "Nächstes Turnier in {0} Tagen (Tag {1}).":"Next tournament in {0} days (day {1}).",
 "Du hast diese Region gewonnen: du darfst weiterziehen, oder bleiben und den Titel verteidigen.":"You have won this region: you may move on, or stay and defend the title.",
-"Weiter geht es erst, wenn einer deiner Kämpfer das Turnier gewinnt und Platz 1 wird.":"You can only move on once one of your fighters wins the tournament and becomes place 1.",
+"Weiter geht es erst, wenn deine Schule das Turnier gewinnt und Platz 1 hält.":"You can only move on once your school wins the tournament and holds place 1.",
 "Rangliste":"Ladder", "Rangliste von {0}":"Ladder of {0}", "Arena":"Arena", "Arena von {0}":"Arena of {0}", "Neue Schule":"New School",
-"Auf Platz 1 steht der Champion der Region, anfangs ihr Boss. Darunter zählt die Ehre: Arenasiege bringen Ehre, Niederlagen kosten welche. Alle {0} Tage ist Turnier, alle Kämpfer der Region müssen antreten. Nächstes Turnier in":"Place 1 is the champion of the region, at first its boss. Below, honour counts: arena wins bring honour, defeats cost some. Every {0} days there is a tournament, every fighter of the region must take part. Next tournament in",
+"Platz 1 hält das Champion-Team der Region, anfangs das Team ihres Bosses. Darunter zählt die Ehre (die eines Teams ist die seiner Gladiatoren zusammen): Arenasiege bringen Ehre, Niederlagen kosten welche. Alle {0} Tage treffen sich die Teams der Region zum Turnier; jedes schickt bis zu drei Gladiatoren in einen Kampf. Nächstes Turnier in":"Place 1 holds the champion team of the region, at first the team of its boss. Below, honour counts (a team's is that of its gladiators together): arena wins bring honour, defeats cost some. Every {0} days the teams of the region meet for a tournament; each sends up to three gladiators into a bout. Next tournament in",
 "{0} Tagen":"{0} days", "Platz 1":"Place 1", "{0} Ehre":"{0} honour", "· früheres Team":"· former team", "· verletzt":"· wounded",
 "Echte Kämpfe gegen die Gladiatoren der Region, um Gold, Ruhm, Ansehen und Ehre. Wer hier kämpft, kann sterben (aufgeben und ohnmächtig werden geht weiterhin). Je schlechter die Aussichten, desto höher der Preis. Es treten die ersten Kämpfer deiner Aufstellung an: {0}.":"Real bouts against the gladiators of the region, for gold, fame, standing and honour. Whoever fights here can die (surrendering and fainting still work). The worse the chances, the higher the prize. The first fighters of your line-up step in: {0}.",
 "Aussichten werden geprüft …":"Weighing the chances …", "Aussichten: {0} %":"Chances: {0} %", "Wähle {0} Kämpfer":"Pick {0} fighters", "Duell":"Duel", "Doppel":"Double", "Trio":"Trio", "{0} ({1} gegen {2})":"{0} ({1} against {2})",
@@ -245,4 +245,21 @@ i18nRegister({
 "{0} möchte {1} in sein Team holen und bietet {2} Gold Ablöse. {3} ist unzufrieden und würde gern gehen; lehnst du ab, sinkt die Zufriedenheit um {4}.":"{0} would like to bring {1} into its team and offers a transfer fee of {2} gold. {3} is discontent and would like to go; if you refuse, happiness falls by {4}.",
 "Verkaufen ({0} Gold)":"Sell ({0} gold)", "{0} wechselt von deiner Schule zu {1} ({2} Gold Ablöse).":"{0} moves from your school to {1} ({2} gold transfer fee).",
 "Du lehnst ab. {0} nimmt es dir übel.":"You refuse. {0} holds it against you.", "Du lehnst ab.":"You refuse."
+});
+// the card of a gladiator
+i18nRegister({
+"{0} fordert heraus":"{0} challenges", "Herausforderung: {0} wird annehmen.":"Challenge: {0} will accept.", "Herausforderung: {0} wird wohl ablehnen und {1} Ehre verlieren.":"Challenge: {0} will probably decline and lose {1} honour.",
+"Geschenk · {0} Gold":"Gift · {0} gold", "Abwerben · {0} Gold":"Poach · {0} gold", "Die Ablöse geht an {0}.":"The transfer fee goes to {0}.",
+"Das Team des Champions lässt sich nicht anheuern. Man trifft es im Turnier.":"The champion's team cannot be hired. One meets it in the tournament.",
+"Kein Platz frei (höchstens 12 Gladiatoren).":"No place free (at most 12 gladiators).", "Zur Schule: {0} ({1}) · Ausrüstung: {2}":"Towards the school: {0} ({1}) · gear: {2}",
+"Handel":"Trade", "Handel (nichts)":"Trade (nothing)", "Regeln: Herausforderung, Geschenk, Abkommen":"Rules: challenge, gift, accords",
+"Herausforderung: ein Duell morgen in der Arena, um den anderthalbfachen Preis und {0} Ehre mehr. Wer am Tag des Duells nicht antritt, kneift: −{1} Ehre. Den Champion fordert man im Turnier, und kurz vor dem Turnier fordert niemand.":"Challenge: a duel in the arena tomorrow, for one and a half times the prize and {0} more honour. Whoever does not show up on the day of the duel backs down: −{1} honour. The champion is challenged in the tournament, and nobody challenges just before a tournament.",
+"Geschenk: die Beziehung des Gladiators zur Schule steigt um 1.":"Gift: the gladiator's relation to the school rises by 1.",
+"Abkommen gelten für das ganze Team; seine Beziehung ist der Schnitt seiner Gladiatoren. Schonungsabkommen (ab Beziehung 1): niemand richtet einen des anderen hin. Bündnis (ab 2): dazu steigt ihr in der Arena nicht gegeneinander in den Ring (in der Grube schon), und im Turnier lässt das schwächere Team dem stärkeren den Vortritt. Wer ein Abkommen kündigt, verstimmt das Team.":"Accords hold for the whole team; its relation is the average of its gladiators. Spare accord (from relation 1): nobody executes one of the other. Alliance (from 2): moreover you do not step into the ring against each other in the arena (in the pit you do), and in the tournament the weaker team gives way to the stronger. Whoever cancels an accord sours the team.",
+"Schonungsabkommen kündigen":"Cancel the spare accord", "Bündnis kündigen":"Cancel the alliance",
+"Mit {0} besteht ein {1} (seit Tag {2}); Beziehung des Teams {3}.":"With {0} there is a {1} (since day {2}); the team's relation {3}.",
+"Beziehung von {0} zur Schule: {1} (Schonungsabkommen ab 1, Bündnis ab 2).":"Relation of {0} to the school: {1} (spare accord from 1, alliance from 2)."
+});
+i18nRegister({
+"⚠ Laune {0}: geht heute Abend, wenn sich nichts bessert":"⚠ mood {0}: leaves tonight unless it improves", "⚠ Laune {0}: unglücklich":"⚠ mood {0}: unhappy"
 });

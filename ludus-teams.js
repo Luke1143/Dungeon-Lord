@@ -32,6 +32,7 @@ function ludusTeamsTidy(){
   ludus.teams=ludus.teams||{};
   ludus.world.forEach(n=>{
     if(n.status!=='active'){ return; }
+    if(n.honor===999) n.honor=100;       // the boss's old placeholder (place 1 belongs to a team now)
     const t=ludusTeam(n.team);
     if(!t||t.region!==n.region) ludusTeamNew(n.region,n,n.gold!==undefined?n.gold:ludusStartPurse(n));
     delete n.gold;
@@ -154,14 +155,20 @@ function ludusAccordsEvening(){
 // the entries of a tournament: are they allied (then the weaker of the table gives the other the way)
 const ludusEntryKey=e=>!e?null:(e.t==='own'?'own':e.id);
 const ludusEntriesAllied=(a,b)=>{ const x=ludusAccord(ludusEntryKey(a),ludusEntryKey(b)); return !!x&&x.type==='ally'; };
-// the card: the diplomacy with a gladiator's team
-function ludusAccordHTML(n){
+// the card: the buttons for the accords with a gladiator's team, a line on where they stand, and the rules (in the card's fold)
+const LUDUS_ACCORD_HELP='Abkommen gelten für das ganze Team; seine Beziehung ist der Schnitt seiner Gladiatoren. Schonungsabkommen (ab Beziehung 1): niemand richtet einen des anderen hin. Bündnis (ab 2): dazu steigt ihr in der Arena nicht gegeneinander in den Ring (in der Grube schon), und im Turnier lässt das schwächere Team dem stärkeren den Vortritt. Wer ein Abkommen kündigt, verstimmt das Team.';
+function ludusAccordButtons(n){
+  const t=ludusTeamOf(n); if(!t) return [];
+  const rel=ludusTeamRel('own',t.id), cur=ludusAccord('own',t.id), out=[];
+  if(!cur) out.push(`<button data-accord="${t.id}:spare" ${rel<LUDUS_ACCORD.spare?'disabled':''}>Schonungsabkommen anbieten</button>`);
+  if(!cur||cur.type==='spare') out.push(`<button data-accord="${t.id}:ally" ${rel<LUDUS_ACCORD.ally?'disabled':''}>Bündnis anbieten</button>`);
+  if(cur) out.push(`<button data-accord="${t.id}:cancel">${LUDUS_ACCORD_WORD[cur.type]} kündigen</button>`);
+  return out;
+}
+function ludusAccordNote(n){
   const t=ludusTeamOf(n); if(!t) return '';
-  const rel=ludusTeamRel('own',t.id), cur=ludusAccord('own',t.id), r1=Math.round(rel*10)/10;
-  let h=`<h3>Abkommen mit ${ludusEsc(t.name)}</h3><p class="luHint">Beziehung des Teams zur Schule: ${r1} (der Schnitt seiner Gladiatoren). Ein Schonungsabkommen (ab 1): niemand richtet einen des anderen hin. Ein Bündnis (ab 2): dazu steigt ihr in der Arena nicht mehr gegeneinander in den Ring (in der Grube schon), und im Turnier lässt das schwächere Team dem stärkeren den Vortritt.</p>`;
-  if(cur) h+=`<p>Ihr habt ein ${LUDUS_ACCORD_WORD[cur.type]} (seit Tag ${cur.day}). ${cur.type==='spare'?`<button data-accord="${t.id}:ally" ${rel<LUDUS_ACCORD.ally?'disabled':''}>Bündnis anbieten</button> `:''}<button data-accord="${t.id}:cancel">Aufkündigen</button></p>`;
-  else h+=`<p><button data-accord="${t.id}:spare" ${rel<LUDUS_ACCORD.spare?'disabled':''}>Schonungsabkommen anbieten</button> <button data-accord="${t.id}:ally" ${rel<LUDUS_ACCORD.ally?'disabled':''}>Bündnis anbieten</button></p>`;
-  return h;
+  const rel=Math.round(ludusTeamRel('own',t.id)*10)/10, cur=ludusAccord('own',t.id);
+  return cur?`Mit ${ludusEsc(t.name)} besteht ein ${LUDUS_ACCORD_WORD[cur.type]} (seit Tag ${cur.day}); Beziehung des Teams ${rel}.`:`Beziehung von ${ludusEsc(t.name)} zur Schule: ${rel} (Schonungsabkommen ab 1, Bündnis ab 2).`;
 }
 function ludusWireAccords(el){ el.querySelectorAll('[data-accord]').forEach(b=>b.addEventListener('click',()=>{ const [id,what]=b.dataset.accord.split(':'); if(what==='cancel') ludusAccordCancel(id); else ludusAccordOffer(id,what); })); }
 
