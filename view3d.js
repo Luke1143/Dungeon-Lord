@@ -32,7 +32,7 @@ function makeView3D(){
     sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
     applyMood();
     tileGroup=new T.Group(); spriteGroup=new T.Group(); scene.add(tileGroup, spriteGroup);
-    post=createPostFX(T); post.setLevel(postLevel);
+    post=createPostFX(T); post.setLevel(postLevel); post.setFigLook(figLook,figLine);
     ready=true;
   }
   let post=null;
@@ -43,6 +43,8 @@ function makeView3D(){
   function setShadows(on){ shadows=!!on; }
   let shadowTex=null;
   function blobTex(){ if(!shadowTex){ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,2,16,16,15); gr.addColorStop(0,'rgba(0,0,0,0.55)'); gr.addColorStop(0.6,'rgba(0,0,0,0.3)'); gr.addColorStop(1,'rgba(0,0,0,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); shadowTex=texOfCanvas(c); } return shadowTex; }
+  let figLook=0, figLine=false, dprV=1;
+  function setFigLook(n,line){ figLook=n|0; figLine=!!line; if(post) post.setFigLook(figLook,figLine); }
   function setPost(level){ postLevel=Math.max(0,Math.min(5,level|0)); if(post) post.setLevel(postLevel); }
   // another region, another map size: drop the old tile meshes
   function setSize(worldCols, worldRows){
@@ -57,7 +59,7 @@ function makeView3D(){
     if(!ready) return;
     renderer.setPixelRatio(Math.min(2,dpr||1)); renderer.setSize(cssW,cssH,false);
     camera.aspect=cssW/cssH; camera.updateProjectionMatrix();
-    post.resize(cssW,cssH,dpr);
+    post.resize(cssW,cssH,dpr); dprV=Math.min(2,dpr||1);
   }
   function setFog(near,far){ if(ready&&scene.fog){ scene.fog.near=near; scene.fog.far=far; } }
   function setActive(on){ active=on; if(ready) renderer.domElement.style.display=on?'block':'none'; }
@@ -534,9 +536,10 @@ function makeView3D(){
       const hy=0.55+(fp.hop||0);
       camera.position.set(fp.x+0.5, hy, fp.y+0.5);
       camera.lookAt(fp.x+0.5+Math.cos(fp.yaw), hy-(fp.kick||0)*0.16, fp.y+0.5+Math.sin(fp.yaw));
-      camera.updateMatrixWorld(); return;
+      camera.updateMatrixWorld(); post.setTexel(h/(2*2.2*Math.tan(72*Math.PI/360))*dprV*0.88/16); return;       // first person: a figure a few steps away
     }
     const d=Math.max(4,viewRows*Math.sin(PITCH)/(2*Math.tan(FOV*Math.PI/360)));
+    post.setTexel(h/(2*d*Math.tan(FOV*Math.PI/360))*dprV*0.88/16);       // one pixel of a figure's sprite (16 to its 0.88 tiles), in pixels of the picture
     camera.position.set(cx+Math.sin(yaw)*Math.cos(PITCH)*d, Math.sin(PITCH)*d, cy+Math.cos(yaw)*Math.cos(PITCH)*d);
     camera.lookAt(cx,0,cy);
     camera.updateMatrixWorld();
@@ -586,7 +589,7 @@ function makeView3D(){
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return self={ onLost:null, init, setSize, resize, setActive, setFog, setPost, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  return self={ onLost:null, init, setSize, resize, setActive, setFog, setPost, setFigLook, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 }
 var View3D=makeView3D();       // var: the Ludus screen lends its own view to the shared draw code while it draws (ludus-hub.js)

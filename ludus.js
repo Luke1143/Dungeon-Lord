@@ -642,7 +642,7 @@ function ludusHubSync(tab){
   }
   if(hubState!=='ready') return;
   const live=!!(ludus&&!ludus.over), showEv=live&&ludusEventShown;
-  LudusHub.setLook({ post:View3D.post||0, relief:OPTIONS.relief, mood:OPTIONS.mood, shadows:OPTIONS.shadows });
+  LudusHub.setLook({ post:View3D.post||0, relief:OPTIONS.relief, mood:OPTIONS.mood, shadows:OPTIONS.shadows, figLook:OPTIONS.figLook, outline:OPTIONS.outline });
   LudusHub.sync(ludusHubTiers(),live&&ludus.map?'r'+ludus.seed+':'+ludus.map.region:'start',showEv?ludusEventCast():null,ludusHubPeople(showEv));
   const picked=live&&ludusPicked&&ludusHubPeople(false).find(x=>x.id===ludusPicked);       // the camera follows a clicked gladiator to his room
   LudusHub.focus(showEv?'event':(picked?picked.room:(LUDUS_HUB_ROOM[tab]||'inn'))); LudusHub.start(); LudusHub.resize();
