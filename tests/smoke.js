@@ -1,4 +1,4 @@
-// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
+// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; the imps as SVG figures; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
 // Usage: NODE_PATH=$(npm root -g) node tests/smoke.js
 const { open, finish }=require('./lib');
 (async()=>{
@@ -9,6 +9,13 @@ const { open, finish }=require('./lib');
   const lv=await p.evaluate(()=>{ setView3d(false); for(let i=0;i<400;i++) gameTick(); setView3d(true); return { screen, ticks:state.tickCount }; });
   await p.waitForTimeout(1500);
   if(lv.screen!=='level') problem+='campaign did not start; ';
+  // the imps are SVG figures (svg-figures.js): pictures made from their rigs, front and back, 2D too; the legacy pixel sprites still work
+  const fig=await p.evaluate(async()=>{ const m=state.imps[0]; if(!m) return 'no imp';
+    const a=SvgFigures.canvasFor(m,Date.now(),true,'gold','back',0), b=SvgFigures.canvasFor(m,Date.now(),false,null,'front',0);
+    if(!a._svg||!b._svg||a===b) return 'imp pictures wrong';
+    setView3d(false); draw(); setOption('figures','pixel'); draw(); setOption('figures','svg'); setView3d(true); await new Promise(r=>setTimeout(r,300));
+    return SvgFigures.size>1?'':'no imp pictures drawn'; });
+  if(fig) problem+=fig+'; ';
   // the deepest relief (parallax occlusion) and every picture effect must compile
   await p.evaluate(()=>setOption('relief',3)); for(let l=0;l<6;l++){ await p.evaluate(v=>setPostLevel(v),l); await p.waitForTimeout(300); } await p.evaluate(()=>setPostLevel(1));
   // every figure look (with and without outline), over no filter and over the painted world

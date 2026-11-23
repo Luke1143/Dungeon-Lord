@@ -2,6 +2,7 @@
 // The game keeps its 2D logic; index.html feeds this view with the terrain (tileInfo) and a list of things to draw ("capture" of the 2D draw calls).
 // Input stays on the 2D canvas, which lies on top as a transparent overlay (marks, selection, drag rectangle).
 // a factory: the level has one view (View3D), the Ludus screen its own (ludus-hub.js); both draw the same world with the same pieces
+const VIEW3D_ALL=[];       // every 3D view (the level's, the Ludus screen's): a picture dropped from a cache is dropped from all of them
 function makeView3D(){
   let self=null;
   const PITCH=0.85, FOV=45, WALL=1.0;
@@ -197,6 +198,10 @@ function makeView3D(){
     if(!t){ t=new T.CanvasTexture(epx2(epx2(cv))); t.magFilter=T.LinearFilter; t.minFilter=T.LinearMipmapLinearFilter; t.generateMipmaps=true; t.colorSpace=T.SRGBColorSpace; smoothTex.set(cv,t); }
     return t;
   }
+  // an SVG figure's picture (svg-figures.js): read smoothly, with mip maps; dropped when the figure cache lets it go
+  const svgTex=new Map();
+  function texOfSvg(cv){ let t=svgTex.get(cv); if(!t){ t=new T.CanvasTexture(cv); t.magFilter=T.LinearFilter; t.minFilter=T.LinearMipmapLinearFilter; t.generateMipmaps=true; t.colorSpace=T.SRGBColorSpace; svgTex.set(cv,t); } return t; }
+  function dropCanvas(cv){ const t=svgTex.get(cv); if(t){ t.dispose(); svgTex.delete(cv); } const u=canvasTex.get(cv); if(u){ u.dispose(); canvasTex.delete(cv); } }
   function texOfCanvas(cv){
     let t=canvasTex.get(cv);
     if(!t){ t=new T.CanvasTexture(cv); t.magFilter=T.NearestFilter; t.minFilter=T.NearestFilter; t.generateMipmaps=false; t.colorSpace=T.SRGBColorSpace; canvasTex.set(cv,t); }
@@ -460,7 +465,7 @@ function makeView3D(){
     if(it.kind==='particle'){
       const s=takeSprite(); s.material.map=particleTex(it.shape); s.material.color.set(it.color); s.material.opacity=Math.max(0,Math.min(1,it.alpha)); s.material.rotation=0; s.center.set(0.5,0.5); const sz=Math.max(0.03,it.size); s.scale.set(sz,sz,1); s.position.set(it.x,it.z,it.y); return;
     }
-    const tex=it.canvas?((it.kind==='creature'&&figSmooth)?texOfSmooth(it.canvas):texOfCanvas(it.canvas)):emojiTex(it.emoji);
+    const tex=it.canvas?(it.canvas._svg?texOfSvg(it.canvas):(it.kind==='creature'&&figSmooth)?texOfSmooth(it.canvas):texOfCanvas(it.canvas)):emojiTex(it.emoji);
     const ox=(it.ox||0)/32, oy=(it.oy||0)/32, alpha=it.alpha===undefined?1:it.alpha;
     if((it.emoji||it.flat) && it.scale>=1.5){
       const d=takeDecal(); d.material.map=tex; d.material.opacity=alpha; d.material.needsUpdate=true;
@@ -609,7 +614,8 @@ function makeView3D(){
   }
   // which side of the screen a movement (dx,dy in tile units) goes: >0 right, <0 left
   function sideOf(dx,dy){ const r=camRight(); return dx*r.x+dy*r.z; }
-  return self={ onLost:null, init, setSize, resize, setActive, setFog, setPost, setFigLook, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
+  VIEW3D_ALL.push({ dropCanvas });
+  return self={ onLost:null, dropCanvas, init, setSize, resize, setActive, setFog, setPost, setFigLook, setMood, setShadows, setRelief, get post(){ return postLevel; }, setFirstPerson, render, pick, project, sideOf, camRight,
     get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get ready(){ return ready; }, get active(){ return active; }, WALL };
 }
 var View3D=makeView3D();       // var: the Ludus screen lends its own view to the shared draw code while it draws (ludus-hub.js)

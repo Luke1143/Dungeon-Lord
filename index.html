@@ -1016,6 +1016,7 @@ function creatureEmoji(c){
 
 function faintCreature(c,asleep){
   c.unconscious=true;
+  if(!asleep) c.scars=(c.scars||0)+1;       // knocked out: a scar for life (user; the SVG figures show them)
   c.unconsciousTimer=asleep?Math.round(UNCONSCIOUS_TICKS*0.5):UNCONSCIOUS_TICKS;
   c.asleep=!!asleep; c.stunTicks=0;
   if(!asleep) c.hp=0;
@@ -5943,8 +5944,8 @@ function spriteDark(c){ const m=/^#([0-9a-f]{6})$/i.exec(c); if(!m) return '#000
 // A creature's picture. Most are one cell (16x16); a figure with parts that reach beyond it (wings, tails, hats) comes on a bigger square
 // with its cell in the bottom middle: spriteK(cv) says how many cells wide the picture is, spriteCell(cv) gives the cell alone (for icons).
 // Graphics options (the options dialog, options.js): kept in the browser; the 3D view and its picture effect have keys of their own
-const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true, relief:1, figLook:0, outline:false, figSmooth:false },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
-const spriteK=cv=>cv.width/16;
+const OPTIONS=Object.assign({ mood:true, shadows:true, depth:true, relief:1, figLook:0, outline:false, figSmooth:false, figures:'svg' },(()=>{ try{ return JSON.parse(localStorage.getItem('dungeon-lord-options')||'{}'); }catch(e){ return {}; } })());
+const spriteK=cv=>cv._cells||cv.width/16;       // an SVG figure's picture says how many tiles it covers (svg-figures.js)
 function spriteCell(cv){
   if(cv.width===16) return cv;
   if(!cv._cell){ const c=document.createElement('canvas'); c.width=c.height=16; c.getContext('2d').drawImage(cv,-(cv.width-16)/2,-(cv.height-16)); cv._cell=c; }
@@ -6009,11 +6010,12 @@ function drawCreatureSprite(c,px,py,opts){
   const baseKey=c.kind||'imp', key=(typeof ZOO!=='undefined' && c.faction==='evil' && ZOO[baseKey+'_ally']) ? baseKey+'_ally' : baseKey, z=typeof ZOO!=='undefined'&&ZOO[key];
   if(!z) return false;
   const now=Date.now();
-  if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; const side=capture?View3D.sideOf(dx,dy):dx; if(Math.abs(side)>0.004) c._faceRight=side>0; } }
+  const svgFig=typeof SvgFigures!=='undefined'&&SvgFigures.active(baseKey);
+  if(c._sx!==undefined){ const dx=px-c._sx, dy=py-c._sy; if(Math.abs(dx)>0.004||Math.abs(dy)>0.004){ c._moveAt=now; const side=capture?View3D.sideOf(dx,dy):dx; if(Math.abs(side)>0.004) c._faceRight=side>0; if(svgFig) SvgFigures.viewOf(c,dx,dy,capture?View3D.yaw:undefined); } }
   c._sx=px; c._sy=py;
   const moving=now-(c._moveAt||0)<220, t=Math.floor(now/140)+(c.id||0);
   const extra=key==='imp' ? (c.carryAmount>0?'gold':((c.carryOre>0||c.carryIron>0)?'ore':null)) : (z.humanoid?((opts&&opts.noWeapon)?(()=>{ const eq=equipLook(c); return eq&&eq.weapon2&&c.lastHand?Object.assign({},eq,{ weapon2:undefined }):Object.assign({},eq,{ weapon:undefined }); })():equipLook(c)):undefined);
-  const cv=spriteCanvas(key,t,!!c._faceRight,moving,extra);
+  const cv=svgFig?SvgFigures.canvasFor(c,now,moving,extra,moving?c._view:'front',c._turn):spriteCanvas(key,t,!!c._faceRight,moving,extra);       // an SVG figure (svg-figures.js) or the legacy pixel sprite
   const k=spriteK(cv), sc=creatureScale(c);
   const fl=(opts&&opts.flash)||0;
   const lift=(opts&&opts.lift)||0;
@@ -6021,7 +6023,7 @@ function drawCreatureSprite(c,px,py,opts){
   const size=TILE*sc, sx=(px-camX)*TILE+(TILE-size)/2, sy=(py-camY)*TILE+(TILE-size)-lift*TILE, o=opts||{};
   if(c.arenaTeam!==undefined){ ctx.save(); ctx.fillStyle=c.arenaTeam?'rgba(70,130,255,0.6)':'rgba(230,60,50,0.6)'; ctx.beginPath(); ctx.ellipse(sx+size/2, sy+size-2, size*0.34, size*0.11, 0, 0, 7); ctx.fill(); ctx.restore(); }
   ctx.save();
-  ctx.imageSmoothingEnabled=false;
+  ctx.imageSmoothingEnabled=!!cv._svg;       // an SVG figure's picture is read smoothly
   if(o.alpha!==undefined) ctx.globalAlpha=o.alpha;
   const big=size*k, bx=sx-(big-size)/2, by=sy-(big-size);       // a picture wider than one cell stands with its cell on the tile
   if(o.rotation){ ctx.translate(sx+size/2, sy+size/2); ctx.rotate(o.rotation); ctx.drawImage(cv,bx-sx-size/2,by-sy-size/2,big,big); }
@@ -7461,7 +7463,7 @@ async function save(){
         type:t.type, lava:t.lava, crystal:t.crystal, crystalFloor:t.crystalFloor, castle:t.castle, gold:t.gold, gem:t.gem, gemRevealed:t.gemRevealed, ore:t.ore, goldPile:t.goldPile, orePile:t.orePile, marked:t.marked, room:t.room, queuedRoom:t.queuedRoom,
         owned:t.owned, reinforced:t.reinforced, natural:t.natural, discovered:t.discovered, seen:t.seen, goodRoom:t.goodRoom, wasGood:t.wasGood, enemy:t.enemy, lairOwner:t.lairOwner, fakeMarked:t.fakeMarked
       }))),
-      imps: state.imps.map(i=>({id:i.id,x:i.x,y:i.y,carrying:i.carrying,name:i.name,flavor:i.flavor,hp:i.hp,maxHp:i.maxHp,level:i.level,xp:i.xp,baseHp:i.baseHp,baseStrength:i.baseStrength,baseDefense:i.baseDefense,baseDex:i.baseDex,baseSpeed:i.baseSpeed,baseTempo:i.baseTempo,luck:i.luck,loyalty:i.loyalty,kills:i.kills,goldEarned:i.goldEarned,inventory:i.inventory})),
+      imps: state.imps.map(i=>({id:i.id,x:i.x,y:i.y,carrying:i.carrying,name:i.name,flavor:i.flavor,hp:i.hp,maxHp:i.maxHp,level:i.level,scars:i.scars||0,xp:i.xp,baseHp:i.baseHp,baseStrength:i.baseStrength,baseDefense:i.baseDefense,baseDex:i.baseDex,baseSpeed:i.baseSpeed,baseTempo:i.baseTempo,luck:i.luck,loyalty:i.loyalty,kills:i.kills,goldEarned:i.goldEarned,inventory:i.inventory})),
       creatures: state.creatures.map(c=>({id:c.id,kind:c.kind,x:c.x,y:c.y,hp:c.hp,maxHp:c.maxHp,level:c.level,hunger:c.hunger,energy:c.energy,name:c.name,faction:c.faction,happiness:c.happiness,earnedWage:c.earnedWage,owedWages:c.owedWages,xp:c.xp,workLog:c.workLog,lastPayslip:c.lastPayslip,baseHp:c.baseHp,baseStrength:c.baseStrength,baseDefense:c.baseDefense,baseDex:c.baseDex,baseSpeed:c.baseSpeed,baseTempo:c.baseTempo,luck:c.luck,loyalty:c.loyalty,kills:c.kills,goldEarned:c.goldEarned,inventory:c.inventory})),
       gold: state.gold,
       impIdCounter,
@@ -7511,7 +7513,7 @@ async function load(){
         lairOwner: t.lairOwner!==undefined ? t.lairOwner : null,
         reserved:null
       })));
-      const imps=data.imps.map(i=> restoreStats(applySpecies({ id:i.id, x:i.x, y:i.y, state:'idle', task:null, path:[], digTile:null, wallTile:null, claimTile:null, buildTile:null, feedTile:null, digRequired:null, digProgress:0, carrying:!!i.carrying, targetPile:null, targetStorage:null, waterStep:0,
+      const imps=data.imps.map(i=> restoreStats(applySpecies({ id:i.id, scars:i.scars||0, x:i.x, y:i.y, state:'idle', task:null, path:[], digTile:null, wallTile:null, claimTile:null, buildTile:null, feedTile:null, digRequired:null, digProgress:0, carrying:!!i.carrying, targetPile:null, targetStorage:null, waterStep:0,
         name: i.name || IMP_NAMES[randInt(0,IMP_NAMES.length-1)], flavor: i.flavor || IMP_FLAVORS[randInt(0,IMP_FLAVORS.length-1)],
         level: i.level||1, xp: i.xp||0 }, 'imp'), i));
       const creatures=(data.creatures||[]).map(c=>{
@@ -10385,6 +10387,7 @@ init();
 <script src="options.js"></script>
 <script src="figure-lab.js"></script>
 <script src="svg-rig.js"></script>
+<script src="svg-figures.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();
 </script>
