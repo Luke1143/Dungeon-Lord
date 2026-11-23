@@ -29,7 +29,7 @@ const SvgRig=(()=>{
       düster:{ skin:'#3c4730', light:'#4c583b', dark:'#20271a', shade:'rgba(0,0,0,0.3)', leg:'#2f3827', foot:'#15120f', belt:'#261c15', gold:'#9c907a', bone:'#c4b89c', line:'#070504', brow:'#11160d', eye:'#ff4a1e', pupil:'#200300', glow:'rgba(255,60,20,0.42)', mouth:'#140403', tongue:'#4a1410', iron:'#2c2c33', ironDark:'#17171b', wood:'#30231a', leather:'#261c15', cloth:'#3a0f0c', rust:'#6e3320', scar:'#7e705f' }
     },
     imp:{
-      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#5e4c33', sackDark:'#33281b', cloth:'#2e140c', rust:'#6e3320', scar:'#d89a70' }
+      düster:{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', shade:'rgba(0,0,0,0.3)', leg:'#6a2b15', foot:'#1a0a05', belt:'#5a4228', gold:'#c9a040', ore:'#8a929c', bone:'#d2c29a', rope:'#3a2614', line:'#080403', brow:'#260a04', eye:'#ffb020', socket:'#120604', glow:'rgba(255,150,30,0.45)', mouth:'#160403', tongue:'#5a1a14', iron:'#44444c', ironDark:'#222228', wood:'#35261b', leather:'#33231a', sack:'#8a7452', sackDark:'#5e4c33', cloth:'#2e140c', rust:'#6e3320', scar:'#d89a70' }
     }
   };
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
@@ -102,8 +102,11 @@ const SvgRig=(()=>{
       lid:[['M-7 -35.6 q3 1.4 6 0',null,1.3,'line']],
       brow:[['M-7.6 -39.8 L-1.4 -38.2 L-1.6 -39.4 L-7.2 -41.4z','brow',0]], browAt:[-4.5,-39.6],
       tail:[['M2.5 -12 Q12 -9 14 -16 Q15.4 -21.6 19.6 -21',null,2.4,'line'],['M2.5 -12 Q12 -9 14 -16 Q15.4 -21.6 19.6 -21',null,1.3,'skin'],['M18.6 -23.6 L23 -20.4 L18.2 -18.8z','dark',1]], tailAt:[2.5,-12],
-      sack:[['M-13.5 -21 Q-17 -31 -10 -35.4 Q-4 -36.6 -3.2 -29.6 L-5.6 -21.4z','sack',1.4],['M-11.2 -35 l2 -2.6 l1.6 2.4',null,1.2,'sackDark'],['M-12.4 -27 q2.4 1.4 5 0',null,1,'sackDark']], sackAt:[-8,-24],
-      load:{ gold:[[ell(-9.6,-32.2,1.2,1),'gold',0.6],[ell(-7.4,-31,1,0.9),'gold',0.6]], ore:[['M-10.8 -33 l2 -1.2 l1.4 1.6 l-1.8 1.2z','ore',0.6]] },
+      sack:[['M-17.4 -13.2 Q-22.6 -21.4 -18 -28.4 Q-15.2 -32 -12.6 -32.8 L-9.6 -32.8 Q-7 -32 -4.6 -28.4 Q-0.4 -21.4 -5.6 -13.2 Q-11.5 -10.6 -17.4 -13.2z','sack',1.5],
+        ['M-9 -31.4 Q-5.4 -29 -4.6 -24 Q-3.8 -18 -6.2 -14 Q-9 -12.4 -11 -12.2 Q-6.6 -16.6 -7 -23 Q-7.4 -28.6 -9 -31.4z','sackDark',0],
+        ['M-13.2 -33.2 Q-11.1 -35.2 -9 -33.2 Q-7 -35.2 -5.4 -37.8 Q-7.4 -37 -8.6 -38.6 Q-9.8 -36.8 -11.2 -38.8 Q-12.4 -37 -14.2 -38.2 Q-15.8 -36.2 -16.6 -37.6 Q-15.8 -35 -13.2 -33.2z','sack',1.4],
+        ['M-13.6 -33.4 Q-11.1 -31.8 -8.6 -33.4 M-13.4 -32.4 Q-11.1 -30.8 -8.8 -32.4',null,1.3,'rope'],['M-8.8 -33 q1.6 0.6 2 2.6 M-8.8 -33 q0.6 1.6 -0.4 3',null,1,'rope']], sackAt:[-8,-24],
+      load:{ gold:[[ell(-12.6,-37.6,1.3,0.9),'gold',0.6],[ell(-10,-38.4,1.2,0.85),'gold',0.6],[ell(-11.2,-36.8,1.1,0.8),'gold',0.6]], ore:[['M-12.8 -37.4 l2 -1.6 l1.8 1.2 l-0.6 1.6 l-2 0.4z','ore',0.6],['M-9.6 -38.2 l1.4 -0.8 l1 1 l-1.2 1z','ore',0.6]] },
       cloth:[['M-4.6 -11 L4.6 -11 L5.4 -4.4 L3.6 -5.8 L2 -3 L0 -5.2 L-2 -3 L-3.6 -5.8 L-5.4 -4.4z','cloth',1.1]],
       fist:fist(12,-16,2.6,2.4,1.3), handAt:[12,-16], handGap:2,
       headY:0, legK:1, weapons:['pick','club'], weapon:'pick', px:24
@@ -118,9 +121,9 @@ const SvgRig=(()=>{
     tip:[['M-14.2 -40.6 L-18 -42.4 L-14.5 -38z','skin',1.4],['M-14.6 -39.8 L-16.4 -41.2 L-14.8 -38.8z','dark',0]], at:[-9.9,-35.5], kink:[-14.35,-39.3] };
   const EAR_LOBE={ root:[['M-7.4 -39.2 Q-12.5 -42.4 -17.2 -40 Q-17.8 -37.4 -15 -35.8 Q-11 -34.6 -7.6 -34.4z','skin',1.4],['M-8.6 -38.2 Q-12.4 -40.4 -15.6 -38.8 Q-13.4 -36.6 -8.8 -35.8z','dark',0]], at:[-7.6,-36.8] };
   const IMP_PRESETS={
-    bestie:{ kopf:0.35, kinn:1, kopfForm:0.35, koerperForm:0.5, tief:0.7, koerper:0.4, beine:0.35, augen:0.45, haut:0.5, augenFarbe:0, ohren:'spitz' },
-    wicht:{ kopf:0.8, kinn:0.5, kopfForm:0.4, koerperForm:0.25, tief:0.3, koerper:0, beine:1, augen:0.95, haut:1, augenFarbe:1, ohren:'spitz' },
-    knolle:{ kopf:0.75, kinn:0, kopfForm:0.5, koerperForm:0.5, tief:0.95, koerper:1, beine:0, augen:0.95, haut:0, augenFarbe:0, ohren:'spitz' }
+    bestie:{ kopf:0.35, kinn:1, kopfForm:0.35, koerperForm:0.5, beinForm:0.3, fuss:0, tief:0.7, koerper:0.4, beine:0.35, augen:0.45, haut:0.5, augenFarbe:0, ohren:'spitz' },
+    wicht:{ kopf:0.8, kinn:0.5, kopfForm:0.4, koerperForm:0.25, beinForm:0.1, fuss:0, tief:0.3, koerper:0, beine:1, augen:0.95, haut:1, augenFarbe:1, ohren:'spitz' },
+    knolle:{ kopf:0.75, kinn:0, kopfForm:0.5, koerperForm:0.5, beinForm:0.55, fuss:0.5, tief:0.95, koerper:1, beine:0, augen:0.95, haut:0, augenFarbe:0, ohren:'spitz' }
   };
   const mix=(a,b,k)=>{ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const A=p(a), B=p(b); return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*k).toString(16).padStart(2,'0')).join(''); };
   const mix3=(a,b,c,k)=>k<0.5?mix(a,b,k*2):mix(b,c,(k-0.5)*2);       // three colours along one gene
@@ -151,9 +154,12 @@ const SvgRig=(()=>{
     const f=v=>(+v).toFixed(2), mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
     const plump=g.koerper, hipY=-10, bodyH=13.6+3.8*plump, topY=hipY-bodyH, wHip=(5.6+6*plump)*(0.95+0.1*t.stark), wSh=(6+3*plump)*(0.8+0.5*t.stark), midY=hipY-bodyH*0.57;       // strength: the shoulders more than the hips
     // legs: thin and long or short and stout
-    const xc=-4.3, lw=2+1.6*plump, L=xc-lw/2, Rx=xc+lw/2;
-    const leg=[[`M${f(L)} ${hipY} L${f(L+0.4)} -3.2 L${f(L-1.2)} 0 L${f(Rx+0.6)} 0 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'leg',1.4],
-      [`M${f(xc-3.2)} 0 l0.9 -1.5 M${f(xc-1)} 0 l0.5 -1.7 M${f(xc+1.1)} 0 l0.4 -1.5`,null,1,'bone'],[`M${f(xc+0.1)} ${hipY} L${f(xc+0.5)} -3.2 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'shade',0]];
+    // legs: the form axis (slim and oval, round and stout, angular and blocky), the thickness with the body; the foot: claws, paws or clumps
+    const xc=-4.3, lw=2.2+1.8*plump, lf=g.beinForm===undefined?0.5:g.beinForm, ft=g.fuss===undefined?0:g.fuss;
+    const lPts=formPts(xc,hipY/2-0.6,lw/2*(lf<0.5?1.15:1),-hipY/2+0.6,lf,0,1.1,0.75), leg=[[ptsPath(lPts),'leg',1.3],[formShade(lPts,xc),'shade',0]];
+    if(ft<0.34) leg.push([`M${f(xc-2.6)} 0.2 l0.9 -1.7 M${f(xc-0.6)} 0.2 l0.4 -1.9 M${f(xc+1.3)} 0.2 l0.1 -1.7`,null,1.1,'bone']);       // claws
+    else if(ft<0.67) leg.push([ell(+f(xc),-0.7,+f(lw*0.8),1.3),'leg',1.2],[`M${f(xc-0.6)} -1.2 l0 1.4 M${f(xc+0.6)} -1.2 l0 1.4`,null,0.8,'dark']);       // round paws with toes
+    else leg.push([`M${f(xc-lw*0.85)} 0 L${f(xc-lw*0.75)} -2.2 L${f(xc+lw*0.8)} -2.2 L${f(xc+lw*0.95)} 0z`,'foot',1.2]);       // clumps
     // the body: from the hips up to the shoulders, a waist or a belly
     // the form of the body between oval, round and angular, from the shoulders (top) to the hips (bottom)
     const bf=g.koerperForm===undefined?0.5:g.koerperForm, bTop=topY-1.4, bBot=hipY+1.6, bPts=formPts(0,(bTop+bBot)/2,1,(bBot-bTop)/2,bf,0,wSh*1.12,wHip*1.3);
@@ -203,7 +209,7 @@ const SvgRig=(()=>{
   const stylesOf=kind=>Object.keys(SHAPES[kind]||SHAPES.ork);
   function roll(seed,kind){
     const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)]; kind=kind||'ork'; const st=pick(stylesOf(kind)), S=SHAPES[kind][st];
-    const genes=kind==='imp'?{ kopf:r(), kinn:r(), kopfForm:r(), koerperForm:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' }:undefined;
+    const genes=kind==='imp'?{ kopf:r(), kinn:r(), kopfForm:r(), koerperForm:r(), beinForm:r(), fuss:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' }:undefined;
     return { kind, style:kind==='imp'?'eigen':st, genes, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*(kind==='imp'?12:22), scar:r()<0.4,
       gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none'].concat(S.weapons)), hands:true, load:pick(['none','gold','ore']), ears:kind==='imp'||r()<0.5, horns:kind!=='imp'&&r()<0.6 }, level:1+Math.floor(r()*12), seed };       // an imp always has its ears (they show its level)
   }
@@ -350,25 +356,43 @@ const SvgRig=(()=>{
     return P;
   }
   const tf=(p,v)=>`translate(${v.x} ${v.y}) translate(${p[0]} ${p[1]}) rotate(${v.r}) scale(${v.sx} ${v.sy}) translate(${-p[0]} ${-p[1]})`;
-  // the SVG output: one <g> per part, built once per rig; draw() sets the transforms
+  // ---- what lies in front of what: one rule for every creature (user, November 2026) ----
+  // The tree of parts decides how they move (a fist moves with its hand, the eyes with the head); the order they are drawn in comes from this table,
+  // per view, from the back to the front. A part's name without L/R; a part not in the table is drawn with the one it hangs on.
+  // Front: the tail and the carried sack behind, the legs, the body with what is on it, the ears behind the head, the face, the hands and what they hold in front.
+  // Back: the loincloth lowest, the legs, the hands and what they hold, the head with its ears, then the back over them, the carried sack, the tail on top.
+  const LAYERS={
+    front:['shadow','tail','sack','leg','body','spine','belly','scarsBody','chest','belt','buckle','cloth','pauldron','ear','earTip','head','skull','scar','scarsHead','horn','helmet','mouth','jaw','tusk','eye','pupil','lid','brow','weapon','hand','fist'],
+    back:['shadow','cloth','leg','weapon','hand','fist','ear','earTip','head','skull','scar','scarsHead','horn','helmet','body','spine','scarsBody','chest','belt','buckle','pauldron','sack','tail']
+  };
+  const baseName=id=>id.replace(/[LR]$/,'');
+  // every part with its whole transform (an affine matrix [a b c d e f]) and alpha, in drawing order
+  const mul=(m,n)=>[m[0]*n[0]+m[2]*n[1], m[1]*n[0]+m[3]*n[1], m[0]*n[2]+m[2]*n[3], m[1]*n[2]+m[3]*n[3], m[0]*n[4]+m[2]*n[5]+m[4], m[1]*n[4]+m[3]*n[5]+m[5]];
+  function localM(p,v){ const r=v.r*Math.PI/180, c=Math.cos(r), sn=Math.sin(r), [px,py]=p;
+    return mul(mul([1,0,0,1,v.x+px,v.y+py],[c*v.sx,sn*v.sx,-sn*v.sy,c*v.sy,0,0]),[1,0,0,1,-px,-py]); }
+  function flat(rig,P){
+    const order=LAYERS[rig.spec.view==='back'?'back':'front'], out=[]; let n=0;
+    const walk=(part,M,a,layer)=>{ const v=P&&P[part.id]||{ x:0, y:0, r:0, sx:1, sy:1, a:1 }, m=mul(M,localM(part.pivot,v)), al=a*(v.a===undefined?1:v.a);
+      const k=order.indexOf(baseName(part.id)), L=k>=0?k:layer; out.push({ part, m, a:al, L, n:n++ }); part.kids.forEach(c=>walk(c,m,al,L)); };
+    walk(rig.tree,[1,0,0,1,0,0],1,0);
+    return out.sort((p,q)=>p.L-q.L||p.n-q.n);
+  }
+  // the SVG output: one <g> per part, side by side in drawing order (built once per rig); draw() sets their matrices
   function svg(host,rig){
     const NS='http://www.w3.org/2000/svg', els={}; while(host.firstChild) host.removeChild(host.firstChild);
-    const build=(part,parent)=>{ const g=document.createElementNS(NS,'g'); g.dataset.part=part.id;
+    flat(rig,null).forEach(({ part })=>{ const g=document.createElementNS(NS,'g'); g.dataset.part=part.id;
       part.shapes.forEach(([d,fill,sw,stroke])=>{ const p=document.createElementNS(NS,'path'); p.setAttribute('d',d); p.setAttribute('fill',fill?rig.pal[fill]:'none');
         if(sw){ p.setAttribute('stroke',rig.pal[stroke||'line']); p.setAttribute('stroke-width',sw); p.setAttribute('stroke-linejoin','round'); p.setAttribute('stroke-linecap','round'); } g.appendChild(p); });
-      parent.appendChild(g); els[part.id]={ g, pivot:part.pivot }; part.kids.forEach(k=>build(k,g)); };
-    build(rig.tree,host);
-    return { draw(P){ Object.keys(els).forEach(id=>{ const e=els[id], v=P[id]; if(!v) return; e.g.setAttribute('transform',tf(e.pivot,v)); e.g.setAttribute('opacity',v.a); }); } };
+      host.appendChild(g); els[part.id]=g; });
+    return { draw(P){ flat(rig,P).forEach(({ part, m, a })=>{ const g=els[part.id]; if(!g) return; g.setAttribute('transform',`matrix(${m.map(x=>x.toFixed(4)).join(' ')})`); g.setAttribute('opacity',a); }); } };
   }
-  // the canvas output: the same paths (Path2D), scaled k pixels to a unit, the feet at (ox, oy)
+  // the canvas output: the same paths (Path2D) in the same order, scaled k pixels to a unit, the feet at (ox, oy)
   const paths=new Map(); const p2=d=>{ let p=paths.get(d); if(!p){ p=new Path2D(d); paths.set(d,p); } return p; };
   function canvas(g,rig,P,k,ox,oy){
-    g.save(); g.translate(ox,oy); g.scale(k,k); g.lineJoin='round'; g.lineCap='round';
-    const draw=part=>{ const v=P[part.id]||{ x:0, y:0, r:0, sx:1, sy:1, a:1 }; if(v.a<=0.01) return; g.save(); const [px,py]=part.pivot;
-      g.translate(v.x+px,v.y+py); g.rotate(v.r*Math.PI/180); g.scale(v.sx,v.sy); g.translate(-px,-py); g.globalAlpha*=v.a;
-      part.shapes.forEach(([d,fill,sw,stroke])=>{ const p=p2(d); if(fill){ g.fillStyle=rig.pal[fill]; g.fill(p); } if(sw){ g.strokeStyle=rig.pal[stroke||'line']; g.lineWidth=sw; g.stroke(p); } });
-      part.kids.forEach(draw); g.restore(); };
-    draw(rig.tree); g.restore();
+    g.save(); g.lineJoin='round'; g.lineCap='round';
+    flat(rig,P).forEach(({ part, m, a })=>{ if(a<=0.01||!part.shapes.length) return; g.setTransform(k*m[0],k*m[1],k*m[2],k*m[3],ox+k*m[4],oy+k*m[5]); g.globalAlpha=Math.min(1,a);
+      part.shapes.forEach(([d,fill,sw,stroke])=>{ const p=p2(d); if(fill){ g.fillStyle=rig.pal[fill]; g.fill(p); } if(sw){ g.strokeStyle=rig.pal[stroke||'line']; g.lineWidth=sw; g.stroke(p); } }); });
+    g.restore();
   }
   const lookOf=(kind,style)=>Object.assign({},((SHAPES[kind]||{})[style]||{}).look||{});
   return { build, roll, defaults, lookOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:Object.keys(SHAPES), stylesOf, weaponsOf:(kind,style)=>(SHAPES[kind][style]||SHAPES[kind][stylesOf(kind)[0]]).weapons };
@@ -414,7 +438,7 @@ const SvgOrkViewer=(()=>{
   }
   const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
   // the imp's genes (procedural, every look between the presets)
-  const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Haut: Glut bis Asche'],['augenFarbe','Augen: Bernstein bis Eis']];
+  const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße: Krallen, Pfoten, Klumpen'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Haut: Glut bis Asche'],['augenFarbe','Augen: Bernstein bis Eis']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
   let lastViewer=null;       // the viewer opened last (tests hold its blinking)
   function open(host){
