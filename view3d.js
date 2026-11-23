@@ -25,7 +25,7 @@ const View3D=(()=>{
     Object.assign(renderer.domElement.style,{ position:'absolute', left:'0', top:'0', width:'100%', height:'100%', display:'none' });
     host.insertBefore(renderer.domElement, host.firstChild);
     scene=new T.Scene(); scene.background=new T.Color(0x0f0b09); scene.fog=new T.Fog(0x0f0b09,26,70);
-    camera=new T.PerspectiveCamera(FOV,1,0.1,200);
+    camera=new T.PerspectiveCamera(FOV,1,0.1,200); camera.layers.enable(FIGURE_LAYER);       // the world (0) and the figures (2, postfx.js); thoughts (1) come after the filter
     ambient=new T.AmbientLight(0xa8a0b8,1.7); scene.add(ambient);
     sun=new T.DirectionalLight(0xffe0b0,0.75); sun.position.set(-6,14,8); scene.add(sun);
     applyMood();
@@ -358,6 +358,7 @@ const View3D=(()=>{
     }
     if(it.wx!==undefined){ const t2=takeSprite(); t2.material.map=tex; t2.material.opacity=1; t2.material.rotation=0; t2.center.set(0.5,0.5); const sz=0.9*(it.scale||1); t2.scale.set(sz,sz,1); t2.position.set(it.wx,it.wy,it.wz); return; }
     const s=takeSprite(); s.material.map=tex; s.material.opacity=alpha; s.material.rotation=it.kind==='creature'?(it.rotation||0):0; s.material.needsUpdate=true;
+    if(it.kind==='creature') s.layers.set(FIGURE_LAYER);
     let size, base, anchorY=0, py=0;
     if(it.kind==='creature'){ size=0.88*(it.scale||1);
       if(shadows){ const d=takeDecal(), w=0.62*(it.scale||1)/(it.cells||1); d.material.map=blobTex(); d.material.opacity=alpha; d.material.needsUpdate=true; d.scale.set(w,1,w*0.7); d.position.set(it.x+0.5,0.025,it.y+0.5); d.rotation.y=0; } }       // a soft shadow on the floor: the figure stands instead of floating
@@ -367,7 +368,7 @@ const View3D=(()=>{
     if(it.kind==='emoji' && oy<0){ anchorY=0.5; py=0.62+(-oy)*0.9; }       // thoughts and markers hover above the head
     else if(it.kind==='emoji'){ anchorY=0.5; py=0.28+size/2; }
     s.center.set(0.5,it.kind==='emoji'?0.5:0);
-    if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; pendingFlash.push({ f, s }); }
+    if(it.flash>0 && it.flashCanvas){ const f=takeSprite(); f.material.map=texOfCanvas(it.flashCanvas); f.material.opacity=Math.min(1,it.flash)*0.9; f.material.rotation=s.material.rotation; f.center.set(0.5,0); f.userData.flashOf=s; f.layers.mask=s.layers.mask; pendingFlash.push({ f, s }); }
     s.scale.set(size,size,1);
     if(it.kind==='emoji') s.position.set(it.x+0.5+ox*Math.cos(yaw), py, it.y+0.5-ox*Math.sin(yaw));
     else { const dz=oy*0.8; s.position.set(it.x+0.5+ox*Math.cos(yaw)+dz*Math.sin(yaw), py+(it.lift||0), it.y+0.5-ox*Math.sin(yaw)+dz*Math.cos(yaw)); }   // offsets are screen-relative: right and toward the viewer
@@ -473,7 +474,7 @@ const View3D=(()=>{
     for(let i=decalUsed;i<decalPool.length;i++) decalPool[i].visible=false;
     setCamera(cx,cy,viewRows);
     if(!post.render(renderer,scene,camera)) renderer.render(scene,camera);
-    if(overlayUsed){ const bg=scene.background; scene.background=null; renderer.autoClear=false; renderer.clearDepth(); camera.layers.set(OVERLAY_LAYER); renderer.render(scene,camera); camera.layers.set(0); renderer.autoClear=true; scene.background=bg; }       // a colour background would clear the picture first
+    if(overlayUsed){ const bg=scene.background; scene.background=null; renderer.autoClear=false; renderer.clearDepth(); const mask=camera.layers.mask; camera.layers.set(OVERLAY_LAYER); renderer.render(scene,camera); camera.layers.mask=mask; renderer.autoClear=true; scene.background=bg; }       // a colour background would clear the picture first
   }
   function pick(px,py){
     if(!ready||!active) return null;

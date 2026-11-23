@@ -213,7 +213,7 @@ const Hub3D=(()=>{
   // a picture wider than one cell (wings, tails) is shown as much bigger, its feet stay on the floor
   function actorFit(s,scale){ const k=s.material.map.image.width/16; s.center.set(0.5,0.12/k); s.scale.set(1.5*scale*k,1.5*scale*k,1); }
   function makeActor(kind,x,z,scale,extra){
-    const s=new T.Sprite(new T.SpriteMaterial({ map:actorTex(kind,false,0,extra), transparent:true, alphaTest:0.05 })); s.position.set(x,0,z); actorFit(s,scale);
+    const s=new T.Sprite(new T.SpriteMaterial({ map:actorTex(kind,false,0,extra), transparent:true, alphaTest:0.05 })); s.position.set(x,0,z); actorFit(s,scale); s.layers.set(FIGURE_LAYER);
     s.userData={ scale, kind, extra, x, z, tx:x, tz:z, wait:Math.random()*2, right:false, phase:Math.random()*10 }; return s;
   }
   const GUEST_KINDS=['goblin','ork','skeleton','dwarf','barbarian','thief','troll','darkelf'];
@@ -271,11 +271,11 @@ const Hub3D=(()=>{
     renderer=new T.WebGLRenderer({ antialias:false, alpha:false }); renderer.domElement.style.cssText='width:100%;height:100%;display:block;cursor:grab';
     host.appendChild(renderer.domElement);
     scene=new T.Scene(); scene.background=new T.Color(0x0c0907); scene.fog=new T.Fog(0x0c0907,22,48);
-    camera=new T.PerspectiveCamera(42,1,0.1,120);
+    camera=new T.PerspectiveCamera(42,1,0.1,120); camera.layers.enable(FIGURE_LAYER);       // the figures' layer (postfx.js)
     scene.add(new T.AmbientLight(0xb8aec0,1.35)); const sun=new T.DirectionalLight(0xffe2b8,0.85); sun.position.set(-8,16,10); scene.add(sun);
     // the orbit is narrow: drag turns the view a little around the room, the wheel nudges the distance; nothing else moves the camera
     const el=renderer.domElement; let drag=null;
-    const ray=new T.Raycaster(), ndc=new T.Vector2();
+    const ray=new T.Raycaster(), ndc=new T.Vector2(); ray.layers.enable(FIGURE_LAYER);
     const hitAt=e=>{ const r=el.getBoundingClientRect(); ndc.set(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1); ray.setFromCamera(ndc,camera); const h=ray.intersectObjects(people,false)[0]; return h?h.object:null; };
     el.addEventListener('pointerdown',e=>{ drag={ x:e.clientX, y:e.clientY, moved:0 }; el.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; cam.idle=0; });
     el.addEventListener('pointermove',e=>{

@@ -2,15 +2,19 @@
 // Levels: 0 off, 1 soft, 2 CRT, 3 CRT strong (both flat: the scan lines, mask and glow of a tube without its curved glass),
 // 4 smooth pixels (the picture rendered small, then grown back with an edge-directed upscaler that turns stair steps into diagonals and curves),
 // 5 painted (a Kuwahara filter: every point takes the colour of its calmest neighbourhood, so surfaces become brush strokes and edges stay sharp).
+// The painted level paints only the world: the figures (layer 2, FIGURE_LAYER) are drawn into a second target that shares the world's depth (walls still hide them)
+// and laid over the painting unfiltered, so they stay recognisable.
+const FIGURE_LAYER=2;
 function createPostFX(T){
-  let rt, postScene, postCam, postMat, crtMat, smoothMat, paintMat, postMesh, level=1, applied=-1, w=0, h=0, dprNow=1;
+  let rt, rtFig, postScene, postCam, postMat, crtMat, smoothMat, paintMat, postMesh, level=1, applied=-1, w=0, h=0, dprNow=1;
   const POST_LEVELS=[null,{ blur:1.0, bloom:0.12, vig:0.16, scale:1 },
     { crt:true, scale:0.5,  smear:1.0, scan:0.4,  mask:0.12, curve:0, vig:0.3,  bloom:0.35, quant:0 },
     { crt:true, scale:0.34, smear:1.35, scan:0.62, mask:0.25, curve:0, vig:0.45, bloom:0.5,  quant:24 },
     { smooth:true, scale:0.5, vig:0.2 },       // rendered at half size; the shader works on a grid of half that again
-    { paint:true, scale:0.5, radius:3, vig:0.25 }];
+    { paint:true, split:true, scale:0.5, radius:3, vig:0.25 }];
   function initPost(){
-    rt=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true });
+    rt=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true }); rt.depthTexture=new T.DepthTexture(2,2);
+    rtFig=new T.WebGLRenderTarget(2,2,{ minFilter:T.LinearFilter, magFilter:T.LinearFilter, depthBuffer:true }); rtFig.depthTexture=rt.depthTexture;       // the figures see the world's depth
     postCam=new T.OrthographicCamera(-1,1,1,-1,0,1); postScene=new T.Scene();
     postMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
       uniforms:{ tDiffuse:{ value:rt.texture }, px:{ value:new T.Vector2(1,1) }, blur:{ value:1 }, bloom:{ value:0.1 }, vig:{ value:0.2 } },
@@ -57,9 +61,9 @@ function createPostFX(T){
         }` });
     // painted: Kuwahara; of the four squares around the point (radius r), the one whose colours vary least gives its mean
     paintMat=new T.ShaderMaterial({ depthTest:false, depthWrite:false,
-      uniforms:{ tDiffuse:{ value:rt.texture }, px:{ value:new T.Vector2(1,1) }, radius:{ value:3 }, vig:{ value:0.25 } },
+      uniforms:{ tDiffuse:{ value:rt.texture }, tFig:{ value:rtFig.texture }, useFig:{ value:0 }, px:{ value:new T.Vector2(1,1) }, radius:{ value:3 }, vig:{ value:0.25 } },
       vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }',
-      fragmentShader:`uniform sampler2D tDiffuse; uniform vec2 px; uniform float radius; uniform float vig; varying vec2 vUv;
+      fragmentShader:`uniform sampler2D tDiffuse; uniform sampler2D tFig; uniform float useFig; uniform vec2 px; uniform float radius; uniform float vig; varying vec2 vUv;
         void main(){
           vec3 m[4]; vec3 s2[4];
           for(int k=0;k<4;k++){ m[k]=vec3(0.0); s2[k]=vec3(0.0); }
@@ -71,6 +75,7 @@ function createPostFX(T){
             m[0]+=a; s2[0]+=a*a; m[1]+=b; s2[1]+=b*b; m[2]+=c; s2[2]+=c*c; m[3]+=d; s2[3]+=d*d; n+=1.0; } }
           vec3 col=vec3(0.0); float best=1e9;
           for(int k=0;k<4;k++){ vec3 mu=m[k]/n; vec3 v=s2[k]/n-mu*mu; float sv=v.r+v.g+v.b; if(sv<best){ best=sv; col=mu; } }
+          if(useFig>0.5){ vec4 fg=texture2D(tFig,vUv); col=mix(col,fg.rgb,fg.a); }       // the figures, unpainted
           vec2 e=vUv-0.5; col*=1.0-vig*dot(e,e)*2.4;
           gl_FragColor=vec4(col,1.0);
           #include <colorspace_fragment>
@@ -109,12 +114,12 @@ function createPostFX(T){
         }` });
   }
   let rtScale=1;
-  function sizePost(){ if(!w) return; const p=POST_LEVELS[level]||POST_LEVELS[1], pr=Math.min(2,dprNow||1); rtScale=p.scale; const rtW=Math.max(2,Math.round(w*pr*p.scale)), rtH=Math.max(2,Math.round(h*pr*p.scale)); rt.setSize(rtW,rtH); postMat.uniforms.px.value.set(1/rtW,1/rtH); crtMat.uniforms.texSize.value.set(rtW,rtH); smoothMat.uniforms.texSize.value.set(rtW,rtH); paintMat.uniforms.px.value.set(1/rtW,1/rtH); }
+  function sizePost(){ if(!w) return; const p=POST_LEVELS[level]||POST_LEVELS[1], pr=Math.min(2,dprNow||1); rtScale=p.scale; const rtW=Math.max(2,Math.round(w*pr*p.scale)), rtH=Math.max(2,Math.round(h*pr*p.scale)); rt.setSize(rtW,rtH); rtFig.setSize(rtW,rtH); postMat.uniforms.px.value.set(1/rtW,1/rtH); crtMat.uniforms.texSize.value.set(rtW,rtH); smoothMat.uniforms.texSize.value.set(rtW,rtH); paintMat.uniforms.px.value.set(1/rtW,1/rtH); }
   function applyPost(){
     const p=POST_LEVELS[level]; if(!p) return;
     if(p.crt){ Object.keys(p).forEach(k=>{ if(crtMat.uniforms[k]) crtMat.uniforms[k].value=p[k]; }); postMesh.material=crtMat; }
     else if(p.smooth){ smoothMat.uniforms.vig.value=p.vig; postMesh.material=smoothMat; }
-    else if(p.paint){ paintMat.uniforms.radius.value=p.radius; paintMat.uniforms.vig.value=p.vig; postMesh.material=paintMat; }
+    else if(p.paint){ paintMat.uniforms.radius.value=p.radius; paintMat.uniforms.vig.value=p.vig; paintMat.uniforms.useFig.value=p.split?1:0; postMesh.material=paintMat; }
     else { postMat.uniforms.blur.value=p.blur; postMat.uniforms.bloom.value=p.bloom; postMat.uniforms.vig.value=p.vig; postMesh.material=postMat; }
     sizePost(); applied=level;
   }
@@ -123,6 +128,18 @@ function createPostFX(T){
     get level(){ return level; }, setLevel(n){ level=Math.max(0,Math.min(POST_LEVELS.length-1,n|0)); applied=-1; },
     resize(cssW,cssH,dpr){ w=cssW; h=cssH; dprNow=dpr||1; sizePost(); },
     // true when it drew the picture (the caller draws it plain otherwise)
-    render(renderer,scene,camera){ if(!level) return false; if(applied!==level) applyPost(); renderer.setRenderTarget(rt); renderer.render(scene,camera); renderer.setRenderTarget(null); renderer.render(postScene,postCam); return true; }
+    render(renderer,scene,camera){
+      if(!level) return false; if(applied!==level) applyPost();
+      const p=POST_LEVELS[level], mask=camera.layers.mask;
+      if(p&&p.split){
+        camera.layers.set(0); renderer.setRenderTarget(rt); renderer.render(scene,camera);       // the world, with its depth
+        // the figures into their own picture: cleared to nothing (not the depth, which is the world's), no background
+        const bg=scene.background, cc=renderer.getClearColor(new T.Color()), ca=renderer.getClearAlpha(), auto=renderer.autoClear;
+        scene.background=null; renderer.setClearColor(0x000000,0); renderer.setRenderTarget(rtFig); renderer.clear(true,false,false); renderer.autoClear=false;
+        camera.layers.set(FIGURE_LAYER); renderer.render(scene,camera);
+        renderer.autoClear=auto; renderer.setClearColor(cc,ca); scene.background=bg;
+      } else { renderer.setRenderTarget(rt); renderer.render(scene,camera); }
+      camera.layers.mask=mask; renderer.setRenderTarget(null); renderer.render(postScene,postCam); return true;
+    }
   };
 }
