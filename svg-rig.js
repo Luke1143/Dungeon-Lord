@@ -102,6 +102,8 @@ const SvgRig=(()=>{
       headY:0, legK:1, weapons:['pick','club'], weapon:'pick', px:24
     } }
   };
+  // the imp as a beast (user, November 2026): no ears, no horns, no mouth, the head sunk between the shoulders; the eyes, the tail, the sack and the pick stay
+  { const I=SHAPES.imp.düster; SHAPES.imp.bestie=Object.assign({},I,{ skull:[I.skull[0],I.skull[3]], ear:null, scar:null, mouth:[], jaw:[], headY:5.5 }); PAL.imp.bestie=PAL.imp.düster; }
   // tools and weapons any kind can hold (the ork's axe is its own, per style)
   const WEAPONS={
     club:[['M22 -6 L25 -6 L28.5 -37 Q24 -45 18.5 -37z','wood',1.6],['M19 -36 l-3 -1 M28 -36 l3 -1 M20.5 -30 l-3 0 M27 -30 l3 0',null,1.4,'ironDark']],
@@ -297,7 +299,7 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
+  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
   function open(host){
     if(!document.getElementById('orkv-css')){ const st=document.createElement('style'); st.id='orkv-css'; st.textContent=CSS; document.head.appendChild(st); }
