@@ -35,10 +35,10 @@ const SvgRig=(()=>{
   const SKIN_KEYS=['skin','light','dark','leg','brow'];
   // a hand: a round fist with the fingers drawn on it (three seams across the front, the thumb on the side towards the body); its colour is the skin's,
   // or the armour's when the creature wears shoulder plates ('hand', 'handLine' are set when the rig is built)
-  function fist(cx,cy,rx,ry,sw){
-    const f=v=>(+v).toFixed(2), seam=x=>`M${f(x)} ${f(cy-ry*0.85)} q${f(-0.12*rx)} ${f(ry*0.4)} 0 ${f(ry*0.8)}`;
-    return [[ell(cx,cy,rx,ry),'hand',sw],[[seam(cx-0.42*rx),seam(cx+0.02*rx),seam(cx+0.46*rx)].join(' '),null,sw*0.55,'handLine'],
-      [`M${f(cx-rx*0.95)} ${f(cy+ry*0.05)} q${f(rx*0.5)} ${f(-ry*0.15)} ${f(rx*0.85)} ${f(ry*0.45)}`,null,sw*0.6,'handLine']];
+  function fist(cx,cy,rx,ry,sw){       // (a right hand: the fingers point right, away from the body; the left one is this mirrored)
+    const f=v=>(+v).toFixed(2), seam=y=>`M${f(cx+0.05*rx)} ${f(y)} q${f(0.45*rx)} ${f(0.12*ry)} ${f(0.9*rx)} 0`;
+    return [[ell(cx,cy,rx,ry),'hand',sw],[[seam(cy-0.1*ry),seam(cy+0.3*ry),seam(cy+0.68*ry)].join(' '),null,sw*0.55,'handLine'],
+      [`M${f(cx-rx*0.7)} ${f(cy-ry*0.45)} q${f(rx*0.55)} ${f(-ry*0.45)} ${f(rx*1.25)} ${f(-ry*0.1)}`,null,sw*0.6,'handLine']];
   }
   // the ork's parts in both styles, the imp's in the grim one; a missing part is simply not there (the imp has no tusks, the ork no tail)
   const SHAPES={ ork:{
@@ -109,47 +109,71 @@ const SvgRig=(()=>{
       headY:0, legK:1, weapons:['pick','club'], weapon:'pick', px:24
     } }
   };
-  // the imp as a beast (user, November 2026): no ears, no horns, no mouth, the head sunk between the shoulders; the eyes, the tail, the sack and the pick stay
-  // the head round on top and running to a point below (user); no horns; the ears grow with the level and hang like a hound's when heavy:
-  // the user: an imp of a high level is an imp that obeys well ("hört gut")
-  { const I=SHAPES.imp.düster, mv=(sh,dx,dy)=>sh.map(([d,f,w,st])=>[movePath(d,dx,dy),f,w,st]);
-    SHAPES.imp.bestie=Object.assign({},I,{ skull:[['M-8 -36 C-8.6 -44 -4.6 -46.8 0 -46.8 C4.6 -46.8 8.6 -44 8 -36 C7.6 -31 3.6 -26.6 0 -24.4 C-3.6 -26.6 -7.6 -31 -8 -36z','skin',1.6],['M3.6 -46.4 C7.6 -45 8.6 -41 8 -36 C7.6 -31 3.6 -26.6 0 -24.4 C3.4 -28 5.6 -32 5.6 -37 C5.6 -41.6 4.8 -44.6 3.6 -46.4z','shade',0]],
-      eye:[[ell(-3.6,-35.6,2.7,3.3),'socket',0]], eyeAt:[-3.6,-35.6], pupil:[[ell(-3.3,-35.2,1.6,1.6),'glow',0],[ell(-3.3,-35.2,0.8,0.8),'eye',0]],
-      lid:[['M-6.2 -35.6 q2.6 1.4 5.2 0',null,1.3,'line']], brow:[['M-6.6 -39.6 L-1.2 -38.2 L-1.4 -39.4 L-6.2 -41.2z','brow',0]], browAt:[-3.9,-39.5],
-      ear:[['M-7.4 -39.2 Q-12.5 -42.4 -17.2 -40 Q-17.8 -37.4 -15 -35.8 Q-11 -34.6 -7.6 -34.4z','skin',1.4],['M-8.6 -38.2 Q-12.4 -40.4 -15.6 -38.8 Q-13.4 -36.6 -8.8 -35.8z','dark',0]], earAt:[-7.6,-36.8], earGrow:true,
-      horn:null, look:{ ears:true, horns:false },
-      scar:null, mouth:[], jaw:[], headY:5.5 }); PAL.imp.bestie=PAL.imp.düster;
-    // the pointed ear of the earlier draft in two pieces, root and tip, joined at a kink: up to level 6 it grows out, then it sags and the tip folds down
-    const earRoot=[['M-9.6 -38.4 L-14.2 -40.6 L-14.5 -38 L-10.2 -32.6z','skin',1.4],['M-10.6 -37.4 L-13.6 -39.1 L-13.7 -37.6 L-10.8 -34.4z','dark',0]];
-    const earTip=[['M-14.2 -40.6 L-18 -42.4 L-14.5 -38z','skin',1.4],['M-14.6 -39.8 L-16.4 -41.2 L-14.8 -38.8z','dark',0]];
-    const kinked=(dx,dy)=>({ ear:mv(earRoot,dx,dy), earTip:mv(earTip,dx,dy), earAt:[-9.9+dx,-35.5+dy], kinkAt:[-14.35+dx,-39.3+dy], earGrow:'kink' });
-    Object.assign(SHAPES.imp.bestie,kinked(2.2,-0.6));
-    const B=SHAPES.imp.bestie;
-    // the wretch: gaunt, long thin legs, a big head with huge eyes, ashen, the eyes glowing cold
-    SHAPES.imp.wicht=Object.assign({},B,{
-      leg:[['M-5 -10 L-4.6 -3 L-6 0 L-2.6 0 L-3.2 -3 L-3 -10z','leg',1.3],['M-6.4 0 l0.8 -1.4 M-4.6 0 l0.5 -1.6 M-3 0 l0.4 -1.4',null,0.9,'bone']], hip:[-4,-10], legK:1.4,
-      body:[['M-5.6 -10 Q-7.6 -18 -6 -23.6 Q0 -26.2 6 -23.6 Q7.6 -18 5.6 -10 Q0 -8.4 -5.6 -10z','skin',1.4],['M-4.4 -21 l2.6 0.7 M-4.4 -18.4 l2.6 0.7 M-4.4 -15.8 l2.6 0.7 M4.4 -21 l-2.6 0.7 M4.4 -18.4 l-2.6 0.7 M4.4 -15.8 l-2.6 0.7',null,0.9,'dark']],
-      belly:[], belt:[['M-6 -11.8 Q0 -9.8 6 -11.8',null,1.4,'belt']], buckle:[[ell(-3,-10.6,1.6,1.4),'leather',1]],
-      neck:[0,-26], skull:[['M-9.4 -37 C-10 -46.6 -5 -49.6 0 -49.6 C5 -49.6 10 -46.6 9.4 -37 C8.8 -31 4.2 -27.8 0 -27 C-4.2 -27.8 -8.8 -31 -9.4 -37z','skin',1.5],['M4 -49 C8 -47.6 10 -44 9.4 -37 C8.8 -31 4.2 -27.8 0 -27 C3.6 -30.4 6.2 -33.6 6.4 -38.6 C6.6 -43.4 5.6 -46.8 4 -49z','shade',0]],
-      eye:[[ell(-4.2,-37.6,3.8,4.4),'socket',0]], eyeAt:[-4.2,-37.6], pupil:[[ell(-3.8,-37,2.3,2.3),'glow',0],[ell(-3.8,-37,1.1,1.1),'eye',0]], pupilIn:0.4, lookK:1.2,
-      lid:[['M-7.6 -37.6 q3.4 1.6 6.8 0',null,1.3,'line']], brow:[['M-7.8 -42.6 L-1.4 -41 L-1.6 -42.2 L-7.4 -44.2z','brow',0]], browAt:[-4.6,-42.4],
-      handAt:[10.5,-17], headY:2.5, H:54 }, kinked(1,-2.2));
-    PAL.imp.wicht=Object.assign({},PAL.imp.düster,{ skin:'#5a3a34', light:'#6e4a42', dark:'#2a1714', leg:'#4e322d', brow:'#1a0d0b', eye:'#c4f4ff', glow:'rgba(120,220,255,0.5)', socket:'#05070a' });
-    // the lump: one round body with the head sunk deep into it, stubby legs, huge eyes
-    SHAPES.imp.knolle=Object.assign({},B,{
-      leg:[['M-6.4 -7 L-6.6 -1.4 L-7.6 0 L-2.6 0 L-3 -1.4 L-3 -7z','leg',1.4],['M-7.8 0 l0.8 -1.4 M-5.4 0 l0.5 -1.5 M-3.2 0 l0.4 -1.3',null,1,'bone']], hip:[-4.8,-7], legK:1,
-      body:[['M-11.6 -8 Q-13.6 -20 -8.4 -27.4 Q0 -31.6 8.4 -27.4 Q13.6 -20 11.6 -8 Q0 -4.6 -11.6 -8z','skin',1.6],['M4 -30 Q10 -27 12 -20 Q12.6 -12 11 -8 Q8 -6.4 5.4 -6.2 Q9.6 -16 4 -30z','shade',0]],
-      belly:[['M-6 -17 Q0 -11.6 6 -17 Q5 -9.4 0 -8.6 Q-5 -9.4 -6 -17z','light',0]], belt:[['M-11.4 -10.6 Q0 -7.4 11.4 -10.6',null,1.6,'belt']], buckle:[[ell(-5.4,-8.8,1.9,1.7),'leather',1.1]],
-      neck:[0,-24], skull:[['M-9.8 -32 C-10.4 -40.6 -5.2 -43 0 -43 C5.2 -43 10.4 -40.6 9.8 -32 C9.4 -27 5.2 -24.6 0 -24.6 C-5.2 -24.6 -9.4 -27 -9.8 -32z','skin',1.6],['M4 -42.4 C8.6 -41 10.4 -37.6 9.8 -32 C9.4 -27 5.2 -24.6 0.6 -24.6 C5.6 -27.6 7 -31 7 -35 C7 -38.6 5.8 -41 4 -42.4z','shade',0]],
-      eye:[[ell(-4.2,-33.8,3.9,4.2),'socket',0]], eyeAt:[-4.2,-33.8], pupil:[[ell(-3.9,-33.2,2.2,2.2),'glow',0],[ell(-3.9,-33.2,1.1,1.1),'eye',0]], pupilIn:0.4, lookK:1.1,
-      lid:[['M-7.8 -33.8 q3.6 1.6 7.2 0',null,1.3,'line']], brow:[['M-8 -38.6 L-1.6 -37.2 L-1.8 -38.4 L-7.6 -40.2z','brow',0]], browAt:[-4.8,-38.4],
-      handAt:[14.5,-14], headY:7, H:46 }, kinked(1.6,2.4));
-    PAL.imp.knolle=Object.assign({},PAL.imp.düster,{ skin:'#8c3a1c', light:'#a8522a', dark:'#46160a' });
-    // the shade: near black with an ember rim; only the eyes glow, strongly
-    SHAPES.imp.schatten=Object.assign({},B);
-    PAL.imp.schatten=Object.assign({},PAL.imp.düster,{ skin:'#1c1416', light:'#261c1e', dark:'#0c0808', leg:'#181012', brow:'#000000', line:'#3c1a0c', socket:'#000000', eye:'#ffd060', glow:'rgba(255,110,20,0.6)', shade:'rgba(0,0,0,0.25)' });
-    ['wicht','knolle','schatten'].forEach(k=>{ SHAPES.imp[k].look={ ears:true, horns:false }; });
-    SHAPES.imp.bestie.look={ ears:true, horns:false }; }
+  // ---- the imp, procedural (user, November 2026: the imp is the most numerous creature, the one the player sees most; every look from genes) ----
+  // Fixed for every imp: big eyes, no mouth, ears that grow with the level. From genes (0..1): head size, chin (round .. pointed), how deep the head sits,
+  // body (gaunt .. round), legs (short .. long), eye size, skin (bright ember .. rust .. ash), eye colour (amber .. ice), ears (pointed with a kink, or lobes).
+  // The looks tried before are presets of the genes: Bestie, Wicht, Knolle. The parts that do not change (tail, sack, cloth, loads) come from the template.
+  const IMP_T=SHAPES.imp.düster;
+  const EAR_KINK={ root:[['M-9.6 -38.4 L-14.2 -40.6 L-14.5 -38 L-10.2 -32.6z','skin',1.4],['M-10.6 -37.4 L-13.6 -39.1 L-13.7 -37.6 L-10.8 -34.4z','dark',0]],
+    tip:[['M-14.2 -40.6 L-18 -42.4 L-14.5 -38z','skin',1.4],['M-14.6 -39.8 L-16.4 -41.2 L-14.8 -38.8z','dark',0]], at:[-9.9,-35.5], kink:[-14.35,-39.3] };
+  const EAR_LOBE={ root:[['M-7.4 -39.2 Q-12.5 -42.4 -17.2 -40 Q-17.8 -37.4 -15 -35.8 Q-11 -34.6 -7.6 -34.4z','skin',1.4],['M-8.6 -38.2 Q-12.4 -40.4 -15.6 -38.8 Q-13.4 -36.6 -8.8 -35.8z','dark',0]], at:[-7.6,-36.8] };
+  const IMP_PRESETS={
+    bestie:{ kopf:0.35, kinn:1, tief:0.7, koerper:0.4, beine:0.35, augen:0.45, haut:0.5, augenFarbe:0, ohren:'spitz' },
+    wicht:{ kopf:0.8, kinn:0.5, tief:0.3, koerper:0, beine:1, augen:0.95, haut:1, augenFarbe:1, ohren:'spitz' },
+    knolle:{ kopf:0.75, kinn:0, tief:0.95, koerper:1, beine:0, augen:0.95, haut:0, augenFarbe:0, ohren:'spitz' }
+  };
+  const mix=(a,b,k)=>{ const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); const A=p(a), B=p(b); return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*k).toString(16).padStart(2,'0')).join(''); };
+  const mix3=(a,b,c,k)=>k<0.5?mix(a,b,k*2):mix(b,c,(k-0.5)*2);       // three colours along one gene
+  function impPal(g){
+    const P=Object.assign({},PAL.imp.düster), k=g.haut, e=g.augenFarbe;
+    P.skin=mix3('#8c3a1c','#7a3219','#5a3a34',k); P.light=mix3('#a8522a','#94431f','#6e4a42',k); P.dark=mix3('#46160a','#3e140a','#2a1714',k); P.leg=mix3('#7a3018','#6a2b15','#4e322d',k); P.brow=mix3('#2a0c06','#260a04','#1a0d0b',k);
+    P.eye=mix('#ffb020','#c4f4ff',e); P.socket=mix('#120604','#05070a',e);
+    const g0=[255,150,30], g1=[120,220,255]; P.glow=`rgba(${g0.map((v,i)=>Math.round(v+(g1[i]-v)*e)).join(',')},0.48)`;
+    return P;
+  }
+  function impShapes(g){
+    const f=v=>(+v).toFixed(2), mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
+    const plump=g.koerper, hipY=-10, bodyH=13.6+3.8*plump, topY=hipY-bodyH, wHip=5.6+6*plump, wSh=6+3*plump, midY=hipY-bodyH*0.57;
+    // legs: thin and long or short and stout
+    const xc=-4.3, lw=2+1.6*plump, L=xc-lw/2, Rx=xc+lw/2;
+    const leg=[[`M${f(L)} ${hipY} L${f(L+0.4)} -3.2 L${f(L-1.2)} 0 L${f(Rx+0.6)} 0 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'leg',1.4],
+      [`M${f(xc-3.2)} 0 l0.9 -1.5 M${f(xc-1)} 0 l0.5 -1.7 M${f(xc+1.1)} 0 l0.4 -1.5`,null,1,'bone'],[`M${f(xc+0.1)} ${hipY} L${f(xc+0.5)} -3.2 L${f(Rx)} -3.2 L${f(Rx)} ${hipY}z`,'shade',0]];
+    // the body: from the hips up to the shoulders, a waist or a belly
+    const wMid=wHip*1.31;
+    const body=[[`M${f(-wHip)} ${hipY} Q${f(-wMid)} ${f(midY)} ${f(-wSh)} ${f(topY)} Q0 ${f(topY-4)} ${f(wSh)} ${f(topY)} Q${f(wMid)} ${f(midY)} ${f(wHip)} ${hipY} Q0 ${hipY+2.5} ${f(-wHip)} ${hipY}z`,'skin',1.5],
+      [`M${f(wSh*0.35)} ${f(topY-2.8)} Q${f(wSh*1.05)} ${f(topY-0.6)} ${f(wMid*0.98)} ${f(midY)} Q${f(wHip*1.25)} ${hipY-3} ${f(wHip)} ${hipY} Q${f(wHip*0.75)} ${hipY+1.3} ${f(wHip*0.55)} ${hipY+1.4} Q${f(wHip*1.05)} ${f(midY)} ${f(wSh*0.35)} ${f(topY-2.8)}z`,'shade',0]];
+    if(plump<0.35){ const rx=wSh*0.62, rows=[0.32,0.5,0.68].map(t=>hipY-bodyH*t); body.push([rows.map(y=>`M${f(-rx)} ${f(y)} l2.4 0.7 M${f(rx)} ${f(y)} l-2.4 0.7`).join(' '),null,0.9,'dark']); }
+    const bx=wHip*0.5, by1=hipY-bodyH*0.55, by2=hipY-1;
+    const belly=plump>=0.3?[[`M${f(-bx)} ${f(by1)} Q0 ${f(by1+3.5)} ${f(bx)} ${f(by1)} Q${f(bx*0.75)} ${f(by2-0.5)} 0 ${f(by2)} Q${f(-bx*0.75)} ${f(by2-0.5)} ${f(-bx)} ${f(by1)}z`,'light',0]]:[];
+    // the head: round on top; the chin from round to a point; eyes, brows and lids follow its size
+    const w=7+2.6*g.kopf, p=g.kinn, h=(16.5+4.5*g.kopf)*(1+0.2*p), chinY=topY+1.6, top=chinY-h, cy=top+h*0.45;
+    const sideB=cy+h*(0.2+0.1*(1-p)), cw=w*(0.6-0.5*p), cY=chinY-h*0.04*p;
+    const skull=[[`M${f(-w)} ${f(cy)} C${f(-w)} ${f(cy-h*0.38)} ${f(-w*0.58)} ${f(top)} 0 ${f(top)} C${f(w*0.58)} ${f(top)} ${f(w)} ${f(cy-h*0.38)} ${f(w)} ${f(cy)} C${f(w)} ${f(sideB)} ${f(cw)} ${f(cY)} 0 ${f(chinY)} C${f(-cw)} ${f(cY)} ${f(-w)} ${f(sideB)} ${f(-w)} ${f(cy)}z`,'skin',1.5],
+      [`M${f(w*0.42)} ${f(top+0.4)} C${f(w)} ${f(top+h*0.1)} ${f(w)} ${f(cy-h*0.12)} ${f(w)} ${f(cy)} C${f(w)} ${f(sideB)} ${f(cw)} ${f(cY)} 0 ${f(chinY)} C${f(w*0.55)} ${f(chinY-h*0.22)} ${f(w*0.7)} ${f(cy)} ${f(w*0.68)} ${f(cy-h*0.12)} C${f(w*0.66)} ${f(top+h*0.25)} ${f(w*0.6)} ${f(top+h*0.08)} ${f(w*0.42)} ${f(top+0.4)}z`,'shade',0]];
+    const erx=2.4+1.6*g.augen, ery=erx*1.18, ex=-Math.min(w*0.5,erx+0.6), ey=cy+1, s=erx/3.1;
+    const eye=[[ell(+f(ex),+f(ey),+f(erx),+f(ery)),'socket',0]], pupil=[[ell(+f(ex+0.3),+f(ey+0.4),+f(erx*0.55),+f(erx*0.55)),'glow',0],[ell(+f(ex+0.3),+f(ey+0.4),+f(erx*0.27),+f(erx*0.27)),'eye',0]];
+    const bp=(dx,dy)=>`${f(ex+dx*s)} ${f(ey+dy*s)}`, brow=[[`M${bp(-3.6,-4.2)} L${bp(2.6,-2.6)} L${bp(2.4,-3.8)} L${bp(-3.2,-5.8)}z`,'brow',0]];
+    const lid=[[`M${f(ex-erx)} ${f(ey)} q${f(erx)} 1.4 ${f(2*erx)} 0`,null,1.3,'line']];
+    // the ears: pointed with a kink, or lobes; set at the side of the head, as big as the head
+    const ax=-w*0.93, ay=cy-h*0.05, E=g.ohren==='lappen'?EAR_LOBE:EAR_KINK, dx=ax-E.at[0], dy=ay-E.at[1];
+    const ears=g.ohren==='lappen'?{ ear:mvS(E.root,dx,dy), earTip:null, earAt:[ax,ay], earGrow:true }:{ ear:mvS(E.root,dx,dy), earTip:mvS(E.tip,dx,dy), earAt:[ax,ay], kinkAt:[E.kink[0]+dx,E.kink[1]+dy], earGrow:'kink' };
+    const hr=2.4+0.6*plump, handAt=[wSh+4.5,hipY-bodyH*0.42];
+    const headY=g.tief*8, legK=0.8+0.6*g.beine;
+    return Object.assign({},IMP_T,{
+      shadow:[[ell(0,1.2,+f(wHip+2),2),'shadowC',0]], leg, hip:[xc,hipY], body, belly,
+      belt:[[`M${f(-wHip-0.6)} ${hipY-2.4} Q0 ${hipY+0.4} ${f(wHip+0.6)} ${hipY-2.4}`,null,1.6,'belt']], buckle:[[ell(+f(-wHip*0.55),hipY-0.6,1.9,1.7),'leather',1.1]],
+      neck:[0,+f(topY+1)], skull, scar:null, mouth:[], jaw:[], mouthAt:[0,+f(cy+4)], jawAt:[0,+f(cy+4)],
+      eye, eyeAt:[+f(ex),+f(ey)], pupil, pupilIn:0.3, lookK:0.6+0.6*g.augen, lid, brow, browAt:[+f(ex+0.3*s),+f(ey-4*s)],
+      sack:mvS(IMP_T.sack,-(wSh-7.5),topY+24), sackAt:[-8-(wSh-7.5),topY], load:{ gold:mvS(IMP_T.load.gold,-(wSh-7.5),topY+24), ore:mvS(IMP_T.load.ore,-(wSh-7.5),topY+24) },
+      tail:IMP_T.tail, tailAt:IMP_T.tailAt, cloth:IMP_T.cloth,
+      fist:fist(+f(handAt[0]),+f(handAt[1]),+f(hr),+f(hr*0.92),1.3), handAt:[+f(handAt[0]),+f(handAt[1])], handGap:2,
+      horn:null, look:{ ears:true, horns:false }, headY, legK, earScale:w/8,
+      H:Math.round((10*legK-10)+(-top)-headY+3)
+    },ears);
+  }
+  // the imp's styles are the presets, and "eigen" for genes of one's own
+  SHAPES.imp={ bestie:{ weapons:IMP_T.weapons, weapon:'pick', px:24 }, wicht:{ weapons:IMP_T.weapons, weapon:'pick', px:24 }, knolle:{ weapons:IMP_T.weapons, weapon:'pick', px:24 }, eigen:{ weapons:IMP_T.weapons, weapon:'pick', px:24 } };
+  Object.keys(SHAPES.imp).forEach(k=>{ SHAPES.imp[k].look={ ears:true, horns:false }; });
   // tools and weapons any kind can hold (the ork's axe is its own, per style)
   const WEAPONS={
     club:[['M22 -6 L25 -6 L28.5 -37 Q24 -45 18.5 -37z','wood',1.6],['M19 -36 l-3 -1 M28 -36 l3 -1 M20.5 -30 l-3 0 M27 -30 l3 0',null,1.4,'ironDark']],
@@ -163,12 +187,13 @@ const SvgRig=(()=>{
   const stylesOf=kind=>Object.keys(SHAPES[kind]||SHAPES.ork);
   function roll(seed,kind){
     const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)]; kind=kind||'ork'; const st=pick(stylesOf(kind)), S=SHAPES[kind][st];
-    return { kind, style:st, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*(kind==='imp'?12:22), scar:r()<0.4,
-      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none'].concat(S.weapons)), hands:true, load:pick(['none','gold','ore']), ears:r()<0.5, horns:r()<0.6 }, level:1+Math.floor(r()*12), seed };
+    const genes=kind==='imp'?{ kopf:r(), kinn:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' }:undefined;
+    return { kind, style:kind==='imp'?'eigen':st, genes, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*(kind==='imp'?12:22), scar:r()<0.4,
+      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none'].concat(S.weapons)), hands:true, load:pick(['none','gold','ore']), ears:kind==='imp'||r()<0.5, horns:kind!=='imp'&&r()<0.6 }, level:1+Math.floor(r()*12), seed };       // an imp always has its ears (they show its level)
   }
   function defaults(kind){
-    const S=SHAPES[kind]&&SHAPES[kind].düster;
-    return { kind, style:kind==='imp'?'bestie':'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:kind!=='imp', gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:S?S.weapon:'none', hands:true, load:'gold' } };
+    const S=SHAPES[kind]&&(SHAPES[kind].düster||SHAPES[kind][stylesOf(kind)[0]]);
+    return { kind, style:kind==='imp'?'bestie':'düster', genes:kind==='imp'?Object.assign({},IMP_PRESETS.bestie):undefined, traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:kind!=='imp', gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:S?S.weapon:'none', hands:true, load:'gold' } };
   }
   // colours: the kind's and style's, the skin turned by the hue shift
   function hueShift(hex,deg){
@@ -183,8 +208,9 @@ const SvgRig=(()=>{
   function build(spec){
     const kind=(spec&&spec.kind)||'ork'; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
     if(!SHAPES[kind][spec.style]) spec.style=stylesOf(kind)[0];
-    const S=SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
-    const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },PAL[kind][spec.style]); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
+    const genes=kind==='imp'?Object.assign({},IMP_PRESETS.bestie,IMP_PRESETS[spec.style]||{},spec.genes||{}):null;
+    const S=kind==='imp'?impShapes(genes):SHAPES[kind][spec.style], t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
+    const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },kind==='imp'?impPal(genes):PAL[kind][spec.style]); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
     const armoured=!!(G.pauldrons&&S.pauldron); pal.hand=armoured?pal.iron:pal.skin; pal.handLine=armoured?pal.ironDark:pal.dark;       // the hands: skin, or armour with the shoulder plates
     const P=(id,pivot,shapes,kids)=>({ id, pivot, shapes:shapes||[], kids:(kids||[]).filter(Boolean) });
     const mirrorShapes=sh=>sh.map(([d,f,w,st])=>[mirror(d),f,w,st]);
@@ -232,6 +258,7 @@ const SvgRig=(()=>{
       handL:{ x:-(bw-1)*half-S.handGap, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*half+S.handGap, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
       weapon:hands?{ x:ha[0]-grip[0], y:ha[1]-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
     };
+    if(S.earScale) ['earL','earR'].forEach(k=>{ base[k].sx=(base[k].sx||1)*S.earScale; base[k].sy=(base[k].sy||1)*S.earScale; });       // the imp's ears as big as its head
     return { tree, base, pal, spec, hands, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px||48, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack, ears:!!S.ear, horns:!!S.horn, level:!!(S.horn||S.earGrow) }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
@@ -314,7 +341,7 @@ const SvgRig=(()=>{
     draw(rig.tree); g.restore();
   }
   const lookOf=(kind,style)=>Object.assign({},((SHAPES[kind]||{})[style]||{}).look||{});
-  return { build, roll, defaults, lookOf, create, step, pose, svg, canvas, MOODS, KINDS:Object.keys(SHAPES), stylesOf, weaponsOf:(kind,style)=>(SHAPES[kind][style]||SHAPES[kind][stylesOf(kind)[0]]).weapons };
+  return { build, roll, defaults, lookOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:Object.keys(SHAPES), stylesOf, weaponsOf:(kind,style)=>(SHAPES[kind][style]||SHAPES[kind][stylesOf(kind)[0]]).weapons };
 })();
 
 // ---- the viewer: a stage (a strip of dungeon floor under a torch), the controls, and the ork as sprites from 16 to 128 pixels ----
@@ -355,7 +382,9 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', schatten:'Schatten' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
+  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
+  // the imp's genes (procedural, every look between the presets)
+  const GENES=[['kopf','Kopfgröße'],['kinn','Kinn spitz'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Haut: Glut bis Asche'],['augenFarbe','Augen: Bernstein bis Eis']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
   let lastViewer=null;       // the viewer opened last (tests hold its blinking)
   function open(host){
@@ -379,6 +408,8 @@ const SvgOrkViewer=(()=>{
   <button id="orkvRoar">Brüllen</button>
   <button id="orkvParts" aria-pressed="false">Einzelteile</button>
 </div>
+<div class="orkv-row" id="orkvGenes"><span class="orkv-group">Gene</span>${GENES.map(([k,n])=>`<label class="orkv-slider" for="orkvGn_${k}">${n}<input type="range" id="orkvGn_${k}" min="0" max="100" value="50"></label>`).join('')}
+  <label for="orkvEars">Ohren</label><select id="orkvEars"><option value="spitz">spitz mit Knick</option><option value="lappen">Lappen</option></select></div>
 <div class="orkv-row"><span class="orkv-group">Werte</span>${TRAITS.map(([k,n,what])=>`<label class="orkv-slider" for="orkvT_${k}">${n} <small>(${what})</small><input type="range" id="orkvT_${k}" min="0" max="100" value="50"></label>`).join('')}</div>
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
   <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"></select>
@@ -404,12 +435,17 @@ const SvgOrkViewer=(()=>{
       ['helmet','chest','pauldrons'].forEach(k=>{ $('orkvG_'+k).hidden=!rig.has[k]; });
       root.querySelectorAll('[data-for="load"]').forEach(e=>{ e.hidden=!rig.has.load; });
       const lk=SvgRig.lookOf(spec.kind,rig.spec.style); ['ears','horns'].forEach(k=>{ const b=$('orkvG_'+k); b.hidden=!rig.has[k]; b.setAttribute('aria-pressed',spec.gear[k]!==undefined?!!spec.gear[k]:lk[k]!==false); });
-      $('orkvLevelBox').hidden=!rig.has.level; $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
+      $('orkvLevelBox').hidden=!rig.has.level;
+      $('orkvGenes').hidden=spec.kind!=='imp'; if(spec.kind==='imp'){ const gn=Object.assign({},SvgRig.IMP_PRESETS.bestie,SvgRig.IMP_PRESETS[spec.style]||{},spec.genes||{}); GENES.forEach(([k])=>{ $('orkvGn_'+k).value=Math.round(gn[k]*100); }); $('orkvEars').value=gn.ohren; } $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); show(); };
     rebuild();
     $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px); });       // each kind its own pixel size (the user: the imp at 24, the ork at 48)
-    $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; Object.assign(spec.gear,SvgRig.lookOf(spec.kind,spec.style)); rebuild(); });       // a style brings its look (the beast: no ears, no horns)
+    $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; Object.assign(spec.gear,SvgRig.lookOf(spec.kind,spec.style)); if(spec.kind==='imp'&&SvgRig.IMP_PRESETS[spec.style]) spec.genes=Object.assign({},SvgRig.IMP_PRESETS[spec.style]); rebuild(); });
+    // a gene changed: the imp is one of its own now
+    const gene=(k,v)=>{ spec.genes=Object.assign({},SvgRig.IMP_PRESETS.bestie,SvgRig.IMP_PRESETS[spec.style]||{},spec.genes||{}); spec.genes[k]=v; spec.style='eigen'; rebuild(); };
+    GENES.forEach(([k])=>$('orkvGn_'+k).addEventListener('input',e=>gene(k,e.target.value/100)));
+    $('orkvEars').addEventListener('change',e=>gene('ohren',e.target.value));       // a style brings its look (the beast: no ears, no horns)
     ['ears','horns'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=$('orkvG_'+k).getAttribute('aria-pressed')!=='true'; rebuild(); }));
     $('orkvLevel').addEventListener('input',e=>{ spec.level=+e.target.value; rebuild(); });
     $('orkvLoad').addEventListener('change',e=>{ spec.gear.load=e.target.value; rebuild(); });
