@@ -36,6 +36,9 @@ Vom Nutzer (November 2026): Jede Kreatur muss erkennbar bleiben, das Parallax de
 - **Das Relief bleibt unter dem Malfilter:** „Gemalt“ nimmt die Farbe aus dem ruhigsten Viertel (Kuwahara), legt aber das feine Hell-Dunkel wieder darüber (die Helligkeit des Punkts gegen die seiner Umgebung, `detail`). Fugen, Schattierung des Reliefs und das Parallax bleiben so sichtbar, die Flächen trotzdem gemalt.
 - **Vergleichsbogen:** `tools/look-sheet.js` fotografiert dieselbe Szene (Relief Tief) in drei Zoomstufen: Figuren-Stile, Stile mit Umriss, Bildeffekte der Umgebung und einige Mischungen (Bilder in `tests/out/look-*.png`).
 
+## Figuren-Labor (`figure-lab.js`, Experiment)
+Vom Nutzer (November 2026): ausprobieren, wie echte 3D-Figuren und Vektor-Figuren (SVG) aussähen. Das Labor öffnet sich mit `#figuren` am Ende der Spieladresse und zeigt den Ork vier Mal nebeneinander auf einem Dungeonboden unter einer Fackel (Ziehen dreht die Sicht): Pixel (das Sprite wie heute), Voxel (das Sprite selbst, jedes Pixel ein Würfel, in der Mitte jedes Teils dicker: geht automatisch für jede Kreatur), Klötzchen (ein Quadermodell im Stil von Würfelwelten, ohne Arme nach der Stilregel, mit Laufanimation) und SVG (ein von Hand gezeichneter Vektor-Ork mit dunklem Umriss, im Raum und flach in drei Größen neben dem Sprite). Das Spiel selbst benutzt nichts davon.
+
 ## Eigene Pixelsymbole
 `icons.js` zeichnet alle Symbole des Menüs selbst (12 × 12, aus Rechtecken, Kreisen und Linien, mit dunklem Rand): Gebäude, Zauber, Reiter und die Meldungen. Die Brücke in den Arenen hat jetzt die Bohlen der Kampagnenbrücke. Der Bildeffekt liegt in `postfx.js` und gilt auch für den Ludus-Hof.
 
