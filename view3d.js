@@ -358,22 +358,38 @@ const View3D=(()=>{
       vertexShader:'varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.0); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }',
       fragmentShader:`uniform float time; uniform vec3 center; uniform float R; uniform float D; uniform sampler2D spiral; varying vec3 vW;
         ${SRGB_TO_LIN}
+        float vnoise(vec2 x){ vec2 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f); return mix(mix(hsh(i),hsh(i+vec2(1,0)),f.x),mix(hsh(i+vec2(0,1)),hsh(i+vec2(1,1)),f.x),f.y); }
+        // a spiral disc at depth k (0 the highest): turning at its own speed, every other one the other way; returns colour and cover
+        vec4 disc(vec2 q,float k){
+          float sp=(0.35+0.22*k)*(mod(k,2.0)<0.5?-1.0:1.0), ang=time*sp+k*1.7, sc=1.0-0.12*k;
+          vec2 uv=mat2(cos(ang),-sin(ang),sin(ang),cos(ang))*(q/(2.0*R*sc))+0.5; if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) return vec4(0.0);
+          uv=(floor(uv*32.0)+0.5)/32.0; vec4 s=texture2D(spiral,uv); return vec4(s.rgb*(1.25-0.15*k),s.a);
+        }
         void main(){
           vec3 o=vW-center; vec2 p=o.xz; if(dot(p,p)>R*R) discard;
           vec3 dir=normalize(vW-cameraPosition); dir.y=min(dir.y,-0.02);
           vec2 d2=dir.xz; float a=dot(d2,d2), b=2.0*dot(p,d2), c=dot(p,p)-R*R;
-          float tw=a>1e-6?(-b+sqrt(max(b*b-4.0*a*c,0.0)))/(2.0*a):1e9, tb=-D/dir.y;
-          vec3 col;
-          if(tb<tw){       // the bottom: the spiral, turning, in pixels
-            vec2 q=p+d2*tb; float ang=-time*0.7; vec2 uv=mat2(cos(ang),-sin(ang),sin(ang),cos(ang))*(q/(2.0*R))+0.5; uv=(floor(uv*32.0)+0.5)/32.0;
-            vec4 s=texture2D(spiral,uv); col=mix(vec3(0.01,0.02,0.06),s.rgb*1.15,s.a)*(0.55+0.45*smoothstep(R,0.2*R,length(q)));
-          } else {         // the wall: bricks in pixels, darker with depth, lit blue from below
-            vec3 h=o+dir*tw; float depth=-h.y, u=atan(h.z,h.x)*R;
+          float tw=a>1e-6?(-b+sqrt(max(b*b-4.0*a*c,0.0)))/(2.0*a):1e9, tb=-D/dir.y, tEnd=min(tw,tb);
+          vec3 fogCol=vec3(0.16,0.24,0.36); vec3 acc=vec3(0.0); float trans=1.0;
+          // the end of the ray: the wall (bricks, darker with depth, lit blue from below) or the deepest spiral
+          vec3 endCol;
+          if(tb<tw){ vec2 q=p+d2*tb; vec4 s=disc(q,3.0); endCol=mix(vec3(0.01,0.02,0.06),s.rgb,s.a); }
+          else { vec3 h=o+dir*tw; float depth=-h.y, u=atan(h.z,h.x)*R;
             vec2 bp=floor(vec2(u,depth)*10.0); float row=floor(bp.y/3.0); float bx=bp.x+mod(row,2.0)*3.0;
             vec2 cell=vec2(floor(bx/6.0),row); bool mortar=mod(bx,6.0)<1.0||mod(bp.y,3.0)<1.0;
-            vec3 stone=vec3(0.46,0.43,0.48)*(0.75+0.35*hsh(cell)); col=mortar?vec3(0.14,0.13,0.16):stone;
-            col*=0.25+0.75*exp(-depth*0.8); col+=vec3(0.08,0.22,0.5)*exp(-(D-depth)*1.4);
+            vec3 stone=vec3(0.46,0.43,0.48)*(0.75+0.35*hsh(cell)); endCol=mortar?vec3(0.14,0.13,0.16):stone;
+            endCol*=0.3+0.7*exp(-depth*0.9); endCol+=vec3(0.08,0.22,0.5)*exp(-(D-depth)*1.6); }
+          // the layers in front of it, nearest first: mist just below the rim, then three see-through spirals; fog thickens with the way the ray goes down
+          for(int i=0;i<4;i++){
+            float k=float(i), dk=i==0?0.12*D:D*(0.32+0.22*(k-1.0)), tk=-dk/dir.y; if(tk>=tEnd) continue;
+            vec2 q=p+d2*tk; vec4 L;
+            if(i==0){ float n=vnoise(floor((q*3.2+vec2(time*0.25,time*0.13))*8.0)/8.0)*0.7+vnoise(q*7.0-vec2(time*0.4,0.0))*0.3; L=vec4(fogCol*1.4,smoothstep(0.45,0.85,n)*0.55); }
+            else { L=disc(q,k-1.0); L.a*=0.5; }
+            float fogA=1.0-exp(-dk*0.55); L.rgb=mix(L.rgb,fogCol,fogA*0.6);
+            acc+=trans*L.a*L.rgb; trans*=1.0-L.a;
           }
+          float fogEnd=1.0-exp(-min(tEnd,tb)*0.5*(-dir.y)*2.0); endCol=mix(endCol,fogCol,fogEnd*0.55);
+          vec3 col=acc+trans*endCol;
           gl_FragColor=vec4(lin(col),1.0);
           #include <colorspace_fragment>
         }` });
