@@ -159,10 +159,10 @@ const SvgOrkViewer=(()=>{
 <div class="orkv-row">
   <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(OrkRig.MOODS).map(m=>`<option>${m}</option>`).join('')}</select>
   <label for="orkvFx">Nachbearbeitung</label><select id="orkvFx"><option value="vector">Vektor (SVG)</option><option value="boil">Wackel-Linie</option><option value="pixel">Pixel</option><option value="smooth">Pixel, glatt hochgerechnet</option><option value="soft">Weich</option></select>
-  <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32" selected>32 px</option><option value="48">48 px</option></select>
+  <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32" selected>32 px</option><option value="48">48 px</option><option value="64">64 px</option><option value="128">128 px</option></select>
 </div>
 <div class="orkv-sprites" id="orkvSprites" aria-label="Der Ork als Sprite in Spielgröße"></div>
-<p class="orkv-note">Ein Ork aus 17 Teilen mit eigenen Drehpunkten: Beine, Körper, Bauch, Gürtel, Schnalle, Kopf, Schädel, Kiefer mit Hauern, Mund, Augen, Pupillen, Lider und Brauen. Beim Gehen rutschen Gesicht, Kiefer und Bauch unterschiedlich weit zur Seite, das wirkt wie eine halbe Drehung. Unten derselbe Ork live als Pixel-Sprite in Spielgröße: Vektor-Animation, Pixel-Ausgabe.</p>`;
+<p class="orkv-note">Ein Ork aus 17 Teilen mit eigenen Drehpunkten: Beine, Körper, Bauch, Gürtel, Schnalle, Kopf, Schädel, Kiefer mit Hauern, Mund, Augen, Pupillen, Lider und Brauen. Beim Gehen rutschen Gesicht, Kiefer und Bauch unterschiedlich weit zur Seite, das wirkt wie eine halbe Drehung. Unten derselbe Ork live als Pixel-Sprite von 16 bis 128 Pixeln Höhe: Vektor-Animation, Pixel-Ausgabe.</p>`;
     const $=id=>root.querySelector('#'+id), stage=$('orkvStage'), svgEl=$('orkvSvg'), cv=$('orkvCanvas'), turb=$('orkvTurb');
     const out=OrkRig.svg($('orkvRig')), s=OrkRig.create();
     const opt={ walk:true, mouse:null, followMouse:false, explode:false, fx:'vector', res:32 };
@@ -176,7 +176,9 @@ const SvgOrkViewer=(()=>{
     stage.addEventListener('pointermove',e=>{ if(!opt.followMouse) return; const r=stage.getBoundingClientRect(), sc=Math.min(r.width/192,r.height/80), ox=r.left+r.width/2, oy=r.bottom-8*sc;
       opt.mouse=[(e.clientX-ox)/sc,(e.clientY-oy)/sc]; });
     // the sprites at game size: 16, 24 and 32 pixels high, each shown four times as large
-    const spr=$('orkvSprites'), figs=[16,24,32].map(n=>{ const f=document.createElement('figure'), c=document.createElement('canvas'); c.width=n*4; c.height=n*4; const cap=document.createElement('figcaption'); cap.textContent=n+' px, vierfach'; f.append(c,cap); spr.appendChild(f); return { n, c }; });
+    // the sprites at game size and larger: 16 to 128 pixels high; the small ones shown four times as large, the big ones three and two times
+    const TIMES={ 4:'vierfach', 3:'dreifach', 2:'doppelt' };
+    const spr=$('orkvSprites'), figs=[[16,4],[24,4],[32,4],[64,3],[128,2]].map(([n,m])=>{ const f=document.createElement('figure'), c=document.createElement('canvas'); c.width=n*m; c.height=n*m; const cap=document.createElement('figcaption'); cap.textContent=n+' px, '+TIMES[m]; f.append(c,cap); spr.appendChild(f); return { n, c }; });
     let last=performance.now(), spriteT=0, boilT=0, alive=true;
     const frame=now=>{ if(!alive||!root.isConnected){ alive=false; return; } requestAnimationFrame(frame);
       const dt=Math.min(0.05,(now-last)/1000); last=now;
@@ -185,8 +187,9 @@ const SvgOrkViewer=(()=>{
       const vec=opt.fx==='vector'||opt.fx==='boil'; svgEl.style.visibility=vec?'visible':'hidden'; cv.hidden=vec;
       if(vec){ out.draw(P); $('orkvRig').setAttribute('filter',opt.fx==='boil'?'url(#orkvBoil)':''); boilT+=dt; if(boilT>0.13){ boilT=0; turb.setAttribute('seed',1+Math.floor(Math.random()*90)); } }
       else {
-        const r=stage.getBoundingClientRect(), H=opt.res, k=H/80, small=document.createElement('canvas'); small.width=Math.round(192*k); small.height=H;
-        const g=small.getContext('2d'); OrkRig.canvas(g,P,k,small.width/2,H-8*k);
+        // the ork opt.res pixels high (as the sprites below), the stage around it in the same pixels
+        const r=stage.getBoundingClientRect(), k=opt.res/66, small=document.createElement('canvas'); small.width=Math.round(192*k); small.height=Math.round(80*k);
+        const g=small.getContext('2d'); OrkRig.canvas(g,P,k,small.width/2,small.height-8*k);
         let src=small;
         if(opt.fx!=='soft'){ const im=g.getImageData(0,0,small.width,small.height), d=im.data; for(let i=3;i<d.length;i+=4) d[i]=d[i]>110?255:0; g.putImageData(im,0,0); }
         if(opt.fx==='smooth') src=epx2(epx2(small));
