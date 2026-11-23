@@ -1,6 +1,7 @@
 // SVG rig (an experiment, user November 2026): the ork as a vector figure made of parts that move on their own: legs from the hip, the body,
 // the belly, belt and buckle, the head, the jaw with its tusks, the eyes (blinking, looking), the brows (mood), and the gear on them (helmet,
-// breastplate, shoulder plates, loincloth; a weapon floating beside it: creatures have no hands, what they hold is their hand).
+// breastplate, shoulder plates, loincloth), and, as a test (user, November 2026), two floating hands without arms that hold the weapon (switchable: without them the
+// weapon floats alone, as the game's style rule has it: creatures have no hands, what they hold is their hand).
 // A kit, not one drawing: two styles (classic, grim) share the parts and the motion and differ in shapes and colours; the proportions follow
 // values (cleverness: a bigger head, a smaller jaw; strength: a broader body; agility: longer legs, slimmer; savagery: longer tusks, darker brows),
 // and a seed rolls them with the skin's hue, a scar and the gear (deterministic: the same seed, the same ork).
@@ -41,6 +42,7 @@ const OrkRig=(()=>{
       pauldron:[[ell(-16.5,-33,5.5,3.6),'iron',1.8]], pauldronAt:[-16,-33], pauldronR:[[ell(16.5,-33,5.5,3.6),'iron',1.8]],
       cloth:[['M-5.5 -14 L5.5 -14 L6.5 -4.5 Q0 -2.5 -6.5 -4.5z','cloth',1.6]],
       axe:[['M23 -7 L25 -7 L25 -41 L23 -41z','wood',1.6],['M25 -40 Q34 -42 34 -32 Q34 -26 25 -28z','iron',1.6]],
+      fist:[[ell(17,-21,3.4,3.1),'skin',1.8],['M14.6 -22.2 q2.4 -1.6 4.8 0',null,1.2,'dark'],['M15.2 -19.6 q1.8 1 3.6 0',null,1,'dark']],
       headY:0, legK:1
     },
     düster:{
@@ -63,9 +65,12 @@ const OrkRig=(()=>{
       pauldron:[['M-18 -35.5 L-11.5 -40.5 L-9 -34.5 L-13 -30 L-18.5 -31.5z','iron',1.6],['M-15.5 -38.5 L-21 -46 L-13 -39.5z','ironDark',1.2]], pauldronAt:[-14,-35],
       cloth:[['M-6 -13 L6 -13 L7 -3 L5 -5.5 L3 -1.5 L1 -4.5 L-1 -0.5 L-3 -4.5 L-5 -1.5 L-7 -4.5z','cloth',1.4]],
       axe:[['M23 -5 L24.6 -5 L24.6 -44 L23 -44z','wood',1.4],['M24.6 -43 L35 -47 L33 -40 L36 -34 L33 -27 L24.6 -30z','iron',1.4],['M30 -44 L31 -41 M33 -33 L31.5 -31',null,1,'rust']],
+      fist:[['M13.6 -23.6 L19.6 -24.4 L21.2 -21 L19.6 -17.6 L14.4 -18 L13.2 -21z','iron',1.5],['M14.8 -23.8 L15.4 -26.6 L16.5 -23.9 M17.9 -24.2 L18.7 -26.9 L19.5 -24.3',null,1.2,'ironDark'],['M14.6 -21 L19.8 -21',null,1,'ironDark']],
       headY:1.6, legK:1.15
     }
   };
+  // where each weapon is held (its grip, in the weapon's own coordinates)
+  const GRIP={ axe:[24,-15], club:[23.5,-12], sword:[24,-10] };
   const WEAPONS={
     club:[['M22 -6 L25 -6 L28.5 -37 Q24 -45 18.5 -37z','wood',1.6],['M19 -36 l-3 -1 M28 -36 l3 -1 M20.5 -30 l-3 0 M27 -30 l3 0',null,1.4,'ironDark']],
     sword:[['M23.2 -15 L24.8 -15 L24.8 -45 L24 -48 L23.2 -45z','iron',1.3],['M19.5 -15 L28.5 -15 L28.5 -13 L19.5 -13z','ironDark',1.2],['M23.2 -13 L24.8 -13 L24.8 -7 L23.2 -7z','wood',1]]
@@ -75,9 +80,9 @@ const OrkRig=(()=>{
   function roll(seed,style){
     const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)];
     return { style:style||pick(['klassisch','düster']), traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*22, scar:r()<0.4,
-      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none','axe','club','sword']) }, seed };
+      gear:{ helmet:r()<0.5, chest:r()<0.5, pauldrons:r()<0.45, cloth:r()<0.6, weapon:pick(['none','axe','club','sword']), hands:true }, seed };
   }
-  const DEFAULT={ style:'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:true, gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:'axe' } };
+  const DEFAULT={ style:'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:true, gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:'axe', hands:true } };
   // colours: the style's, the skin turned by the hue shift
   function hueShift(hex,deg){
     if(!deg||hex[0]!=='#') return hex; const n=parseInt(hex.slice(1),16); let r=(n>>16&255)/255, g=(n>>8&255)/255, b=(n&255)/255;
@@ -113,21 +118,25 @@ const OrkRig=(()=>{
       G.pauldrons?P('pauldronL',S.pauldronAt,S.pauldron):null, G.pauldrons?P('pauldronR',[-S.pauldronAt[0],S.pauldronAt[1]],S.pauldronR||mirrorShapes(S.pauldron)):null,
       P('head',[0,-37],[],headKids)
     ].filter(Boolean);
-    const weapon=G.weapon&&G.weapon!=='none'?P('weapon',[24,-22],G.weapon==='axe'?S.axe:WEAPONS[G.weapon]):null;
-    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow),P('legL',[-7,-12],S.leg),P('legR',[7,-12],mirrorShapes(S.leg)),P('body',[0,-12],S.body,bodyKids),weapon].filter(Boolean));
+    // the weapon: held by the right hand (its grip in the fist, the fist drawn over the haft), or, without hands, floating beside the ork
+    const hands=G.hands!==false, wShapes=G.weapon&&G.weapon!=='none'?(G.weapon==='axe'?S.axe:WEAPONS[G.weapon]):null, grip=GRIP[G.weapon]||[24,-16];
+    const weapon=wShapes?P('weapon',hands?grip:[24,-22],wShapes):null;
+    const handKids=hands?[P('handL',[-17,-21],[],[P('fistL',[-17,-21],mirrorShapes(S.fist))]),P('handR',[17,-21],[],[weapon,P('fistR',[17,-21],S.fist)].filter(Boolean))]:[weapon].filter(Boolean);
+    const tree=P('root',[0,0],[],[P('shadow',[0,0],S.shadow),P('legL',[-7,-12],S.leg),P('legR',[7,-12],mirrorShapes(S.leg)),P('body',[0,-12],S.body,bodyKids)].concat(handKids));
     // the values as proportions
     const ls=(0.85+0.45*t.flink)*S.legK, bw=(0.85+0.4*t.stark)*(1.1-0.2*t.flink), hs=0.85+0.45*t.klug, js=1.15-0.35*t.klug, ts=0.6+0.9*t.wild, ps=0.8+0.4*t.stark, lift=-(12*ls-12);
     const base={
       shadow:{ sx:bw }, legL:{ x:-(bw-1)*5, y:lift, sy:ls }, legR:{ x:(bw-1)*5, y:lift, sy:ls }, body:{ y:lift, sx:bw },
       head:{ y:S.headY, sx:hs/bw, sy:hs }, jaw:{ sx:js, sy:js }, tuskL:{ sy:ts }, tuskR:{ sy:ts }, pauldronL:{ sx:ps, sy:ps }, pauldronR:{ sx:ps, sy:ps },
-      weapon:{ x:(bw-1)*16, y:lift }
+      handL:{ x:-(bw-1)*18-3, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*18+3, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
+      weapon:hands?{ x:17-grip[0], y:-21-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
     };
-    return { tree, base, pal, spec, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
+    return { tree, base, pal, spec, hands, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
   const TURN={ skull:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
   // the parts pulled apart (the "parts" view): where each one drifts
-  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], weapon:[10,0] };
+  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4] };
   const MOODS={ ruhig:[0,0], wütend:[16,0.6], überrascht:[-8,-2.2], traurig:[-16,-0.4] };       // brow turn (degrees, inner end down), brow lift
   // the state of the animation
   function create(){ return { t:0, x:0, dir:1, wait:0.8, walking:false, phase:0, turn:0, blink:0, nextBlink:1.5, twice:false, look:[0,0], roar:0, mood:'ruhig', moodK:[0,0], explode:0 }; }
@@ -163,12 +172,15 @@ const OrkRig=(()=>{
     put('jaw',{ x:turnOf('jaw'), y:3.2*roar });
     put('belly',{ x:turnOf('belly') }); put('chest',{ x:turnOf('chest') }); put('buckle',{ x:turnOf('buckle') });
     put('cloth',{ x:turnOf('cloth'), r:Math.sin(w)*6*walkK+Math.sin(s.t*1.7)*1.5 });
-    put('weapon',{ x:-s.turn, y:Math.sin(s.t*2)*0.8-Math.abs(Math.sin(w))*0.6*walkK, r:Math.sin(s.t*1.3)*4-roar*40 });
+    // the floating hands: they swing against each other while it walks (as arms would), bob a little behind the body, go up when it roars
+    put('handL',{ x:s.turn*1.2-0.6*Math.sin(w)*walkK, y:1.6*Math.sin(w)*walkK-1.1*Math.abs(Math.sin(w+0.7))*walkK+Math.sin(s.t*2+1)*0.6-6*roar, r:-8*Math.sin(w)*walkK+12*roar });
+    put('handR',{ x:s.turn*1.2+0.6*Math.sin(w)*walkK-2*roar, y:-1.6*Math.sin(w)*walkK-1.1*Math.abs(Math.sin(w+0.7))*walkK+Math.sin(s.t*2)*0.6-9*roar, r:8*Math.sin(w)*walkK-14*roar });
+    put('weapon',rig.hands?{ r:Math.sin(s.t*1.3)*3-roar*48 }:{ x:-s.turn, y:Math.sin(s.t*2)*0.8-Math.abs(Math.sin(w))*0.6*walkK, r:Math.sin(s.t*1.3)*4-roar*40 });
     const closed=s.blink>0?1:0, k=rig.lookK||1;
     ['L','R'].forEach(sd=>{ put('eye'+sd,{ x:turnOf('eye'+sd), sy:1-0.9*closed+(roar?0.15:0) }); put('pupil'+sd,{ x:s.look[0]*k, y:s.look[1]*k*0.6, a:closed?0:1 }); put('lid'+sd,{ x:turnOf('lid'+sd), a:closed }); });
     put('browL',{ x:turnOf('browL'), y:s.moodK[1], r:s.moodK[0]+rig.browBase }); put('browR',{ x:turnOf('browR'), y:s.moodK[1], r:-s.moodK[0]-rig.browBase });
     // the resting transform of the values, then the parts view on top
-    Object.keys(rig.base).forEach(id=>{ const b=rig.base[id]; if(!P[id]) put(id,{}); const v=P[id]; v.x+=b.x||0; v.y+=b.y||0; v.sx*=b.sx||1; v.sy*=b.sy||1; });
+    Object.keys(rig.base).forEach(id=>{ const b=rig.base[id]; if(!P[id]) put(id,{}); const v=P[id]; v.x+=b.x||0; v.y+=b.y||0; v.r+=b.r||0; v.sx*=b.sx||1; v.sy*=b.sy||1; });
     if(s.explode>0.001) Object.keys(EXPLODE).forEach(id=>{ if(P[id]){ P[id].x+=EXPLODE[id][0]*s.explode; P[id].y+=EXPLODE[id][1]*s.explode; } });
     return P;
   }
@@ -206,6 +218,7 @@ const SvgOrkViewer=(()=>{
    linear-gradient(#1a130f 0 58%,#3a2c22 58% 59%,#4a3a30 59%,#30241c 100%) }
 .orkv-stage svg,.orkv-stage canvas{ position:absolute; inset:0; width:100%; height:100%; display:block }
 .orkv-stage canvas{ image-rendering:pixelated }
+.orkv-stage canvas[hidden]{ display:none }
 .orkv-row{ display:flex; flex-wrap:wrap; gap:8px 10px; align-items:center }
 .orkv-row label,.orkv-group{ color:var(--mute); font-size:12px; letter-spacing:0.04em; text-transform:uppercase }
 .orkv-slider{ display:flex; align-items:center; gap:6px; color:var(--ink); font-size:13px; text-transform:none; letter-spacing:0 }
@@ -257,7 +270,7 @@ const SvgOrkViewer=(()=>{
 <div class="orkv-row"><span class="orkv-group">Werte</span>${TRAITS.map(([k,n,what])=>`<label class="orkv-slider" for="orkvT_${k}">${n} <small>(${what})</small><input type="range" id="orkvT_${k}" min="0" max="100" value="50"></label>`).join('')}</div>
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
   <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"><option value="none">keine</option><option value="axe">Axt</option><option value="club">Keule</option><option value="sword">Schwert</option></select>
-  <button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvScar" aria-pressed="false">Narbe</button>
+  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvScar" aria-pressed="false">Narbe</button>
 </div>
 <div class="orkv-row">
   <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(OrkRig.MOODS).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
@@ -265,19 +278,20 @@ const SvgOrkViewer=(()=>{
   <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32">32 px</option><option value="48" selected>48 px</option><option value="64">64 px</option><option value="128">128 px</option></select>
 </div>
 <div class="orkv-sprites" id="orkvSprites" aria-label="Der Ork als Sprite von 16 bis 128 Pixeln"></div>
-<p class="orkv-note">Ein Baukasten statt einer Zeichnung: zwei Stile mit denselben Teilen und Bewegungen. Die Werte formen den Körper (Klugheit: größerer Kopf und kleinerer Kiefer, Stärke: breiter, Gewandtheit: längere Beine und schlanker, Wildheit: längere Hauer und finsterere Brauen). „Würfeln“ zieht aus einem Seed Stil, Werte, Hautton, Narbe und Ausrüstung. Die Ausrüstung hängt an den Körperteilen und macht jede Bewegung mit; die Waffe schwebt daneben. Unten derselbe Ork als Sprite, in der gewählten Nachbearbeitung.</p>`;
+<p class="orkv-note">Ein Baukasten statt einer Zeichnung: zwei Stile mit denselben Teilen und Bewegungen. Die Werte formen den Körper (Klugheit: größerer Kopf und kleinerer Kiefer, Stärke: breiter, Gewandtheit: längere Beine und schlanker, Wildheit: längere Hauer und finsterere Brauen). „Würfeln“ zieht aus einem Seed Stil, Werte, Hautton, Narbe und Ausrüstung. Die Ausrüstung hängt an den Körperteilen und macht jede Bewegung mit. Die Hände schweben ohne Arme neben dem Körper und halten die Waffe; ohne Hände schwebt die Waffe allein. Unten derselbe Ork als Sprite, in der gewählten Nachbearbeitung.</p>`;
     const $=id=>root.querySelector('#'+id), stage=$('orkvStage'), svgEl=$('orkvSvg'), cv=$('orkvCanvas'), turb=$('orkvTurb');
     let spec=JSON.parse(JSON.stringify(OrkRig.DEFAULT)), rig, out;
     const s=OrkRig.create(), opt={ walk:true, mouse:null, followMouse:false, explode:false, fx:'smooth', res:48 };
     // the controls show the spec; a change rebuilds the rig
     const show=()=>{ $('orkvStyle').value=spec.style; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
-      ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
+      ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     const rebuild=()=>{ rig=OrkRig.build(spec); out=OrkRig.svg($('orkvRig'),rig); show(); };
     rebuild();
     $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; rebuild(); });
     TRAITS.forEach(([k])=>$('orkvT_'+k).addEventListener('input',e=>{ spec.traits[k]=e.target.value/100; rebuild(); }));
     $('orkvWeapon').addEventListener('change',e=>{ spec.gear.weapon=e.target.value; rebuild(); });
     ['helmet','chest','pauldrons','cloth'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=!spec.gear[k]; rebuild(); }));
+    $('orkvG_hands').addEventListener('click',()=>{ spec.gear.hands=spec.gear.hands===false; rebuild(); });
     $('orkvScar').addEventListener('click',()=>{ spec.scar=!spec.scar; rebuild(); });
     $('orkvRoll').addEventListener('click',()=>{ spec=OrkRig.roll(Math.floor(Math.random()*1e9)); rebuild(); });
     const toggle=(id,key)=>{ const b=$(id); b.addEventListener('click',()=>{ opt[key]=!opt[key]; b.setAttribute('aria-pressed',opt[key]); if(key==='followMouse'&&!opt[key]) opt.mouse=null; }); };
