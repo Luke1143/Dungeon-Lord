@@ -118,7 +118,38 @@ const SvgRig=(()=>{
       lid:[['M-6.2 -35.6 q2.6 1.4 5.2 0',null,1.3,'line']], brow:[['M-6.6 -39.6 L-1.2 -38.2 L-1.4 -39.4 L-6.2 -41.2z','brow',0]], browAt:[-3.9,-39.5],
       ear:[['M-7.4 -39.2 Q-12.5 -42.4 -17.2 -40 Q-17.8 -37.4 -15 -35.8 Q-11 -34.6 -7.6 -34.4z','skin',1.4],['M-8.6 -38.2 Q-12.4 -40.4 -15.6 -38.8 Q-13.4 -36.6 -8.8 -35.8z','dark',0]], earAt:[-7.6,-36.8], earGrow:true,
       horn:null, look:{ ears:true, horns:false },
-      scar:null, mouth:[], jaw:[], headY:5.5 }); PAL.imp.bestie=PAL.imp.düster; }
+      scar:null, mouth:[], jaw:[], headY:5.5 }); PAL.imp.bestie=PAL.imp.düster;
+    // the pointed ear of the earlier draft in two pieces, root and tip, joined at a kink: up to level 6 it grows out, then it sags and the tip folds down
+    const earRoot=[['M-9.6 -38.4 L-14.2 -40.6 L-14.5 -38 L-10.2 -32.6z','skin',1.4],['M-10.6 -37.4 L-13.6 -39.1 L-13.7 -37.6 L-10.8 -34.4z','dark',0]];
+    const earTip=[['M-14.2 -40.6 L-18 -42.4 L-14.5 -38z','skin',1.4],['M-14.6 -39.8 L-16.4 -41.2 L-14.8 -38.8z','dark',0]];
+    const kinked=(dx,dy)=>({ ear:mv(earRoot,dx,dy), earTip:mv(earTip,dx,dy), earAt:[-9.9+dx,-35.5+dy], kinkAt:[-14.35+dx,-39.3+dy], earGrow:'kink' });
+    Object.assign(SHAPES.imp.bestie,kinked(2.2,-0.6));
+    const B=SHAPES.imp.bestie;
+    // the wretch: gaunt, long thin legs, a big head with huge eyes, ashen, the eyes glowing cold
+    SHAPES.imp.wicht=Object.assign({},B,{
+      leg:[['M-5 -10 L-4.6 -3 L-6 0 L-2.6 0 L-3.2 -3 L-3 -10z','leg',1.3],['M-6.4 0 l0.8 -1.4 M-4.6 0 l0.5 -1.6 M-3 0 l0.4 -1.4',null,0.9,'bone']], hip:[-4,-10], legK:1.4,
+      body:[['M-5.6 -10 Q-7.6 -18 -6 -23.6 Q0 -26.2 6 -23.6 Q7.6 -18 5.6 -10 Q0 -8.4 -5.6 -10z','skin',1.4],['M-4.4 -21 l2.6 0.7 M-4.4 -18.4 l2.6 0.7 M-4.4 -15.8 l2.6 0.7 M4.4 -21 l-2.6 0.7 M4.4 -18.4 l-2.6 0.7 M4.4 -15.8 l-2.6 0.7',null,0.9,'dark']],
+      belly:[], belt:[['M-6 -11.8 Q0 -9.8 6 -11.8',null,1.4,'belt']], buckle:[[ell(-3,-10.6,1.6,1.4),'leather',1]],
+      neck:[0,-26], skull:[['M-9.4 -37 C-10 -46.6 -5 -49.6 0 -49.6 C5 -49.6 10 -46.6 9.4 -37 C8.8 -31 4.2 -27.8 0 -27 C-4.2 -27.8 -8.8 -31 -9.4 -37z','skin',1.5],['M4 -49 C8 -47.6 10 -44 9.4 -37 C8.8 -31 4.2 -27.8 0 -27 C3.6 -30.4 6.2 -33.6 6.4 -38.6 C6.6 -43.4 5.6 -46.8 4 -49z','shade',0]],
+      eye:[[ell(-4.2,-37.6,3.8,4.4),'socket',0]], eyeAt:[-4.2,-37.6], pupil:[[ell(-3.8,-37,2.3,2.3),'glow',0],[ell(-3.8,-37,1.1,1.1),'eye',0]], pupilIn:0.4, lookK:1.2,
+      lid:[['M-7.6 -37.6 q3.4 1.6 6.8 0',null,1.3,'line']], brow:[['M-7.8 -42.6 L-1.4 -41 L-1.6 -42.2 L-7.4 -44.2z','brow',0]], browAt:[-4.6,-42.4],
+      handAt:[10.5,-17], headY:2.5, H:54 }, kinked(1,-2.2));
+    PAL.imp.wicht=Object.assign({},PAL.imp.düster,{ skin:'#5a3a34', light:'#6e4a42', dark:'#2a1714', leg:'#4e322d', brow:'#1a0d0b', eye:'#c4f4ff', glow:'rgba(120,220,255,0.5)', socket:'#05070a' });
+    // the lump: one round body with the head sunk deep into it, stubby legs, huge eyes
+    SHAPES.imp.knolle=Object.assign({},B,{
+      leg:[['M-6.4 -7 L-6.6 -1.4 L-7.6 0 L-2.6 0 L-3 -1.4 L-3 -7z','leg',1.4],['M-7.8 0 l0.8 -1.4 M-5.4 0 l0.5 -1.5 M-3.2 0 l0.4 -1.3',null,1,'bone']], hip:[-4.8,-7], legK:1,
+      body:[['M-11.6 -8 Q-13.6 -20 -8.4 -27.4 Q0 -31.6 8.4 -27.4 Q13.6 -20 11.6 -8 Q0 -4.6 -11.6 -8z','skin',1.6],['M4 -30 Q10 -27 12 -20 Q12.6 -12 11 -8 Q8 -6.4 5.4 -6.2 Q9.6 -16 4 -30z','shade',0]],
+      belly:[['M-6 -17 Q0 -11.6 6 -17 Q5 -9.4 0 -8.6 Q-5 -9.4 -6 -17z','light',0]], belt:[['M-11.4 -10.6 Q0 -7.4 11.4 -10.6',null,1.6,'belt']], buckle:[[ell(-5.4,-8.8,1.9,1.7),'leather',1.1]],
+      neck:[0,-24], skull:[['M-9.8 -32 C-10.4 -40.6 -5.2 -43 0 -43 C5.2 -43 10.4 -40.6 9.8 -32 C9.4 -27 5.2 -24.6 0 -24.6 C-5.2 -24.6 -9.4 -27 -9.8 -32z','skin',1.6],['M4 -42.4 C8.6 -41 10.4 -37.6 9.8 -32 C9.4 -27 5.2 -24.6 0.6 -24.6 C5.6 -27.6 7 -31 7 -35 C7 -38.6 5.8 -41 4 -42.4z','shade',0]],
+      eye:[[ell(-4.2,-33.8,3.9,4.2),'socket',0]], eyeAt:[-4.2,-33.8], pupil:[[ell(-3.9,-33.2,2.2,2.2),'glow',0],[ell(-3.9,-33.2,1.1,1.1),'eye',0]], pupilIn:0.4, lookK:1.1,
+      lid:[['M-7.8 -33.8 q3.6 1.6 7.2 0',null,1.3,'line']], brow:[['M-8 -38.6 L-1.6 -37.2 L-1.8 -38.4 L-7.6 -40.2z','brow',0]], browAt:[-4.8,-38.4],
+      handAt:[14.5,-14], headY:7, H:46 }, kinked(1.6,2.4));
+    PAL.imp.knolle=Object.assign({},PAL.imp.düster,{ skin:'#8c3a1c', light:'#a8522a', dark:'#46160a' });
+    // the shade: near black with an ember rim; only the eyes glow, strongly
+    SHAPES.imp.schatten=Object.assign({},B);
+    PAL.imp.schatten=Object.assign({},PAL.imp.düster,{ skin:'#1c1416', light:'#261c1e', dark:'#0c0808', leg:'#181012', brow:'#000000', line:'#3c1a0c', socket:'#000000', eye:'#ffd060', glow:'rgba(255,110,20,0.6)', shade:'rgba(0,0,0,0.25)' });
+    ['wicht','knolle','schatten'].forEach(k=>{ SHAPES.imp[k].look={ ears:true, horns:false }; });
+    SHAPES.imp.bestie.look={ ears:true, horns:false }; }
   // tools and weapons any kind can hold (the ork's axe is its own, per style)
   const WEAPONS={
     club:[['M22 -6 L25 -6 L28.5 -37 Q24 -45 18.5 -37z','wood',1.6],['M19 -36 l-3 -1 M28 -36 l3 -1 M20.5 -30 l-3 0 M27 -30 l3 0',null,1.4,'ironDark']],
@@ -137,7 +168,7 @@ const SvgRig=(()=>{
   }
   function defaults(kind){
     const S=SHAPES[kind]&&SHAPES[kind].düster;
-    return { kind, style:'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:kind!=='imp', gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:S?S.weapon:'none', hands:true, load:'gold' } };
+    return { kind, style:kind==='imp'?'bestie':'düster', traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:kind!=='imp', gear:{ helmet:true, chest:false, pauldrons:true, cloth:true, weapon:S?S.weapon:'none', hands:true, load:'gold' } };
   }
   // colours: the kind's and style's, the skin turned by the hue shift
   function hueShift(hex,deg){
@@ -159,10 +190,11 @@ const SvgRig=(()=>{
     const mirrorShapes=sh=>sh.map(([d,f,w,st])=>[mirror(d),f,w,st]);
     const shiftX=(sh,dx)=>sh.map(([d,f,w,st])=>[d.replace(/^M(-?[\d.]+)/,(m0,x)=>'M'+(parseFloat(x)+dx).toFixed(2)),f,w,st]);       // ellipses moved over keep their shape
     const ex=S.eyeAt, br=S.browAt, R=v=>[-v[0],v[1]], look=S.look||{}, ears=G.ears!==undefined?G.ears:look.ears!==false, horns=G.horns!==undefined?G.horns:look.horns!==false;
-    const lvl=Math.max(1,Math.min(12,spec.level||1)), hornK=0.5+0.1*(lvl-1), earK=S.earGrow?(lvl-1)/11:0;       // earK: how far the ears have grown (0 at level 1, 1 at 12)       // the horns grow with the level: half size at 1, half again as long at 11
+    const lvl=Math.max(1,Math.min(12,spec.level||1)), hornK=0.5+0.1*(lvl-1), earK=S.earGrow?(lvl-1)/11:0;       // earK: how far the ears have grown (0 at level 1, 1 at 12)
+    const grow=Math.min(1,(lvl-1)/5), sag=Math.max(0,(lvl-6)/6);       // kinked ears: out until level 6, then down       // the horns grow with the level: half size at 1, half again as long at 11
     const headKids=[
       P('skull',[0,S.neck[1]-4],S.skull,[spec.scar&&S.scar?P('scar',[0,S.neck[1]-7],S.scar):null,
-        ears&&S.ear?P('earL',S.earAt,S.ear):null, ears&&S.ear?P('earR',R(S.earAt),mirrorShapes(S.ear)):null,
+        ears&&S.ear?P('earL',S.earAt,S.ear,S.earTip?[P('earTipL',S.kinkAt,S.earTip)]:[]):null, ears&&S.ear?P('earR',R(S.earAt),mirrorShapes(S.ear),S.earTip?[P('earTipR',R(S.kinkAt),mirrorShapes(S.earTip))]:[]):null,
         horns&&S.horn?P('hornL',S.hornAt,S.horn):null, horns&&S.horn?P('hornR',R(S.hornAt),mirrorShapes(S.horn)):null]),
       G.helmet&&S.helmet?P('helmet',[0,S.neck[1]-8],S.helmet):null,
       P('mouth',S.mouthAt,S.mouth),
@@ -193,17 +225,19 @@ const SvgRig=(()=>{
       shadow:{ sx:bw }, legL:{ x:-(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, legR:{ x:(bw-1)*Math.abs(S.hip[0])*0.7, y:lift, sy:ls }, body:{ y:lift, sx:bw },
       head:{ y:S.headY, sx:hs/bw, sy:hs }, jaw:{ sx:js, sy:js }, tuskL:{ sy:ts }, tuskR:{ sy:ts }, pauldronL:{ sx:ps, sy:ps }, pauldronR:{ sx:ps, sy:ps },
       sack:{ y:lift }, tail:{ y:lift },
-      earL:S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:-68*earK }:{}, earR:S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:68*earK }:{},       // longer, broader, and hanging lower
+      earL:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:-30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:-68*earK }:{}),
+      earR:S.earGrow==='kink'?{ sx:0.45+0.55*grow+0.15*sag, sy:0.55+0.45*grow+0.1*sag, r:30*sag }:(S.earGrow?{ sx:0.7+earK, sy:0.8+0.5*earK, r:68*earK }:{}),       // longer, broader, and hanging lower
+      earTipL:{ sx:1+0.35*sag, r:-100*sag }, earTipR:{ sx:1+0.35*sag, r:100*sag },       // the tip folds at the kink
       hornL:{ sx:0.8+0.04*lvl, sy:hornK }, hornR:{ sx:0.8+0.04*lvl, sy:hornK },
       handL:{ x:-(bw-1)*half-S.handGap, y:lift, sx:1.15, sy:1.15 }, handR:{ x:(bw-1)*half+S.handGap, y:lift, sx:1.15, sy:1.15 },       // a gap between body and hand: they float
       weapon:hands?{ x:ha[0]-grip[0], y:ha[1]-grip[1], r:12 }:{ x:(bw-1)*16-5, y:lift }
     };
-    return { tree, base, pal, spec, hands, earHeavy:earK, H:S.H, px:S.px||48, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack, ears:!!S.ear, horns:!!S.horn, level:!!(S.horn||S.earGrow) }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
+    return { tree, base, pal, spec, hands, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px||48, has:{ helmet:!!S.helmet, chest:!!S.chest, pauldrons:!!S.pauldron, load:!!S.sack, ears:!!S.ear, horns:!!S.horn, level:!!(S.horn||S.earGrow) }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
   const TURN={ skull:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
   // the parts pulled apart (the "parts" view): where each one drifts
-  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4], earL:[-6,-2], earR:[6,-2], hornL:[-3,-6], hornR:[3,-6], tail:[8,2], sack:[-8,-4] };
+  const EXPLODE={ legL:[-6,6], legR:[6,6], belly:[0,4], belt:[0,7], buckle:[0,11], cloth:[0,14], chest:[0,-4], head:[0,-10], skull:[0,-5], helmet:[0,-14], jaw:[0,7], mouth:[0,3], eyeL:[-5,-3], eyeR:[5,-3], lidL:[-5,-3], lidR:[5,-3], browL:[-7,-8], browR:[7,-8], pupilL:[-1.5,0], pupilR:[1.5,0], pauldronL:[-9,-4], pauldronR:[9,-4], handL:[-9,2], handR:[9,2], weapon:[6,-4], earL:[-6,-2], earR:[6,-2], earTipL:[-3,0], earTipR:[3,0], hornL:[-3,-6], hornR:[3,-6], tail:[8,2], sack:[-8,-4] };
   const MOODS={ ruhig:[0,0], wütend:[16,0.6], überrascht:[-8,-2.2], traurig:[-16,-0.4] };       // brow turn (degrees, inner end down), brow lift
   // the state of the animation
   function create(){ return { t:0, x:0, dir:1, wait:0.8, walking:false, phase:0, turn:0, blink:0, nextBlink:1.5, twice:false, look:[0,0], roar:0, mood:'ruhig', moodK:[0,0], explode:0 }; }
@@ -242,7 +276,8 @@ const SvgRig=(()=>{
     // the imp's own: ears that twitch now and then, a tail that lashes, the sack that bounces on the back
     const twitch=Math.max(0,Math.sin(s.t*0.9))**12;
     const hv=rig.earHeavy||0, light=1-0.8*hv, flop=hv*(s.walking?Math.sin(w-0.9)*11:Math.sin(s.t*1.4)*2.5);       // light ears twitch, heavy ones swing after each step
-    put('earL',{ r:(-3*Math.sin(s.t*1.1)-14*twitch+6*roar)*light-flop }); put('earR',{ r:(3*Math.sin(s.t*1.1)+14*twitch-6*roar)*light+flop });
+    put('earL',{ r:(-3*Math.sin(s.t*1.1)-14*twitch+6*roar)*light-flop*0.5 }); put('earR',{ r:(3*Math.sin(s.t*1.1)+14*twitch-6*roar)*light+flop*0.5 });
+    put('earTipL',{ r:-flop*1.4 }); put('earTipR',{ r:flop*1.4 });
     put('tail',{ r:Math.sin(s.t*2.3)*9+Math.sin(w)*6*walkK+roar*Math.sin(s.t*30)*6 });
     put('sack',{ y:-1.1*Math.abs(Math.sin(w-0.4))+0.3*breath, r:-2*Math.sin(w)*walkK });
     // the floating hands: they swing against each other while it walks (as arms would), bob a little behind the body, go up when it roars
@@ -320,8 +355,9 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
+  const KIND_NAME={ ork:'Ork', imp:'Imp' }, STYLE_NAME={ düster:'Düster', klassisch:'Klassisch', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', schatten:'Schatten' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke' };
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Breite'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
+  let lastViewer=null;       // the viewer opened last (tests hold its blinking)
   function open(host){
     if(!document.getElementById('orkv-css')){ const st=document.createElement('style'); st.id='orkv-css'; st.textContent=CSS; document.head.appendChild(st); }
     const root=document.createElement('div'); root.className='orkv'; host.appendChild(root);
@@ -417,7 +453,7 @@ const SvgOrkViewer=(()=>{
           const g=f.c.getContext('2d'); g.imageSmoothingEnabled=smooth; g.clearRect(0,0,f.c.width,f.c.height); g.drawImage(sp,0,0,f.c.width,f.c.height); }); }
     };
     requestAnimationFrame(frame);
-    return { close(){ alive=false; root.remove(); }, state:s, opt, get spec(){ return spec; } };
+    return lastViewer={ close(){ alive=false; root.remove(); }, state:s, opt, get spec(){ return spec; } };
   }
   // in the game (where View3D exists): "#svgork" opens it over everything
   function overlay(){
@@ -428,5 +464,5 @@ const SvgOrkViewer=(()=>{
     close.onclick=()=>{ v.close(); host.remove(); if(location.hash==='#svgork') history.replaceState(null,'',location.pathname); };
   }
   if(typeof window!=='undefined'&&typeof View3D!=='undefined'){ const maybe=()=>{ if(location.hash==='#svgork') overlay(); }; window.addEventListener('hashchange',maybe); window.addEventListener('load',()=>setTimeout(maybe,300)); }
-  return { open, overlay };
+  return { open, overlay, get last(){ return lastViewer; } };
 })();
