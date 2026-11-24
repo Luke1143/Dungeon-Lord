@@ -1,6 +1,6 @@
 // SVG figures in the game (user, November 2026: the game moves to figures built from moving parts, svg-rig.js; the pixel sprites stay as legacy).
 // This adapter turns a creature of the game into a picture of its rig, for the 2D board and the 3D view alike (drawCreatureSprite in index.html).
-// The kinds so far: the imp and the ork (one body plan for every humanoid, svg-rig.js).
+// The kinds so far: the imp, the ork, the goblin, the troll, the dark elf, the vampire, the warlock and the skeleton (one body plan for every humanoid, svg-rig.js).
 //   - its look: genes rolled from its kind and id (the same creature looks the same forever), its level (the imp's ears), its scars (one per knock-out),
 //     its stats (strength: the shoulders, from the strength it was born with and growing with every level; agility: the legs),
 //     what it carries (the imp: gold or ore in the sack, the pick in its hand; the ork: the weapon, shield and armour it wears, in their material);
@@ -11,13 +11,13 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 } };       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:48, cells:1.5 } };       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
   function baseSpec(c){
     let b=bases.get(c); if(b) return b;
     b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,c.kind);
-    b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, ears:true, cloth:b.gear.cloth }:{ hands:true, cloth:true }; b.shadow=false;       // the imps work: no armour; the others wear what they wear
+    b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, ears:true, cloth:b.gear.cloth }:{ hands:true, cloth:SvgRig.defaults(c.kind).gear.cloth }; b.shadow=false;       // the imps work: no armour; the others wear what they wear
     bases.set(c,b); return b;
   }
   // what it wears and carries: the imp its load; the others the game's look of their gear (equipLook in index.html: weapon, shield, armour weight, material, helmet form)

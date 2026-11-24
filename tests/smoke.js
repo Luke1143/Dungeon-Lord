@@ -14,6 +14,7 @@ const { open, finish }=require('./lib');
     const a=SvgFigures.canvasFor(m,Date.now(),true,'gold','back',0), b=SvgFigures.canvasFor(m,Date.now(),false,null,'front',0);
     if(!a._svg||!b._svg||a===b) return 'imp pictures wrong';
     setView3d(false); draw(); setOption('figures','pixel'); draw(); setOption('figures','svg'); setView3d(true); await new Promise(r=>setTimeout(r,300));
+    for(const kind of Object.keys(SvgFigures.KINDS)){ if(!SvgFigures.active(kind)) return kind+' is no SVG figure'; const f={ kind, id:7, level:3 }, cv=SvgFigures.canvasFor(f,Date.now(),true,null,'back',0); if(!cv._svg) return kind+' picture wrong'; }       // every kind with a rig
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
   // one body plan for every humanoid (svg-rig.js): the gear lands on the right parts at any size, strength widens the shoulders much more than the hips;
@@ -38,7 +39,7 @@ const { open, finish }=require('./lib');
       // the breastplate: from the shoulders down to the waist, as broad as the body
       const ch=box(iron(rig,'chest')), bw=Math.max(...[0,1,2,3,4,5,6,7,8].map(i=>widthAt(bdP,ch[1]+0.5+(ch[3]-ch[1]-3)*i/8))), cw=ch[2]/bw; if(cw<0.95||cw>1.2) out.push(at+': breastplate '+cw.toFixed(2)+' of the body');
     }
-    for(const kind of SvgRig.KINDS){ const m=st=>{ const r=SvgRig.build({ kind, traits:{ klug:0.5, stark:st, flink:0.5, wild:0.5 }, gear }); return [-box(iron(r,'pauldronL'))[0],box(find(r.tree,'belt').shapes[0][0])[2]]; };
+    for(const kind of SvgRig.KINDS){ const m=st=>{ const r=SvgRig.build({ kind, traits:{ klug:0.5, stark:st, flink:0.5, wild:0.5 }, gear }); return [-box(iron(r,'pauldronL'))[0],-find(r.tree,'legL').pivot[0]]; };       // the hips: where the legs sit
       const a=m(0), b=m(1); if(b[0]/a[0]<b[1]/a[1]+0.3) out.push(kind+': strength widens the hips as much as the shoulders'); }
     const host=document.createElement('div'); document.body.appendChild(host); const v=SvgOrkViewer.open(host);
     for(const kind of SvgRig.KINDS){ const sel=host.querySelector('#orkvKind'); sel.value=kind; sel.dispatchEvent(new Event('change'));
