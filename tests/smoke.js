@@ -1,4 +1,4 @@
-// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; the imps as SVG figures; the hand pointer; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
+// Smoke test: menu, a campaign level (2D and 3D, 400 ticks; the imps and orks as SVG figures, the gear fitted to every humanoid; the hand pointer; every relief, picture effect and figure look compiles), an arena match in 3D with fog, a Ludus bout to the end, no missing translations.
 // Usage: NODE_PATH=$(npm root -g) node tests/smoke.js
 const { open, finish }=require('./lib');
 (async()=>{
@@ -59,6 +59,11 @@ const { open, finish }=require('./lib');
   if(shaderErr.length) problem+='shader: '+shaderErr[0]+'; ';
   await p.evaluate(()=>{ arenaStart({ teams:[{name:'A',groups:[arenaGroup('ork',2,3)]},{name:'B',groups:[arenaGroup('knight',2,3)]}], map:{layout:'ring',dims:'S',seed:'s',lava:1,water:1,crystal:0,near:1}, fog:true, batch:1 }); });
   await p.waitForTimeout(2000);
+  // the orks of the arena are SVG figures too: their gear from the game (equipLook), a blow swung by the hand, turned towards a target on the left
+  const orkFig=await p.evaluate(()=>{ const o=state.creatures.find(c=>c.kind==='ork'); if(!o) return 'no ork in the arena'; if(!SvgFigures.active('ork')) return 'the ork is no SVG figure';
+    const pose=Object.assign(poseOf('over',0.45),{ p:0.45, anim:{ motion:'over' } }), a=SvgFigures.canvasFor(o,Date.now(),false,equipLook(o),'front',0,pose,true), b=SvgFigures.canvasFor(o,Date.now(),false,equipLook(o),'front',0,null,false);
+    return a._svg&&a._cells>1&&a!==b?'':'ork pictures wrong'; });
+  if(orkFig) problem+=orkFig+'; ';
   const ludus=await p.evaluate(async()=>{
     arenaLeave(); await ludusOpen(); ludusNewRun('ork','Grom'); ludus.options=null; ludusScoutOpponent();
     for(let i=0;i<200&&!(ludus.options&&ludus.options.length);i++) await new Promise(r=>setTimeout(r,50));
