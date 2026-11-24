@@ -574,27 +574,18 @@ function makeView3D(){
   // ---- the Dungeon Lord's hand: the cursor in the 3D view (user, November 2026), a floating hand that casts light; the hardware pointer is hidden over the board ----
   let handAt=null, handSprite=null, handRing=null;
   const activeLights=[];       // the lights of this frame: the creatures' shadows fall away from them
-  function handCanvas(){
-    const c=document.createElement('canvas'); c.width=c.height=64; const g=c.getContext('2d');
-    const glow=g.createRadialGradient(32,30,4,32,30,30); glow.addColorStop(0,'rgba(200,166,255,0.55)'); glow.addColorStop(1,'rgba(200,166,255,0)'); g.fillStyle=glow; g.fillRect(0,0,64,64);
-    g.lineJoin='round'; g.lineCap='round'; g.strokeStyle='#0b0710'; g.lineWidth=2.4;
-    // a grim open hand seen from the back, fingers reaching down: the palm, four fingers, the thumb (the same hand as the creatures', only bigger)
-    const palm=new Path2D('M20 14 Q32 8 44 14 Q47 24 43 32 Q32 36 21 32 Q17 24 20 14z');
-    const fingers=[[23,32,21,47],[29,34,28.5,52],[35,34,36,51],[41,32,43,46]].map(([x1,y1,x2,y2])=>{ const p=new Path2D(); p.moveTo(x1,y1); p.lineTo(x2,y2); return p; });
-    const thumb=new Path2D('M20 22 Q12 26 11 34');
-    g.fillStyle='#4a3c58'; g.fill(palm); g.stroke(palm);
-    fingers.concat([thumb]).forEach(f=>{ g.lineWidth=6.2; g.strokeStyle='#0b0710'; g.stroke(f); g.lineWidth=3.8; g.strokeStyle='#5a4a6c'; g.stroke(f); });
-    g.fillStyle='#e8d8ff'; [[21,47],[28.5,52],[36,51],[43,46]].forEach(([x,y])=>{ g.beginPath(); g.arc(x,y,1.3,0,7); g.fill(); });       // glowing finger tips
-    g.strokeStyle='#2a2034'; g.lineWidth=1; g.beginPath(); g.moveTo(25,20); g.quadraticCurveTo(32,23,39,20); g.stroke();
-    return c;
-  }
-  function setHand(at){ handAt=at; }
+  // the hand is drawn by hand.js (HandArt), anew each frame (its claws move); ctx = { pose, color, press } from the game (what a click would do)
+  let handCtx={ pose:'idle', color:'#c8a6ff', press:0 }, handCv=null, handTex=null, handDrawn=0;
+  function setHand(at,ctx){ handAt=at; if(ctx) handCtx=ctx; }
   function placeHand(now){
-    if(!handSprite){ handSprite=new T.Sprite(new T.SpriteMaterial({ map:texOfCanvas(handCanvas()), transparent:true, depthTest:false })); handSprite.center.set(0.5,0.08); handSprite.renderOrder=10; scene.add(handSprite);
+    if(!handSprite){ handCv=document.createElement('canvas'); handCv.width=handCv.height=128; handTex=new T.CanvasTexture(handCv); handTex.colorSpace=T.SRGBColorSpace; handTex.magFilter=T.LinearFilter; handTex.minFilter=T.LinearFilter;
+      handSprite=new T.Sprite(new T.SpriteMaterial({ map:handTex, transparent:true, depthTest:false })); handSprite.center.set(0.35,0.88);       // the index claw's tip (hand.js) on the point handSprite.renderOrder=10; scene.add(handSprite);
       const geo=new T.RingGeometry(0.16,0.24,24); geo.rotateX(-Math.PI/2); handRing=new T.Mesh(geo,new T.MeshBasicMaterial({ color:0xc8a6ff, transparent:true, opacity:0.55, depthWrite:false })); scene.add(handRing); }
     const on=!!handAt&&!fp; handSprite.visible=on; handRing.visible=on; if(!on) return;
-    const bob=Math.sin(now/320)*0.05; handSprite.position.set(handAt.x,handAt.y+0.42+bob,handAt.z); handSprite.scale.set(0.62,0.62,1);
-    handRing.position.set(handAt.x,handAt.y+0.04,handAt.z); handRing.scale.setScalar(1+0.12*Math.sin(now/260));
+    if(now-handDrawn>30&&typeof HandArt!=='undefined'){ handDrawn=now; HandArt.draw(handCv.getContext('2d'),128,{ pose:handCtx.pose, color:handCtx.color, press:handCtx.press, t:now/1000 }); handTex.needsUpdate=true; }
+    if(typeof HandArt!=='undefined') handSprite.center.set(HandArt.tip.x,1-HandArt.tip.y);
+    handSprite.position.set(handAt.x,handAt.y+0.12+Math.sin(now/320)*0.03,handAt.z); handSprite.scale.set(0.95,0.95,1);
+    handRing.material.color.set(handCtx.color); handRing.position.set(handAt.x,handAt.y+0.04,handAt.z); handRing.scale.setScalar((1+0.12*Math.sin(now/260))*(1-0.25*(handCtx.press||0)));
   }
   // where the pointer meets the dungeon: the top of a wall, or the floor
   function pickPoint(px,py){
@@ -625,7 +616,7 @@ function makeView3D(){
     cand.forEach(({it},i)=>{
       const l=lights[i];
       const [col,inten,dist]=LIGHT_KEYS[it.key];
-      l.color.setHex(col); l.distance=dist*(mood?1.25:1); l.intensity=(inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15)*(mood?1.5:1);
+      l.color.setHex(col); if(it.key==='hand'&&handCtx.color) l.color.set(handCtx.color); l.distance=dist*(mood?1.25:1);       // the hand shines in the colour of what a click would do l.intensity=(inten+Math.sin(now/130+i*2)*0.3+Math.sin(now/53+i)*0.15)*(mood?1.5:1);
       { const [lx,lz]=lp(it); l.position.set(lx, it.wy!==undefined?it.wy:0.8, lz); activeLights.push({ x:lx, z:lz, dist:l.distance, inten:inten }); }
     });
     for(let i=cand.length;i<lights.length;i++) lights[i].intensity=0;   // keep all lights alive: toggling them would recompile the shaders

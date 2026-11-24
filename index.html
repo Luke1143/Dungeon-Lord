@@ -222,6 +222,12 @@
   .optRow>div:first-child{ flex:1; min-width:0; }
   .optRow button{ white-space:nowrap; }
   .optBox h2{ text-align:center; margin-top:0; }
+  .optTabs{ display:flex; gap:4px; margin:0 0 6px; border-bottom:1px solid rgba(212,175,55,.35); }
+  .optTabs button{ padding:6px 12px; border:1px solid var(--panel-border); border-bottom:none; border-radius:6px 6px 0 0; background:#22180f; color:#cdbfa8; cursor:pointer; }
+  .optTabs button.on{ background:var(--gold); color:#1c140f; border-color:var(--gold); }
+  .optBox{ min-height:360px; }
+  .optRow.optWide{ flex-direction:column; align-items:stretch; gap:6px; }       /* many choices: the buttons under the text, wrapping */
+  .optRow.optWide .optBtns{ flex-wrap:wrap; }
   .optRow{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:7px 0; border-bottom:1px solid rgba(212,175,55,.18); }
   .optRow small{ display:block; color:var(--muted,#a89a84); font-size:11px; }
   .optRow .optBtns{ display:flex; gap:4px; flex:none; }
@@ -6254,7 +6260,11 @@ function drawOverlay3d(){
   }
 }
 function draw(){
-  if(!view3dOn || !View3D.ready) return draw2d();
+  if(!view3dOn || !View3D.ready){
+    // in 2D the hand is the mouse cursor itself: a still picture of what a click would do (hand.js)
+    if(typeof HandArt!=='undefined'&&!panDrag){ if(OPTIONS.hand!==false&&boardPointer){ const hc=handContext(Math.floor(boardPointer.x/(TILE*zoom)+camX),Math.floor(boardPointer.y/(TILE*zoom)+camY)), cur=HandArt.cursor(hc.pose,hc.color); if(canvas.style.cursor!==cur) canvas.style.cursor=cur; } else if(canvas.style.cursor.startsWith('url')) canvas.style.cursor=''; }
+    return draw2d();
+  }
   const saved={ camX, camY, VIEW_COLS, VIEW_ROWS };
   capture=[]; ctx=dummyCtx; camX=0; camY=0; VIEW_COLS=WORLD_COLS; VIEW_ROWS=WORLD_ROWS;
   try{ draw2d(); } finally { ctx=realCtx; ({ camX, camY, VIEW_COLS, VIEW_ROWS }=saved); }
@@ -6265,7 +6275,7 @@ function draw(){
   View3D.setFirstPerson(fpActive()?{ x:rx(possessed), y:ry(possessed), yaw:possessed.fpYaw, kick:fpPose?fpPose.kick:0, hop:fpPose?fpPose.hop*0.6:0 }:null);
   View3D.setFog(fpActive()?5:26, fpActive()?15:70);       // through a creature's eyes nobody sees far
   const hand=OPTIONS.hand!==false&&boardPointer&&!fpActive()?View3D.pickPoint(boardPointer.x,boardPointer.y):null;
-  View3D.setHand(hand); canvas.style.cursor=hand?'none':'';
+  View3D.setHand(hand,hand?Object.assign(handContext(Math.floor(hand.x),Math.floor(hand.z)),{ press:boardPress }):null); canvas.style.cursor=hand?'none':'';
   View3D.render(tileInfo3d, items, camX+VIEW_COLS/2, camY+VIEW_ROWS/2, VIEW_ROWS);
   updateFpHud();
   drawOverlay3d();
@@ -8788,8 +8798,26 @@ canvas.addEventListener('mousedown', e=>{
 });
 
 // the pointer over the board: in 3D the Dungeon Lord's hand follows it (view3d.js) and the system pointer is hidden there
-let boardPointer=null;
+let boardPointer=null, boardPress=0;
 canvas.addEventListener('mouseleave', ()=>{ boardPointer=null; });
+canvas.addEventListener('mousedown', e=>{ if(e.button===0) boardPress=1; });
+window.addEventListener('mouseup', ()=>{ boardPress=0; });
+// what a click on tile (x, y) would do, as a pose of the hand and the colour of its glow (hand.js): the player sees it before clicking
+function handContext(x,y){
+  const hex=(h,a)=>{ const n=parseInt(h.slice(1),16), f=v=>Math.min(255,v+a).toString(16).padStart(2,'0'); return '#'+f(n>>16)+f((n>>8)&255)+f(n&255); };
+  if(state.arena) return arenaSpell?{ pose:'cast', color:'#ff5a2a' }:{ pose:'inspect', color:'#80e0ff' };
+  if(godSpell) return { pose:'cast', color:(GOD_SPELLS[godSpell]&&GOD_SPELLS[godSpell].color)||'#ff5a2a' };
+  if(heldEntity) return { pose:'hold', color:'#ffd070' };
+  if(possessMode) return { pose:'possess', color:'#b060ff' };
+  if(possessed) return { pose:'dig', color:'#b060ff' };
+  if(inspectMode) return { pose:'inspect', color:'#80e0ff' };
+  if(pickMode) return { pose:'grab', color:'#ffd070' };
+  if(demolishMode) return { pose:'smash', color:'#ff3a20' };
+  if(buildMode&&ROOM_TYPES[buildMode]) return { pose:'place', color:hex(ROOM_TYPES[buildMode].color,70) };
+  const t=inBounds(x,y)&&state.grid[y][x];
+  if(t&&isDiggable(t)&&!isHidden(x,y)) return { pose:'dig', color:t.marked?'#ff6a40':'#ffb040' };       // marked rock: a click takes the mark away
+  return { pose:'idle', color:'#c8a6ff' };
+}
 canvas.addEventListener('mousemove', e=>{
   { const r=canvas.getBoundingClientRect(); boardPointer={ x:e.clientX-r.left, y:e.clientY-r.top }; }
   if(!dragStart) return;
@@ -10394,6 +10422,7 @@ init();
 <script src="figure-lab.js"></script>
 <script src="svg-rig.js"></script>
 <script src="svg-figures.js"></script>
+<script src="hand.js"></script>
 <script>
   (function(){ const sel=document.getElementById('langSelect'); sel.value=LANG; sel.addEventListener('change',()=>setLanguage(sel.value)); i18nTranslateStatic(); })();
 </script>

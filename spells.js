@@ -3,8 +3,8 @@
 //  Berserk: those affected fight to the death and never withdraw (no flight, no giving up).
 // Besides, whenever enemies stand in the throne room, all imps go berserk by themselves; a Ludus scroll that calls an imp makes it berserk too (it is gone after the bout).
 const GOD_SPELLS={
-  retreat:{ name:'Rückzug', range:3, cooldown:300 },
-  berserk:{ name:'Berserk', range:2, cooldown:200 }
+  retreat:{ name:'Rückzug', range:3, cooldown:300, color:'#6aa8ff' },       // color: the glow of the hand while it aims the spell (hand.js)
+  berserk:{ name:'Berserk', range:2, cooldown:200, color:'#ff2a18' }
 };
 let godSpell=null;                 // the campaign spell that is chosen and waits for a target tile
 function godSpellSet(id){
