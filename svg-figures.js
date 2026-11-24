@@ -14,7 +14,7 @@ const SvgFigures=(()=>{
   function baseSpec(c){
     let b=bases.get(c); if(b) return b;
     b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,c.kind);
-    b.gear=Object.assign(b.gear,{ weapon:'pick', hands:true, ears:true }); b.shadow=false;
+    b.gear=Object.assign(b.gear,{ weapon:'pick', hands:true, ears:true, helmet:false, chest:false, pauldrons:false }); b.shadow=false;       // the imps work: no armour
     bases.set(c,b); return b;
   }
   function rigOf(c,load,view){

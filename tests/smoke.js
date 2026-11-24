@@ -16,6 +16,37 @@ const { open, finish }=require('./lib');
     setView3d(false); draw(); setOption('figures','pixel'); draw(); setOption('figures','svg'); setView3d(true); await new Promise(r=>setTimeout(r,300));
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
+  // one body plan for every humanoid (svg-rig.js): the gear lands on the right parts at any size, strength widens the shoulders much more than the hips;
+  // the figure viewer opens with every kind and style
+  const fit=await p.evaluate(async()=>{
+    const find=(part,id)=>part.id===id?part:part.kids.reduce((a,k)=>a||find(k,id),null);
+    const nums=d=>(d.match(/-?\d*\.?\d+/g)||[]).map(Number), pts=d=>{ const n=nums(d), o=[]; for(let i=0;i+1<n.length;i+=2) o.push([n[i],n[i+1]]); return o; };
+    const box=d=>{ const q=pts(d); return [Math.min(...q.map(v=>v[0])),Math.min(...q.map(v=>v[1])),Math.max(...q.map(v=>v[0])),Math.max(...q.map(v=>v[1]))]; };
+    const widthAt=(q,y)=>{ let w=0; q.forEach((a,i)=>{ const b=q[(i+1)%q.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) w=Math.max(w,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); }); return w; };
+    const iron=(rig,id)=>find(rig.tree,id).shapes.find(s=>s[1]==='iron')[0];
+    const out=[], gear={ helmet:true, chest:true, pauldrons:true, cloth:true };
+    const specs=[]; for(const kind of SvgRig.KINDS){ for(const style of SvgRig.stylesOf(kind)) for(const stark of [0,1]) specs.push([{ kind, style, traits:{ klug:0.5, stark, flink:0.5, wild:0.5 }, gear },kind+'/'+style+'/'+stark]);
+      for(let seed=1;seed<=24;seed++) specs.push([Object.assign(SvgRig.roll(seed*7919,kind),{ gear }),kind+'/seed '+seed*7919]); }       // and rolled ones: every gene
+    for(const [spec,at] of specs){
+      const rig=SvgRig.build(spec);
+      const skP=pts(find(rig.tree,'skull').shapes[0][0]), sk=box(find(rig.tree,'skull').shapes[0][0]), hm=box(iron(rig,'helmet')), pl=box(iron(rig,'pauldronL')), bdP=pts(find(rig.tree,'body').shapes[0][0]);
+      // the helmet: its rim at the brows (in the upper part of the head), a little broader than the head there
+      const rim=(hm[3]-sk[1])/(sk[3]-sk[1]); if(rim<0.2||rim>0.75) out.push(at+': helmet rim at '+rim.toFixed(2)+' of the head');
+      const hw=hm[2]/widthAt(skP,hm[3]-0.3); if(hw<1||hw>1.35) out.push(at+': helmet '+hw.toFixed(2)+' of the head at its rim');
+      // the shoulder plate: its middle on the body's edge at its height
+      const py=(pl[1]+pl[3])/2, px=-(pl[0]+pl[2])/2/widthAt(bdP,py); if(px<0.7||px>1.2) out.push(at+': shoulder plate at '+px.toFixed(2)+' of the shoulder');
+      // the breastplate: from the shoulders down to the waist, as broad as the body
+      const ch=box(iron(rig,'chest')), bw=Math.max(...[0,1,2,3,4,5,6,7,8].map(i=>widthAt(bdP,ch[1]+0.5+(ch[3]-ch[1]-3)*i/8))), cw=ch[2]/bw; if(cw<0.95||cw>1.2) out.push(at+': breastplate '+cw.toFixed(2)+' of the body');
+    }
+    for(const kind of SvgRig.KINDS){ const m=st=>{ const r=SvgRig.build({ kind, traits:{ klug:0.5, stark:st, flink:0.5, wild:0.5 }, gear }); return [-box(iron(r,'pauldronL'))[0],box(find(r.tree,'belt').shapes[0][0])[2]]; };
+      const a=m(0), b=m(1); if(b[0]/a[0]<b[1]/a[1]+0.3) out.push(kind+': strength widens the hips as much as the shoulders'); }
+    const host=document.createElement('div'); document.body.appendChild(host); const v=SvgOrkViewer.open(host);
+    for(const kind of SvgRig.KINDS){ const sel=host.querySelector('#orkvKind'); sel.value=kind; sel.dispatchEvent(new Event('change'));
+      for(const style of SvgRig.stylesOf(kind)){ const st=host.querySelector('#orkvStyle'); st.value=style; st.dispatchEvent(new Event('change')); await new Promise(r=>setTimeout(r,60)); }
+      host.querySelector('#orkvRoll').click(); await new Promise(r=>setTimeout(r,60)); }
+    v.close(); host.remove();
+    return out.join('; '); });
+  if(fit) problem+=fit+'; ';
   // the Dungeon Lord's hand: the pointer over the 3D board hides the system pointer and lights the dungeon
   { const box=await (await p.$('#board')).boundingBox(); await p.mouse.move(box.x+box.width/2,box.y+box.height/2); await p.waitForTimeout(400);
     const cur=await p.evaluate(()=>document.getElementById('board').style.cursor); if(cur!=='none') problem+='the hand pointer did not take over; '; await p.mouse.move(2,2); }
