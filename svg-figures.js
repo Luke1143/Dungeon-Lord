@@ -11,7 +11,7 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true } };       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
   function baseSpec(c){
@@ -58,7 +58,22 @@ const SvgFigures=(()=>{
   }
   // the picture of creature c now: moving (it moved in the last moments), extra (the imp: 'gold' | 'ore' | null; the others: the game's look of their gear),
   // view ('front' | 'back'), turn (-1, 0, 1), pose (the action's pose of anim.js, or null), left (the action aims to the left; aiming right the figure is turned that way)
+  // the 2.5D test (Rig3D in svg-rig.js): the figure seen from its eighth of a turn and the camera's height (the 3D view looks down 49 degrees; the flat map not at all)
+  const plans=new Map();
+  function canvas3d(c,now,moving,extra,pose,KD){
+    const yaw8=c._yaw8||0, pitch=(typeof capture!=='undefined'&&capture)?0.85:0, gear=gearOf(c,extra), b=baseSpec(c), pk=c.kind+'|'+(c.id||0)+'|'+(c.level||1)+'|'+JSON.stringify(gear);
+    let pl=plans.get(pk); if(!pl){ pl=SvgRig.plan(Object.assign({},b,{ level:c.level||1, traits:traitsOf(c,b), gear:Object.assign({},b.gear,gear) })); if(plans.size>300) plans.delete(plans.keys().next().value); plans.set(pk,pl); }
+    const off=(c.id||0)*0.37, step=moving?Math.floor(now/140+off)%4:0, swing=pose?swingOf(pose):0, fkey='3d|'+pk+'|'+yaw8+'|'+pitch+'|'+step+'|'+swing;
+    let cv=cache.get(fkey); if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
+    const st={ phase:step*Math.PI/2+0.4, walking:moving, t:0.3, swing, roar:0 }, px=KD.px, N=Math.round(px/0.92*KD.cells), small=document.createElement('canvas'); small.width=small.height=N;
+    const g=small.getContext('2d'); Rig3D.canvas(g,pl,st,yaw8*Math.PI/4,pitch,px/pl.H,N/2,N-1);
+    const im=g.getImageData(0,0,N,N), d=im.data; for(let i=3;i<d.length;i+=4) d[i]=d[i]>110?255:0; g.putImageData(im,0,0);
+    cv=epx2(small); cv._svg=true; cv._cells=KD.cells; cache.set(fkey,cv);
+    if(cache.size>MAX){ const old=cache.keys().next().value, oc=cache.get(old); cache.delete(old); if(typeof VIEW3D_ALL!=='undefined') VIEW3D_ALL.forEach(v=>v.dropCanvas&&v.dropCanvas(oc)); }
+    return cv;
+  }
   function canvasFor(c,now,moving,extra,view,turn,pose,left){
+    if(KINDS[c.kind]&&KINDS[c.kind].r3d&&typeof OPTIONS!=='undefined'&&OPTIONS.fig3d&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KINDS[c.kind]);
     const KD0=KINDS[c.kind]; if(KD0&&KD0.side&&moving&&(view||'front')==='front'&&turn){ view=turn>0?'right':'left'; turn=0; }       // a kind with a side view (a test: the skeleton) walking sideways shows its profile
     const { r:rig, key }=rigOf(c,gearOf(c,extra),view||'front');
     const act=!!pose, work=!act&&!moving&&WORK.has(c.state), off=(c.id||0)*0.37;
@@ -84,6 +99,7 @@ const SvgFigures=(()=>{
     if(Math.abs(along)<0.004&&Math.abs(side)<0.004) return;
     if(Math.abs(along)>Math.abs(side)*0.8){ c._view=along>0?'back':'front'; c._turn=0; }
     else { c._view='front'; c._turn=side>0?1:-1; }
+    c._yaw8=((Math.round(Math.atan2(side,-along)/(Math.PI/4))%8)+8)%8;       // for the 2.5D test: the way it faces, in eighths (0 towards the camera, 2 to the right)
   }
   const active=kind=>!!KINDS[kind]&&typeof OPTIONS!=='undefined'&&OPTIONS.figures!=='pixel'&&typeof SvgRig!=='undefined';
   return { active, canvasFor, viewOf, KINDS, get size(){ return cache.size; } };

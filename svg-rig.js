@@ -667,7 +667,7 @@ const SvgRig=(()=>{
     base:Object.assign({},HUMAN_BASE,{ shade:'rgba(20,12,5,0.2)', socket:'#14100c', socketDeep:'#050403', faceLine:'rgba(40,30,20,0.6)', line:'#2a2016', boneShade:'rgba(70,50,25,0.28)', boneDark:'rgba(60,45,25,0.55)', boneDeep:'#9a8e72', cartilage:'#c4bfa8', tooth:'#e6dcc2' }), hairs:null,
     skins:[{ skin:'#e2d8c0', light:'#efe6d2', dark:'#a89e84', leg:'#e2d8c0', brow:'#3a3428' },{ skin:'#d2c8ac', light:'#e2d8c0', dark:'#968c72', leg:'#d2c8ac', brow:'#3a3428' },{ skin:'#bcb294', light:'#ccc2a6', dark:'#827a62', leg:'#bcb294', brow:'#3a3428' }],
     eye:['#fff4e0','#7af0ff'], glow:[[255,220,170],[120,230,255]], glowA:0.5 });
-  HUMANOIDS.skeleton2=Object.assign({},HUMANOIDS.skeleton,{ face:'skullFantasy', boneStyle:'fantasy', side:true, head:{ w:[4.1,0.4], h:[11.2,0.8] },
+  HUMANOIDS.skeleton2=Object.assign({},HUMANOIDS.skeleton,{ face:'skullFantasy', boneStyle:'fantasy', side:true, rig3d:true, head:{ w:[4.1,0.4], h:[11.2,0.8] },
     base:Object.assign({},HUMANOIDS.skeleton.base,{ socket:'#040303', line:'#1c140c', boneShade:'rgba(60,40,15,0.38)', boneDark:'rgba(40,28,12,0.6)', tooth:'#e2d4ae' }),
     skins:[{ skin:'#e0d2ac', light:'#ece2c4', dark:'#a0906a', leg:'#e0d2ac', brow:'#3a3428' },{ skin:'#d4c49a', light:'#e2d6b4', dark:'#968660', leg:'#d4c49a', brow:'#3a3428' },{ skin:'#c2b088', light:'#d2c29c', dark:'#857552', leg:'#c2b088', brow:'#3a3428' }] });       // the second skeleton: the same body plan, its own bones (a bigger skull)
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
@@ -1088,7 +1088,172 @@ const SvgRig=(()=>{
     g.restore();
   }
   const lookOf=kind=>({ ears:!!HUMANOIDS[kindOf(kind)].ears, horns:false });
-  return { build, roll, defaults, lookOf, genesOf, presetsOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:['human'].concat(Object.keys(HUMANOIDS).filter(k=>k!=='human')), stylesOf, weaponsOf:kind=>HUMANOIDS[kindOf(kind)].weapons };
+  // the body plan of a spec without the 2D rig (for the 2.5D test, Rig3D): its measures, colours, gear
+  function plan(spec){
+    const kind=kindOf(spec&&spec.kind), K=HUMANOIDS[kind], own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
+    if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
+    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
+    const S=(K.real?realShapes:humanoidShapes)(kind,genes,t,false,G);
+    const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },palOf(K,genes)); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
+    const M=(K.mats||MATERIALS)[G.mat]; if(M){ pal.iron=M[0]; pal.ironDark=M[1]; }
+    pal.hand=G.pauldrons?pal.iron:pal.skin; pal.handLine=G.pauldrons?pal.ironDark:pal.dark;
+    return { K, G, genes, t, S, A:S.A, pal, spec, H:S.H, weapons:WEAPONS, grip:GRIP };
+  }
+  return { build, plan, roll, defaults, lookOf, genesOf, presetsOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:['human'].concat(Object.keys(HUMANOIDS).filter(k=>k!=='human')), stylesOf, weaponsOf:kind=>HUMANOIDS[kindOf(kind)].weapons };
+})();
+
+// ---- 2.5D figures (user, November 2026: a test with the fantasy skeleton) ----
+// The skeleton as simple 3D forms on joints in space, drawn flat for any direction and any height of the camera: bones are tubes, joints balls, the ribs
+// arcs round an ellipse, the pelvis and the shoulder blades plates, the skull a hull of ellipsoids with its sockets, nose and teeth on its surface, the jaw a
+// band. Every form is projected (orthographic: the yaw turns the figure, the pitch looks down on it), filled, outlined, shaded on the side away from the light,
+// and drawn from the back to the front by its depth (no table of layers). The arms are solved in space (two bones, the elbow back and out). The shield is a
+// plate on the arm with its thickness; the weapon is drawn flat at the hand. Coordinates: X the figure's left (its right hand at -X), Y down (the feet at 0),
+// Z forward. Yaw 0: it faces us; 90: we see its right side (it faces right). Pitch: how far the camera looks down.
+const Rig3D=(()=>{
+  const f2=v=>+(+v).toFixed(2), add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]], mulv=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2], cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]], len=a=>Math.hypot(a[0],a[1],a[2]), norm=a=>mulv(a,1/(len(a)||1));
+  const rotX=(v,a)=>{ const c=Math.cos(a), s=Math.sin(a); return [v[0],v[1]*c-v[2]*s,v[1]*s+v[2]*c]; };       // round the X axis: a leg down (+Y) swings forward (+Z) for a > 0
+  const path=pts=>'M'+pts.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' L')+'z';
+  function hull(pts){       // the convex hull of 2D points (monotone chain)
+    const p=pts.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]); if(p.length<3) return p; const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]), lo=[], up=[];
+    for(const q of p){ while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0) lo.pop(); lo.push(q); }
+    for(let i=p.length-1;i>=0;i--){ const q=p[i]; while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0) up.pop(); up.push(q); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function shadeOf(pts){       // the side away from the light (the light from the upper left, as on every figure): the right part of a shape
+    const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length, mx=Math.max(...pts.map(q=>q[0])), right=pts.filter(q=>q[0]>cx+0.25*(mx-cx)); if(right.length<3) return null;
+    return path(right.concat(right.slice().reverse().map(([x,y])=>[cx+(x-cx)*0.62,y])));
+  }
+  // a frame: the projection for one view, and the list of what to draw
+  function frame(yaw,pitch){
+    const ct=Math.cos(yaw), st=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch), items=[];
+    const P=p=>{ const d=p[2]*ct-p[0]*st; return [p[0]*ct+p[2]*st,p[1]*cp+d*sp,d*cp-p[1]*sp]; };
+    const view=[-st*cp,-sp,ct*cp];       // towards the camera, in the figure's space
+    const F={ P, view, items, faces:n=>dot(n,view),
+      put(pts2,dep,fill,o){ o=o||{}; items.push({ d:path(pts2), dep, fill, sw:o.sw===undefined?0.75:o.sw, stroke:o.stroke||'line', shade:o.shade?shadeOf(pts2):null }); },
+      line(pts3,w,fill,dep){ const q=pts3.map(P), d='M'+q.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' L'); items.push({ d, dep:dep===undefined?q.reduce((a,p)=>a+p[2],0)/q.length:dep, fill:null, sw:w+1.5, stroke:'line', band:fill, bw:w }); },
+      // a tube from a to b: its half width at the start, the middle and the end
+      tube(a,b,ra,rm,rb,fill,o){ const pa=P(a), pb=P(b), dx=pb[0]-pa[0], dy=pb[1]-pa[1], L=Math.hypot(dx,dy)||1e-3, nx=-dy/L, ny=dx/L;
+        const ws=[[0,ra],[0.15,(ra+rm)/2],[0.5,rm],[0.85,(rm+rb)/2],[1,rb]], A=ws.map(([t,w])=>[pa[0]+dx*t+nx*w,pa[1]+dy*t+ny*w]), B=ws.map(([t,w])=>[pa[0]+dx*t-nx*w,pa[1]+dy*t-ny*w]).reverse();
+        F.put(A.concat(B),(pa[2]+pb[2])/2+((o&&o.bias)||0),fill,{ shade:true }); },
+      ball(c,r,fill,o){ const q=P(c); F.put(Array.from({ length:16 },(_,i)=>{ const a=i/16*Math.PI*2; return [q[0]+Math.cos(a)*r,q[1]+Math.sin(a)*r]; }),q[2]+((o&&o.bias)||0),fill,{ shade:true }); },
+      plate(pts3,fill,o){ const q=pts3.map(P); F.put(q,q.reduce((a,p)=>a+p[2],0)/q.length+((o&&o.bias)||0),fill,{ shade:!(o&&o.flat), sw:o&&o.sw }); },
+      // a flat patch on a surface (a socket, a tooth): seen only from its front, squashed by the angle
+      patch(c,n,rx,ry,fill,o){ if(dot(n,view)<0.08) return; const up=Math.abs(n[1])>0.9?[0,0,1]:[0,1,0], t1=norm(cross(up,n)), t2=norm(cross(n,t1));
+        const pts=(o&&o.shape?o.shape:Array.from({ length:14 },(_,i)=>{ const a=i/14*Math.PI*2; return [Math.cos(a),Math.sin(a)]; })).map(([x,y])=>P(add(c,add(mulv(t1,x*rx),mulv(t2,y*ry)))));
+        F.put(pts,P(c)[2]+((o&&o.bias)||0.02),fill,{ sw:o&&o.sw!==undefined?o.sw:0.5 }); },
+      // the outline of solids: the hull of points on ellipsoids [centre, half axes]
+      solid(ells,fill,o){ const pts=[], c0=[0,0,0]; ells.forEach(([c,r])=>{ for(let i=0;i<=8;i++) for(let j=0;j<16;j++){ const th=i/8*Math.PI, ph=j/16*Math.PI*2; pts.push(P([c[0]+r[0]*Math.sin(th)*Math.cos(ph),c[1]+r[1]*Math.cos(th),c[2]+r[2]*Math.sin(th)*Math.sin(ph)])); } });
+        const h=hull(pts), cz=P(ells[0][0])[2]; F.put(h,cz+((o&&o.bias)||0),fill,{ shade:true, sw:o&&o.sw }); }
+    };
+    return F;
+  }
+  // the 2D tools for the weapon and the fist (drawn flat at the hand)
+  function flatShapes(F,shapes,at,grip,rot,k,flip,dep){
+    const c=Math.cos(rot), s=Math.sin(rot);
+    shapes.forEach(([d,fill,sw,stroke])=>{ const q=[]; let tr=d.replace(/(-?\d*\.?\d+)\s+(-?\d*\.?\d+)/g,(m,x,y)=>{ let X=(+x-grip[0])*k, Y=(+y-grip[1])*k; if(flip) X=-X; const xx=X*c-Y*s, yy=X*s+Y*c; return (at[0]+xx).toFixed(2)+' '+(at[1]+yy).toFixed(2); });
+      F.items.push({ d:tr, dep, fill, sw:sw*k, stroke:stroke||'line' }); });
+  }
+  // ---- the fantasy skeleton in space, from the body plan of the 2D rig (the human's measures) ----
+  function skeleton(F,pl,st){
+    const A=pl.A, { topY, hipY, bodyH, u, h, top, aw, wSh, wHip }=A, L=A.legs, hd=h*0.82, K=pl.K, G=pl.G;
+    const w=st.phase||0, walkK=st.walking?1:0, roar=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, sw=st.swing||0, bob=-1.1*Math.abs(Math.sin(w))*walkK, breath=Math.sin((st.t||0)*2.1);
+    const Y0=bob;       // the body bobs while it walks
+    const wC=(()=>{ const pts=A.bPts, y=topY+bodyH*0.42; let m=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) m=Math.max(m,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); } return m*0.96; })();
+    // the spine's S from the side (the same as the 2D profile), as Z at a height
+    const sp0=[[-0.08*hd,top+0.86*h],[-1.0*u,topY+0.2*u],[-2.0*u,topY+bodyH*0.2],[-2.3*u,topY+bodyH*0.35],[-1.8*u,topY+bodyH*0.5],[-1.0*u,topY+bodyH*0.62],[-0.8*u,hipY-6.4*u],[-1.6*u,hipY-4.5*u],[-2.0*u,hipY-2.6*u]];
+    const zS=y=>{ for(let i=0;i<sp0.length-1;i++){ const a=sp0[i], b=sp0[i+1]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) return a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]); } return y<sp0[0][1]?sp0[0][0]:sp0[sp0.length-1][0]; };
+    const sB=topY+bodyH*0.32, zF=y=>4.2*u+(y-topY)/(sB-topY)*0.9*u;       // the front of the chest
+    const by=v=>[v[0],v[1]+Y0,v[2]];       // a point of the trunk, bobbing
+    // the spine: vertebrae from under the skull to the sacrum, each a short tube with its spike to the back
+    for(let i=0;i<sp0.length-1;i++){ const a=sp0[i], b=sp0[i+1], n=i===0?3:2; for(let j=0;j<n;j++){ const t0=j/n, t1=(j+0.75)/n, p0=by([0,a[1]+(b[1]-a[1])*t0,a[0]+(b[0]-a[0])*t0]), p1=by([0,a[1]+(b[1]-a[1])*t1,a[0]+(b[0]-a[0])*t1]);
+      const r=(i>=5?1.0:0.65)*u; F.tube(p0,p1,r,r,r,'skin',{ bias:-0.3 }); F.tube(mulv(add(p0,p1),0.5),add(mulv(add(p0,p1),0.5),[0,0.5*u,-1.4*u]),0.35*u,0.3*u,0.25*u,'skin',{ bias:-0.4 });
+      if(i===5||i===6) F.tube(add(mulv(add(p0,p1),0.5),[-2.4*u,0,0]),add(mulv(add(p0,p1),0.5),[2.4*u,0,0]),0.35*u,0.35*u,0.35*u,'skin',{ bias:-0.35 }); } }
+    // the ribs: arcs round an ellipse from the spine (behind) by the side to the breastbone (in front); the near half and the far half sorted apart
+    const Wf=[0.62,0.8,0.92,0.97,0.95,0.85];
+    for(let i=0;i<6;i++){ const W=Wf[i]*wC, yb=topY+1.0*u+i*1.25*u, yf=Math.min(sB-0.3*u,topY+1.4*u+i*1.5*u), zb=zS(yb)+0.4*u, zf=zF(yf), zc=(zb+zf)/2, D=(zf-zb)/2, sag=(1.4+0.25*i)*u;
+      [-1,1].forEach(s=>{ const pts=[]; for(let k=0;k<=12;k++){ const a=Math.PI-k/12*(Math.PI-0.12); pts.push(by([s*Math.max(0.7*u,W*Math.sin(a)),yb+(yf-yb)*(1-a/Math.PI)+sag*Math.pow(Math.sin(a),2)*(0.7+0.3*(1-a/Math.PI)),zc+D*Math.cos(a)])); }
+        F.line(pts.slice(0,7),0.75*u*2,'skin'); F.line(pts.slice(6),0.75*u*2,'skin'); }); }
+    F.tube(by([0,topY+0.4*u,zF(topY)]),by([0,sB,zF(sB)]),0.65*u,0.55*u,0.4*u,'skin',{ bias:0.2 });       // the breastbone
+    // the collarbones, the shoulders' knobs, the shoulder blades on the back
+    [-1,1].forEach(s=>{ F.tube(by([s*1.1*u,topY+0.5*u,zF(topY)-0.3*u]),by([s*wSh*0.86,topY-0.1*u,-0.3*u]),0.75*u,0.6*u,0.7*u,'skin'); F.ball(by([s*wSh*0.92,topY+0.5*u,-0.3*u]),1.05*u,'skin');
+      F.plate([[s*wSh*0.9,topY+0.2*u,-1.2*u],[s*wSh*0.4,topY+1.0*u,-2.8*u],[s*wC*0.45,topY+bodyH*0.36,-2.6*u],[s*wC*0.85,topY+bodyH*0.3,-1.8*u]].map(by),'skin',{ bias:-0.2 }); });
+    // the pelvis: the two wings, the sacrum behind, the holes below
+    [-1,1].forEach(s=>{ F.plate([[s*1.0*u,hipY-6.0*u,-1.9*u],[s*wHip*0.45,hipY-8.0*u,-1.2*u],[s*wHip*0.9,hipY-7.4*u,0.8*u],[s*wHip*0.98,hipY-5.4*u,2.2*u],[s*wHip*0.8,hipY-4.0*u,1.6*u],[s*wHip*0.66,hipY-2.4*u,0.6*u],[s*wHip*0.55,hipY-0.5*u,-0.6*u],[s*0.45*u,hipY-0.9*u,1.6*u],[s*0.45*u,hipY-2.5*u,1.9*u],[s*1.6*u,hipY-4.4*u,-1.2*u]].map(by),'skin');
+      F.patch(by([s*wHip*0.42,hipY-1.6*u,1.1*u]),norm([s*0.5,0,0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); F.patch(by([s*wHip*0.42,hipY-1.6*u,0.9*u]),norm([-s*0.5,0,-0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); });
+    F.plate([[-2.2*u,hipY-6.6*u,-2.0*u],[2.2*u,hipY-6.6*u,-2.0*u],[0.9*u,hipY-2.8*u,-2.2*u],[0,hipY-2.1*u,-2.0*u],[-0.9*u,hipY-2.8*u,-2.2*u]].map(by),'skin',{ bias:-0.1 });
+    // the skull: a hull of the vault and the face, the sockets, the nose's hole, the cheekbones, the teeth, the crack; the jaw a band below (it drops when it roars)
+    const hc=[0,top+0.45*h+Y0,0], X=x=>x*aw, Yh=y=>top+y*h+Y0, Z=z=>z*hd, hy=Math.sin(w+0.6)*0.8*walkK;
+    F.solid([[hc,[X(1.0),0.43*h,Z(0.48)]],[[0,Yh(0.7),Z(0.22)],[X(0.82),0.13*h,Z(0.26)]]],'skin',{ sw:0.9 });
+    const sk=F.items[F.items.length-1].dep;
+    [-1,1].forEach(s=>{ F.patch([s*X(0.4),Yh(0.48),Z(0.4)],norm([s*0.35,0,0.94]),X(0.31),0.115*h,'socket',{ bias:sk+0.05-F.P([s*X(0.4),Yh(0.48),Z(0.4)])[2], sw:0.75 });
+      F.tube([s*X(0.72),Yh(0.6),Z(0.32)],[s*X(0.97),Yh(0.6),Z(-0.05)],0.55*u,0.5*u,0.45*u,'skin',{ bias:0.1 }); });
+    F.patch([0,Yh(0.64),Z(0.48)],norm([0,0.15,1]),X(0.12),0.055*h,'socket',{ bias:sk+0.06-F.P([0,Yh(0.64),Z(0.48)])[2] });
+    for(let i=0;i<6;i++){ const a=(-0.6+i*0.24), c=[Math.sin(a)*X(0.5),Yh(0.785),Math.cos(a)*Z(0.42)]; F.patch(c,norm([Math.sin(a),0,Math.cos(a)]),X(0.065),0.035*h,'tooth',{ bias:sk+0.07-F.P(c)[2], sw:0.3, shape:[[-1,-1],[1,-1],[1,1],[-1,1]] }); }
+    if(F.faces(norm([-0.3,-0.6,0.75]))>0.1){ const q=[[-X(0.45),Yh(0.02),Z(0.15)],[-X(0.36),Yh(0.11),Z(0.3)],[-X(0.43),Yh(0.17),Z(0.33)],[-X(0.33),Yh(0.27),Z(0.4)]].map(F.P);
+      F.items.push({ d:'M'+q.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' L'), dep:sk+0.08, fill:null, sw:0.55, stroke:'line' }); }       // the crack: a thin line
+    // the jaw: a U from hinge to hinge round the chin, its teeth on top
+    const jd=roar*0.35, jr=v=>{ const o=[0,Yh(0.62),Z(-0.05)], r=rotX(sub(v,o),-jd); return add(o,r); };
+    const jawPts=s=>[[s*X(0.8),Yh(0.63),Z(-0.05)],[s*X(0.74),Yh(0.92),Z(0.0)],[s*X(0.45),Yh(0.99),Z(0.3)],[s*X(0.12),Yh(1.01),Z(0.42)]].map(jr);
+    [-1,1].forEach(s=>F.line(jawPts(s),0.16*h,'skin'));
+    F.line([jawPts(-1)[3],jawPts(1)[3]],0.16*h,'skin');
+    for(let i=0;i<6;i++){ const a=(-0.6+i*0.24), c=jr([Math.sin(a)*X(0.48),Yh(0.855),Math.cos(a)*Z(0.4)]); F.patch(c,norm([Math.sin(a),0,Math.cos(a)]),X(0.065),0.03*h,'tooth',{ bias:sk+0.075-F.P(c)[2], sw:0.3, shape:[[-1,-1],[1,-1],[1,1],[-1,1]] }); }
+    // the legs: the thigh swings from the hip, the knee bends in the swing, the foot stays level
+    const legs={};
+    [-1,1].forEach(s=>{ const side=s<0?'R':'L', ph=s<0?w:w+Math.PI, sw2=22*Math.PI/180*Math.sin(ph)*walkK, kb=40*Math.PI/180*Math.max(0,Math.cos(ph))*walkK;
+      const H=by([s*wHip*0.62,hipY-3*u,0.4*u]), K0=[s*Math.abs(L.xk),L.kneeY-0.4*u,0.7*u], A0=[s*Math.abs(L.xa),L.ankY,0.3*u], H0=[s*wHip*0.62,hipY-3*u,0.4*u];
+      const Kn=add(H,rotX(sub(K0,H0),sw2)), Ak=add(Kn,rotX(sub(A0,K0),sw2-kb)), shinR=v=>rotX(v,sw2-kb);
+      F.ball(H,1.0*u,'skin'); F.ball(add(H,[s*1.3*u,0.8*u,-0.4*u]),0.9*u,'skin');
+      F.tube(H,Kn,0.95*u,0.72*u,1.1*u,'skin'); F.ball(add(Kn,[s*0.7*u,0,0]),0.8*u,'skin'); F.ball(add(Kn,[-s*0.7*u,0,0]),0.8*u,'skin');
+      F.tube(add(Kn,shinR([0,0.6*u,0.2*u])),Ak,1.1*u,0.68*u,0.85*u,'skin'); F.tube(add(Kn,shinR([s*1.0*u,1.2*u,-0.6*u])),add(Ak,[s*0.9*u,0.3*u,-0.3*u]),0.4*u,0.3*u,0.42*u,'skin',{ bias:-0.1 });
+      F.ball(add(Kn,shinR([0,-0.2*u,1.1*u])),0.75*u,'skin',{ bias:0.2 });       // the kneecap
+      const fl=v=>add(Ak,v);       // the foot level, hanging at the ankle
+      F.ball(fl([0,0.6*u,0]),0.8*u,'skin'); F.ball(fl([0,-0.9*u-L.ankY,-1.1*u]),0.85*u,'skin');       // the ankle's bone, the heel
+      [-1,0,1].forEach(k=>{ const m0=fl([k*0.5*u,1.2*u,0.3*u]), m1=fl([s*0.6*u+k*0.55*u,-L.ankY-0.5*u+0,3.1*u]); F.tube(m0,m1,0.42*u,0.32*u,0.38*u,'skin'); F.tube(m1,add(m1,[s*0.3*u,0.3*u,1.2*u]),0.36*u,0.28*u,0.3*u,'skin'); });
+      legs[side]={ H, Kn, Ak };
+    });
+    // the arms: the shoulder fixed, the hand where it would be (hanging, or bent forward when it holds something), the elbow solved back and out
+    const hands={};
+    [-1,1].forEach(s=>{ const side=s<0?'R':'L', Sh=by([s*wSh*0.86,topY+0.9*u,-0.3*u]), holds=side==='R'?(G.weapon&&G.weapon!=='none'):!!G.shield;
+      let Hd=by([s*(wSh*0.98+1.2),hipY+0.3*u,0.6*u]); if(holds) Hd=add(Hd,[-s*1.0*u,-bodyH*0.3,3.2*u]);
+      Hd=add(Hd,[0,Math.sin((st.t||0)*2+(s<0?0:1))*0.6,(s<0?-1:1)*3*u*Math.sin(w)*walkK]);
+      if(side==='R'&&sw){ Hd=add(Hd,sw>0?[0,-6*u*sw,-2*u*sw]:[0,3*u*-sw,4*u*-sw]); }
+      if(roar) Hd=add(Hd,[0,-6*roar,0]);
+      const L1=10.6*u, L2=9.8*u, dv=sub(Hd,Sh), d=Math.min(L1+L2-1e-3,Math.max(Math.abs(L1-L2)+1e-3,len(dv))), uu=norm(dv), pole=norm([s*0.4,0,-1]), v=norm(sub(pole,mulv(uu,dot(pole,uu))));
+      const a=Math.acos(Math.max(-1,Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d)))), E=add(Sh,add(mulv(uu,L1*Math.cos(a)),mulv(v,L1*Math.sin(a)))), Wr=add(E,mulv(norm(sub(Hd,E)),L2));
+      F.tube(Sh,E,0.75*u,0.55*u,0.75*u,'skin'); F.ball(E,0.7*u,'skin'); F.tube(E,Wr,0.6*u,0.45*u,0.55*u,'skin');
+      // the fist: a knuckled ball, three folded fingers towards the body
+      const fr=(pl.S.hr||2.3)*0.9, fc=Wr; F.ball(fc,fr*0.75,'hand',{ bias:0.1 }); [-0.6,0,0.6].forEach(k=>F.tube(add(fc,[0,k*fr*0.55,0.5*fr]),add(fc,[-s*0.8*fr,k*fr*0.55,0.7*fr]),0.25*fr,0.25*fr,0.25*fr,'hand',{ bias:0.15 }));
+      hands[side]={ at:fc, Sh, E };
+    });
+    // the weapon (flat at the right hand; its edge turns with the figure), the shield (a plate with its thickness on the left arm)
+    if(G.weapon&&G.weapon!=='none'&&pl.weapons[G.weapon]){ const hR=hands.R, q=F.P(hR.at), rot=(12-(Math.sin((st.t||0)*1.3)*3)-roar*48-sw*(sw>0?40:55))*Math.PI/180;
+      const face=F.P([0,0,1]), facesLeft=face[0]<-0.01; flatShapes(F,pl.weapons[G.weapon],q,pl.grip[G.weapon]||[24,-16],facesLeft?-rot:rot,(K.weaponK||1),facesLeft,q[2]+0.05); }       // facing left the weapon is drawn the other way round
+    if(G.shield){ const hL=hands.L, n=norm([0.75,0,0.66]), t1=norm(cross([0,1,0],n)), t2=[0,1,0], r=wSh*(G.shield==='tower'?0.62:(G.shield==='kite'?0.58:0.45))*(K.shieldK||1), c=add(hL.at,mulv(n,0.9*u));
+      const unit=G.shield==='tower'?[[-0.8,-1.4],[0.8,-1.4],[0.8,1.3],[-0.8,1.3]]:(G.shield==='kite'?[[-1,-1.1],[1,-1.1],[0.9,0.3],[0,1.45],[-0.9,0.3]]:Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; return [Math.cos(a),Math.sin(a)]; }));
+      const at=(off)=>unit.map(([x,y])=>add(add(c,mulv(n,off)),add(mulv(t1,x*r),mulv(t2,y*r))));
+      const front=F.faces(n)>0, d0=F.P(c)[2], fa=at(0).map(F.P), ba=at(-0.9*u).map(F.P);
+      F.put(hull(fa.concat(ba)),d0-0.02,'ironDark',{ sw:0.9 });       // the rim: what lies between the two faces (its thickness, seen from the side)
+      F.put(front?fa:ba,d0,'wood',{ shade:true, sw:0.9 });       // the face that is turned to us
+      if(front&&K.emblem&&G.shield!=='buckler'){ const ec=add(c,mulv(t2,-0.35*r)); F.patch(add(ec,mulv(n,0.05)),n,0.3*r,0.32*r,'bone',{ bias:0.03 }); [-1,1].forEach(e=>F.patch(add(add(ec,mulv(t1,e*0.13*r)),mulv(n,0.1)),n,0.09*r,0.1*r,'socket',{ bias:0.04 })); }
+      else if(front) F.patch(add(c,mulv(n,0.1)),n,0.3*r,0.3*r,'iron',{ bias:0.03 });
+      else if(unit.length<=6) [-0.3,0.2].forEach(yy=>F.line([add(add(c,mulv(t2,yy*r)),add(mulv(t1,-0.8*r),mulv(n,-0.95*u))),add(add(c,mulv(t2,yy*r)),add(mulv(t1,0.8*r),mulv(n,-0.95*u)))],0.6*u,'leather',d0+0.06)); }       // from behind: the straps
+    // the shadow on the floor
+    const sh=F.P([0,0,0]); F.items.push({ d:path(Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; const p=F.P([Math.cos(a)*6*u,0,Math.sin(a)*5*u]); return [p[0],p[1]]; })), dep:-1e9, fill:'shadowC', sw:0 });
+  }
+  // the canvas: everything sorted by depth, k pixels to a unit, the feet at (ox, oy)
+  function canvas(g,pl,st,yaw,pitch,k,ox,oy){
+    const F=frame(yaw,pitch); skeleton(F,pl,st);
+    const items=F.items.slice().sort((a,b)=>a.dep-b.dep), pal=pl.pal;
+    g.save(); g.setTransform(k,0,0,k,ox,oy); g.lineJoin='round'; g.lineCap='round';
+    items.forEach(it=>{ const p=new Path2D(it.d);
+      if(it.band){ g.strokeStyle=pal.line; g.lineWidth=it.bw+1.5; g.stroke(p); g.strokeStyle=pal[it.band]||it.band; g.lineWidth=it.bw; g.stroke(p); return; }
+      if(it.fill){ g.fillStyle=pal[it.fill]||it.fill; g.fill(p); }
+      if(it.shade){ g.fillStyle=pal.boneShade||'rgba(0,0,0,0.25)'; g.fill(new Path2D(it.shade)); }
+      if(it.sw){ g.strokeStyle=pal[it.stroke]||pal.line; g.lineWidth=it.sw; g.stroke(p); } });
+    g.restore();
+  }
+  return { canvas, frame, skeleton };
 })();
 
 // ---- the viewer: a stage (a strip of dungeon floor under a torch), the controls, and the ork as sprites from 16 to 128 pixels ----
@@ -1169,6 +1334,7 @@ const SvgOrkViewer=(()=>{
 </div>
 <div class="orkv-row">
   <label for="orkvView">Ansicht</label><select id="orkvView"><option value="front">vorn</option><option value="back">hinten</option><option value="left">links</option><option value="right">rechts</option></select>
+  <span id="orkv3dBox"><button id="orkv3d" aria-pressed="false">3D (Test)</button> <label class="orkv-slider" for="orkvYaw">Drehung <input type="range" id="orkvYaw" min="0" max="359" value="35"><output id="orkvYawOut">35°</output></label> <label class="orkv-slider" for="orkvPitch">Kamerahöhe <input type="range" id="orkvPitch" min="0" max="70" value="0"><output id="orkvPitchOut">0°</output></label></span>
   <label for="orkvMood">Stimmung</label><select id="orkvMood">${Object.keys(SvgRig.MOODS).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
   <label for="orkvFx">Nachbearbeitung</label><select id="orkvFx"><option value="vector">Vektor (SVG)</option><option value="boil">Wackel-Linie</option><option value="pixel">Pixel</option><option value="smooth" selected>Pixel, glatt hochgerechnet</option><option value="soft">Weich</option></select>
   <label for="orkvRes">Pixelgröße</label><select id="orkvRes"><option value="24">24 px</option><option value="32">32 px</option><option value="48" selected>48 px</option><option value="64">64 px</option><option value="128">128 px</option></select>
@@ -1177,7 +1343,7 @@ const SvgOrkViewer=(()=>{
 <p class="orkv-note">Ein Baukasten statt einer Zeichnung: Ork und Imp teilen einen Körperplan, dieselben Teile und Bewegungen. Gene wählen das Aussehen (die Stile sind Voreinstellungen davon), die Werte formen den Körper (Klugheit: größerer Kopf und kleinerer Kiefer, Stärke: viel breitere Schultern, kaum breitere Hüften und größere Hände, Gewandtheit: längere Beine und schlanker, Wildheit: längere Hauer und finsterere Brauen). Die Ausrüstung wird aus dem Körper berechnet: der Helm aus dem Schädel bis zu den Brauen, der Brustpanzer aus dem Umriss von den Schultern bis zur Taille, die Schulterplatten auf den Schultern, Gürtel und Lendenschurz an der Hüfte. So sitzt sie bei jeder Größe, wie die Waffe in der Faust. Die Hände schweben ohne Arme neben dem Körper; ohne Hände schwebt die Waffe allein. „Würfeln“ zieht aus einem Seed Gene, Werte, Hautton, Narbe und Ausrüstung. Unten dieselbe Figur als Sprite, in der gewählten Nachbearbeitung.</p>`;
     const $=id=>root.querySelector('#'+id), stage=$('orkvStage'), svgEl=$('orkvSvg'), cv=$('orkvCanvas'), turb=$('orkvTurb');
     let spec=SvgRig.defaults('human'), rig, out;
-    const s=SvgRig.create(), opt={ walk:true, mouse:null, followMouse:false, explode:false, fx:'smooth', res:48 };
+    const s=SvgRig.create(), opt={ r3d:false, yaw:35, pitch:0, walk:true, mouse:null, followMouse:false, explode:false, fx:'smooth', res:48 };
     // the controls show the spec; a change rebuilds the rig
     // the choices follow the kind: its styles, its weapons and tools, the gear it can wear, a load for those who carry one
     const fill=(sel,list,names)=>{ sel.innerHTML=list.map(v=>`<option value="${v}">${names[v]||v}</option>`).join(''); };
@@ -1186,12 +1352,16 @@ const SvgOrkViewer=(()=>{
       ['helmet','chest','pauldrons'].forEach(k=>{ $('orkvG_'+k).hidden=!rig.has[k]; });
       root.querySelectorAll('[data-for="load"]').forEach(e=>{ e.hidden=!rig.has.load; });
       const lk=SvgRig.lookOf(spec.kind); ['ears','horns'].forEach(k=>{ const b=$('orkvG_'+k); b.hidden=!rig.has[k]; b.setAttribute('aria-pressed',spec.gear[k]!==undefined?!!spec.gear[k]:lk[k]!==false); });
-      $('orkvLevelBox').hidden=!rig.has.level; $('orkvView').value=spec.view||'front'; $('orkvScarN').textContent=(spec.scars||0)?`${spec.scars||0} ×`:'';
+      $('orkvLevelBox').hidden=!rig.has.level; $('orkv3dBox').hidden=!(pl&&pl.K.rig3d&&typeof Rig3D!=='undefined'); $('orkvView').value=spec.view||'front'; $('orkvScarN').textContent=(spec.scars||0)?`${spec.scars||0} ×`:'';
       const gn=rig.genes; GENES.forEach(([k])=>{ $('orkvGn_'+k).value=Math.round((gn[k]===undefined?0.5:gn[k])*100); }); $('orkvEarsBox').hidden=!rig.has.level; if(rig.has.ears) $('orkvEars').value=gn.ohren||'spitz'; $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; $('orkvShield').value=spec.gear.shield||''; $('orkvMat').value=spec.gear.mat||''; $('orkvHelm').value=spec.gear.helmStyle||''; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth','greaves','arms','shieldFlat'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_greaves').hidden=!rig.real; $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     // the stage: 80 units high (the ork's), more for a taller figure, always 2.4 times as wide; the feet 8 units above its bottom
     let SH=80; const stageFit=()=>{ SH=Math.max(80,Math.round(rig.H*1.25)); svgEl.setAttribute('viewBox',`${-SH*1.2} ${-(SH-8)} ${SH*2.4} ${SH}`); };
-    const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); stageFit(); show(); };
+    // the 2.5D test (Rig3D): the figure from its plan, any yaw and camera height
+    let pl=null; const r3=()=>opt.r3d&&pl&&pl.K.rig3d&&typeof Rig3D!=='undefined';
+    const yawNow=()=>(opt.walk&&s.walking?(s.dir>0?90:270):opt.yaw)*Math.PI/180;       // walking it faces the way it walks
+    const drawFig=(g,P,k,ox,oy)=>{ if(r3()) Rig3D.canvas(g,pl,s,yawNow(),opt.pitch*Math.PI/180,k,ox+(P.root&&P.root.x||0)*k,oy); else SvgRig.canvas(g,rig,P,k,ox,oy); };
+    const rebuild=()=>{ rig=SvgRig.build(spec); pl=SvgRig.plan(spec); out=SvgRig.svg($('orkvRig'),rig); stageFit(); show(); };
     rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px);
     $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px); });       // each kind its own pixel size (the user: the imp at 24, the ork at 48)
     $('orkvStyle').addEventListener('change',e=>{ spec.style=e.target.value; const pr=SvgRig.presetsOf(spec.kind)[spec.style]; if(pr) spec.genes=Object.assign({},pr); rebuild(); });
@@ -1211,6 +1381,8 @@ const SvgOrkViewer=(()=>{
     $('orkvKo').addEventListener('click',()=>{ spec.scars=(spec.scars||0)+1; if(!spec.seed) spec.seed=1+Math.floor(Math.random()*1e6); rebuild(); });       // knocked out: one scar more (user)
     $('orkvHeal').addEventListener('click',()=>{ spec.scars=0; spec.scar=false; rebuild(); });
     $('orkvView').addEventListener('change',e=>{ spec.view=e.target.value; rebuild(); });
+    $('orkv3d').addEventListener('click',()=>{ opt.r3d=!opt.r3d; $('orkv3d').setAttribute('aria-pressed',opt.r3d); });
+    [['orkvYaw','yaw'],['orkvPitch','pitch']].forEach(([id,k])=>$(id).addEventListener('input',e=>{ opt[k]=+e.target.value; $(id+'Out').textContent=e.target.value+'°'; }));
     $('orkvRoll').addEventListener('click',()=>{ spec=SvgRig.roll(Math.floor(Math.random()*1e9),spec.kind); rebuild(); });
     const toggle=(id,key)=>{ const b=$(id); b.addEventListener('click',()=>{ opt[key]=!opt[key]; b.setAttribute('aria-pressed',opt[key]); if(key==='followMouse'&&!opt[key]) opt.mouse=null; }); };
     toggle('orkvWalk','walk'); toggle('orkvMouse','followMouse'); toggle('orkvParts','explode');
@@ -1230,24 +1402,24 @@ const SvgOrkViewer=(()=>{
       const dt=Math.min(0.05,(now-last)/1000); last=now;
       SvgRig.step(s,dt,{ walk:opt.walk, mouse:opt.followMouse?opt.mouse:null, range:56, explode:opt.explode });
       if(opt.walk&&s.walking&&((spec.view==='left'&&s.dir>0)||(spec.view==='right'&&s.dir<0))){ spec.view=s.dir>0?'right':'left'; rebuild(); }       // from the side it faces the way it walks
-      const P=SvgRig.pose(s,rig), vec=opt.fx==='vector'||opt.fx==='boil'; svgEl.style.visibility=vec?'visible':'hidden'; cv.hidden=vec;
+      const P=SvgRig.pose(s,rig), vec=(opt.fx==='vector'||opt.fx==='boil')&&!r3(); svgEl.style.visibility=vec?'visible':'hidden'; cv.hidden=vec;       // (the 3D test draws on the canvas only)
       if(vec){ out.draw(P); $('orkvRig').setAttribute('filter',opt.fx==='boil'?'url(#orkvBoil)':''); boilT+=dt; if(boilT>0.13){ boilT=0; turb.setAttribute('seed',1+Math.floor(Math.random()*90)); } }
       else if((stageT+=dt)>1/30){ stageT=0;
         // the ork opt.res pixels high (as the sprites below), the stage around it in the same pixels
-        const r=stage.getBoundingClientRect(), k=opt.res/rig.H, small=document.createElement('canvas'); small.width=Math.round(SH*2.4*k); small.height=Math.round(SH*k);
-        const g=small.getContext('2d'); SvgRig.canvas(g,rig,P,k,small.width/2,small.height-8*k);
-        let src=small; if(opt.fx!=='soft') snap(g,small.width,small.height); if(opt.fx==='smooth') src=epx2(epx2(small));
+        const r=stage.getBoundingClientRect(), hi=r3()&&(opt.fx==='vector'||opt.fx==='boil'), k=hi?r.height*Math.min(2,window.devicePixelRatio||1)/SH:opt.res/rig.H, small=document.createElement('canvas'); small.width=Math.round(SH*2.4*k); small.height=Math.round(SH*k);       // (the 3D test as vectors: drawn at the stage's own size)
+        const g=small.getContext('2d'); drawFig(g,P,k,small.width/2,small.height-8*k);
+        let src=small; if(opt.fx!=='soft'&&opt.fx!=='vector'&&opt.fx!=='boil') snap(g,small.width,small.height); if(opt.fx==='smooth') src=epx2(epx2(small));
         const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
         const cg=cv.getContext('2d'); cg.imageSmoothingEnabled=opt.fx!=='pixel'; const sc=Math.min(cv.width/src.width,cv.height/src.height);
         cg.clearRect(0,0,cv.width,cv.height); cg.drawImage(src,(cv.width-src.width*sc)/2,cv.height-src.height*sc,src.width*sc,src.height*sc);
       }
       // the sprites follow the chosen after-effect: plain pixels, or grown smoothly when "smooth" is chosen
       spriteT+=dt; if(spriteT>0.1){ spriteT=0; const Q=Object.assign({},P,{ root:Object.assign({},P.root,{ x:0 }) });
-        figs.forEach(f=>{ let sp=sprite(rig,Q,f.n); const smooth=opt.fx==='smooth'; if(smooth) sp=epx2(epx2(sp));
+        figs.forEach(f=>{ let sp=r3()?(()=>{ const c=document.createElement('canvas'); c.width=Math.round(f.n*1.25); c.height=Math.round(f.n*1.08); const g=c.getContext('2d'), k=f.n/rig.H; drawFig(g,Q,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c; })():sprite(rig,Q,f.n); const smooth=opt.fx==='smooth'; if(smooth) sp=epx2(epx2(sp));
           const g=f.c.getContext('2d'); g.imageSmoothingEnabled=smooth; g.clearRect(0,0,f.c.width,f.c.height); g.drawImage(sp,0,0,f.c.width,f.c.height); }); }
     };
     requestAnimationFrame(frame);
-    return lastViewer={ close(){ alive=false; root.remove(); }, state:s, opt, get spec(){ return spec; } };
+    return lastViewer={ close(){ alive=false; root.remove(); }, state:s, opt, get spec(){ return spec; }, get plan(){ return pl; }, get r3(){ return r3(); } };
   }
   // in the game (where View3D exists): "#svgork" opens it over everything
   // in the game: the figure workshop over everything (main menu, options, or "#svgork" at the end of the address); the game pauses while it is open
