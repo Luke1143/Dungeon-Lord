@@ -11,12 +11,12 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6 } };       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2' } };       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
   function baseSpec(c){
     let b=bases.get(c); if(b) return b;
-    b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,c.kind);
+    b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,(KINDS[c.kind]&&KINDS[c.kind].rig)||c.kind);
     b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, arms:true, ears:true, cloth:b.gear.cloth }:{ hands:true, arms:true, cloth:SvgRig.defaults(c.kind).gear.cloth };       // arms link the hands to the shoulders b.shadow=false;       // the imps work: no armour; the others wear what they wear
     bases.set(c,b); return b;
   }

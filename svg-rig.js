@@ -221,11 +221,17 @@ const SvgRig=(()=>{
         [`M${f2(-w*0.6)} ${f2(yt+3*u)} l${f2(1.4*u)} ${f2(4*u)} M${f2(w*0.45)} ${f2(yt+2.4*u)} l${f2(0.7*u)} ${f2(3.4*u)}`,null,sw*0.6,'rust'],[formShade(pts,0),'shade',0]];
     },
     // the shield in the left hand (its grip at the fist, the fist drawn over it): a round buckler, a kite or a tower, as big as the shoulders are broad
-    shield(A,family,at){
-      const { wSh, sw }=A, r=wSh*(family==='tower'?0.62:(family==='kite'?0.58:0.45))*(A.shieldK||1), [x,y]=at;
-      const face=family==='tower'?affPath('M-0.8 -1.4 L0.8 -1.4 L0.8 1.3 L-0.8 1.3z',r,r,x,y):(family==='kite'?affPath('M-1 -1.1 L1 -1.1 L0.9 0.3 L0 1.45 L-0.9 0.3z',r,r,x,y):ell(f2(x),f2(y),f2(r),f2(r)));
-      const out=[[face,'wood',sw],[face,null,sw*0.7,'iron'],[family==='buckler'||!family?ell(f2(x),f2(y),f2(r*0.3),f2(r*0.3)):(A.emblem?affPath('M-1 0.35 L1 0.35',r*0.8,r,x,y):affPath('M-0.12 -1 L0.12 -1 L0.12 1 L-0.12 1z',r,r,x,y)),A.emblem?null:'iron',sw*0.6,'ironDark']];
-      if(A.emblem&&family!=='buckler'){ const k=r*0.32, ey=y-r*0.35; out.push([affPath('M-1 -0.2 Q-1 -1.3 0 -1.3 Q1 -1.3 1 -0.2 Q1 0.4 0.55 0.6 L0.5 1 L-0.5 1 L-0.55 0.6 Q-1 0.4 -1 -0.2z',k,k,x,ey),'bone',sw*0.5],[ell(f2(x-0.42*k),f2(ey-0.15*k),f2(0.3*k),f2(0.32*k)),'socket',0],[ell(f2(x+0.42*k),f2(ey-0.15*k),f2(0.3*k),f2(0.32*k)),'socket',0]); }       // a skull painted on it
+    shield(A,family,at,flat){
+      // turned a little (user, November 2026: face-on, from above, it looked clumsy): narrower, its edge showing on the side towards the body as its thickness
+      const { wSh, sw, u }=A, r=wSh*(family==='tower'?0.62:(family==='kite'?0.58:0.45))*(A.shieldK||1), [x,y]=at, kx=flat?1:0.58, ed=flat?0:Math.max(0.6,0.12*r);
+      const unit=family==='tower'?[[-0.8,-1.4],[0.8,-1.4],[0.8,1.3],[-0.8,1.3]]:(family==='kite'?[[-1,-1.1],[1,-1.1],[0.9,0.3],[0,1.45],[-0.9,0.3]]:ellPts(0,0,1,1,24));
+      const lean=flat?0:0.12, at2=(dx)=>unit.map(([ux,uy])=>[x+ux*r*kx+dx+uy*r*lean,y+uy*r]), face=ptsPath(at2(0)), out=[];       // (lean: its top a little outward)
+      if(ed){ const e=at2(ed); out.push([ptsPath(e),'ironDark',sw],[ptsPath(at2(ed*0.5)),'wood',0]); }       // the edge: the wood's thickness behind the face, the iron rim round it
+      out.push([face,'wood',sw],[face,null,sw*0.7,'iron'],[formShade(at2(0),x),'shade',0]);
+      if(family==='buckler'||!family) out.push([ell(f2(x),f2(y),f2(r*0.3*kx),f2(r*0.3)),'iron',sw*0.6,'ironDark']);
+      else if(!A.emblem) out.push([affPath('M-0.12 -1 L0.12 -1 L0.12 1 L-0.12 1z',r*kx,r,x,y),'iron',sw*0.6,'ironDark']);
+      else out.push([affPath('M-1 0.35 L1 0.35',r*0.8*kx,r,x,y),null,sw*0.6,'ironDark']);
+      if(A.emblem&&family!=='buckler'){ const k=r*0.32, ey=y-r*0.35; out.push([affPath('M-1 -0.2 Q-1 -1.3 0 -1.3 Q1 -1.3 1 -0.2 Q1 0.4 0.55 0.6 L0.5 1 L-0.5 1 L-0.55 0.6 Q-1 0.4 -1 -0.2z',k*kx,k,x,ey),'bone',sw*0.5],[ell(f2(x-0.42*k*kx),f2(ey-0.15*k),f2(0.3*k*kx),f2(0.32*k)),'socket',0],[ell(f2(x+0.42*k*kx),f2(ey-0.15*k),f2(0.3*k*kx),f2(0.32*k)),'socket',0]); }       // a skull painted on it
       return out;
     },
   // the left shoulder plate (the right one is it mirrored): on the shoulder, as big as the shoulders are broad, with a spike
@@ -463,7 +469,8 @@ const SvgRig=(()=>{
       const block=(y,hw,hh)=>out.push([`M${f2(-hw)} ${f2(y)} L${f2(hw)} ${f2(y)} L${f2(hw*0.9)} ${f2(y+hh)} L${f2(-hw*0.9)} ${f2(y+hh)}z`,'skin',BF,'line']);
       const n0=top+h*0.86, n1=topY+0.2*u, nh=(n1-n0)/3; for(let i=0;i<3;i++) block(n0+i*nh,0.75*u,nh*0.8);       // the neck: three
       const sternBot=topY+bodyH*0.32, l0=topY+bodyH*0.5, l1=hipY-6.4*u;
-      if(back){ for(let y=topY+0.4*u;y<l0;y+=1.6*u) block(y,0.6*u,1.2*u); [-1,1].forEach(s=>out.push(...fBone([[s*wSh*0.92,topY+0.3*u],[s*wSh*0.45,topY+1.3*u],[s*wC*0.55,topY+bodyH*0.36],[s*wC*0.85,topY+bodyH*0.3]],2))); }
+      for(let y=topY+0.4*u;y<l0;y+=1.4*u) block(y,0.6*u,1.1*u);       // the spine behind the ribs (from the front it shows between them and under the breastbone)
+      if(back){ [-1,1].forEach(s=>out.push(...fBone([[s*wSh*0.92,topY+0.3*u],[s*wSh*0.45,topY+1.3*u],[s*wC*0.55,topY+bodyH*0.36],[s*wC*0.85,topY+bodyH*0.3]],2))); }
       // six broad ribs a side, from the breastbone down and out round the side
       const Wf=[0.62,0.8,0.92,0.97,0.95,0.85];
       for(let i=0;i<6;i++){ const W=Wf[i]*wC, y=topY+1.3*u+i*1.2*u, d=(0.8+0.42*i)*u, cw=0.5*u, ys=Math.min(y,sternBot-0.6*u);
@@ -549,7 +556,7 @@ const SvgRig=(()=>{
     const hr=lin(K.hand,plump)*(0.92+0.2*st), handAt=[f2(wSh*0.98+K.handOut*u),f2(hipY+0.3*u)], legK=lin(K.legK,gx('beine'));       // the hands hang beside the hips, under the shoulders
     const pd=GEAR.pauldron(A), S=Object.assign({ shadow:[[ell(0,f2(0.6*u),f2(wHip+3*u),f2(1.6*u)),'shadowC',0]], leg, shin, foot, knee:[f2(xk),f2(kneeY)], ankle:[f2(xa),f2(ankY)], footClaws:false, hip:[f2(xh),hipY], body, belly,
       neck:[0,f2(topY-1*u)], skull, scar:K.scar?[[`M${f2(-aw*0.7)} ${f2(top+0.3*h)} L${f2(-aw*0.25)} ${f2(top+0.62*h)}`,null,0.7,'scar']]:null,
-      helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]]):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
+      helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]],G.shieldFlat):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
       fist:K.bones&&!(G&&G.pauldrons)?(K.boneStyle==='fantasy'?boneFistF:boneFist)(+handAt[0],+handAt[1],hr):fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true, armUp:bodyH*0.3, armIn:1.2*u, shoulderAt:[wSh*0.86,topY+1.9*u], armLen:[10.6*u,9.8*u], armW:[1.75*u,1.2*u,0.85*u],
       headBox:[-aw*0.6,top+h*0.2,aw*0.6,top+h*0.7], bodyBox:[-wChest*0.6,topY+5*u,wChest*0.6,hipY-3*u], H:Math.round(-hipY*(legK-1)-top+K.pad) },face,armed?GEAR.belt(A,K):{ belt:[], buckle:[] });
     if(K.ears==='human'&&!K.bones){ const ax=-aw*0.97, ay=top+0.52*h; Object.assign(S,{ ear:[[`M${f2(ax+0.4)} ${f2(ay-0.13*h)} Q${f2(ax-aw*0.2)} ${f2(ay-0.12*h)} ${f2(ax-aw*0.16)} ${f2(ay+0.03*h)} Q${f2(ax-aw*0.1)} ${f2(ay+0.13*h)} ${f2(ax+0.4)} ${f2(ay+0.12*h)}z`,'skin',sw*0.7],[`M${f2(ax-aw*0.02)} ${f2(ay-0.07*h)} Q${f2(ax-aw*0.1)} ${f2(ay)} ${f2(ax-aw*0.02)} ${f2(ay+0.06*h)}`,null,0.5,'faceLine']], earTip:null, earAt:[f2(ax),f2(ay)] }); }
@@ -683,7 +690,7 @@ const SvgRig=(()=>{
     const hr=lin(K.hand,plump)*(0.9+0.25*t.stark), handAt=[f2(wSh+K.handOut*u),f2(hipY-bodyH*0.42)], headY=(g.tief||0)*HD.sink, legK=lin(K.legK,g.beine===undefined?0.5:g.beine);
     const S=Object.assign({ shadow:[[ell(0,f2(1.2*u),f2(wHip+2*u),f2(2*u)),'shadowC',0]], leg, foot, footClaws:fType==='claws', hip:[f2(xc),hipY], body, belly,
       neck:[0,f2(topY+1*u)], skull, scar:K.scar?[[`M${f2(-aw*0.75)} ${f2(top+h*0.22)} L${f2(-aw*0.2)} ${f2(top+h*0.72)}`,null,1.1,'scar']]:null,
-      helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]]):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
+      helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]],G.shieldFlat):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
       fist:fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.95), handAt, handGap:K.handGap,
       horn:null, look:{ ears:!!K.ears, horns:false }, headY, legK, px:K.px,
       shoulderAt:[wSh*0.95,topY+bodyH*0.15], armW:[hr*0.8,hr*0.58,hr*0.45],
@@ -1044,7 +1051,7 @@ const SvgOrkViewer=(()=>{
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
   <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"></select>
   <label for="orkvLoad" data-for="load">Last</label><select id="orkvLoad" data-for="load"><option value="none">keine</option><option value="gold">Gold</option><option value="ore">Erz</option></select>
-  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvG_greaves" aria-pressed="false">Beinschienen</button><button id="orkvG_arms" aria-pressed="false">Arme</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
+  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvG_greaves" aria-pressed="false">Beinschienen</button><button id="orkvG_arms" aria-pressed="false">Arme</button><button id="orkvG_shieldFlat" aria-pressed="false">Schild flach</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
   <label for="orkvShield">Schild</label><select id="orkvShield"><option value="">keiner</option><option value="buckler">Buckler</option><option value="kite">Dreiecksschild</option><option value="tower">Turmschild</option></select>
   <label for="orkvMat">Material</label><select id="orkvMat"><option value="">Grundfarbe</option><option value="leder">Leder</option><option value="bronze">Bronze</option><option value="eisen">Eisen</option><option value="stahl">Stahl</option></select>
   <label for="orkvHelm">Helmform</label><select id="orkvHelm"><option value="">wie die Art</option><option value="plain">schlicht</option><option value="crest">Kamm</option><option value="horns">Hörner</option></select>
@@ -1071,7 +1078,7 @@ const SvgOrkViewer=(()=>{
       const lk=SvgRig.lookOf(spec.kind); ['ears','horns'].forEach(k=>{ const b=$('orkvG_'+k); b.hidden=!rig.has[k]; b.setAttribute('aria-pressed',spec.gear[k]!==undefined?!!spec.gear[k]:lk[k]!==false); });
       $('orkvLevelBox').hidden=!rig.has.level; $('orkvView').value=spec.view||'front'; $('orkvScarN').textContent=(spec.scars||0)?`${spec.scars||0} ×`:'';
       const gn=rig.genes; GENES.forEach(([k])=>{ $('orkvGn_'+k).value=Math.round((gn[k]===undefined?0.5:gn[k])*100); }); $('orkvEarsBox').hidden=!rig.has.level; if(rig.has.ears) $('orkvEars').value=gn.ohren||'spitz'; $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; $('orkvShield').value=spec.gear.shield||''; $('orkvMat').value=spec.gear.mat||''; $('orkvHelm').value=spec.gear.helmStyle||''; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
-      ['helmet','chest','pauldrons','cloth','greaves','arms'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_greaves').hidden=!rig.real; $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
+      ['helmet','chest','pauldrons','cloth','greaves','arms','shieldFlat'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_greaves').hidden=!rig.real; $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     // the stage: 80 units high (the ork's), more for a taller figure, always 2.4 times as wide; the feet 8 units above its bottom
     let SH=80; const stageFit=()=>{ SH=Math.max(80,Math.round(rig.H*1.25)); svgEl.setAttribute('viewBox',`${-SH*1.2} ${-(SH-8)} ${SH*2.4} ${SH}`); };
     const rebuild=()=>{ rig=SvgRig.build(spec); out=SvgRig.svg($('orkvRig'),rig); stageFit(); show(); };
@@ -1088,7 +1095,7 @@ const SvgOrkViewer=(()=>{
     [['orkvShield','shield'],['orkvMat','mat'],['orkvHelm','helmStyle']].forEach(([id,k])=>$(id).addEventListener('change',e=>{ spec.gear[k]=e.target.value||undefined; rebuild(); }));
     TRAITS.forEach(([k])=>$('orkvT_'+k).addEventListener('input',e=>{ spec.traits[k]=e.target.value/100; rebuild(); }));
     $('orkvWeapon').addEventListener('change',e=>{ spec.gear.weapon=e.target.value; rebuild(); });
-    ['helmet','chest','pauldrons','cloth','greaves','arms'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=!spec.gear[k]; rebuild(); }));
+    ['helmet','chest','pauldrons','cloth','greaves','arms','shieldFlat'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=!spec.gear[k]; rebuild(); }));
     $('orkvG_hands').addEventListener('click',()=>{ spec.gear.hands=spec.gear.hands===false; rebuild(); });
     $('orkvScar').addEventListener('click',()=>{ spec.scar=!spec.scar; rebuild(); });
     $('orkvKo').addEventListener('click',()=>{ spec.scars=(spec.scars||0)+1; if(!spec.seed) spec.seed=1+Math.floor(Math.random()*1e6); rebuild(); });       // knocked out: one scar more (user)
