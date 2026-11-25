@@ -11,7 +11,8 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon)
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:48, cells:1.5, tall:1.12 }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon),
+  // tall: how much taller than others of its size it stands (user: an ork at least as tall as a man, rather taller)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
   function baseSpec(c){
@@ -65,7 +66,7 @@ const SvgFigures=(()=>{
     let pl=plans.get(pk); if(!pl){ pl=SvgRig.plan(Object.assign({},b,{ level:c.level||1, traits:traitsOf(c,b), gear:Object.assign({},b.gear,gear) })); if(plans.size>300) plans.delete(plans.keys().next().value); plans.set(pk,pl); }
     const off=(c.id||0)*0.37, step=moving?Math.floor(now/140+off)%4:0, swing=pose?swingOf(pose):0, fkey='3d|'+pk+'|'+yaw8+'|'+pitch+'|'+step+'|'+swing;
     let cv=cache.get(fkey); if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
-    const st={ phase:step*Math.PI/2+0.4, walking:moving, t:0.3, swing, roar:0 }, px=KD.px, N=Math.round(px/0.92*KD.cells), small=document.createElement('canvas'); small.width=small.height=N;
+    const st={ phase:step*Math.PI/2+0.4, walking:moving, t:0.3, swing, roar:0 }, px=KD.px, N=Math.round(px/(0.92*(KD.tall||1))*KD.cells), small=document.createElement('canvas'); small.width=small.height=N;
     const g=small.getContext('2d'); Rig3D.canvas(g,pl,st,yaw8*Math.PI/4,pitch,px/pl.H,N/2,N-1);
     const im=g.getImageData(0,0,N,N), d=im.data; for(let i=3;i<d.length;i+=4) d[i]=d[i]>110?255:0; g.putImageData(im,0,0);
     cv=epx2(small); cv._svg=true; cv._cells=KD.cells; cache.set(fkey,cv);
@@ -84,7 +85,7 @@ const SvgFigures=(()=>{
     if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
     // the pose: a still state of the rig
     const s=SvgRig.create(); s.walking=moving; s.phase=step*Math.PI/2+0.4; s.turn=tq; s.t=breath*1.5+0.3; s.swing=swing; s.blink=blink?0.1:0; s.nextBlink=1e9; s.look=[tq*0.8,0];
-    const KD=KINDS[c.kind]||{ px:24, cells:1 }, P=SvgRig.pose(s,rig), px=KD.px, N=Math.round(px/0.92*KD.cells), small=document.createElement('canvas'); small.width=small.height=N;
+    const KD=KINDS[c.kind]||{ px:24, cells:1 }, P=SvgRig.pose(s,rig), px=KD.px, N=Math.round(px/(0.92*(KD.tall||1))*KD.cells), small=document.createElement('canvas'); small.width=small.height=N;
     const g=small.getContext('2d'), k=px/rig.H; if(flip){ g.translate(N,0); g.scale(-1,1); } SvgRig.canvas(g,rig,P,k,N/2,N-1);
     const im=g.getImageData(0,0,N,N), d=im.data; for(let i=3;i<d.length;i+=4) d[i]=d[i]>110?255:0; g.putImageData(im,0,0);       // a pixel sprite has no half pixels
     cv=epx2(small); cv._svg=true; cv._cells=KD.cells;       // grown once (the 3D view reads it smoothly; twice would cost four times the memory)

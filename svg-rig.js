@@ -309,32 +309,32 @@ const SvgRig=(()=>{
   };
   // ---- the kinds: the ranges of their measures [at gene 0, more at gene 1], their colours, face, feet, gear, extras ----
   const HUMANOIDS={
-    imp:{ px:24, worker:true, cloth:true, hipY:-10, bodyH:[13.6,3.8], hip:[5.6,6], sh:[6,3], legW:[2.2,1.8], legX:0.5, legK:[0.8,0.6], line:1.4,
+    imp:{ px:24, height:0.6, worker:true, cloth:true, hipY:-10, bodyH:[13.6,3.8], hip:[5.6,6], sh:[6,3], legW:[2.2,1.8], legX:0.5, legK:[0.8,0.6], line:1.4,
       head:{ w:[7,2.6], h:[16.5,4.5], chinH:0.2, chinK:1, over:1.6, sink:8 }, hand:[2.4,0.6], handOut:4.5, handGap:2, pad:3,
       face:'imp', feet:['claws','paws','clumps'], belt:'rope', helm:'plain', ears:'imp', sack:true, tail:true, scar:false,
       weapons:['pick','club'], weapon:'pick', presets:IMP_PRESETS, base:PAL.imp,
       skins:[{ skin:'#8c3a1c', light:'#a8522a', dark:'#46160a', leg:'#7a3018', brow:'#2a0c06' },{ skin:'#7a3219', light:'#94431f', dark:'#3e140a', leg:'#6a2b15', brow:'#260a04' },{ skin:'#5a3a34', light:'#6e4a42', dark:'#2a1714', leg:'#4e322d', brow:'#1a0d0b' }],
       eye:['#ffb020','#c4f4ff'], socket:['#120604','#05070a'], glow:[[255,150,30],[120,220,255]], glowA:0.48 },
-    ork:{ px:48, hipY:-12, bodyH:[24,4], hip:[8.5,3], sh:[13,3], legW:[5.2,2], legX:0.55, legK:[1,0.3], line:1.7,
+    ork:{ px:48, height:1.12, hipY:-12, bodyH:[24,4], hip:[8.5,3], sh:[13,3], legW:[5.2,2], legX:0.55, legK:[1,0.3], line:1.7,
       head:{ w:[8,2], h:[13,3], chinH:0.1, chinK:0.3, over:3.5, sink:4 }, hand:[3.2,0.6], handOut:4, handGap:3, pad:9,
       face:'ork', feet:['boots','wraps','claws'], belt:'band', helm:'horns', scar:true, cloth:true,
       weapons:['axe','club','sword','hammer','spear','dagger','bow','staff'], weapon:'axe', presets:ORK_PRESETS, base:PAL.ork,
       skins:[{ skin:'#3a5228', light:'#4a6534', dark:'#1e2c14', leg:'#2e4220', brow:'#0f180a' },{ skin:'#3c4730', light:'#4c583b', dark:'#20271a', leg:'#2f3827', brow:'#11160d' },{ skin:'#4a463c', light:'#5a554a', dark:'#26231e', leg:'#3a3730', brow:'#15130f' }],
       eye:['#ff4a1e','#f0d040'], glow:[[255,60,20],[240,200,40]], glowA:0.42 },
     // the first wave of the others (user, November 2026: brighter colours than the ork's for the next creatures)
-    goblin:{ px:32, hipY:-9, bodyH:[11.5,3], hip:[5,2.5], sh:[6,2.5], legW:[2.1,1.2], legX:0.5, legK:[0.85,0.35], line:1.3,
+    goblin:{ px:32, height:0.75, hipY:-9, bodyH:[11.5,3], hip:[5,2.5], sh:[6,2.5], legW:[2.1,1.2], legX:0.5, legK:[0.85,0.35], line:1.3,
       head:{ w:[7.5,2.2], h:[12.5,3], chinH:0.15, chinK:0.5, over:2, sink:3 }, hand:[2.2,0.5], handOut:4, handGap:2, pad:3,
       face:'goblin', ears:'goblin', feet:['claws','bare','shoes'], belt:'rope', helm:'plain', armour:false, cloth:true, clothed:true,
       weapons:['dagger','club','spear','bow'], weapon:'dagger', presets:GOBLIN_PRESETS, base:Object.assign({},PAL.imp,{ tunic:'#6e5a34', tunicDark:'#4a3c22', trim:'#5a3a24', cloth:'#5a3a24', foot:'#3a2a18', pupil:'#1a1000' }),
       skins:[{ skin:'#7a9a30', light:'#94b444', dark:'#3e5014', leg:'#5a4a2a', brow:'#2a3010' },{ skin:'#8aa83a', light:'#a4c252', dark:'#46581a', leg:'#5a4a2a', brow:'#2e3612' },{ skin:'#9a9a50', light:'#b4b468', dark:'#4e4e22', leg:'#5a4a2a', brow:'#34341a' }],
       eye:['#f4d040','#ff8a30'], glow:[[244,208,64],[255,138,48]], glowA:0.4 },
-    troll:{ px:64, hipY:-14, bodyH:[27,6], hip:[10.5,3], sh:[16,4], legW:[7,2.5], legX:0.55, legK:[0.9,0.3], line:1.9,
+    troll:{ px:64, height:1.45, hipY:-14, bodyH:[27,6], hip:[10.5,3], sh:[16,4], legW:[7,2.5], legX:0.55, legK:[0.9,0.3], line:1.9,
       head:{ w:[7.5,1.5], h:[11.5,2], chinH:0.1, chinK:0.2, over:0.3, sink:1.5 }, hand:[4.4,1], handOut:4.5, handGap:3, pad:8,
       face:'brute', crest:true, feet:['clumps','claws','clumps'], belt:'band', helm:'plain', armour:false, cloth:true, scar:true,
       weapons:['club','hammer','axe'], weapon:'club', presets:TROLL_PRESETS, base:Object.assign({},PAL.ork,{ socket:'#0c1214', cloth:'#4a3a2a', bone:'#d8d0bc' }),
       skins:[{ skin:'#5a7e88', light:'#6e949e', dark:'#2e4248', leg:'#4a6a72', brow:'#1e2a2e' },{ skin:'#6a8a96', light:'#80a2ae', dark:'#38484e', leg:'#52707a', brow:'#22302e' },{ skin:'#7a8a78', light:'#92a28e', dark:'#3e4a3c', leg:'#5e6e5c', brow:'#262e24' }],
       eye:['#ffc040','#ff5030'], glow:[[255,192,64],[255,80,48]], glowA:0.4 },
-    darkelf:{ px:48, hipY:-14, bodyH:[21,3], hip:[6.8,1.8], sh:[9,2.5], legW:[3.4,1], legX:0.5, legK:[1,0.3], line:1.5,
+    darkelf:{ px:48, height:1.03, hipY:-14, bodyH:[21,3], hip:[6.8,1.8], sh:[9,2.5], legW:[3.4,1], legX:0.5, legK:[1,0.3], line:1.5,
       head:{ w:[6.4,1.2], h:[13.5,2], chinH:0.25, chinK:1, over:2.5, sink:2 }, hand:[2.5,0.4], handOut:4, handGap:2.5, pad:6,
       face:'fine', ears:'elf', hair:'long', feet:['boots','shoes','boots'], belt:'band', helm:'crest', armour:false, clothed:true,
       weapons:['sword','dagger','bow','staff','spear'], weapon:'sword', presets:ELF_PRESETS, base:Object.assign({},PAL.ork,{ tunic:'#3a3256', tunicDark:'#241e38', trim:'#a040a0', foot:'#1a1424', belt:'#2a2038', gold:'#c0b0d8', hair:'#e8e6f0', hairDark:'#a8a4bc', pupil:'#200028' }),
@@ -657,7 +657,8 @@ const SvgRig=(()=>{
   const REAL_MATS={ leder:['#5e4430','#34261a'], bronze:['#7e6030','#44321a'], eisen:['#5a5a5e','#2c2c30'], stahl:['#727a84','#3a4048'], schwarz:['#2a2a30','#121216'] };
   const HUMAN_BASE={ shade:'rgba(20,10,5,0.32)', shadeFace:'rgba(30,15,5,0.12)', faceLine:'rgba(50,25,12,0.55)', lip:'#5a3026', sclera:'#cfc2b0', pupil:'#0c0806', line:'#120d0a', foot:'#3a2a1e', belt:'#4a3422', gold:'#9a8a6a', bone:'#d6ccb4', mouth:'#2a0e0a', tongue:'#6a2a22',
     iron:'#5a5a5e', ironDark:'#2c2c30', mail:'#4a4a4e', wood:'#4a3524', leather:'#5a4030', cloth:'#3e3026', rust:'#7a4024', scar:'#c48a78', socket:'#0a0706', tunic:'#b5ab96', tunicDark:'#7e7666', trim:'#7e7666', stubble:'rgba(40,30,25,0.35)', hair:'#3a2c22', hairDark:'#1e1610', glow:'rgba(0,0,0,0)', eye:'#5a6e7a' };
-  HUMANOIDS.human={ px:64, real:true, hipY:-36, bodyH:[25.5,2.5], hip:[8.2,1.2], sh:[10.2,1.2], legW:[8.6,1.2], legK:[0.97,0.06], line:1,
+  // height: how tall a kind stands in the world, a human being 1 (user, November 2026: an ork at least as tall as a man, rather taller)
+  HUMANOIDS.human={ px:64, height:1, real:true, hipY:-36, bodyH:[25.5,2.5], hip:[8.2,1.2], sh:[10.2,1.2], legW:[8.6,1.2], legK:[0.97,0.06], line:1,
     head:{ w:[3.55,0.35], h:[9.8,0.8] }, hand:[2.3,0.3], handOut:0.2, handGap:1.2, pad:4, weaponK:1.3, shieldK:1.7, pauldronK:1.3, emblem:true, clothW:1.6,
     face:'human', ears:'human', hair:'short', beard:true, coif:true, pouch:true, clothed:true, belt:'band', buckle:'plain', helm:'horns', armour:false, scar:false, cloth:false,
     weapons:['sword','axe','hammer','spear','dagger','bow','staff','club'], weapon:'none', presets:HUMAN_PRESETS, mats:REAL_MATS, base:HUMAN_BASE,
@@ -939,7 +940,7 @@ const SvgRig=(()=>{
     if(G.arms&&hands&&S.shoulderAt){ const sh=S.shoulderAt, d0=Math.hypot(ha[0]-sh[0],ha[1]-sh[1]), L=S.armLen||[0.56*d0*1.1,0.44*d0*1.1];
       arm={ sh, ha, L, side:sideV, w:S.armW, bone:K.bones?(K.boneStyle==='fantasy'?'fantasy':true):false, fill:G.pauldrons?'iron':(K.clothed&&!K.real?'tunic':'skin') }; }
     if(S.earScale) ['earL','earR'].forEach(k=>{ base[k].sx=(base[k].sx||1)*S.earScale; base[k].sy=(base[k].sy||1)*S.earScale; });       // the imp's ears as big as its head
-    return { tree, base, pal, spec, genes, hands, noBlink:!!S.noBlink, real, arm, mirror:sideV?spec.view==='left':!back, side:sideV, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px, has:{ helmet:true, chest:true, pauldrons:true, load:!!K.sack, ears:!!K.ears&&K.ears!=='human', horns:false, level:K.ears==='imp' }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
+    return { tree, base, pal, spec, genes, hands, noBlink:!!S.noBlink, real, arm, height:K.height||1, mirror:sideV?spec.view==='left':!back, side:sideV, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px, has:{ helmet:true, chest:true, pauldrons:true, load:!!K.sack, ears:!!K.ears&&K.ears!=='human', horns:false, level:K.ears==='imp' }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
   // how far a part moves sideways when the ork half turns (turn -1 .. 1): the face more than the skull, so the flat figure seems to turn
   const TURN={ beard:1.2, coif:0.4, nose:2, hair:0.7, hood:0.5, collar:0.2, skull:0.6, earL:0.6, earR:0.6, helmet:0.7, mouth:1.4, jaw:1.4, eyeL:2.2, eyeR:2.2, lidL:2.2, lidR:2.2, browL:2.2, browR:2.2, belly:1.6, chest:1.0, cloth:1.1, buckle:2.2 };
@@ -1356,7 +1357,8 @@ const SvgOrkViewer=(()=>{
       const gn=rig.genes; GENES.forEach(([k])=>{ $('orkvGn_'+k).value=Math.round((gn[k]===undefined?0.5:gn[k])*100); }); $('orkvEarsBox').hidden=!rig.has.level; if(rig.has.ears) $('orkvEars').value=gn.ohren||'spitz'; $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; $('orkvShield').value=spec.gear.shield||''; $('orkvMat').value=spec.gear.mat||''; $('orkvHelm').value=spec.gear.helmStyle||''; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth','greaves','arms','shieldFlat'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_greaves').hidden=!rig.real; $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     // the stage: 80 units high (the ork's), more for a taller figure, always 2.4 times as wide; the feet 8 units above its bottom
-    let SH=80; const stageFit=()=>{ SH=Math.max(80,Math.round(rig.H*1.25)); svgEl.setAttribute('viewBox',`${-SH*1.2} ${-(SH-8)} ${SH*2.4} ${SH}`); };
+    // one scale for every kind (a human as tall as a human, an ork taller, an imp small): the stage shows 1.7 human heights, a figure its height of them
+    const WORLD=1.7; let SH=80; const stageFit=()=>{ SH=Math.round(rig.H*WORLD/rig.height); svgEl.setAttribute('viewBox',`${-SH*1.2} ${-(SH-0.1*rig.H)} ${SH*2.4} ${SH}`); };
     // the 2.5D test (Rig3D): the figure from its plan, any yaw and camera height
     let pl=null; const r3=()=>opt.r3d&&pl&&pl.K.rig3d&&typeof Rig3D!=='undefined';
     const yawNow=()=>(opt.walk&&s.walking?(s.dir>0?90:270):opt.yaw)*Math.PI/180;       // walking it faces the way it walks
@@ -1391,7 +1393,7 @@ const SvgOrkViewer=(()=>{
     $('orkvMood').addEventListener('change',e=>{ s.mood=e.target.value; });
     $('orkvFx').addEventListener('change',e=>{ opt.fx=e.target.value; });
     $('orkvRes').addEventListener('change',e=>{ opt.res=+e.target.value; });
-    stage.addEventListener('pointermove',e=>{ if(!opt.followMouse) return; const r=stage.getBoundingClientRect(), sc=Math.min(r.width/(SH*2.4),r.height/SH), ox=r.left+r.width/2, oy=r.bottom-8*sc;
+    stage.addEventListener('pointermove',e=>{ if(!opt.followMouse) return; const r=stage.getBoundingClientRect(), sc=Math.min(r.width/(SH*2.4),r.height/SH), ox=r.left+r.width/2, oy=r.bottom-0.1*rig.H*sc;
       opt.mouse=[(e.clientX-ox)/sc,(e.clientY-oy)/sc]; });
     // the sprites: 16 to 128 pixels high; the small ones shown four times as large, the big ones three and two times
     const TIMES={ 4:'vierfach', 3:'dreifach', 2:'doppelt' };
@@ -1407,7 +1409,7 @@ const SvgOrkViewer=(()=>{
       else if((stageT+=dt)>1/30){ stageT=0;
         // the ork opt.res pixels high (as the sprites below), the stage around it in the same pixels
         const r=stage.getBoundingClientRect(), hi=r3()&&(opt.fx==='vector'||opt.fx==='boil'), k=hi?r.height*Math.min(2,window.devicePixelRatio||1)/SH:opt.res/rig.H, small=document.createElement('canvas'); small.width=Math.round(SH*2.4*k); small.height=Math.round(SH*k);       // (the 3D test as vectors: drawn at the stage's own size)
-        const g=small.getContext('2d'); drawFig(g,P,k,small.width/2,small.height-8*k);
+        const g=small.getContext('2d'); drawFig(g,P,k,small.width/2,small.height-0.1*rig.H*k);
         let src=small; if(opt.fx!=='soft'&&opt.fx!=='vector'&&opt.fx!=='boil') snap(g,small.width,small.height); if(opt.fx==='smooth') src=epx2(epx2(small));
         const dpr=Math.min(2,window.devicePixelRatio||1); cv.width=Math.round(r.width*dpr); cv.height=Math.round(r.height*dpr);
         const cg=cv.getContext('2d'); cg.imageSmoothingEnabled=opt.fx!=='pixel'; const sc=Math.min(cv.width/src.width,cv.height/src.height);
