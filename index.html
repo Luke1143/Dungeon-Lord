@@ -861,6 +861,12 @@ const RACE_CLASS={ warlock:['human','warlock'], wizard:['human','wizard'], pries
   paladin:['human','paladin'], thief:['human','thief'], archer:['human','archer'], monk:['human','monk'], worker:['human','worker'], barbarian:['human','barbarian'],
   elf:['elf','ranger'], dwarf:['dwarf','warrior'], giant:['giant','warrior'], ork:['ork','warrior'], goblin:['goblin','warrior'], troll:['troll','warrior'], darkelf:['darkelf','warrior'],
   skeleton:['skeleton','warrior'], vampire:['vampire',null], lich:['lich',null], ghoul:['ghoul',null], zombie:['zombie',null], demon:['demon',null], succubus:['succubus',null], werewolf:['werewolf',null] };
+// A class has no look of its own (user, November 2026): the look follows from what a creature wears; the class will only set what it prefers to take from the storage
+// (a warlock robe and pointed hat, a warrior plate, a hunter leather). Until clothes are things in the storage, what a creature wears comes from its kind (KIND_OUTFIT,
+// the outfits of svg-rig.js); c.outfit then holds what it has put on.
+const KIND_OUTFIT={ warlock:'warlock', wizard:'wizard', priest:'priest', darkknight:'darkknight', knight:'knight', paladin:'paladin', thief:'thief', archer:'archer', monk:'monk',
+  worker:'worker', barbarian:'barbarian', elf:'ranger' };
+const outfitOf=c=>c.outfit!==undefined?c.outfit:(KIND_OUTFIT[c.kind]||null);
 const raceOf=c=>c.race||(RACE_CLASS[c.kind]||[])[0]||null;       // null: a creature without a race of its own (a beast, the imp)
 const classOf=c=>c.cls!==undefined?c.cls:((RACE_CLASS[c.kind]||[])[1]||null);
 const HERO_KINDS=['barbarian','thief','wizard','knight'];

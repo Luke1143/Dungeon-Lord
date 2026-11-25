@@ -19,13 +19,13 @@ const SvgFigures=(()=>{
   // tall: how much taller than others of its size it stands (user: an ork at least as tall as a man, rather taller)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
-  // a creature's figure is its race (the body) dressed by its class (user, November 2026: species and class apart; raceOf, classOf in index.html)
+  // a creature's figure is its race (the body) in what it wears (user, November 2026: species and class apart, the class has no look of its own; raceOf, outfitOf in index.html)
   const RACE_RIG={ human:'human', ork:'orkB', goblin:'goblinB', troll:'trollB', darkelf:'darkelfB', vampire:'vampireB', skeleton:'skeleton2' };
   function figKind(c){ const r=typeof raceOf==='function'?raceOf(c):null, rk=r&&(RACE_RIG[r]||r); return rk&&SvgRig.KINDS.includes(rk)?rk:((KINDS[c.kind]&&KINDS[c.kind].rig)||c.kind); }
-  function figClass(c){ return (typeof classOf==='function'?classOf(c):null)||null; }
+  function figOutfit(c){ return (typeof outfitOf==='function'?outfitOf(c):null)||null; }
   function baseSpec(c){
-    let b=bases.get(c); const cls=figClass(c); if(b&&b.cls===cls) return b;       // (a new class: dressed anew)
-    const fk=figKind(c); b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,fk); b.cls=cls;
+    let b=bases.get(c); const outfit=figOutfit(c); if(b&&b.outfit===outfit) return b;       // (other clothes: dressed anew)
+    const fk=figKind(c); b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,fk); b.outfit=outfit;
     b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, arms:true, ears:true, cloth:b.gear.cloth }:{ hands:true, arms:true, cloth:SvgRig.defaults(fk).gear.cloth };       // arms link the hands to the shoulders b.shadow=false;       // the imps work: no armour; the others wear what they wear
     bases.set(c,b); return b;
   }
@@ -70,7 +70,7 @@ const SvgFigures=(()=>{
   // the 2.5D test (Rig3D in svg-rig.js): the figure seen from its eighth of a turn and the camera's height (the 3D view looks down 49 degrees; the flat map not at all)
   const plans=new Map();
   function canvas3d(c,now,moving,extra,pose,KD,fix){       // (fix: a given eighth of a turn from the eye's height: the profile of a kind without a flat one, or every view of a kind drawn only from the kit)
-    const yaw8=fix?fix.yaw8:(c._yaw8||0), pitch=fix?0:((typeof capture!=='undefined'&&capture)?0.85:0), gear=gearOf(c,extra), b=baseSpec(c), pk=c.kind+'|'+(c.id||0)+'|'+(c.level||1)+'|'+(b.cls||'')+'|'+JSON.stringify(gear);
+    const yaw8=fix?fix.yaw8:(c._yaw8||0), pitch=fix?0:((typeof capture!=='undefined'&&capture)?0.85:0), gear=gearOf(c,extra), b=baseSpec(c), pk=c.kind+'|'+(c.id||0)+'|'+(c.level||1)+'|'+(b.outfit||'')+'|'+JSON.stringify(gear);
     let pl=plans.get(pk); if(!pl){ pl=SvgRig.plan(Object.assign({},b,{ level:c.level||1, traits:traitsOf(c,b), gear:Object.assign({},b.gear,gear) })); if(plans.size>300) plans.delete(plans.keys().next().value); plans.set(pk,pl); }
     const off=(c.id||0)*0.37, step=moving?Math.floor(now/140+off)%4:0, swing=pose?swingOf(pose):0, fkey='3d|'+pk+'|'+yaw8+'|'+pitch+'|'+step+'|'+swing;
     let cv=cache.get(fkey); if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
@@ -83,7 +83,7 @@ const SvgFigures=(()=>{
   }
   function canvasFor(c,now,moving,extra,view,turn,pose,left){
     if(KINDS[c.kind]&&KINDS[c.kind].r3d&&typeof OPTIONS!=='undefined'&&OPTIONS.fig3d&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KINDS[c.kind]);
-    const KD0=KINDS[c.kind]; if(KD0&&(KD0.only3d||(figClass(c)&&figClass(c)!=='warrior'))&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KD0,{ yaw8:view==='back'?4:(moving&&turn?(turn>0?2:6):0) });       // drawn only from the kit (the goblin): front, back or profile
+    const KD0=KINDS[c.kind]; if(KD0&&(KD0.only3d||figOutfit(c))&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KD0,{ yaw8:view==='back'?4:(moving&&turn?(turn>0?2:6):0) });       // drawn only from the kit (the goblin): front, back or profile
     if(KD0&&KD0.side3d&&moving&&(view||'front')==='front'&&turn&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KD0,{ yaw8:turn>0?2:6 });       // the ork's profile comes from the 2.5D rig
     if(KD0&&KD0.side&&moving&&(view||'front')==='front'&&turn){ view=turn>0?'right':'left'; turn=0; }       // a kind with a side view (a test: the skeleton) walking sideways shows its profile
     const { r:rig, key }=rigOf(c,gearOf(c,extra),view||'front');

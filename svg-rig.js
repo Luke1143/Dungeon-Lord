@@ -888,40 +888,38 @@ const SvgRig=(()=>{
   HUMANOIDS.giant=HERO({ height:2.2, hipY:-78, bodyH:[56,4], hip:[19,1.5], sh:[25,2], legW:[19,1.5], head:{ w:[7.6,0.5], h:[21,1] }, hand:[5.2,0.4], handGap:2, handDrop:6, neckK:0.6, hair:'long', pad:10,
     weaponK:2.2, shieldK:3, pauldronK:2.2, clothW:2.2, feet3d:['bare'], weapons:['club','hammer'], weapon:'club', hairs:['#4a3a2a','#6a5a40','#3a2a1e'] },
     { tunic:'#6a5a40', tunicDark:'#40362a', leg:'#4e4232' });
-  // ---- the classes (user, November 2026: species and class apart; a creature chooses its class: a man working in the library becomes a warlock, an ork a shaman,
-  // an ork who trains much an ork warrior). A class dresses and arms a body of any race: its clothes, its robe or plate, its hood or hat, its weapons, its colours;
-  // the hair and the beard only on a race with a man's hair (a monk's tonsure, a wizard's long beard). A figure is its race (HUMANOIDS) and its class (kitOf). ----
+  // ---- what a figure wears (user, November 2026: a class has no look of its own; the look follows diegetically from what a creature wears: a warlock takes a robe
+  // and a pointed hat from the storage, a warrior the plate, a hunter leather; the class only sets what it prefers). An outfit is a set of worn things on a body of any
+  // race: a robe, a hood or a hat, a stole, plate, a quiver, their colours; the hair under them only on a race with a man's hair (a monk's tonsure). A figure is its
+  // race (HUMANOIDS) in what it wears (kitOf). Weapons come from the equipment alone. ----
   const PLATE=(mat,o)=>Object.assign({ chest:true, pauldrons:true, greaves:true, mat },o);
-  const CLASSES={
-    warrior:{},
-    barbarian:{ k:{ clothed:false, kit3d:{ strap:true, wrap:true }, cloth:true, feet3d:['boots'], weapons:['axe','sword','hammer','club'], weapon:'axe' }, hair:'long', base:{ leather:'#6a4a2c', foot:'#5a4028', cloth:'#5a4a38', belt:'#3a2a1a' } },
-    warlock:{ k:{ sleeves:true, lower:'robe', hood:true, clothed:true, cloth:false, coif:false, feet3d:['bare'], belt:'rope', weapons:['staff','dagger'], weapon:'staff', eye:['#ffffff','#80f0ff'], glow:[[255,240,220],[120,240,255]], glowA:0.5 },
+  const OUTFITS={
+    barbarian:{ k:{ clothed:false, kit3d:{ strap:true, wrap:true }, cloth:true, feet3d:['boots'] }, base:{ leather:'#6a4a2c', foot:'#5a4028', cloth:'#5a4a38', belt:'#3a2a1a' } },
+    warlock:{ k:{ sleeves:true, lower:'robe', hood:true, clothed:true, cloth:false, coif:false, feet3d:['bare'], belt:'rope' },
       base:{ tunic:'#3a2e52', tunicDark:'#221a32', trim:'#c08a30', belt:'#c08a30', void:'#050308' } },
-    wizard:{ k:{ sleeves:true, lower:'robe', hat:'pointy', clothed:true, cloth:false, feet3d:['bare'], weapons:['staff','dagger'], weapon:'staff' }, hair:'long', beardLong:7, base:{ tunic:'#2a3a7a', tunicDark:'#18224a', hat:'#24326a', trim:'#c8a048' } },
-    priest:{ k:{ sleeves:true, lower:'robe', stole:true, pendant:true, clothed:true, cloth:false, feet3d:['bare'], belt:'rope', weapons:['staff','dagger'], weapon:'staff' }, hair:null, beard:true, base:{ tunic:'#4a1820', tunicDark:'#2a0c12', trim:'#b08a3a', gold:'#c8a048' } },
-    shaman:{ k:{ kit3d:{ teeth:true, wrap:true }, cloth:true, weapons:['staff','club','dagger'], weapon:'staff' }, base:{ cloth:'#4a2a1a', leather:'#5a4028' } },
-    knight:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('stahl',{ helmet:true, helmStyle:'visor' }), weapons:['sword','spear','hammer'], weapon:'sword' }, beard:false,
+    wizard:{ k:{ sleeves:true, lower:'robe', hat:'pointy', clothed:true, cloth:false, feet3d:['bare'] }, base:{ tunic:'#2a3a7a', tunicDark:'#18224a', hat:'#24326a', trim:'#c8a048' } },
+    priest:{ k:{ sleeves:true, lower:'robe', stole:true, pendant:true, clothed:true, cloth:false, feet3d:['bare'], belt:'rope' }, base:{ tunic:'#4a1820', tunicDark:'#2a0c12', trim:'#b08a3a', gold:'#c8a048' } },
+    shaman:{ k:{ kit3d:{ teeth:true, wrap:true }, cloth:true }, base:{ cloth:'#4a2a1a', leather:'#5a4028' } },
+    knight:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('stahl',{ helmet:true, helmStyle:'visor' }) },
       base:{ tunic:'#2a3e6a', tunicDark:'#18243e', cloth:'#2a4a8a', cape:'#1e3060', capeIn:'#c8c0a8', void:'#05060a' } },
-    darkknight:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('schwarz',{ helmet:true, helmStyle:'visor' }), weapons:['sword','axe','hammer','spear'], weapon:'sword', eye:['#ff4030','#ff9a30'], glow:[[255,64,48],[255,154,48]], glowA:0.5 }, beard:false,
+    darkknight:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('schwarz',{ helmet:true, helmStyle:'visor' }) },
       base:{ tunic:'#1e1a22', tunicDark:'#0e0c10', cloth:'#4a0e14', cape:'#1a1216', capeIn:'#5a0e16', void:'#030203', leg:'#1e1a22' } },
-    paladin:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('stahl'), weapons:['hammer','sword'], weapon:'hammer' }, base:{ tunic:'#c8c0a8', tunicDark:'#8a8470', cloth:'#e0d8c0', cape:'#d8d0b8', capeIn:'#b8a060', trim:'#b8962e' } },
-    thief:{ k:{ hood:'cowl', mask:true, clothed:true, feet3d:['boots'], weapons:['dagger','sword','bow'], weapon:'dagger' }, beard:false, base:{ tunic:'#2e2a26', tunicDark:'#1a1816', hood:'#24201c', leg:'#26221e', foot:'#18140f', belt:'#3a2a1a', trim:'#3e3a34' } },
-    archer:{ k:{ hood:'cowl', quiver:true, clothed:true, feet3d:['boots'], weapons:['bow','dagger'], weapon:'bow' }, beard:false, base:{ tunic:'#3a5a2a', tunicDark:'#22361a', hood:'#2e4a22', leg:'#4a3a2a', foot:'#3a2a1a', fletch:'#d8d0b8', trim:'#5a4a2e' } },
-    ranger:{ k:{ quiver:true, sleeves:true, clothed:true, feet3d:['boots'], weapons:['bow','sword','spear'], weapon:'bow' }, base:{ tunic:'#4a6a3a', tunicDark:'#2a4020', leg:'#3a4a2a', foot:'#3a2a1a', trim:'#c8b070', fletch:'#e0e0d0' } },
-    monk:{ k:{ sleeves:true, lower:'robe', clothed:true, cloth:false, feet3d:['bare'], belt:'rope', weapons:['staff'], weapon:'staff' }, hair:'tonsure', beard:false, base:{ tunic:'#6a4a2a', tunicDark:'#3e2a16', trim:'#c8b080', belt:'#c8b080' } },
-    worker:{ k:{ clothed:true, feet3d:['boots'], weapons:['hammer','pick'], weapon:'hammer' }, base:{ tunic:'#a89a7a', tunicDark:'#6e6450', leg:'#5a4e3e' } }
+    paladin:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('stahl') }, base:{ tunic:'#c8c0a8', tunicDark:'#8a8470', cloth:'#e0d8c0', cape:'#d8d0b8', capeIn:'#b8a060', trim:'#b8962e' } },
+    thief:{ k:{ hood:'cowl', mask:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#2e2a26', tunicDark:'#1a1816', hood:'#24201c', leg:'#26221e', foot:'#18140f', belt:'#3a2a1a', trim:'#3e3a34' } },
+    archer:{ k:{ hood:'cowl', quiver:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#3a5a2a', tunicDark:'#22361a', hood:'#2e4a22', leg:'#4a3a2a', foot:'#3a2a1a', fletch:'#d8d0b8', trim:'#5a4a2e' } },
+    ranger:{ k:{ quiver:true, sleeves:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#4a6a3a', tunicDark:'#2a4020', leg:'#3a4a2a', foot:'#3a2a1a', trim:'#c8b070', fletch:'#e0e0d0' } },
+    monk:{ k:{ sleeves:true, lower:'robe', clothed:true, cloth:false, feet3d:['bare'], belt:'rope' }, base:{ tunic:'#6a4a2a', tunicDark:'#3e2a16', trim:'#c8b080', belt:'#c8b080' } },
+    worker:{ k:{ clothed:true, feet3d:['boots'] }, base:{ tunic:'#a89a7a', tunicDark:'#6e6450', leg:'#5a4e3e' } }
   };
   const kitCache={};
-  function kitOf(kind,cls){
-    const R=HUMANOIDS[kind], C=cls&&CLASSES[cls]; if(!C||!R||!Object.keys(C).length) return R; const key=kind+'|'+cls; if(kitCache[key]) return kitCache[key];       // (a warrior wears what he is given: the race's own look)
-    const K=Object.assign({},R,C.k||{}), manHair=R.hair==='short'||R.hair==='long';
-    if('hair' in C&&manHair) K.hair=C.hair;
-    if(R.beard){ if('beard' in C) K.beard=C.beard; if(C.beardLong) K.beardLong=R.beardLong||C.beardLong; }
+  function kitOf(kind,outfit){
+    const R=HUMANOIDS[kind], C=outfit&&OUTFITS[outfit]; if(!C||!R) return R; const key=kind+'|'+outfit; if(kitCache[key]) return kitCache[key];
+    const K=Object.assign({},R,C.k||{});       // (the body stays its own: hair, beard and eyes are the race's and the genes')
     if(R.hood&&!(C.k&&'hood' in C.k)) K.hood=R.hood;
     K.base=Object.assign({},R.base,C.base||{});
     if(C.base&&C.base.leg&&K.clothed) K.skins=(R.skins||[]).map(k=>Object.assign({},k,{ leg:C.base.leg }));       // (the trousers' colour is the clothes', not the skin's)
     if(R.feral&&!(C.k&&C.k.clothed)) K.feet3d=R.feet3d;       // a feral body keeps its own feet unless the class dresses it
-    K.only3d=true; K.cls=cls;       // (a dressed figure is drawn from the kit)
+    K.only3d=true; K.outfit=outfit;       // (a dressed figure is drawn from the kit)
     return kitCache[key]=K;
   }
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
@@ -1349,9 +1347,9 @@ const SvgRig=(()=>{
   const lookOf=kind=>({ ears:!!HUMANOIDS[kindOf(kind)].ears, horns:false });
   // the body plan of a spec without the 2D rig (for the 2.5D test, Rig3D): its measures, colours, gear
   function plan(spec){
-    const kind=kindOf(spec&&spec.kind), K=kitOf(kind,spec&&spec.cls), own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;       // (K: its race dressed by its class)
+    const kind=kindOf(spec&&spec.kind), K=kitOf(kind,spec&&spec.outfit), own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;       // (K: its race in what it wears)
     if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
-    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.cls&&K.weapon?{ weapon:K.weapon }:{},spec.gear,K.wear);       // (wear: what a kind or a class always wears, the knight his plate)
+    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear,K.wear);       // (wear: plate a kind or an outfit always has on, the knight's)
     if(K.lower==='robe') G.cloth=false;       // (no loincloth over a robe)
     const S=(K.real?realShapes:humanoidShapes)(kind,genes,t,false,G);
     const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },palOf(K,genes)); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
@@ -1890,7 +1888,7 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const CLASS_NAME={ warrior:'Krieger', barbarian:'Barbar', warlock:'Warlock', wizard:'Zauberer', priest:'Priester', shaman:'Schamane', knight:'Ritter', darkknight:'Dunkler Ritter', paladin:'Paladin', thief:'Dieb', archer:'Bogenschütze', ranger:'Waldläufer', monk:'Mönch', worker:'Handwerker' };       // the classes (svg-rig CLASSES)
+  const OUTFIT_NAME={ barbarian:'Fell und Riemen', warlock:'Robe mit Kapuze', wizard:'Robe mit Spitzhut', priest:'Robe mit Stola', shaman:'Zahnkette und Wickel', knight:'Plattenpanzer mit Visier', darkknight:'Schwarzer Plattenpanzer', paladin:'Plattenpanzer mit weißem Umhang', thief:'Kapuze und Tuch', archer:'Kapuze und Köcher', ranger:'Wams und Köcher', monk:'Kutte', worker:'Hemd und Hose' };       // what a figure can wear (svg-rig OUTFITS)
   const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', knight:'Ritter', paladin:'Paladin', barbarian:'Barbar', thief:'Dieb', wizard:'Zauberer', archer:'Bogenschütze', monk:'Mönch', worker:'Handwerker', elf:'Elfenkrieger', dwarf:'Zwerg', giant:'Riese', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
   // the genes (every humanoid: every look between the presets)
   const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Hautton'],['augenFarbe','Augenfarbe'],['haar','Haarfarbe'],['bart','Bart'],['bemalung','Bemalung']];
@@ -1926,7 +1924,7 @@ const SvgOrkViewer=(()=>{
   <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvG_greaves" aria-pressed="false">Beinschienen</button><button id="orkvG_arms" aria-pressed="false">Arme</button><button id="orkvG_shieldFlat" aria-pressed="false">Schild flach</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
   <label for="orkvShield">Schild</label><select id="orkvShield"><option value="">keiner</option><option value="buckler">Buckler</option><option value="kite">Dreiecksschild</option><option value="tower">Turmschild</option></select>
   <label for="orkvMat">Material</label><select id="orkvMat"><option value="">Grundfarbe</option><option value="leder">Leder</option><option value="bronze">Bronze</option><option value="eisen">Eisen</option><option value="stahl">Stahl</option></select>
-  <label for="orkvClass">Klasse</label><select id="orkvClass"><option value="">keine</option>${Object.keys(CLASS_NAME).map(k=>`<option value="${k}">${CLASS_NAME[k]}</option>`).join('')}</select>
+  <label for="orkvOutfit">Kleidung</label><select id="orkvOutfit"><option value="">wie die Art</option>${Object.keys(OUTFIT_NAME).map(k=>`<option value="${k}">${OUTFIT_NAME[k]}</option>`).join('')}</select>
   <label for="orkvHelm">Helmform</label><select id="orkvHelm"><option value="">wie die Art</option><option value="plain">schlicht</option><option value="crest">Kamm</option><option value="horns">Hörner</option></select>
   <label class="orkv-slider" for="orkvLevel" id="orkvLevelBox">Stufe <input type="range" id="orkvLevel" min="1" max="12" value="1"><output id="orkvLevelOut">1</output></label>
 </div>
@@ -1951,7 +1949,7 @@ const SvgOrkViewer=(()=>{
       root.querySelectorAll('[data-for="load"]').forEach(e=>{ e.hidden=!rig.has.load; });
       const lk=SvgRig.lookOf(spec.kind); ['ears','horns'].forEach(k=>{ const b=$('orkvG_'+k); b.hidden=!rig.has[k]; b.setAttribute('aria-pressed',spec.gear[k]!==undefined?!!spec.gear[k]:lk[k]!==false); });
       $('orkvLevelBox').hidden=!rig.has.level; $('orkv3dBox').hidden=!(pl&&pl.K.rig3d&&typeof Rig3D!=='undefined'); $('orkvView').value=spec.view||'front'; $('orkvScarN').textContent=(spec.scars||0)?`${spec.scars||0} ×`:'';
-      $('orkvClass').value=spec.cls||'';
+      $('orkvOutfit').value=spec.outfit||'';
       const gn=rig.genes, KI=SvgRig.kindInfo(spec.kind); GENES.forEach(([k,n])=>{ const el=$('orkvGn_'+k); el.value=Math.round((gn[k]===undefined?0.5:gn[k])*100); el.parentNode.firstChild.textContent=(KI.geneNames&&KI.geneNames[k])||n; el.parentNode.hidden=k==='bemalung'&&!KI.paint; });       // a kind may name a gene its own way (the ork's beard is its hair style); the paint only for those who wear it $('orkvEarsBox').hidden=!rig.has.level; if(rig.has.ears) $('orkvEars').value=gn.ohren||'spitz'; $('orkvLevel').value=spec.level||1; $('orkvLevelOut').textContent=spec.level||1; $('orkvLoad').value=spec.gear.load||'none'; $('orkvShield').value=spec.gear.shield||''; $('orkvMat').value=spec.gear.mat||''; $('orkvHelm').value=spec.gear.helmStyle||''; TRAITS.forEach(([k])=>{ $('orkvT_'+k).value=Math.round(spec.traits[k]*100); }); $('orkvWeapon').value=spec.gear.weapon;
       ['helmet','chest','pauldrons','cloth','greaves','arms','shieldFlat'].forEach(k=>$('orkvG_'+k).setAttribute('aria-pressed',!!spec.gear[k])); $('orkvG_greaves').hidden=!rig.real; $('orkvG_hands').setAttribute('aria-pressed',spec.gear.hands!==false); $('orkvScar').setAttribute('aria-pressed',!!spec.scar); };
     // the stage: 80 units high (the ork's), more for a taller figure, always 2.4 times as wide; the feet 8 units above its bottom
@@ -1973,7 +1971,7 @@ const SvgOrkViewer=(()=>{
     ['ears','horns'].forEach(k=>$('orkvG_'+k).addEventListener('click',()=>{ spec.gear[k]=$('orkvG_'+k).getAttribute('aria-pressed')!=='true'; rebuild(); }));
     $('orkvLevel').addEventListener('input',e=>{ spec.level=+e.target.value; rebuild(); });
     $('orkvLoad').addEventListener('change',e=>{ spec.gear.load=e.target.value; rebuild(); });
-    $('orkvClass').addEventListener('change',e=>{ spec.cls=e.target.value||undefined; if(spec.cls){ const w=(SvgRig.plan({ kind:spec.kind, cls:spec.cls }).K.weapon); if(w) spec.gear.weapon=w; } rebuild(); });       // a class dresses the race (and gives its weapon)
+    $('orkvOutfit').addEventListener('change',e=>{ spec.outfit=e.target.value||undefined; rebuild(); });       // what the figure wears
     [['orkvShield','shield'],['orkvMat','mat'],['orkvHelm','helmStyle']].forEach(([id,k])=>$(id).addEventListener('change',e=>{ spec.gear[k]=e.target.value||undefined; rebuild(); }));
     TRAITS.forEach(([k])=>$('orkvT_'+k).addEventListener('input',e=>{ spec.traits[k]=e.target.value/100; rebuild(); }));
     $('orkvWeapon').addEventListener('change',e=>{ spec.gear.weapon=e.target.value; rebuild(); });
