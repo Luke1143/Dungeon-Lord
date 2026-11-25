@@ -888,6 +888,26 @@ const SvgRig=(()=>{
   HUMANOIDS.giant=HERO({ height:2.2, hipY:-78, bodyH:[56,4], hip:[19,1.5], sh:[25,2], legW:[19,1.5], head:{ w:[7.6,0.5], h:[21,1] }, hand:[5.2,0.4], handGap:2, handDrop:6, neckK:0.6, hair:'long', pad:10,
     weaponK:2.2, shieldK:3, pauldronK:2.2, clothW:2.2, feet3d:['bare'], weapons:['club','hammer'], weapon:'club', hairs:['#4a3a2a','#6a5a40','#3a2a1e'] },
     { tunic:'#6a5a40', tunicDark:'#40362a', leg:'#4e4232' });
+  // the spirits and the others among the missing (user, November 2026: bring in the missing creatures): the banshee and the ghost float, the dryad, the angel with
+  // wings and a halo, the fairy small and winged, the gnome (the yule's), the golem of stone; each only in 2.5D
+  const SPIRIT=(o,base)=>KIT_BASE(Object.assign({ px:64, height:1.0, hipY:-36, bodyH:[25,2], hip:[8.4,1], sh:[9.4,1], legW:[7.8,1], head:{ w:[3.5,0.3], h:[9.8,0.6] }, hand:[2.2,0.3], handOut:0.2, handGap:1.2, pad:5,
+    face:'fine', ears:'human', hair:'long', beard:false, clothed:false, cloth:false, coif:true, belt:'band', helm:'plain', presets:HUMAN_PRESETS, weapons:['dagger','staff'], weapon:'none' },o,{ base:Object.assign({},HUMAN_BASE,base) }));
+  HUMANOIDS.banshee=SPIRIT({ hover:3, sleeves:true, lower:'robe', clothed:true, face:'banshee', hairs:['#e8eef4','#c8d4dc','#a8b4bc'], waistK:0.75,
+    skins:SK3(['#b8cad8','#d0dee8','#7a8ea0','#a8b8c8','#5a6a7a'],['#c4c0d8','#dad6ea','#848098','#a8b8c8','#5a6a7a'],['#c8d8d0','#dee8e2','#88a094','#a8b8c8','#5a6a7a']), eye:['#e8fcff','#a0f0ff'], glow:[[220,250,255],[160,240,255]], glowA:0.6 },
+    { tunic:'#9aaab8', tunicDark:'#6a7a8a', trim:'#c8d4dc', mouth:'#0a1018' });
+  HUMANOIDS.ghost=SPIRIT({ hover:3, sleeves:true, lower:'robe', hood:true, clothed:true, hair:null,
+    skins:SK3(['#c8d0d8','#dce2e8','#8a929a','#b8c0c8','#5a6270'],['#c0ccd0','#d6e0e2','#84908e','#b8c0c8','#5a6270'],['#d0ccd8','#e2deea','#908aa0','#b8c0c8','#5a6270']), eye:['#d0f8ff','#ffffff'], glow:[[200,240,255],[255,255,255]], glowA:0.6 },
+    { tunic:'#a8b2bc', tunicDark:'#788290', trim:'#c8d0d8', void:'#0a0e14' });
+  HUMANOIDS.dryad=SPIRIT({ hairs:['#4a7a2a','#6a8a2a','#8a6a2a'], feet3d:['bare'], waistK:0.75,
+    skins:SK3(['#8a7a50','#a2925e','#54482c','#6a5a3a','#2a3a14'],['#7a8a4a','#92a25a','#48542a','#6a5a3a','#2a3a14'],['#9a8060','#b29872','#5e4a34','#6a5a3a','#2a3a14']), eye:['#d0ff80','#ffd040'], glow:[[208,255,128],[255,208,64]], glowA:0.4 }, {});
+  HUMANOIDS.angel=SPIRIT({ height:1.05, hipY:-38, sh:[10.2,1], face:'human', hair:'long', halo:true, wings:0.9, feet3d:['bare'], hairs:['#e8d8a0','#c8a060','#f0ece0'], eye:['#6a9ac0','#c8a040'], glow:[[106,154,192],[200,160,64]], glowA:0.2 },
+    { wing:'#e8e4dc', wingBone:'#c8c0b0' });
+  HUMANOIDS.fairy=SPIRIT({ px:48, height:0.45, ears:'elf', wings:0.6, clothed:true, feet3d:['bare'], waistK:0.75, hairs:['#e8c860','#c86a9a','#80c0e0'], eye:['#80e0ff','#ffa0e0'], glow:[[128,224,255],[255,160,224]], glowA:0.4 },
+    { tunic:'#6aa05a', tunicDark:'#3e6a32', leg:'#5a8a4a', wing:'rgba(200,240,255,0.75)', wingBone:'#a0c8d8' });
+  HUMANOIDS.gnome=Object.assign({},HUMANOIDS.dwarf,{ height:0.55, beardLong:6 });
+  HUMANOIDS.golem=KIT_BASE({ px:64, height:1.6, hipY:-50, bodyH:[46,4], hip:[14,1.5], sh:[22,2], legW:[15,1.5], head:{ w:[5.4,0.4], h:[11,0.8] }, hand:[4.4,0.4], handOut:0, handGap:1.5, handDrop:4, armK:1.1, neckK:0.2, neckW:1.4, pad:9,
+    weaponK:1.6, shieldK:2.2, pauldronK:1.6, clothW:2.0, face:'golem', ears:null, hair:null, kit3d:{ muscles:false }, feet3d:['bare'], clothed:false, cloth:false, coif:false, belt:'band', helm:'plain', presets:TROLL_PRESETS, weapons:['club','hammer'], weapon:'none',
+    base:Object.assign({},HUMAN_BASE,{ faceLine:'rgba(20,20,20,0.6)', line:'#0c0c0c', socket:'#0a0806' }), skins:SK3(['#7a7a74','#92928a','#4a4a46','#6a6a64','#2a2a28'],['#8a7a68','#a2927e','#544a3e','#7a6a58','#2e2a24'],['#6a7478','#828c90','#40484a','#5a6468','#24282a']), hairs:null, eye:['#ffd060','#60e0ff'], glow:[[255,208,96],[96,224,255]], glowA:0.6 });
   // ---- what a figure wears (user, November 2026: a class has no look of its own; the look follows diegetically from what a creature wears: a warlock takes a robe
   // and a pointed hat from the storage, a warrior the plate, a hunter leather; the class only sets what it prefers). An outfit is a set of worn things on a body of any
   // race: a robe, a hood or a hat, a stole, plate, a quiver, their colours; the hair under them only on a race with a man's hair (a monk's tonsure). A figure is its
@@ -909,7 +929,14 @@ const SvgRig=(()=>{
     archer:{ k:{ hood:'cowl', quiver:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#3a5a2a', tunicDark:'#22361a', hood:'#2e4a22', leg:'#4a3a2a', foot:'#3a2a1a', fletch:'#d8d0b8', trim:'#5a4a2e' } },
     ranger:{ k:{ quiver:true, sleeves:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#4a6a3a', tunicDark:'#2a4020', leg:'#3a4a2a', foot:'#3a2a1a', trim:'#c8b070', fletch:'#e0e0d0' } },
     monk:{ k:{ sleeves:true, lower:'robe', clothed:true, cloth:false, feet3d:['bare'], belt:'rope' }, base:{ tunic:'#6a4a2a', tunicDark:'#3e2a16', trim:'#c8b080', belt:'#c8b080' } },
-    worker:{ k:{ clothed:true, feet3d:['boots'] }, base:{ tunic:'#a89a7a', tunicDark:'#6e6450', leg:'#5a4e3e' } }
+    worker:{ k:{ clothed:true, feet3d:['boots'] }, base:{ tunic:'#a89a7a', tunicDark:'#6e6450', leg:'#5a4e3e' } },
+    // the bosses' and the spirits' (a crown, a cape, plate; a lion's pelt; the Dungeon Lord's black plate with horns; a white robe; a red hood)
+    king:{ k:{ crown:true, cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('stahl') }, base:{ tunic:'#6a1a1a', tunicDark:'#3a0e0e', cloth:'#8a1a1a', cape:'#7a1414', capeIn:'#e0d8c0', gold:'#d8b048' } },
+    elfking:{ k:{ crown:true, cape:true, sleeves:true, clothed:true, feet3d:['boots'] }, base:{ tunic:'#2e5a2a', tunicDark:'#1a3a18', leg:'#2a3a22', cape:'#24481e', capeIn:'#c8b878', gold:'#d8c060' } },
+    lionpelt:{ k:{ hood:'cowl', cape:true, clothed:false, kit3d:{ wrap:true }, cloth:true, feet3d:['boots'] }, base:{ hood:'#b08a4a', cape:'#a07a3a', capeIn:'#8a6630', leather:'#7a5a30', cloth:'#6a4a28' } },
+    darklord:{ k:{ cape:true, cloth:true, clothed:true, feet3d:['boots'], wear:PLATE('schwarz',{ helmet:true, helmStyle:'horns' }) }, base:{ tunic:'#1a1418', tunicDark:'#0c080a', cloth:'#5a0a10', cape:'#140c10', capeIn:'#7a0e16', leg:'#1a1418' } },
+    whiterobe:{ k:{ sleeves:true, lower:'robe', clothed:true, cloth:false, feet3d:['bare'] }, base:{ tunic:'#e8e4d8', tunicDark:'#b8b2a0', trim:'#d8b048' } },
+    yule:{ k:{ hood:'cowl', clothed:true, feet3d:['boots'] }, base:{ tunic:'#a01c1c', tunicDark:'#6a0e0e', hood:'#b02020', leg:'#5a1414', foot:'#2a1a10', trim:'#e8e4d8' } }
   };
   const kitCache={};
   function kitOf(kind,outfit){
@@ -1469,8 +1496,8 @@ const Rig3D=(()=>{
   // the robe: from the waist to the ground round both feet (it follows the stride), its hem a ring
   function fleshRobe(F,c){
     const { A, K, u, Y0, wAt, wC, legs }=c, { hipY, bodyH, wHip }=A, yW=hipY-bodyH*0.3+Y0, wW=wAt(hipY-bodyH*0.3)||wC*0.8, R=legs.R.Ak, L=legs.L.Ak, mx=(R[0]+L[0])/2, mz=(R[2]+L[2])/2, dz=Math.abs(R[2]-L[2]);
-    F.solid([[[0,yW,0.2*u],[wW*1.0,1.6*u,2.8*u]],[[0,hipY*0.55+Y0,0.3*u],[wHip*1.05,2*u,3.4*u]],[[mx,-1.4*u,mz],[wHip*1.2,1.4*u,3.6*u+dz*0.55]]],'tunic',{ bias:-1.3*u, sw:0.9 });
-    F.ring([mx,0,mz],wHip*1.2,3.6*u+dz*0.55,-0.6*u,0.6*u,'trim',-1.3*u+0.1);       // the hem's trim
+    F.solid([[[0,yW,0.2*u],[wW*1.0,1.6*u,2.8*u]],[[0,hipY*0.55+Y0,0.3*u],[wHip*1.05,2*u,3.4*u]],[[mx,-1.4*u+(K.hover?Y0*0.8:0),mz],[wHip*(K.hover?0.7:1.2),1.4*u,(K.hover?2.4:3.6)*u+dz*0.55]]],'tunic',{ bias:-1.3*u, sw:0.9 });       // (a floating spirit's robe narrows to a wisp)
+    if(!K.hover) F.ring([mx,0,mz],wHip*1.2,3.6*u+dz*0.55,-0.6*u,0.6*u,'trim',-1.3*u+0.1);       // the hem's trim
   }
   // the cape from the shoulders to the calves behind (swinging a little as it walks), its lining red; the high collar behind the neck
   function fleshCape(F,c){
@@ -1518,6 +1545,8 @@ const Rig3D=(()=>{
   };
   const FACE3D={ human:{ head:'human', eyes:'human', brow:'thin', nose:'human', mouth:'lips' }, orkFeral:{ head:'long', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide', tusks:true, paint:true },
     goblin:{ head:'goblin', eyes:'slit', brow:'heavy', nose:'hook', mouth:'grin' },
+    banshee:{ head:'fine', eyes:'glow', brow:'thin', nose:'human', mouth:'wide' },
+    golem:{ head:'brute', eyes:'glow', brow:'heavy' },
     brute:{ head:'brute', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide', tusks:true },
     demon:{ head:'brute', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide' },
     ghoul:{ head:'long', eyes:'glow', brow:'heavy', nose:'flat', mouth:'grin' },
@@ -1723,7 +1752,7 @@ const Rig3D=(()=>{
   function skeleton(F,pl,st){
     const A=pl.A, { topY, hipY, bodyH, u, h, top, aw, wSh, wHip }=A, L=A.legs, hd=h*0.82, K=pl.K, G=pl.G;
     const w=st.phase||0, walkK=st.walking?1:0, roar=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, sw=st.swing||0, bob=-1.1*Math.abs(Math.sin(w))*walkK, breath=Math.sin((st.t||0)*2.1);
-    const Y0=bob;       // the body bobs while it walks
+    const Y0=bob-(K.hover?K.hover*u+Math.sin((st.t||0)*1.4)*0.5*u:0);       // the body bobs while it walks (a spirit floats above the floor)
     const cv={ chest:!!G.chest, coif:!!(G.helmet&&K.coif), greaves:!!G.greaves };       // what the armour covers is not drawn
     const flesh=!!K.flesh3d, gn=pl.genes||{}, wAt=y=>{ const pts=A.bPts; let m=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) m=Math.max(m,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); } return m; };       // a body of flesh (the ork) instead of bones
     const wC=(()=>{ const pts=A.bPts, y=topY+bodyH*0.42; let m=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) m=Math.max(m,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); } return m*0.96; })();
@@ -1817,6 +1846,7 @@ const Rig3D=(()=>{
       hands[side]={ at:fc, Sh, E };
     });
     if(K.crown&&!G.helmet) crown3d(F,{ X, Yh, Z, h, hc, sk });
+    if(K.halo){ const q=[]; for(let i=0;i<=24;i++){ const a=i/24*Math.PI*2; q.push([hc[0]+Math.sin(a)*X(0.9),Yh(-0.22),hc[2]-0.05*h+Math.cos(a)*X(0.9)]); } F.line(q,0.07*h,'gold',sk+0.3); }       // the angel's halo over the head
     if(K.horns3d&&!G.helmet) horns3d(F,{ K, X, Yh, Z, h, hc });
     armour(F,{ A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs, hands, roar });
     // the weapon (flat at the right hand; its edge turns with the figure), the shield (a plate with its thickness on the left arm)
@@ -1833,7 +1863,7 @@ const Rig3D=(()=>{
       else if(front) F.patch(add(c,mulv(n,0.1)),n,0.3*r,0.3*r,'iron',{ bias:0.03 });
       else if(unit.length<=6) [-0.3,0.2].forEach(yy=>F.line([add(add(c,mulv(t2,yy*r)),add(mulv(t1,-0.8*r),mulv(n,-0.95*u))),add(add(c,mulv(t2,yy*r)),add(mulv(t1,0.8*r),mulv(n,-0.95*u)))],0.6*u,'leather',d0+0.06)); }       // from behind: the straps
     // the shadow on the floor
-    const sh=F.P([0,0,0]); F.items.push({ d:path(Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; const p=F.P([Math.cos(a)*6*u,0,Math.sin(a)*5*u]); return [p[0],p[1]]; })), dep:-1e9, fill:'shadowC', sw:0 });
+    const sh=F.P([0,0,0]); F.items.push({ d:path(Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; const k=K.hover?0.6:1, p=F.P([Math.cos(a)*6*u*k,0,Math.sin(a)*5*u*k]); return [p[0],p[1]]; })), dep:-1e9, fill:'shadowC', sw:0 });       // (smaller under a floating one)
   }
   // the canvas: everything sorted by depth, k pixels to a unit, the feet at (ox, oy)
   function canvas(g,pl,st,yaw,pitch,k,ox,oy){
@@ -1888,8 +1918,8 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const OUTFIT_NAME={ barbarian:'Fell und Riemen', warlock:'Robe mit Kapuze', wizard:'Robe mit Spitzhut', priest:'Robe mit Stola', shaman:'Zahnkette und Wickel', knight:'Plattenpanzer mit Visier', darkknight:'Schwarzer Plattenpanzer', paladin:'Plattenpanzer mit weißem Umhang', thief:'Kapuze und Tuch', archer:'Kapuze und Köcher', ranger:'Wams und Köcher', monk:'Kutte', worker:'Hemd und Hose' };       // what a figure can wear (svg-rig OUTFITS)
-  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', knight:'Ritter', paladin:'Paladin', barbarian:'Barbar', thief:'Dieb', wizard:'Zauberer', archer:'Bogenschütze', monk:'Mönch', worker:'Handwerker', elf:'Elfenkrieger', dwarf:'Zwerg', giant:'Riese', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
+  const OUTFIT_NAME={ king:'Königsornat', elfking:'Gewand des Elfenkönigs', lionpelt:'Löwenfell', darklord:'Rüstung des Dungeon Lords', whiterobe:'Weiße Robe', yule:'Rote Kapuze', barbarian:'Fell und Riemen', warlock:'Robe mit Kapuze', wizard:'Robe mit Spitzhut', priest:'Robe mit Stola', shaman:'Zahnkette und Wickel', knight:'Plattenpanzer mit Visier', darkknight:'Schwarzer Plattenpanzer', paladin:'Plattenpanzer mit weißem Umhang', thief:'Kapuze und Tuch', archer:'Kapuze und Köcher', ranger:'Wams und Köcher', monk:'Kutte', worker:'Hemd und Hose' };       // what a figure can wear (svg-rig OUTFITS)
+  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', knight:'Ritter', paladin:'Paladin', barbarian:'Barbar', thief:'Dieb', wizard:'Zauberer', archer:'Bogenschütze', monk:'Mönch', worker:'Handwerker', elf:'Elfenkrieger', dwarf:'Zwerg', giant:'Riese', banshee:'Banshee', ghost:'Geist', dryad:'Dryade', angel:'Engel', fairy:'Fee', gnome:'Wichtel', golem:'Golem', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
   // the genes (every humanoid: every look between the presets)
   const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Hautton'],['augenFarbe','Augenfarbe'],['haar','Haarfarbe'],['bart','Bart'],['bemalung','Bemalung']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Schultern'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];

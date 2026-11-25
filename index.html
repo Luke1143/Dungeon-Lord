@@ -854,18 +854,22 @@ const SPECIES={
 // working in the library a warlock, an ork a shaman, an ork who trains much an ork warrior). For now both come from its kind (RACE_CLASS); the kinds' stats stay
 // as they are. Later a creature changes its class by what it does (the rooms are the foremen); c.race and c.cls then hold its own.
 const RACES={ human:'Mensch', ork:'Ork', goblin:'Goblin', troll:'Troll', elf:'Elf', darkelf:'Dunkelelf', dwarf:'Zwerg', giant:'Riese', vampire:'Vampir', skeleton:'Skelett',
-  lich:'Lich', ghoul:'Ghul', zombie:'Zombie', demon:'Dämon', succubus:'Succubus', werewolf:'Werwolf' };
+  lich:'Lich', ghoul:'Ghul', zombie:'Zombie', demon:'Dämon', succubus:'Succubus', werewolf:'Werwolf', banshee:'Banshee', ghost:'Geist', dryad:'Dryade', angel:'Engel', fairy:'Fee',
+  gnome:'Wichtel', golem:'Golem' };
 const CLASSES={ warrior:'Krieger', barbarian:'Barbar', warlock:'Warlock', wizard:'Zauberer', priest:'Priester', shaman:'Schamane', knight:'Ritter', darkknight:'Dunkler Ritter',
   paladin:'Paladin', thief:'Dieb', archer:'Bogenschütze', ranger:'Waldläufer', monk:'Mönch', worker:'Handwerker' };
 const RACE_CLASS={ warlock:['human','warlock'], wizard:['human','wizard'], priest:['human','priest'], darkknight:['human','darkknight'], knight:['human','knight'],
   paladin:['human','paladin'], thief:['human','thief'], archer:['human','archer'], monk:['human','monk'], worker:['human','worker'], barbarian:['human','barbarian'],
   elf:['elf','ranger'], dwarf:['dwarf','warrior'], giant:['giant','warrior'], ork:['ork','warrior'], goblin:['goblin','warrior'], troll:['troll','warrior'], darkelf:['darkelf','warrior'],
-  skeleton:['skeleton','warrior'], vampire:['vampire',null], lich:['lich',null], ghoul:['ghoul',null], zombie:['zombie',null], demon:['demon',null], succubus:['succubus',null], werewolf:['werewolf',null] };
+  skeleton:['skeleton','warrior'], vampire:['vampire',null], lich:['lich',null], ghoul:['ghoul',null], zombie:['zombie',null], demon:['demon',null], succubus:['succubus',null], werewolf:['werewolf',null],
+  dwarfking:['dwarf','warrior'], arthur:['human','knight'], herakles:['human','barbarian'], oberon:['elf','ranger'], dungeonlord:['human',null], banshee:['banshee',null], ghost:['ghost',null],
+  dryad:['dryad',null], angel:['angel','priest'], guardian:['angel','paladin'], fairy:['fairy',null], yule:['gnome','thief'], golem:['golem',null] };
 // A class has no look of its own (user, November 2026): the look follows from what a creature wears; the class will only set what it prefers to take from the storage
 // (a warlock robe and pointed hat, a warrior plate, a hunter leather). Until clothes are things in the storage, what a creature wears comes from its kind (KIND_OUTFIT,
 // the outfits of svg-rig.js); c.outfit then holds what it has put on.
 const KIND_OUTFIT={ warlock:'warlock', wizard:'wizard', priest:'priest', darkknight:'darkknight', knight:'knight', paladin:'paladin', thief:'thief', archer:'archer', monk:'monk',
-  worker:'worker', barbarian:'barbarian', elf:'ranger' };
+  worker:'worker', barbarian:'barbarian', elf:'ranger', dwarfking:'king', arthur:'king', oberon:'elfking', herakles:'lionpelt', dungeonlord:'darklord', angel:'whiterobe',
+  guardian:'paladin', yule:'yule' };
 const outfitOf=c=>c.outfit!==undefined?c.outfit:(KIND_OUTFIT[c.kind]||null);
 const raceOf=c=>c.race||(RACE_CLASS[c.kind]||[])[0]||null;       // null: a creature without a race of its own (a beast, the imp)
 const classOf=c=>c.cls!==undefined?c.cls:((RACE_CLASS[c.kind]||[])[1]||null);
