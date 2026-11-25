@@ -57,6 +57,7 @@ const { open, finish }=require('./lib');
     for(const kind of SvgRig.KINDS){ const sel=host.querySelector('#orkvKind'); sel.value=kind; sel.dispatchEvent(new Event('change'));
       for(const style of SvgRig.stylesOf(kind)){ const st=host.querySelector('#orkvStyle'); st.value=style; st.dispatchEvent(new Event('change')); await new Promise(r=>setTimeout(r,60)); }
       host.querySelector('#orkvRoll').click(); await new Promise(r=>setTimeout(r,60)); }
+    for(const kind of SvgRig.BEASTS){ const sel=host.querySelector('#orkvKind'); sel.value=kind; sel.dispatchEvent(new Event('change')); await new Promise(r=>setTimeout(r,60)); host.querySelector('#orkvRoll').click(); await new Promise(r=>setTimeout(r,40)); }       // the beasts in the workshop
     v.close(); host.remove();
     return out.join('; '); });
   if(fit) problem+=fit+'; ';
