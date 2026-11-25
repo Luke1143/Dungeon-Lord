@@ -25,7 +25,7 @@ const { open, finish }=require('./lib');
     { const pl=SvgRig.plan({ kind:'skeleton2', gear:{ helmet:true, helmStyle:'horns', chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'sword' } }), g=document.createElement('canvas').getContext('2d');       // the armour in 2.5D, every direction
       for(let y=0;y<8;y++){ const F=Rig3D.frame(y*Math.PI/4,0.85); Rig3D.skeleton(F,pl,{ t:1, phase:y, walking:y%2===1 }); if(F.items.length<40||F.items.some(it=>/NaN/.test(it.d))) return 'the armoured 2.5D skeleton is broken at yaw '+y*45; }
       Rig3D.canvas(g,pl,{ t:1 },1,0.4,2,50,120);
-      for(const spec of [{ kind:'orkB', style:'pirscher', gear:{ weapon:'axe', cloth:true } },{ kind:'orkB', style:'schinder', gear:{ helmet:true, chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'spear' } },{ kind:'human', style:'veteran', gear:{ weapon:'sword' } },{ kind:'human', style:'bauer', gear:{ helmet:true, chest:true, shield:'round' } }]){ const po=SvgRig.plan(spec);       // the ork and the human of flesh in 2.5D (one kit of parts)
+      for(const spec of [{ kind:'orkB', style:'pirscher', gear:{ weapon:'axe', cloth:true } },{ kind:'orkB', style:'schinder', gear:{ helmet:true, chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'spear' } },{ kind:'human', style:'veteran', gear:{ weapon:'sword' } },{ kind:'human', style:'bauer', gear:{ helmet:true, chest:true, shield:'round' } },{ kind:'goblinB', style:'grinser', gear:{ weapon:'club', cloth:true } },{ kind:'goblinB', style:'flitzer', gear:{ helmet:true, chest:true, pauldrons:true, greaves:true, weapon:'spear' } }]){ const po=SvgRig.plan(spec);       // the ork and the human of flesh in 2.5D (one kit of parts)
         for(let y=0;y<8;y++){ const F=Rig3D.frame(y*Math.PI/4,0.85); Rig3D.skeleton(F,po,{ t:1, phase:y, walking:y%2===1, roar:y===4?0.3:0 }); if(F.items.length<30||F.items.some(it=>/NaN/.test(it.d))) return 'the 2.5D '+spec.kind+' is broken at yaw '+y*45; } } }
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
@@ -38,7 +38,7 @@ const { open, finish }=require('./lib');
     const widthAt=(q,y)=>{ let w=0; q.forEach((a,i)=>{ const b=q[(i+1)%q.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) w=Math.max(w,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); }); return w; };
     const iron=(rig,id)=>find(rig.tree,id).shapes.find(s=>s[1]==='iron')[0];
     const out=[], gear={ helmet:true, chest:true, pauldrons:true, cloth:true };
-    const specs=[]; for(const kind of SvgRig.KINDS){ for(const style of SvgRig.stylesOf(kind)) for(const stark of [0,1]) specs.push([{ kind, style, traits:{ klug:0.5, stark, flink:0.5, wild:0.5 }, gear },kind+'/'+style+'/'+stark]);
+    const specs=[]; for(const kind of SvgRig.KINDS.filter(k=>!SvgRig.kindInfo(k).only3d)){ for(const style of SvgRig.stylesOf(kind)) for(const stark of [0,1]) specs.push([{ kind, style, traits:{ klug:0.5, stark, flink:0.5, wild:0.5 }, gear },kind+'/'+style+'/'+stark]);
       for(let seed=1;seed<=24;seed++) specs.push([Object.assign(SvgRig.roll(seed*7919,kind),{ gear }),kind+'/seed '+seed*7919]); }       // and rolled ones: every gene
     for(const [spec,at] of specs){
       const rig=SvgRig.build(spec);
@@ -51,7 +51,7 @@ const { open, finish }=require('./lib');
       // the breastplate: from the shoulders down to the waist, as broad as the body
       const ch=box(iron(rig,'chest')), bw=Math.max(...[0,1,2,3,4,5,6,7,8].map(i=>widthAt(bdP,ch[1]+0.5+(ch[3]-ch[1]-3)*i/8))), cw=ch[2]/bw; if(cw<0.95||cw>1.2) out.push(at+': breastplate '+cw.toFixed(2)+' of the body');
     }
-    for(const kind of SvgRig.KINDS){ const m=st=>{ const r=SvgRig.build({ kind, traits:{ klug:0.5, stark:st, flink:0.5, wild:0.5 }, gear }); return [-box(iron(r,'pauldronL'))[0],-find(r.tree,'legL').pivot[0]]; };       // the hips: where the legs sit
+    for(const kind of SvgRig.KINDS.filter(k=>!SvgRig.kindInfo(k).only3d)){ const m=st=>{ const r=SvgRig.build({ kind, traits:{ klug:0.5, stark:st, flink:0.5, wild:0.5 }, gear }); return [-box(iron(r,'pauldronL'))[0],-find(r.tree,'legL').pivot[0]]; };       // the hips: where the legs sit
       const a=m(0), b=m(1); if(b[0]/a[0]<b[1]/a[1]+0.3) out.push(kind+': strength widens the hips as much as the shoulders'); }
     const host=document.createElement('div'); document.body.appendChild(host); const v=SvgOrkViewer.open(host);
     for(const kind of SvgRig.KINDS){ const sel=host.querySelector('#orkvKind'); sel.value=kind; sel.dispatchEvent(new Event('change'));
