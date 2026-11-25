@@ -1133,6 +1133,15 @@ const Rig3D=(()=>{
     const F={ P, view, items, faces:n=>dot(n,view),
       put(pts2,dep,fill,o){ o=o||{}; items.push({ d:path(pts2), dep, fill, sw:o.sw===undefined?0.75:o.sw, stroke:o.stroke||'line', shade:o.shade?shadeOf(pts2):null }); },
       line(pts3,w,fill,dep){ const q=pts3.map(P), d='M'+q.map(p=>p[0].toFixed(2)+' '+p[1].toFixed(2)).join(' L'); items.push({ d, dep:dep===undefined?q.reduce((a,p)=>a+p[2],0)/q.length:dep, fill:null, sw:w+1.5, stroke:'line', band:fill, bw:w }); },
+      // a band along points on a surface, each with its normal: only the longest run turned to us is drawn (the near half of a ring)
+      seen(pts3,nrm,w,fill,bias){ const n=pts3.length, vis=nrm.map(v=>dot(v,view)>-0.02); let best=[], run=[];
+        for(let i=0;i<n;i++){ if(vis[i]) run.push(pts3[i]); else { if(run.length>best.length) best=run; run=[]; } } if(run.length>best.length) best=run;
+        if(best.length<2) return; const q=best.map(P); F.line(best,w,fill,q.reduce((a,p)=>a+p[2],0)/q.length+(bias||0)); },
+      // a ring round the body at height y (an ellipse of half axes rx, rz round c), its near half
+      ring(c,rx,rz,y,w,fill,bias,a0,a1){ const pts=[], nrm=[], A0=a0===undefined?-Math.PI:a0, A1=a1===undefined?Math.PI:a1, full=a0===undefined;
+        for(let i=0;i<=32;i++){ const a=A0+i/32*(A1-A0); pts.push([c[0]+rx*Math.sin(a),y,c[2]+rz*Math.cos(a)]); nrm.push(norm([Math.sin(a)/rx,0,Math.cos(a)/rz])); }
+        if(full){ const k=nrm.findIndex(v=>dot(v,view)<=-0.02); if(k>0){ const r=pts.slice(k).concat(pts.slice(1,k)), rn=nrm.slice(k).concat(nrm.slice(1,k)); return F.seen(r,rn,w,fill,bias); } }
+        F.seen(pts,nrm,w,fill,bias); },
       // a tube from a to b: its half width at the start, the middle and the end
       tube(a,b,ra,rm,rb,fill,o){ const pa=P(a), pb=P(b), dx=pb[0]-pa[0], dy=pb[1]-pa[1], L=Math.hypot(dx,dy)||1e-3, nx=-dy/L, ny=dx/L;
         const ws=[[0,ra],[0.15,(ra+rm)/2],[0.5,rm],[0.85,(rm+rb)/2],[1,rb]], A=ws.map(([t,w])=>[pa[0]+dx*t+nx*w,pa[1]+dy*t+ny*w]), B=ws.map(([t,w])=>[pa[0]+dx*t-nx*w,pa[1]+dy*t-ny*w]).reverse();
@@ -1144,7 +1153,9 @@ const Rig3D=(()=>{
         const pts=(o&&o.shape?o.shape:Array.from({ length:14 },(_,i)=>{ const a=i/14*Math.PI*2; return [Math.cos(a),Math.sin(a)]; })).map(([x,y])=>P(add(c,add(mulv(t1,x*rx),mulv(t2,y*ry)))));
         F.put(pts,P(c)[2]+((o&&o.bias)||0.02),fill,{ sw:o&&o.sw!==undefined?o.sw:0.5 }); },
       // the outline of solids: the hull of points on ellipsoids [centre, half axes]
-      solid(ells,fill,o){ const pts=[], c0=[0,0,0]; ells.forEach(([c,r])=>{ for(let i=0;i<=8;i++) for(let j=0;j<16;j++){ const th=i/8*Math.PI, ph=j/16*Math.PI*2; pts.push(P([c[0]+r[0]*Math.sin(th)*Math.cos(ph),c[1]+r[1]*Math.cos(th),c[2]+r[2]*Math.sin(th)*Math.sin(ph)])); } });
+      // an ellipsoid may be cut by a clip [top, bottom] (a helmet's cap, a breastplate's straight neckline)
+      solid(ells,fill,o){ const pts=[]; ells.forEach(([c,r,clip])=>{ const tA=clip?Math.acos(Math.max(-1,Math.min(1,(clip[1]-c[1])/r[1]))):0, tB=clip?Math.acos(Math.max(-1,Math.min(1,(clip[0]-c[1])/r[1]))):Math.PI;
+          for(let i=0;i<=8;i++) for(let j=0;j<16;j++){ const th=tA+i/8*(tB-tA), ph=j/16*Math.PI*2; pts.push(P([c[0]+r[0]*Math.sin(th)*Math.cos(ph),c[1]+r[1]*Math.cos(th),c[2]+r[2]*Math.sin(th)*Math.sin(ph)])); } });
         const h=hull(pts), cz=P(ells[0][0])[2]; F.put(h,cz+((o&&o.bias)||0),fill,{ shade:true, sw:o&&o.sw }); }
     };
     return F;
@@ -1155,11 +1166,77 @@ const Rig3D=(()=>{
     shapes.forEach(([d,fill,sw,stroke])=>{ const q=[]; let tr=d.replace(/(-?\d*\.?\d+)\s+(-?\d*\.?\d+)/g,(m,x,y)=>{ let X=(+x-grip[0])*k, Y=(+y-grip[1])*k; if(flip) X=-X; const xx=X*c-Y*s, yy=X*s+Y*c; return (at[0]+xx).toFixed(2)+' '+(at[1]+yy).toFixed(2); });
       F.items.push({ d:tr, dep, fill, sw:sw*k, stroke:stroke||'line' }); });
   }
+  // ---- the armour in space, on the same body plan (what a man would wear: the skeleton wears it as the 2D figure does) ----
+  // the helmet a cap of the head (its rim, its ridge, the nose guard, horns or a crest), the mail hood a hull round head and neck with the face open,
+  // the breastplate a shell round the trunk (cut straight at the neck, a point at the bottom, the lames), the shoulder plates domes with a spike,
+  // the belt a band round the waist, the tabard two panels, the greaves the thigh, the knee with its spike, the shin and the iron shoe
+  function armour(F,c){
+    const { A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs }=c, { topY, hipY, bodyH, wSh, wHip, aw }=A, L=A.legs;
+    if(G.helmet){
+      const style=G.helmStyle||K.helm, rimY=Yh(0.36), cr=[X(1.0)*1.12,0.43*h*1.1,Z(0.48)*1.12], cc=add(hc,[0,-0.02*h,-0.03*h]);
+      F.solid([[cc,cr,[cc[1]-cr[1]-1,rimY]]],'iron',{ bias:0.12, sw:0.9 });
+      const rr=t=>Math.sqrt(Math.max(0,1-Math.pow((t-cc[1])/cr[1],2)));       // the cap's width at a height
+      F.ring(cc,cr[0]*rr(rimY)*1.04,cr[2]*rr(rimY)*1.04,rimY-0.5*u,1.3*u,'ironDark',0.14);       // the rim
+      const ridge=[], rn=[]; for(let i=1;i<12;i++){ const a=-Math.PI/2+i/12*Math.PI, y=cc[1]-cr[1]*Math.sin(a+Math.PI/2)*1.0; const zz=Math.cos(a+Math.PI/2); ridge.push([0,cc[1]-cr[1]*1.01*Math.cos(a)*1,cc[2]+cr[2]*1.01*Math.sin(a)]); rn.push(norm([0,-Math.cos(a)/cr[1],Math.sin(a)/cr[2]])); }
+      F.seen(ridge.filter(p=>p[1]<rimY-u),rn.filter((n,i)=>ridge[i][1]<rimY-u),0.6*u,'ironDark',0.15);       // the ridge over the top
+      if(F.faces([0,0,1])>0.05) F.tube([0,rimY-0.4*u,Z(0.5)*1.06],[0,Yh(0.62),Z(0.52)*1.04],0.55*u,0.5*u,0.4*u,'ironDark',{ bias:sk-F.P([0,rimY,Z(0.5)])[2]+0.16 });       // the nose guard
+      if(style==='horns') [-1,1].forEach(s=>{ const b0=[s*cr[0]*0.92,Yh(0.2),cc[2]+0.05*h], b1=[s*cr[0]*1.55,Yh(0.08),cc[2]+0.12*h], b2=[s*cr[0]*1.85,Yh(-0.38),cc[2]+0.22*h];
+        F.tube(b0,b1,1.0*u,0.85*u,0.7*u,'bone'); F.tube(b1,b2,0.7*u,0.45*u,0.08*u,'bone'); });
+      if(style==='crest'){ const q=[[0,cc[1]-cr[1]*0.85,cc[2]+cr[2]*0.5],[0,cc[1]-cr[1]*1.55,cc[2]+cr[2]*0.2],[0,cc[1]-cr[1]*1.45,cc[2]-cr[2]*0.9],[0,cc[1]-cr[1]*0.6,cc[2]-cr[2]*0.95]];
+        F.plate(q,'cloth',{ bias:0.1 }); F.plate(q.map(p=>[0.5*u,p[1],p[2]]),'cloth',{ bias:0.1 }); }
+      if(K.coif){       // the mail hood: behind the skull's face, round the head and down onto the shoulders; the face open in front
+        F.solid([[hc,[X(1.0)*1.1,0.47*h,Z(0.48)*1.1],[rimY-u,hc[1]+h]],[by([0,topY-0.6*u,-0.6*u]),[aw*1.0,1.6*u,Z(0.42)],[topY-3*u,topY+1*u]],[by([0,topY+0.7*u,-0.5*u]),[wSh*0.5,1.3*u,3.4*u],[topY-1*u,topY+1.8*u]]],'mail',{ bias:0.03, sw:0.9 });
+        F.patch([0,Yh(0.6),Z(0.5)],[0,0.05,1],X(0.78),0.27*h,'skin',{ bias:sk+0.04-F.P([0,Yh(0.6),Z(0.5)])[2], sw:0.6 });       // the face in the hood's opening
+      }
+    }
+    // the trunk's shell, front and back as one, with the straight neckline; its point in front
+    const yc=hipY-bodyH*0.3, zc=u*0.9;
+    if(G.chest){
+      const up=[by([0,topY+bodyH*0.3,zc]),[wC*1.1,bodyH*0.34,4.3*u],[topY+0.3*u,yc]], sh=[by([0,topY+1.4*u,-0.2*u]),[wSh*0.72,1.6*u,3.4*u],[topY+0.3*u,topY+3*u]], lo=[by([0,yc-1.5*u,zc*0.7]),[wC*0.95,2.8*u,3.7*u],[yc-4*u,yc+0.8*u]];
+      F.solid([up,sh,lo],'iron',{ bias:-2.2*u, sw:1 });
+      const fr=y=>by([0,y,zF(Math.min(y,topY+bodyH*0.32))+0.6*u]);
+      F.solid([[add(fr(yc),[0,0.4*u,-0.6*u]),[1.6*u,2.2*u,1.0*u]]],'iron',{ bias:-2.2*u+0.05 });       // the point at the bottom
+      const rd=[], rn=[]; for(let i=0;i<=8;i++){ const y=topY+0.8*u+i/8*(yc+2.2*u-topY-0.8*u); rd.push(add(fr(Math.min(y,yc)),[0,y>yc?y-yc:0,0])); rn.push([0,0,1]); }
+      F.seen(rd,rn,0.45*u,'ironDark',0.1);       // the ridge down the front
+      [yc-2.4*u,yc-0.6*u].forEach((y,i)=>F.ring(by([0,0,zc*0.7]),wC*(0.97-0.02*i),3.9*u,y+Y0,0.5*u,'ironDark',-2.2*u+0.6,-1.35,1.35));       // the lames
+      F.ring(by([0,0,-0.2*u]),wSh*0.5,3.1*u,topY+0.4*u+Y0,0.7*u,'ironDark',-2.2*u+0.6,-1.2,1.2);       // the neckline's rolled edge
+      // the faulds over the pelvis: a short skirt of lames from the belt to the hips
+      F.solid([[by([0,hipY-4.2*u,0.3*u]),[wHip*0.86,4*u,3.7*u],[yc,hipY-1.6*u]]],'iron',{ bias:-2.2*u-0.1, sw:0.9 });
+      F.ring(by([0,0,0.3*u]),wHip*0.8,3.5*u,hipY-2.6*u+Y0,0.5*u,'ironDark',-2.2*u+0.5);
+    }
+    // the shoulder plates: a dome over the joint, two lames below it, a spike up and back
+    if(G.pauldrons){ const pk=K.pauldronK||1;
+      [-1,1].forEach(s=>{ const S=by([s*wSh*0.9,topY+0.5*u,-0.3*u]), r=[2.9*u*pk,2.5*u*pk,3.3*u*pk];
+        F.solid([[add(S,[s*0.3*u,-0.2*u,0]),r,[S[1]-3*u*pk,S[1]+1.4*u*pk]]],'iron',{ bias:2.5*u, sw:0.9 });
+        [1,2].forEach(k=>F.solid([[add(S,[s*(0.5+0.35*k)*u,(1.0+1.1*k)*u*pk,0]),[r[0]*(1-0.08*k),1.2*u,r[2]*(1-0.08*k)],[S[1]+(0.4+1.1*k)*u*pk,S[1]+(2.4+1.1*k)*u*pk]]],'iron',{ bias:2.5*u-0.1*k, sw:0.8 }));
+        F.tube(add(S,[s*0.6*u,-2.2*u*pk,-0.4*u]),add(S,[s*1.2*u,-5.4*u*pk,-1.6*u]),0.75*u,0.45*u,0.06*u,'ironDark',{ bias:2.5*u+0.05 }); });
+    }
+    // the belt round the waist, its buckle in front, a pouch at the side
+    const bY=(A.beltY===undefined?hipY-5.2*u:A.beltY)+Y0;
+    if(G.chest||G.cloth||G.pauldrons){
+      F.ring([0,0,0.4*u],wHip*0.82,3.6*u,bY+0.7*u,1.6*u,'belt',0.3);
+      if(F.faces([0,0,1])>0.1) F.patch([0,bY+0.7*u,4.1*u],[0,0,1],1.0*u,1.0*u,'ironDark',{ bias:0.4, shape:[[-1,-1],[1,-1],[1,1],[-1,1]] });
+      F.solid([[[wHip*0.7,bY+2.8*u,1.8*u],[1.2*u,1.6*u,0.9*u]]],'leather',{ bias:0.2 });
+    }
+    // the tabard: a panel in front and one behind, from the belt to the knees, the front one swinging out with the leading knee
+    if(G.cloth){ const cw=wHip*0.36*(K.clothW?Math.min(1.3,0.6+K.clothW*0.3):1), kn=Math.max(legs.R.Kn[2],legs.L.Kn[2]), kb=Math.min(legs.R.Kn[2],legs.L.Kn[2]), yb=L.kneeY+1.4*u;
+      const jag=(z,dz)=>[[cw*0.95,yb,z],[cw*0.5,yb-1.1*u,z+dz],[0,yb+0.2*u,z+dz],[-cw*0.5,yb-1.0*u,z+dz],[-cw*0.95,yb,z]];
+      F.plate([[-cw,bY+1.4*u,4.0*u],[cw,bY+1.4*u,4.0*u]].concat(jag(Math.max(4.0*u,kn+1.6*u),0)),'cloth',{ bias:0.2, flat:false });
+      F.plate([[-cw,bY+1.4*u,-3.2*u],[cw,bY+1.4*u,-3.2*u]].concat(jag(Math.min(-3.2*u,kb-1.6*u),0)),'cloth',{ bias:-0.2 });
+    }
+    // the greaves: the thigh's plate, the knee's cop with its spike, the shin's plate, the iron shoe
+    if(G.greaves) ['R','L'].forEach(side=>{ const { H, Kn, Ak, shinR, fl, s }=legs[side];
+      F.tube(add(H,[0,1.2*u,0.4*u]),add(Kn,[0,-1.0*u,0.3*u]),1.55*u,1.55*u,1.35*u,'iron');
+      F.tube(add(Kn,shinR([0,1.0*u,0.4*u])),add(Ak,shinR([0,-0.6*u,0.3*u])),1.6*u,1.4*u,1.2*u,'iron');
+      const kc=add(Kn,shinR([0,0,0.9*u])); F.ball(kc,1.45*u,'iron',{ bias:0.3 }); F.tube(add(kc,shinR([0,0,1.0*u])),add(kc,shinR([0,-0.2*u,2.6*u])),0.55*u,0.3*u,0.05*u,'ironDark',{ bias:0.35 });
+      F.solid([[fl([0,0.3*u,0.1*u]),[1.35*u,1.5*u,1.5*u]],[fl([s*0.4*u,-L.ankY-0.7*u,2.6*u]),[1.35*u,0.75*u,2.3*u]],[fl([0,-L.ankY-0.8*u,-0.9*u]),[1.2*u,0.75*u,1.1*u]]],'iron',{ bias:0.1, sw:0.85 }); });
+  }
   // ---- the fantasy skeleton in space, from the body plan of the 2D rig (the human's measures) ----
   function skeleton(F,pl,st){
     const A=pl.A, { topY, hipY, bodyH, u, h, top, aw, wSh, wHip }=A, L=A.legs, hd=h*0.82, K=pl.K, G=pl.G;
     const w=st.phase||0, walkK=st.walking?1:0, roar=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, sw=st.swing||0, bob=-1.1*Math.abs(Math.sin(w))*walkK, breath=Math.sin((st.t||0)*2.1);
     const Y0=bob;       // the body bobs while it walks
+    const cv={ chest:!!G.chest, coif:!!(G.helmet&&K.coif), greaves:!!G.greaves };       // what the armour covers is not drawn
     const wC=(()=>{ const pts=A.bPts, y=topY+bodyH*0.42; let m=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) m=Math.max(m,Math.abs(a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]))); } return m*0.96; })();
     // the spine's S from the side (the same as the 2D profile), as Z at a height
     const sp0=[[-0.08*hd,top+0.86*h],[-1.0*u,topY+0.2*u],[-2.0*u,topY+bodyH*0.2],[-2.3*u,topY+bodyH*0.35],[-1.8*u,topY+bodyH*0.5],[-1.0*u,topY+bodyH*0.62],[-0.8*u,hipY-6.4*u],[-1.6*u,hipY-4.5*u],[-2.0*u,hipY-2.6*u]];
@@ -1167,22 +1244,22 @@ const Rig3D=(()=>{
     const sB=topY+bodyH*0.32, zF=y=>4.2*u+(y-topY)/(sB-topY)*0.9*u;       // the front of the chest
     const by=v=>[v[0],v[1]+Y0,v[2]];       // a point of the trunk, bobbing
     // the spine: vertebrae from under the skull to the sacrum, each a short tube with its spike to the back
-    for(let i=0;i<sp0.length-1;i++){ const a=sp0[i], b=sp0[i+1], n=i===0?3:2; for(let j=0;j<n;j++){ const t0=j/n, t1=(j+0.75)/n, p0=by([0,a[1]+(b[1]-a[1])*t0,a[0]+(b[0]-a[0])*t0]), p1=by([0,a[1]+(b[1]-a[1])*t1,a[0]+(b[0]-a[0])*t1]);
+    for(let i=0;i<sp0.length-1;i++){ if((cv.chest&&i>=1&&i<=5)||(cv.coif&&i===0)) continue; const a=sp0[i], b=sp0[i+1], n=i===0?3:2; for(let j=0;j<n;j++){ const t0=j/n, t1=(j+0.75)/n, p0=by([0,a[1]+(b[1]-a[1])*t0,a[0]+(b[0]-a[0])*t0]), p1=by([0,a[1]+(b[1]-a[1])*t1,a[0]+(b[0]-a[0])*t1]);
       const r=(i>=5?1.0:0.65)*u; F.tube(p0,p1,r,r,r,'skin',{ bias:-0.3 }); F.tube(mulv(add(p0,p1),0.5),add(mulv(add(p0,p1),0.5),[0,0.5*u,-1.4*u]),0.35*u,0.3*u,0.25*u,'skin',{ bias:-0.4 });
       if(i===5||i===6) F.tube(add(mulv(add(p0,p1),0.5),[-2.4*u,0,0]),add(mulv(add(p0,p1),0.5),[2.4*u,0,0]),0.35*u,0.35*u,0.35*u,'skin',{ bias:-0.35 }); } }
     // the ribs: arcs round an ellipse from the spine (behind) by the side to the breastbone (in front); the near half and the far half sorted apart
     const Wf=[0.62,0.8,0.92,0.97,0.95,0.85];
-    for(let i=0;i<6;i++){ const W=Wf[i]*wC, yb=topY+1.0*u+i*1.25*u, yf=Math.min(sB-0.3*u,topY+1.4*u+i*1.5*u), zb=zS(yb)+0.4*u, zf=zF(yf), zc=(zb+zf)/2, D=(zf-zb)/2, sag=(1.4+0.25*i)*u;
+    if(!cv.chest) for(let i=0;i<6;i++){ const W=Wf[i]*wC, yb=topY+1.0*u+i*1.25*u, yf=Math.min(sB-0.3*u,topY+1.4*u+i*1.5*u), zb=zS(yb)+0.4*u, zf=zF(yf), zc=(zb+zf)/2, D=(zf-zb)/2, sag=(1.4+0.25*i)*u;
       [-1,1].forEach(s=>{ const pts=[]; for(let k=0;k<=12;k++){ const a=Math.PI-k/12*(Math.PI-0.12); pts.push(by([s*Math.max(0.7*u,W*Math.sin(a)),yb+(yf-yb)*(1-a/Math.PI)+sag*Math.pow(Math.sin(a),2)*(0.7+0.3*(1-a/Math.PI)),zc+D*Math.cos(a)])); }
         F.line(pts.slice(0,7),0.75*u*2,'skin'); F.line(pts.slice(6),0.75*u*2,'skin'); }); }
-    F.tube(by([0,topY+0.4*u,zF(topY)]),by([0,sB,zF(sB)]),0.65*u,0.55*u,0.4*u,'skin',{ bias:0.2 });       // the breastbone
+    if(!cv.chest) F.tube(by([0,topY+0.4*u,zF(topY)]),by([0,sB,zF(sB)]),0.65*u,0.55*u,0.4*u,'skin',{ bias:0.2 });       // the breastbone
     // the collarbones, the shoulders' knobs, the shoulder blades on the back
-    [-1,1].forEach(s=>{ F.tube(by([s*1.1*u,topY+0.5*u,zF(topY)-0.3*u]),by([s*wSh*0.86,topY-0.1*u,-0.3*u]),0.75*u,0.6*u,0.7*u,'skin'); F.ball(by([s*wSh*0.92,topY+0.5*u,-0.3*u]),1.05*u,'skin');
-      F.plate([[s*wSh*0.9,topY+0.2*u,-1.2*u],[s*wSh*0.4,topY+1.0*u,-2.8*u],[s*wC*0.45,topY+bodyH*0.36,-2.6*u],[s*wC*0.85,topY+bodyH*0.3,-1.8*u]].map(by),'skin',{ bias:-0.2 }); });
+    [-1,1].forEach(s=>{ if(!cv.chest) F.tube(by([s*1.1*u,topY+0.5*u,zF(topY)-0.3*u]),by([s*wSh*0.86,topY-0.1*u,-0.3*u]),0.75*u,0.6*u,0.7*u,'skin'); if(!G.pauldrons) F.ball(by([s*wSh*0.92,topY+0.5*u,-0.3*u]),1.05*u,'skin');
+      if(!cv.chest) F.plate([[s*wSh*0.9,topY+0.2*u,-1.2*u],[s*wSh*0.4,topY+1.0*u,-2.8*u],[s*wC*0.45,topY+bodyH*0.36,-2.6*u],[s*wC*0.85,topY+bodyH*0.3,-1.8*u]].map(by),'skin',{ bias:-0.2 }); });
     // the pelvis: the two wings, the sacrum behind, the holes below
-    [-1,1].forEach(s=>{ F.plate([[s*1.0*u,hipY-6.0*u,-1.9*u],[s*wHip*0.45,hipY-8.0*u,-1.2*u],[s*wHip*0.9,hipY-7.4*u,0.8*u],[s*wHip*0.98,hipY-5.4*u,2.2*u],[s*wHip*0.8,hipY-4.0*u,1.6*u],[s*wHip*0.66,hipY-2.4*u,0.6*u],[s*wHip*0.55,hipY-0.5*u,-0.6*u],[s*0.45*u,hipY-0.9*u,1.6*u],[s*0.45*u,hipY-2.5*u,1.9*u],[s*1.6*u,hipY-4.4*u,-1.2*u]].map(by),'skin');
+    if(!cv.chest) [-1,1].forEach(s=>{ F.plate([[s*1.0*u,hipY-6.0*u,-1.9*u],[s*wHip*0.45,hipY-8.0*u,-1.2*u],[s*wHip*0.9,hipY-7.4*u,0.8*u],[s*wHip*0.98,hipY-5.4*u,2.2*u],[s*wHip*0.8,hipY-4.0*u,1.6*u],[s*wHip*0.66,hipY-2.4*u,0.6*u],[s*wHip*0.55,hipY-0.5*u,-0.6*u],[s*0.45*u,hipY-0.9*u,1.6*u],[s*0.45*u,hipY-2.5*u,1.9*u],[s*1.6*u,hipY-4.4*u,-1.2*u]].map(by),'skin');
       F.patch(by([s*wHip*0.42,hipY-1.6*u,1.1*u]),norm([s*0.5,0,0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); F.patch(by([s*wHip*0.42,hipY-1.6*u,0.9*u]),norm([-s*0.5,0,-0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); });
-    F.plate([[-2.2*u,hipY-6.6*u,-2.0*u],[2.2*u,hipY-6.6*u,-2.0*u],[0.9*u,hipY-2.8*u,-2.2*u],[0,hipY-2.1*u,-2.0*u],[-0.9*u,hipY-2.8*u,-2.2*u]].map(by),'skin',{ bias:-0.1 });
+    if(!cv.chest) F.plate([[-2.2*u,hipY-6.6*u,-2.0*u],[2.2*u,hipY-6.6*u,-2.0*u],[0.9*u,hipY-2.8*u,-2.2*u],[0,hipY-2.1*u,-2.0*u],[-0.9*u,hipY-2.8*u,-2.2*u]].map(by),'skin',{ bias:-0.1 });
     // the skull: a hull of the vault and the face, the sockets, the nose's hole, the cheekbones, the teeth, the crack; the jaw a band below (it drops when it roars)
     const hc=[0,top+0.45*h+Y0,0], X=x=>x*aw, Yh=y=>top+y*h+Y0, Z=z=>z*hd, hy=Math.sin(w+0.6)*0.8*walkK;
     F.solid([[hc,[X(1.0),0.43*h,Z(0.48)]],[[0,Yh(0.7),Z(0.22)],[X(0.82),0.13*h,Z(0.26)]]],'skin',{ sw:0.9 });
@@ -1205,13 +1282,14 @@ const Rig3D=(()=>{
       const H=by([s*wHip*0.62,hipY-3*u,0.4*u]), K0=[s*Math.abs(L.xk),L.kneeY-0.4*u,0.7*u], A0=[s*Math.abs(L.xa),L.ankY,0.3*u], H0=[s*wHip*0.62,hipY-3*u,0.4*u];
       const Kn=add(H,rotX(sub(K0,H0),sw2)), Ak=add(Kn,rotX(sub(A0,K0),sw2-kb)), shinR=v=>rotX(v,sw2-kb);
       F.ball(H,1.0*u,'skin'); F.ball(add(H,[s*1.3*u,0.8*u,-0.4*u]),0.9*u,'skin');
+      const fl=v=>add(Ak,v);       // the foot level, hanging at the ankle
+      legs[side]={ H, Kn, Ak, shinR, fl, s };
+      if(cv.greaves) return;       // under the greaves (drawn with the armour)
       F.tube(H,Kn,0.95*u,0.72*u,1.1*u,'skin'); F.ball(add(Kn,[s*0.7*u,0,0]),0.8*u,'skin'); F.ball(add(Kn,[-s*0.7*u,0,0]),0.8*u,'skin');
       F.tube(add(Kn,shinR([0,0.6*u,0.2*u])),Ak,1.1*u,0.68*u,0.85*u,'skin'); F.tube(add(Kn,shinR([s*1.0*u,1.2*u,-0.6*u])),add(Ak,[s*0.9*u,0.3*u,-0.3*u]),0.4*u,0.3*u,0.42*u,'skin',{ bias:-0.1 });
       F.ball(add(Kn,shinR([0,-0.2*u,1.1*u])),0.75*u,'skin',{ bias:0.2 });       // the kneecap
-      const fl=v=>add(Ak,v);       // the foot level, hanging at the ankle
       F.ball(fl([0,0.6*u,0]),0.8*u,'skin'); F.ball(fl([0,-0.9*u-L.ankY,-1.1*u]),0.85*u,'skin');       // the ankle's bone, the heel
       [-1,0,1].forEach(k=>{ const m0=fl([k*0.5*u,1.2*u,0.3*u]), m1=fl([s*0.6*u+k*0.55*u,-L.ankY-0.5*u+0,3.1*u]); F.tube(m0,m1,0.42*u,0.32*u,0.38*u,'skin'); F.tube(m1,add(m1,[s*0.3*u,0.3*u,1.2*u]),0.36*u,0.28*u,0.3*u,'skin'); });
-      legs[side]={ H, Kn, Ak };
     });
     // the arms: the shoulder fixed, the hand where it would be (hanging, or bent forward when it holds something), the elbow solved back and out
     const hands={};
@@ -1222,11 +1300,13 @@ const Rig3D=(()=>{
       if(roar) Hd=add(Hd,[0,-6*roar,0]);
       const L1=10.6*u, L2=9.8*u, dv=sub(Hd,Sh), d=Math.min(L1+L2-1e-3,Math.max(Math.abs(L1-L2)+1e-3,len(dv))), uu=norm(dv), pole=norm([s*0.4,0,-1]), v=norm(sub(pole,mulv(uu,dot(pole,uu))));
       const a=Math.acos(Math.max(-1,Math.min(1,(L1*L1+d*d-L2*L2)/(2*L1*d)))), E=add(Sh,add(mulv(uu,L1*Math.cos(a)),mulv(v,L1*Math.sin(a)))), Wr=add(E,mulv(norm(sub(Hd,E)),L2));
-      F.tube(Sh,E,0.75*u,0.55*u,0.75*u,'skin'); F.ball(E,0.7*u,'skin'); F.tube(E,Wr,0.6*u,0.45*u,0.55*u,'skin');
+      if(G.pauldrons){ F.tube(Sh,E,1.15*u,1.0*u,1.0*u,'iron'); F.ball(E,1.15*u,'iron',{ bias:0.1 }); F.tube(E,Wr,1.0*u,0.9*u,1.05*u,'iron'); }       // the arm in iron: the upper and the lower arm's plates, the elbow's cop
+      else { F.tube(Sh,E,0.75*u,0.55*u,0.75*u,'skin'); F.ball(E,0.7*u,'skin'); F.tube(E,Wr,0.6*u,0.45*u,0.55*u,'skin'); }
       // the fist: a knuckled ball, three folded fingers towards the body
       const fr=(pl.S.hr||2.3)*0.9, fc=Wr; F.ball(fc,fr*0.75,'hand',{ bias:0.1 }); [-0.6,0,0.6].forEach(k=>F.tube(add(fc,[0,k*fr*0.55,0.5*fr]),add(fc,[-s*0.8*fr,k*fr*0.55,0.7*fr]),0.25*fr,0.25*fr,0.25*fr,'hand',{ bias:0.15 }));
       hands[side]={ at:fc, Sh, E };
     });
+    armour(F,{ A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs, hands, roar });
     // the weapon (flat at the right hand; its edge turns with the figure), the shield (a plate with its thickness on the left arm)
     if(G.weapon&&G.weapon!=='none'&&pl.weapons[G.weapon]){ const hR=hands.R, q=F.P(hR.at), rot=(12-(Math.sin((st.t||0)*1.3)*3)-roar*48-sw*(sw>0?40:55))*Math.PI/180;
       const face=F.P([0,0,1]), facesLeft=face[0]<-0.01; flatShapes(F,pl.weapons[G.weapon],q,pl.grip[G.weapon]||[24,-16],facesLeft?-rot:rot,(K.weaponK||1),facesLeft,q[2]+0.05); }       // facing left the weapon is drawn the other way round
