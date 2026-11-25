@@ -778,7 +778,7 @@ const SvgRig=(()=>{
   // ---- the side view (a test, user November 2026: besides front and back also left and right; first the fantasy skeleton) ----
   // The skeleton seen from its right, facing right (the left view is it mirrored): the skull in profile (the socket, the nose's hole, the cheekbone, the jaw's
   // hinge), the spine's S (neck forward, the back round, the small of the back hollow), the ribs from the spine down and forward to the breastbone, the shoulder
-  // blade over them, the pelvis from the side, the leg with the kneecap in front and the foot pointing forward. No armour yet; weapon and shield (on its edge).
+  // blade over them, the pelvis from the side, the leg with the kneecap in front and the foot pointing forward; the armour from the side; the shield on its edge.
   function sideSkeleton(S0,K,G){
     const A=S0.A, { topY, hipY, bodyH, u, h, top, legs:{ kneeY, ankY } }=A, hd=h*0.82, X=x=>x*hd, Y=y=>top+y*h, P2=a=>a.map(([x,y])=>[X(x),Y(y)]);
     const cr=P2([[0.05,0],[0.3,0.04],[0.44,0.2],[0.47,0.4],[0.42,0.47],[0.47,0.57],[0.5,0.66],[0.43,0.71],[0.42,0.82],[0.2,0.8],[0.02,0.7],[-0.15,0.8],[-0.36,0.68],[-0.49,0.45],[-0.46,0.2],[-0.25,0.04]]);
@@ -812,11 +812,55 @@ const SvgRig=(()=>{
     const shin=[...fBone(boneAlong([-0.4*u,kneeY+1.2*u],[-0.2*u,ankY+0.3*u],0.4*u,0.3*u,0.42*u),1),...fBone(boneAlong([0.9*u,kneeY+0.6*u],Ak,1.1*u,0.68*u,0.85*u),1),fKnob(Kn[0],Kn[1],1.1*u,1.0*u),fKnob(1.9*u,kneeY-0.2*u,0.6*u,0.85*u)];
     const foot=[fKnob(-0.8*u,-0.9*u,1.0*u,0.85*u),fKnob(Ak[0],ankY+0.6*u,0.8*u,0.7*u)];
     for(let i=0;i<2;i++) foot.push(...fBone(boneAlong([0.6*u,ankY+1.2*u+i*0.3*u],[3.4*u-i*0.4*u,-0.5*u],0.42*u,0.32*u,0.38*u),1),...fBone(boneAlong([3.4*u-i*0.4*u,-0.5*u],[4.6*u-i*0.5*u,-0.15*u],0.36*u,0.28*u,0.3*u),1));
+    // ---- the armour from the side, on the same measures (the human's, so the skeleton wears what a man would) ----
+    const gear={}, ww=A.sw||1;
+    if(G&&G.helmet){
+      const shell=P2([[0.5,0.42],[0.49,0.2],[0.33,0.0],[0.05,-0.07],[-0.3,-0.01],[-0.52,0.2],[-0.57,0.46],[-0.5,0.52],[0.05,0.47]]);
+      const out=[];
+      if(G.helmStyle==='horns'||(!G.helmStyle&&K.helm==='horns')) out.push([sp(P2([[-0.14,0.17],[-0.14,-0.2],[0.22,-0.42],[0.02,-0.12],[0.1,0.13]]),2),'bone',ww*0.85]);       // the near horn, forward and up
+      out.push([sp(shell,2),'iron',ww],[sp(P2([[-0.3,0.05],[-0.52,0.22],[-0.56,0.46],[-0.4,0.42],[-0.38,0.2]]),2),'shade',0],[`M${f2(X(0.5))} ${f2(Y(0.4))} Q${f2(X(0))} ${f2(Y(0.47))} ${f2(X(-0.55))} ${f2(Y(0.45))}`,null,1.1*u,'ironDark'],
+        [`M${f2(X(0.33))} ${f2(Y(0.0))} Q${f2(X(0))} ${f2(Y(-0.09))} ${f2(X(-0.3))} ${f2(Y(0.0))}`,null,0.6,'ironDark'],[sp(P2([[0.46,0.4],[0.56,0.4],[0.56,0.67],[0.49,0.67]]),1),'ironDark',ww*0.6]);       // the rim, the ridge, the nose guard
+      if(G.helmStyle==='crest') out.push([sp(P2([[0.25,-0.02],[0.15,-0.3],[-0.35,-0.25],[-0.3,0.0]]),2),'cloth',ww*0.8]);
+      gear.helmet=out;
+      // the mail hood: round the back of the head and the neck down onto the shoulders, the face open
+      const outer=P2([[0.3,0.2],[-0.1,0.02],[-0.55,0.3],[-0.6,0.76]]).concat([[-2.4*u,topY-0.4*u],[-3.2*u,topY+1.8*u],[0.5*u,topY+2.7*u],[4.7*u,topY+2.3*u],[st(topY)+0.3*u,topY-0.6*u]],P2([[0.28,1.12],[0.5,1.0],[0.53,0.6],[0.5,0.3]]));
+      const ring=spline(outer,2,true), hole=ellPts(X(0.32),Y(0.67),X(0.21),h*0.3,20), rings=[];
+      for(let y=Y(0.1);y<topY+2.4*u;y+=0.9) for(let x=-3.2*u;x<=5*u;x+=1.1){ const xx=x+((Math.round((y-Y(0.1))/0.9)%2)?0.55:0); if(inside(ring,xx,y)&&!inside(hole,xx,y+0.3)&&!inside(hole,xx,y-0.4)) rings.push(`M${f2(xx-0.45)} ${f2(y)} q0.45 0.5 0.9 0`); }
+      gear.coif=[[withHole(ring,hole),'mail',ww*0.8],[rings.join(' '),null,0.3,'ironDark']];
+    }
+    if(G&&G.chest){       // the breastplate and the back plate as one shell, round in front, the lames at the bottom
+      const yt=topY+0.4*u, yc=hipY-bodyH*0.3, sx2=y=>spineX(y);
+      const shell=[[st(yt)+0.4*u,yt+0.4*u],[st(topY+bodyH*0.2)+1.2*u,topY+bodyH*0.2],[4.5*u,yc],[3.8*u,yc+2.4*u],[sx2(yc)-1.4*u,yc+1.6*u],[sx2(topY+bodyH*0.3)-1.8*u,topY+bodyH*0.3],[sx2(yt)-1.5*u,yt+0.6*u],[0,yt-0.5*u]];
+      gear.chest=[[sp(shell,3),'iron',ww],[sp([[sx2(yc)-1.4*u,yc+1.6*u],[sx2(topY+bodyH*0.3)-1.8*u,topY+bodyH*0.3],[sx2(yt)-1.5*u,yt+0.6*u],[sx2(yt)-0.4*u,yt+0.8*u],[sx2(topY+bodyH*0.3)-0.6*u,topY+bodyH*0.32],[sx2(yc)-0.2*u,yc+1.2*u]],2),'shade',0],
+        [`M${f2(4.4*u)} ${f2(yc-1.2*u)} Q${f2(0.5*u)} ${f2(yc+0.3*u)} ${f2(sx2(yc)-1.5*u)} ${f2(yc-0.2*u)} M${f2(4.1*u)} ${f2(yc+0.8*u)} Q${f2(0.5*u)} ${f2(yc+2*u)} ${f2(sx2(yc)-1.4*u)} ${f2(yc+1.3*u)}`,null,ww*0.55,'ironDark'],
+        [[[2.6*u,yt+1.4*u],[-1.4*u,yt+1.6*u],[3.4*u,yc-2.6*u]].map(([x,y])=>ell(f2(x),f2(y),f2(0.35*u),f2(0.35*u))).join(' '),'ironDark',0],[`M${f2(3.2*u)} ${f2(topY+bodyH*0.22)} l${f2(0.5*u)} ${f2(2.6*u)}`,null,ww*0.6,'rust']];
+    }
+    if(G&&G.pauldrons){       // a dome over the shoulder's joint, two lames below, a spike up and back
+      const y0=topY+0.9*u; gear.pauldronAt=[0,f2(y0)];
+      gear.pauldron=[[`M${f2(0.2*u)} ${f2(y0-2.2*u)} L${f2(-1.4*u)} ${f2(y0-5.6*u)} L${f2(1.4*u)} ${f2(y0-2.4*u)}z`,'ironDark',ww*0.75],[sp([[-3.0*u,y0+0.8*u],[-2.4*u,y0-1.5*u],[0,y0-2.4*u],[2.6*u,y0-1.4*u],[3.2*u,y0+0.9*u],[1.5*u,y0+1.7*u],[-1.5*u,y0+1.7*u]],2),'iron',ww],
+        [`M${f2(-2.8*u)} ${f2(y0+0.6*u)} Q0 ${f2(y0+1.6*u)} ${f2(3.0*u)} ${f2(y0+0.6*u)} M${f2(-2.6*u)} ${f2(y0-0.4*u)} Q0 ${f2(y0+0.6*u)} ${f2(2.8*u)} ${f2(y0-0.4*u)}`,null,ww*0.55,'ironDark'],[sp([[0.6*u,y0-2.3*u],[2.6*u,y0-1.4*u],[3.2*u,y0+0.9*u],[2*u,y0+1.5*u],[1.6*u,y0-0.6*u]],2),'shade',0]];
+    }
+    const by=A.beltY===undefined?hipY-5.2*u:A.beltY;
+    if(G&&(G.chest||G.cloth||G.pauldrons)){       // the belt round the waist, its buckle in front, the pouch at the side
+      gear.belt=[[sp([[-2.7*u,by],[4.3*u,by-0.3*u],[4.4*u,by+1.6*u],[-2.6*u,by+1.9*u]],1),'belt',ww*0.9],[sp([[-0.4*u,by+1.6*u],[1.8*u,by+1.5*u],[1.9*u,by+4.6*u],[-0.3*u,by+4.7*u]],1),'leather',ww*0.8],[`M${f2(-0.4*u)} ${f2(by+2.8*u)} L${f2(1.85*u)} ${f2(by+2.7*u)}`,null,0.6,'line']];
+      gear.buckle=[[`M${f2(3.9*u)} ${f2(by-0.5*u)} L${f2(4.6*u)} ${f2(by-0.6*u)} L${f2(4.7*u)} ${f2(by+1.9*u)} L${f2(4.0*u)} ${f2(by+2.0*u)}z`,null,0.8*u,'ironDark']];
+    }
+    if(G&&G.cloth){       // the tabard: a front and a back panel, frayed, to the knees (the near leg between them)
+      const jag=(x0,x1,y)=>[[x1,y],[x1-0.25*(x1-x0),y-1.2*u],[x1-0.5*(x1-x0),y+0.2*u],[x1-0.75*(x1-x0),y-1.0*u],[x0,y]];
+      gear.cloth=[[ptsPath([[2.4*u,by+1.5*u],[4.1*u,by+1.3*u],[3.9*u,kneeY+1.4*u]].concat(jag(1.9*u,3.9*u,kneeY+1.4*u).slice(1))),'cloth',ww*0.85]];
+      gear.clothBack=[[ptsPath([[-2.7*u,by+1.8*u],[-1.0*u,by+1.8*u],[-1.3*u,kneeY+1.2*u]].concat(jag(-3.1*u,-1.3*u,kneeY+1.2*u).slice(1))),'cloth',ww*0.85]];
+    }
+    if(G&&G.greaves){       // the thigh plate in front, the knee plate with its spike, the shin's plate, the iron shoe
+      leg.push([ptsPath(boneAlong([H[0]+0.6*u,(H[1]+Kn[1])/2],[Kn[0]+0.5*u,Kn[1]-1.2*u],1.5*u,1.6*u,1.4*u)),'iron',ww*0.85]);
+      shin.push([ptsPath(boneAlong([0.6*u,kneeY+1.0*u],[0.35*u,ankY-0.8*u],1.6*u,1.35*u,1.2*u)),'iron',ww*0.9],[`M${f2(1.4*u)} ${f2(kneeY+3*u)} l${f2(-0.3*u)} ${f2(3*u)}`,null,ww*0.6,'rust'],
+        [ell(f2(Kn[0]+0.5*u),f2(Kn[1]),f2(1.4*u),f2(1.3*u)),'iron',ww*0.85],[`M${f2(Kn[0]+1.6*u)} ${f2(Kn[1]-0.5*u)} L${f2(Kn[0]+3.2*u)} ${f2(Kn[1])} L${f2(Kn[0]+1.6*u)} ${f2(Kn[1]+0.5*u)}z`,'ironDark',ww*0.6]);
+      foot.push([sp([[-1.8*u,-1.8*u],[0.6*u,ankY-0.2*u],[1.6*u,ankY+0.6*u],[4.9*u,-0.8*u],[5.1*u,0.15],[-2.0*u,0.15]],2),'iron',ww*0.85],[`M${f2(1.4*u)} ${f2(ankY+1.6*u)} L${f2(2.6*u)} ${f2(-1.4*u)} M${f2(2.6*u)} ${f2(ankY+2.2*u)} L${f2(3.8*u)} ${f2(-1.0*u)}`,null,ww*0.55,'ironDark']);
+    }
     const handAt=[f2(1.0*u),f2(hipY+0.3*u)], hr=S0.handR||2.3;
     const S=Object.assign({},S0,{ side:true, skull, nose:[], eye:[], pupil:[], lid:[], brow:[], mouth:[], jaw, jawAt:[f2(X(-0.08)),f2(Y(0.7))], eyeAt:[0,f2(Y(0.48))], browAt:[0,f2(Y(0.4))],
       body, belly:[], leg, shin, foot, hip:[f2(H[0]),f2(H[1])], knee:[f2(Kn[0]),f2(Kn[1])], ankle:[f2(Ak[0]),f2(Ak[1])], handAt, fist:boneFistF(+handAt[0],+handAt[1],S0.hr||2.3),
       shoulderAt:[0,topY+0.9*u], shield:G&&G.shield?GEAR.shield(Object.assign({},A,{ sideOn:true }),G.shield,[+handAt[0],+handAt[1]],false,false):null,
-      shadow:[[ell(0,f2(0.6*u),f2(5*u),f2(1.4*u)),'shadowC',0]], scar:null, helmet:[], chest:[], pauldron:[], cloth:[], belt:[], buckle:[] });
+      shadow:[[ell(0,f2(0.6*u),f2(5*u),f2(1.4*u)),'shadowC',0]], scar:null, helmet:gear.helmet||[], coif:gear.coif||null, chest:gear.chest||[], pauldron:gear.pauldron||[], pauldronAt:gear.pauldronAt||[0,0], cloth:gear.cloth||[], clothBack:gear.clothBack||null, belt:gear.belt||[], buckle:gear.buckle||[] });
     return S;
   }
   function build(spec){
@@ -824,7 +868,6 @@ const SvgRig=(()=>{
     if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
     const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear), back=spec.view==='back';
     const sideV=(spec.view==='left'||spec.view==='right')&&!!K.side;       // the side view (a test: the fantasy skeleton); without it a kind is seen from the front
-    if(sideV) Object.assign(G,{ helmet:false, chest:false, pauldrons:false, greaves:false, cloth:false });       // (no armour from the side yet)
     let S=(K.real?realShapes:humanoidShapes)(kind,genes,t,back,G);
     if(sideV) S=sideSkeleton(S,K,G);
     const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },palOf(K,genes)); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
@@ -857,7 +900,7 @@ const SvgRig=(()=>{
       back&&!K.clothed?P('spine',[0,mid],[[`M0 ${(bb[1]-1).toFixed(2)} L0 ${(bb[3]+2).toFixed(2)}`,null,1.1,'dark']]):P('belly',[0,mid],S.belly),
       nScars>1?P('scarsBody',[0,mid],scarShapes(nScars,bb,seed,true)):null,
       G.chest?P('chest',[0,mid-2],S.chest):null,
-      G.cloth?P('cloth',[0,S.hip[1]-1],S.cloth):null,
+      G.cloth?P('cloth',[0,S.hip[1]-1],S.cloth):null, G.cloth&&S.clothBack?P('clothBack',[0,S.hip[1]-1],S.clothBack):null,
       P('belt',[0,S.hip[1]-2],S.belt), back?null:P('buckle',[0,S.hip[1]-2],S.buckle),
       G.pauldrons?P('pauldronL',S.pauldronAt,S.pauldron):null, G.pauldrons?P('pauldronR',R(S.pauldronAt),mirrorShapes(S.pauldron)):null,
       S.collar?P('collar',S.neck,S.collar):null, S.cape?P('cape',S.neck,S.cape):null,
@@ -888,7 +931,8 @@ const SvgRig=(()=>{
       weapon:hands?{ x:ha[0]-grip[0], y:ha[1]-grip[1], r:12, sx:K.weaponK||1, sy:K.weaponK||1 }:{ x:(bw-1)*16-5, y:lift }
     };
     // a realistic figure lets its empty hands hang at the hips; a hand that holds something is held bent at the elbow: up to the waist, a little in front of the body
-    if(sideV){ base.handL.x-=1.2*(S.A?S.A.u:1); if(hands&&wName){ base.handR.y-=S.armUp; base.handR.x+=2.4*S.A.u; } if(hands&&G.shield){ base.handL.y-=S.armUp; base.handL.x+=3*S.A.u; } }       // from the side: the far hand a little back; a held thing forward
+    if(sideV){ base[spec.view==='left'?'handR':'handL'].x-=1.2*(S.A?S.A.u:1);       // the far hand a little back (facing left the right hand is the far one)
+      if(hands&&wName){ base.handR.y-=S.armUp; base.handR.x+=2.4*S.A.u; } if(hands&&G.shield){ base.handL.y-=S.armUp; base.handL.x+=3*S.A.u; } }       // from the side: the far hand a little back; a held thing forward
     else if(S.real&&hands){ if(wName){ base.handR.y-=S.armUp; base.handR.x-=S.armIn; } if(G.shield){ base.handL.y-=S.armUp; base.handL.x+=S.armIn; } }
     // the arms (user, November 2026): an arm only links the hand to the shoulder, without a will of its own; the hand leads
     let arm=null;
@@ -976,7 +1020,8 @@ const SvgRig=(()=>{
   const LAYERS={
     front:['shadow','cape','tail','sack','hairBack','leg','shin','foot','robe','body','spine','belly','scarsBody','chest','belt','buckle','cloth','arm','pauldron','collar','ear','earTip','head','skull','nose','scar','scarsHead','horn','crest','hair','coif','beard','hood','helmet','mouth','jaw','tusk','eye','pupil','lid','brow','weapon','hand','fist','shield'],       // the shield over the hand that holds it from behind
     // from the side (facing right; the near side is the right one): the far arm and leg behind the body, the head, the near leg and arm in front
-    side:['shadow','armL','handL','fistL','shield','legL','shinL','footL','body','scarsBody','head','skull','jaw','eyeL','eyeR','legR','shinR','footR','armR','weapon','handR','fistR'],
+    side:['shadow','armL','handL','fistL','shield','pauldronL','legL','shinL','footL','clothBack','body','scarsBody','chest','belt','buckle','head','skull','coif','helmet','jaw','eyeL','eyeR','legR','shinR','footR','cloth','armR','pauldronR','weapon','handR','fistR'],
+    sideL:['shadow','armR','weapon','handR','fistR','pauldronR','legR','shinR','footR','clothBack','body','scarsBody','chest','belt','buckle','head','skull','coif','helmet','jaw','eyeL','eyeR','legL','shinL','footL','cloth','armL','pauldronL','handL','fistL','shield'],
     back:['shadow','cloth','foot','leg','shin','robe','arm','shield','weapon','hand','fist','ear','earTip','head','skull','scar','scarsHead','horn','crest','hairBack','hair','coif','hood','helmet','collar','body','spine','scarsBody','chest','belt','buckle','pauldron','sack','tail','cape']
   };
   const baseName=id=>id.replace(/[LR]$/,'');
@@ -985,7 +1030,7 @@ const SvgRig=(()=>{
   function localM(p,v){ const r=v.r*Math.PI/180, c=Math.cos(r), sn=Math.sin(r), [px,py]=p;
     return mul(mul([1,0,0,1,v.x+px,v.y+py],[c*v.sx,sn*v.sx,-sn*v.sy,c*v.sy,0,0]),[1,0,0,1,-px,-py]); }
   function flat(rig,P){
-    const order=LAYERS[rig.side?'side':(rig.spec.view==='back'?'back':'front')], out=[]; let n=0;
+    const order=LAYERS[rig.side?(rig.spec.view==='left'?'sideL':'side'):(rig.spec.view==='back'?'back':'front')], out=[]; let n=0;
     const walk=(part,M,a,layer)=>{ const v=P&&P[part.id]||{ x:0, y:0, r:0, sx:1, sy:1, a:1 }, m=mul(M,localM(part.pivot,v)), al=a*(v.a===undefined?1:v.a);
       const k0=order.indexOf(part.id), k=k0>=0?k0:order.indexOf(baseName(part.id)), L=k>=0?k:layer; out.push({ part, m, a:al, L, n:n++ }); part.kids.forEach(c=>walk(c,m,al,L)); };
     walk(rig.tree,[1,0,0,1,0,0],1,0);
