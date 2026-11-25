@@ -230,7 +230,7 @@ const SvgRig=(()=>{
     },
   // the left shoulder plate (the right one is it mirrored): on the shoulder, as big as the shoulders are broad, with a spike
     pauldron(A){
-      const { wSh, topY, bodyH, bPts, sw }=A, k=wSh/15*(A.pauldronK||1), y=topY+bodyH*0.16, x=-widthAt(bPts,y)*0.88;       // on the body's edge at that height, whatever its form
+      const { wSh, topY, bodyH, bPts, sw }=A, k=wSh/15*(A.pauldronK||1), y=A.shoulderY===undefined?topY+bodyH*0.16:A.shoulderY, x=-widthAt(bPts,y)*0.88;       // on the body's edge at that height, whatever its form
       return { at:[f2(x),f2(y)], shapes:[[affPath('M-1.5 -3.5 L-7 -11 L1 -4.5z',k,k,x,y),'ironDark',sw*0.75],[affPath('M-4 -0.5 L2.5 -5.5 L5 0.5 L1 5 L-4.5 3.5z',k,k,x,y),'iron',sw],[affPath('M2.5 -5.5 L5 0.5 L1 5 L1.6 -0.2z',k,k,x,y),'shade',0]] };
     },
     // the belt across the hips: a rope (the imp) or a band with a buckle
@@ -238,7 +238,7 @@ const SvgRig=(()=>{
       const { hipY, wHip, bPts, u, sw }=A;
       if(!K.belt) return { belt:[], buckle:[] };
       if(K.belt==='rope') return { belt:[[`M${f2(-wHip-0.6)} ${f2(hipY-2.4)} Q0 ${f2(hipY+0.4)} ${f2(wHip+0.6)} ${f2(hipY-2.4)}`,null,1.6,'belt']], buckle:[[ell(f2(-wHip*0.55),f2(hipY-0.6),1.9,1.7),'leather',1.1]] };
-      const y0=hipY-4.5*u, y1=hipY-0.6*u, w0=widthAt(bPts,y0)*1.03, w1=widthAt(bPts,y1)*1.03, by=(y0+y1)/2;
+      const y0=A.beltY===undefined?hipY-4.5*u:A.beltY, y1=A.beltY===undefined?hipY-0.6*u:A.beltY+1.6*u, w0=widthAt(bPts,y0)*1.03, w1=widthAt(bPts,y1)*1.03, by=(y0+y1)/2;
       if(K.buckle==='plain') return { belt:[[`M${f2(-w0)} ${f2(y0)} L${f2(w0)} ${f2(y0)} L${f2(w1)} ${f2(y1)} L${f2(-w1)} ${f2(y1)}z`,'belt',sw*0.9]],
         buckle:[[`M${f2(-1.4*u)} ${f2(y0-0.3*u)} L${f2(1.4*u)} ${f2(y0-0.3*u)} L${f2(1.4*u)} ${f2(y1+0.3*u)} L${f2(-1.4*u)} ${f2(y1+0.3*u)}z`,null,0.8*u,'ironDark'],[`M0 ${f2(by)} L${f2(1.8*u)} ${f2(by)}`,null,0.6*u,'belt']] };       // a plain iron buckle, the tongue of the belt through it
       return { belt:[[`M${f2(-w0)} ${f2(y0)} L${f2(w0)} ${f2(y0)} L${f2(w1)} ${f2(y1)} L${f2(-w1)} ${f2(y1)}z`,'belt',sw*0.9]],
@@ -389,63 +389,67 @@ const SvgRig=(()=>{
   function realShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, st=t.stark===undefined?0.5:t.stark, plump=g.koerper===undefined?0.4:g.koerper, gx=k=>g[k]===undefined?0.5:g[k];
     const hipY=K.hipY, bodyH=lin(K.bodyH,plump), topY=hipY-bodyH, u=bodyH/21;
-    const wSh=lin(K.sh,plump)*(0.82+0.4*st), wHip=lin(K.hip,plump)*(0.96+0.08*st), wWaist=wHip*(0.84+0.22*plump)*(0.97+0.06*st), sq=gx('koerperForm');       // strength: the shoulders much more than the hips
-    // the head on its neck
-    const HD=K.head, h=lin(HD.h,gx('kopf')), aw=lin(HD.w,gx('kopf'))*(0.94+0.12*gx('kopfForm')), chinY=topY-(3.4-1.6*gx('tief'))*u, top=chinY-h, cy=top+h*0.45;
-    const jaw=0.72+0.24*gx('kopfForm'), chinW=aw*(0.48-0.2*gx('kinn'));
+    // measured on the user's reference (a man in linen, 77 units from the soles to the crown): the deltoids' outer edge wSh, the chest under the arms
+    // wChest, the hips; a male torso is a box (the waist hardly narrower), the shirt hangs straight to just above the crotch
+    const wSh=lin(K.sh,plump)*(0.82+0.4*st), wChest=wSh*0.84+0.4, wHip=lin(K.hip,plump)*(0.96+0.08*st), wWaist=wChest*(0.9+0.12*plump), sq=gx('koerperForm');       // strength: the shoulders much more than the hips
+    // the head on a short, thick neck
+    const HD=K.head, h=lin(HD.h,gx('kopf')), aw=lin(HD.w,gx('kopf'))*(0.94+0.12*gx('kopfForm')), chinY=topY-(3.3-1.2*gx('tief'))*u, top=chinY-h, cy=top+h*0.45;
+    const jaw=0.74+0.22*gx('kopfForm'), chinW=aw*(0.5-0.2*gx('kinn'));
     const hPts=symForm([[0,top],[aw*0.6,top+0.05*h],[aw*0.93,top+0.23*h],[aw,top+0.42*h],[aw*0.96,top+0.57*h],[aw*0.9,top+0.69*h],[aw*jaw,top+0.84*h],[chinW,top+0.97*h],[0,top+h]],5);
     const skull=[[ptsPath(hPts),'skin',sw*0.85],[formShade(hPts,0),'shade',0]];
     if(!K.bones&&!back) skull.push([`M${f2(aw*0.62)} ${f2(top+0.6*h)} Q${f2(aw*0.8)} ${f2(top+0.75*h)} ${f2(aw*0.55)} ${f2(top+0.88*h)}`,null,0.5,'faceLine']);       // under the cheekbone
-    // the torso with the neck: trapezius, the shoulder cap where an arm would start, the ribcage narrowing to the waist, the hips
-    const nw=aw*0.6, slope=(1-sq)*1.6*u;
-    const bPts=symForm([[0,chinY+1],[nw,chinY+0.8],[nw*1.1,topY-1.4*u+slope*0.3],[wSh*0.7,topY-0.3*u+slope*0.7],[wSh,topY+1.4*u+slope*0.4],[wSh*1.02,topY+3.4*u],[wSh*0.9,topY+6*u],
-      [(wSh*0.9+wWaist)/2,topY+bodyH*0.45],[wWaist,hipY-bodyH*0.3],[wHip,hipY-1.4*u],[wHip*0.98,hipY+1.4*u],[wHip*0.4,hipY+2.6*u],[0,hipY+2.2*u]],4);
-    // the legs: thigh and shin with the knee between, a foot of its own
-    const xc=-wHip*0.5, lw=lin(K.legW,plump)*(0.95+0.1*st), kneeY=hipY*0.5, ankY=-1.6*u, L={ xc, lw, kneeY, ankY };
-    const A={ topY, hipY, wSh, wHip, wWaist, bodyH, bPts, hPts, top, h, aw, cy, chinY, u, sw, legs:L, shieldK:K.shieldK, pauldronK:K.pauldronK, emblem:K.emblem, clothW:K.clothW };
+    // the torso: the neck's base, the trapezius sloping to the round shoulder (the deltoid, where the arm would hang), under it the chest's side, a box down to the hips
+    const nw=aw*0.84, slope=(1-sq)*0.8*u;
+    const bPts=symForm([[0,chinY+1],[nw,chinY+0.8],[nw*1.06,topY-1.2*u],[wSh*0.62,topY-0.5*u+slope],[wSh*0.88,topY+0.4*u+slope*0.6],[wSh,topY+2.2*u],[wSh*0.96,topY+3.9*u],[wChest*0.98,topY+5*u],
+      [wChest,topY+bodyH*0.4],[wWaist,hipY-bodyH*0.25],[wHip,hipY-1*u],[wHip*0.95,hipY+1.4*u],[wHip*0.4,hipY+2.2*u],[0,hipY+2*u]],4);
+    // the legs in a slight A: the thigh from the hip, the knee and the ankle a little further out; a foot of its own
+    const lw=lin(K.legW,plump)*(0.95+0.1*st), xh=-wHip*0.52, xk=xh-0.9*u, xa=xh-2*u, xc=xh, kneeY=hipY*0.52, ankY=-4.2*u*0.85, L={ xc, xh, xk, xa, lw, kneeY, ankY };
+    const A={ topY, hipY, wSh, wHip, wWaist, bodyH, bPts, hPts, top, h, aw, cy, chinY, u, sw, legs:L, shieldK:K.shieldK, pauldronK:K.pauldronK, emblem:K.emblem, clothW:K.clothW, shoulderY:topY+1.8*u, beltY:hipY-5.2*u };
     const face=FACES[K.face]({ aw, h, top, cy, chinY },g,K); A.browY=face.browY;
     let body, belly=[], leg, shin, foot;
     if(K.bones){ body=EXTRAS.bonesReal(A); const bl=EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
     else {
-      body=[[ptsPath(bPts),'skin',sw],[formShade(bPts,0),'shade',0],[`M${f2(-nw*0.9)} ${f2(topY-0.6*u)} Q${f2(-wSh*0.4)} ${f2(topY+0.2*u)} ${f2(-wSh*0.75)} ${f2(topY+0.4*u)} M${f2(nw*0.9)} ${f2(topY-0.6*u)} Q${f2(wSh*0.4)} ${f2(topY+0.2*u)} ${f2(wSh*0.75)} ${f2(topY+0.4*u)}`,null,0.5,'faceLine'],
-        [`M${f2(-nw*0.8)} ${f2(chinY+1.4)} Q0 ${f2(chinY+2.6)} ${f2(nw*0.8)} ${f2(chinY+1.4)}`,null,1.4,'shadeFace']];       // collarbones, the shadow under the chin
-      if(K.clothed){       // a sleeveless linen shirt over the hips: the shoulders bare, a round neckline, folds, a frayed hem
-        const tun=symForm([[0,topY+1.8*u],[nw*1.35,topY-0.7*u+slope*0.5],[wSh*0.72,topY+0.2*u+slope*0.6],[wSh*0.78,topY+3.2*u],[wSh*0.88,topY+6.4*u],[(wSh*0.9+wWaist)/2*1.03,topY+bodyH*0.45],[wWaist*1.05,hipY-bodyH*0.3],[wHip*1.08,hipY-0.6*u],[wHip*1.1,hipY+3.2*u],[0,hipY+3.6*u]],4);
-        const hem=[-0.9,-0.6,-0.3,0,0.3,0.6,0.9].map(k=>`M${f2(k*wHip*1.08)} ${f2(hipY+3.3*u)} l${f2(0.3*u)} ${f2(0.8*u)}`).join(' ');
-        body.push([ptsPath(tun),'tunic',sw*0.9],[formShade(tun,0),'shade',0],[`M${f2(-wSh*0.3)} ${f2(topY+5*u)} Q${f2(-wSh*0.35)} ${f2(hipY-6*u)} ${f2(-wHip*0.55)} ${f2(hipY+2.5*u)} M${f2(wSh*0.15)} ${f2(topY+7*u)} Q${f2(wSh*0.1)} ${f2(hipY-5*u)} ${f2(wHip*0.3)} ${f2(hipY+2.8*u)} M${f2(-wWaist*0.8)} ${f2(hipY-1.5*u)} Q${f2(-wWaist*0.2)} ${f2(hipY-0.5*u)} ${f2(wWaist*0.5)} ${f2(hipY-1.8*u)}`,null,0.5,'tunicDark'],[hem,null,0.5,'tunicDark']);
+      const skinP=K.clothed?above(bPts,hipY-1.4*u):bPts;       // in a shirt the skin ends under its hem (the trousers show below it)
+      body=[[ptsPath(skinP),'skin',sw],[formShade(skinP,0),'shade',0],[`M${f2(-nw*0.9)} ${f2(chinY+1.6)} Q0 ${f2(chinY+2.8)} ${f2(nw*0.9)} ${f2(chinY+1.6)}`,null,1.4,'shadeFace']];       // the shadow under the chin
+      if(K.clothed){       // a sleeveless linen shirt: the shoulders bare, a round neckline, straight sides down to just above the crotch, a frayed hem
+        const hemY=hipY-0.9*u, tun=symForm([[0,topY+0.9*u],[nw*1.22,topY-1.1*u],[wSh*0.64,topY-0.2*u+slope*0.8],[wSh*0.72,topY+2.4*u],[wChest*1.04,topY+5*u],[wChest*1.02,topY+bodyH*0.42],[wWaist*1.0,hipY-bodyH*0.25],[wChest*0.94,hemY-0.4*u],[wChest*0.92,hemY],[0,hemY+0.3*u]],4);
+        const hem=[-0.85,-0.55,-0.25,0.05,0.35,0.65,0.9].map(k=>`M${f2(k*wChest)} ${f2(hemY)} l${f2(0.3*u)} ${f2(0.7*u)}`).join(' ');
+        body.push([ptsPath(tun),'tunic',sw*0.9],[formShade(tun,0),'shade',0],[`M${f2(-wChest*0.45)} ${f2(topY+4*u)} Q${f2(-wChest*0.5)} ${f2(hipY-7*u)} ${f2(-wChest*0.6)} ${f2(hemY-0.5*u)} M${f2(wChest*0.2)} ${f2(topY+6*u)} Q${f2(wChest*0.15)} ${f2(hipY-6*u)} ${f2(wChest*0.3)} ${f2(hemY-0.5*u)}`,null,0.5,'tunicDark'],[hem,null,0.5,'tunicDark']);
       }
-      // trousers of linen (or bare legs): straight, wide at the hem; the knee a crease
-      const T=K.clothed?1:0, th=[[xc-lw*0.55,hipY-1.2*u],[xc+lw*0.52,hipY-1.2*u],[xc+lw*(0.42+0.06*T),kneeY],[xc-lw*(0.46+0.06*T),kneeY]];
-      leg=[[sp(th,3),'leg',sw*0.9],[formShade(spline(th,3,true),xc),'shade',0]];
-      const sh=[[xc-lw*(0.44+0.06*T),kneeY-1.2*u],[xc+lw*(0.4+0.06*T),kneeY-1.2*u],[xc+lw*(0.42+0.1*T),kneeY+4*u],[xc+lw*(0.3+0.2*T),ankY],[xc-lw*(0.34+0.2*T),ankY],[xc-lw*(0.46+0.1*T),kneeY+4*u]];
-      // over the joint a patch of the same cloth with the leg's sides drawn on it: thigh and shin read as one leg (the trousers have no seam at the knee)
-      const pl=xc-lw*(0.48+0.06*T), pr=xc+lw*(0.44+0.06*T), py0=kneeY-2*u, py1=kneeY+1.4*u;
-      shin=[[sp(sh,3),'leg',sw*0.9],[formShade(spline(sh,3,true),xc),'shade',0],[ptsPath([[pl+0.35,py0],[pr-0.35,py0],[pr-0.3,py1],[pl+0.3,py1]]),'leg',0],
-        [`M${f2(pl)} ${f2(py0-0.3)} L${f2(pl+0.15)} ${f2(py1+0.3)} M${f2(pr)} ${f2(py0-0.3)} L${f2(pr-0.1)} ${f2(py1+0.3)}`,null,sw*0.9,'line'],[`M${f2(xc-lw*0.25)} ${f2(kneeY+0.6*u)} Q${f2(xc)} ${f2(kneeY+1.2*u)} ${f2(xc+lw*0.22)} ${f2(kneeY+0.5*u)}`,null,0.5,'tunicDark']];
-      if(T) shin.push([[-0.3,0,0.3].map(k=>`M${f2(xc+k*lw)} ${f2(ankY-0.2)} l${f2(0.25*u)} ${f2(0.7*u)}`).join(' '),null,0.5,'tunicDark']);       // the frayed hem
-      // the foot: bare (toes) or a boot, by the gene
-      const ft=gx('fuss');
-      foot=ft<0.5?[[sp([[xc-lw*0.3,ankY-0.4],[xc+lw*0.26,ankY-0.4],[xc+lw*0.3,-0.6],[xc+lw*0.15,0.2],[xc-lw*0.6,0.25],[xc-lw*0.66,-0.5]],3),'skin',sw*0.8],[[0,1,2,3].map(i=>`M${f2(xc-lw*(0.52-0.17*i))} 0.2 l0 -0.6`).join(' '),null,0.4,'faceLine']]
-        :[[sp([[xc-lw*0.42,ankY-2.2*u],[xc+lw*0.38,ankY-2.2*u],[xc+lw*0.4,-0.6],[xc+lw*0.2,0.25],[xc-lw*0.66,0.3],[xc-lw*0.6,-1.2*u]],3),'foot',sw*0.85],[`M${f2(xc-lw*0.42)} ${f2(ankY-1.4*u)} L${f2(xc+lw*0.38)} ${f2(ankY-1.4*u)}`,null,0.6,'leather']];
+      // trousers of linen (or bare legs): loose, straight, a little wider at the hem; no seam at the knee
+      const T=K.clothed?1:0, tw=lw*(0.5+0.04*T), kw=lw*(0.47+0.05*T), aw2=lw*(0.4+0.06*T);
+      const th=[[xh-tw,hipY-1.2*u],[xh+tw*0.96,hipY-1.2*u],[xk+kw*0.96,kneeY],[xk-kw,kneeY]];
+      leg=[[sp(th,3),'leg',sw*0.9],[formShade(spline(th,3,true),(xh+xk)/2),'shade',0]];
+      const sh=[[xk-kw,kneeY-1.2*u],[xk+kw*0.96,kneeY-1.2*u],[(xk+xa)/2+kw*0.92,kneeY+5*u],[xa+aw2,ankY],[xa-aw2*1.05,ankY],[(xk+xa)/2-kw*0.98,kneeY+5*u]];
+      // over the knee a patch of the same cloth with the leg's sides drawn on it: thigh and shin read as one leg
+      const py0=kneeY-2*u, py1=kneeY+1.4*u, pl0=xk-kw-(xh-xk)*0.12, pl1=xk-kw+(xh-xk)*0.09, pr0=xk+kw*0.96-(xh-xk)*0.12, pr1=xk+kw*0.96+(xh-xk)*0.09;
+      shin=[[sp(sh,3),'leg',sw*0.9],[formShade(spline(sh,3,true),(xk+xa)/2),'shade',0],[ptsPath([[pl0+0.35,py0],[pr0-0.35,py0],[pr1-0.3,py1],[pl1+0.3,py1]]),'leg',0],
+        [`M${f2(pl0)} ${f2(py0-0.3)} L${f2(pl1)} ${f2(py1+0.3)} M${f2(pr0)} ${f2(py0-0.3)} L${f2(pr1)} ${f2(py1+0.3)}`,null,sw*0.9,'line'],[`M${f2(xk-kw*0.5)} ${f2(kneeY+0.6*u)} Q${f2(xk)} ${f2(kneeY+1.2*u)} ${f2(xk+kw*0.45)} ${f2(kneeY+0.5*u)}`,null,0.5,'tunicDark']];
+      if(T) shin.push([[-0.6,0,0.6].map(k=>`M${f2(xa+k*aw2)} ${f2(ankY-0.2)} l${f2(0.25*u)} ${f2(0.7*u)}`).join(' '),null,0.5,'tunicDark']);       // the frayed hem
+      // the foot: bare (toes, turned a little outward) or a boot, by the gene
+      const ft=gx('fuss'), fw=lw*0.48;
+      foot=ft<0.5?[[sp([[xa-fw*0.5,ankY-0.6],[xa+fw*0.5,ankY-0.6],[xa+fw*0.55,-0.8],[xa+fw*0.35,0.2],[xa-fw*0.95,0.3],[xa-fw*1.05,-0.8]],3),'skin',sw*0.8],[[0,1,2,3].map(i=>`M${f2(xa-fw*(0.85-0.32*i))} 0.2 l0 -0.7`).join(' '),null,0.4,'faceLine']]
+        :[[sp([[xa-fw*0.75,ankY-2.2*u],[xa+fw*0.7,ankY-2.2*u],[xa+fw*0.72,-0.6],[xa+fw*0.4,0.25],[xa-fw*1.1,0.3],[xa-fw*1.05,-1.2*u]],3),'foot',sw*0.85],[`M${f2(xa-fw*0.75)} ${f2(ankY-1.4*u)} L${f2(xa+fw*0.7)} ${f2(ankY-1.4*u)}`,null,0.6,'leather']];
     }
-    // greaves, knee plates, iron shoes (heavy armour)
-    if(G&&G.greaves){ const k=lw/7;
-      leg=leg.concat([[sp([[xc-lw*0.52,kneeY-6*u],[xc+lw*0.48,kneeY-6*u],[xc+lw*0.46,kneeY-0.6*u],[xc-lw*0.5,kneeY-0.6*u]],2),'iron',sw*0.85],[formShade(spline([[xc-lw*0.52,kneeY-6*u],[xc+lw*0.48,kneeY-6*u],[xc+lw*0.46,kneeY-0.6*u],[xc-lw*0.5,kneeY-0.6*u]],2,true),xc),'shade',0],[`M${f2(xc-lw*0.5)} ${f2(kneeY-3.3*u)} L${f2(xc+lw*0.47)} ${f2(kneeY-3.3*u)}`,null,0.6,'ironDark']]);
-      shin=[[sp([[xc-lw*0.5,kneeY+0.6*u],[xc+lw*0.46,kneeY+0.6*u],[xc+lw*0.44,kneeY+5*u],[xc+lw*0.36,ankY-1.6*u],[xc-lw*0.4,ankY-1.6*u],[xc-lw*0.48,kneeY+5*u]],3),'iron',sw*0.9],[formShade(spline([[xc-lw*0.5,kneeY+0.6*u],[xc+lw*0.46,kneeY+0.6*u],[xc+lw*0.44,kneeY+5*u],[xc+lw*0.36,ankY-1.6*u],[xc-lw*0.4,ankY-1.6*u],[xc-lw*0.48,kneeY+5*u]],3,true),xc),'shade',0],
-        [`M${f2(xc-lw*0.2)} ${f2(kneeY+5*u)} l${f2(0.6*k)} ${f2(3*u)}`,null,0.6,'rust'],[ell(f2(xc),f2(kneeY),f2(lw*0.46),f2(lw*0.4)),'iron',sw*0.85],[ell(f2(xc),f2(kneeY),f2(lw*0.2),f2(lw*0.17)),'ironDark',0],[`M${f2(xc-0.5*k)} ${f2(kneeY-lw*0.3)} L${f2(xc)} ${f2(kneeY-lw*0.75)} L${f2(xc+0.5*k)} ${f2(kneeY-lw*0.3)}z`,'ironDark',0.5]];
-      foot=[[sp([[xc-lw*0.44,ankY-2*u],[xc+lw*0.4,ankY-2*u],[xc+lw*0.42,-0.6],[xc+lw*0.2,0.25],[xc-lw*0.72,0.3],[xc-lw*0.66,-1.2*u]],3),'iron',sw*0.85],[`M${f2(xc-lw*0.5)} ${f2(ankY-0.7*u)} L${f2(xc+lw*0.4)} ${f2(ankY-0.7*u)} M${f2(xc-lw*0.6)} ${f2(-0.6*u)} L${f2(xc+lw*0.38)} ${f2(-0.6*u)}`,null,0.6,'ironDark']];
+    // greaves, knee plates, iron shoes (heavy armour), along the leg's line
+    if(G&&G.greaves){ const k=lw/7, xm=(xk+xa)/2, cu=[[xk-lw*0.5-0.4,kneeY-6*u],[xk+lw*0.46-0.4,kneeY-6*u],[xk+lw*0.45,kneeY-0.6*u],[xk-lw*0.5,kneeY-0.6*u]], gr=[[xk-lw*0.48,kneeY+0.6*u],[xk+lw*0.44,kneeY+0.6*u],[xm+lw*0.42,kneeY+5*u],[xa+lw*0.36,ankY-1.6*u],[xa-lw*0.4,ankY-1.6*u],[xm-lw*0.46,kneeY+5*u]];
+      leg=leg.concat([[sp(cu,2),'iron',sw*0.85],[formShade(spline(cu,2,true),xk),'shade',0],[`M${f2(xk-lw*0.5)} ${f2(kneeY-3.3*u)} L${f2(xk+lw*0.45)} ${f2(kneeY-3.3*u)}`,null,0.6,'ironDark']]);
+      shin=[[sp(gr,3),'iron',sw*0.9],[formShade(spline(gr,3,true),xm),'shade',0],[`M${f2(xm-lw*0.2)} ${f2(kneeY+5*u)} l${f2(0.6*k)} ${f2(3*u)}`,null,0.6,'rust'],
+        [ell(f2(xk),f2(kneeY),f2(lw*0.46),f2(lw*0.4)),'iron',sw*0.85],[ell(f2(xk),f2(kneeY),f2(lw*0.2),f2(lw*0.17)),'ironDark',0],[`M${f2(xk-0.5*k)} ${f2(kneeY-lw*0.3)} L${f2(xk)} ${f2(kneeY-lw*0.75)} L${f2(xk+0.5*k)} ${f2(kneeY-lw*0.3)}z`,'ironDark',0.5]];
+      foot=[[sp([[xa-lw*0.44,ankY-2*u],[xa+lw*0.4,ankY-2*u],[xa+lw*0.42,-0.6],[xa+lw*0.2,0.25],[xa-lw*0.72,0.3],[xa-lw*0.66,-1.2*u]],3),'iron',sw*0.85],[`M${f2(xa-lw*0.5)} ${f2(ankY-0.7*u)} L${f2(xa+lw*0.4)} ${f2(ankY-0.7*u)} M${f2(xa-lw*0.6)} ${f2(-0.6*u)} L${f2(xa+lw*0.38)} ${f2(-0.6*u)}`,null,0.6,'ironDark']];
     }
-    const hr=lin(K.hand,plump)*(0.92+0.2*st), handAt=[f2(wSh+K.handOut*u),f2(hipY-bodyH*0.18)], legK=lin(K.legK,gx('beine'));
-    const pd=GEAR.pauldron(A), S=Object.assign({ shadow:[[ell(0,f2(0.6*u),f2(wHip+3*u),f2(1.6*u)),'shadowC',0]], leg, shin, foot, knee:[f2(xc),f2(kneeY)], ankle:[f2(xc),f2(ankY)], footClaws:false, hip:[f2(xc),hipY], body, belly,
+    const armed=!!(G&&(G.chest||G.cloth||G.pauldrons));       // a belt (with its pouch) only with the armour: the man in linen wears none
+    const hr=lin(K.hand,plump)*(0.92+0.2*st), handAt=[f2(wSh*0.98+K.handOut*u),f2(hipY+0.3*u)], legK=lin(K.legK,gx('beine'));       // the hands hang beside the hips, under the shoulders
+    const pd=GEAR.pauldron(A), S=Object.assign({ shadow:[[ell(0,f2(0.6*u),f2(wHip+3*u),f2(1.6*u)),'shadowC',0]], leg, shin, foot, knee:[f2(xk),f2(kneeY)], ankle:[f2(xa),f2(ankY)], footClaws:false, hip:[f2(xh),hipY], body, belly,
       neck:[0,f2(topY-1*u)], skull, scar:K.scar?[[`M${f2(-aw*0.7)} ${f2(top+0.3*h)} L${f2(-aw*0.25)} ${f2(top+0.62*h)}`,null,0.7,'scar']]:null,
       helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]]):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
       fist:fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true,
-      headBox:[-aw*0.6,top+h*0.2,aw*0.6,top+h*0.7], bodyBox:[-wSh*0.6,topY+2*u,wSh*0.6,hipY-3*u], H:Math.round(-hipY*(legK-1)-top+K.pad) },face,GEAR.belt(A,K));
+      headBox:[-aw*0.6,top+h*0.2,aw*0.6,top+h*0.7], bodyBox:[-wChest*0.6,topY+5*u,wChest*0.6,hipY-3*u], H:Math.round(-hipY*(legK-1)-top+K.pad) },face,armed?GEAR.belt(A,K):{ belt:[], buckle:[] });
     if(K.ears==='human'&&!K.bones){ const ax=-aw*0.97, ay=top+0.52*h; Object.assign(S,{ ear:[[`M${f2(ax+0.4)} ${f2(ay-0.13*h)} Q${f2(ax-aw*0.2)} ${f2(ay-0.12*h)} ${f2(ax-aw*0.16)} ${f2(ay+0.03*h)} Q${f2(ax-aw*0.1)} ${f2(ay+0.13*h)} ${f2(ax+0.4)} ${f2(ay+0.12*h)}z`,'skin',sw*0.7],[`M${f2(ax-aw*0.02)} ${f2(ay-0.07*h)} Q${f2(ax-aw*0.1)} ${f2(ay)} ${f2(ax-aw*0.02)} ${f2(ay+0.06*h)}`,null,0.5,'faceLine']], earTip:null, earAt:[f2(ax),f2(ay)] }); }
     if(K.hair&&!K.bones) Object.assign(S,EXTRAS.hairReal(A,back));
     if(K.beard&&!K.bones&&!back) S.beard=EXTRAS.beard(A,gx('bart'));
     if(K.coif&&G&&G.helmet) S.coif=EXTRAS.coif(A,back);
-    if(K.pouch) S.belt=S.belt.concat([[sp([[-wHip*0.95,hipY-3.2*u],[-wHip*0.45,hipY-3.2*u],[-wHip*0.47,hipY+0.6*u],[-wHip*0.93,hipY+0.6*u]],2),'leather',sw*0.8],[`M${f2(-wHip*0.95)} ${f2(hipY-1.8*u)} L${f2(-wHip*0.45)} ${f2(hipY-1.8*u)}`,null,0.6,'line']]);
+    if(K.pouch&&armed){ const by=A.beltY+1.2*u; S.belt=S.belt.concat([[sp([[-wHip*0.95,by],[-wHip*0.5,by],[-wHip*0.52,by+3.4*u],[-wHip*0.93,by+3.4*u]],2),'leather',sw*0.8],[`M${f2(-wHip*0.95)} ${f2(by+1.2*u)} L${f2(-wHip*0.5)} ${f2(by+1.2*u)}`,null,0.6,'line']]); }
     return S;
   }
   Object.assign(EXTRAS,{
@@ -474,21 +478,21 @@ const SvgRig=(()=>{
       out.push(...bone(`M-0.8 ${f2(topY+0.3*u)} Q${f2(-wSh*0.5)} ${f2(topY-0.6*u)} ${f2(-wSh*0.95)} ${f2(topY+0.6*u)} M0.8 ${f2(topY+0.3*u)} Q${f2(wSh*0.5)} ${f2(topY-0.6*u)} ${f2(wSh*0.95)} ${f2(topY+0.6*u)}`,1.1));       // the collarbones
       out.push([ell(f2(-wSh*0.95),f2(topY+1.4*u),f2(1.4*u),f2(1.6*u)),'skin',0.6,'line'],[ell(f2(wSh*0.95),f2(topY+1.4*u),f2(1.4*u),f2(1.6*u)),'skin',0.6,'line']);       // the shoulder joints
       for(let y=topY+bodyH*0.5;y<hipY-2*u;y+=1.5*u) out.push([`M-1.2 ${f2(y)} L1.2 ${f2(y)} L1 ${f2(y+1.1*u)} L-1 ${f2(y+1.1*u)}z`,'skin',0.6,'line']);       // the lower spine
-      const il=`M-0.6 ${f2(hipY-1.5*u)} Q${f2(-wHip*0.9)} ${f2(hipY-4.4*u)} ${f2(-wHip*1.02)} ${f2(hipY-1.2*u)} Q${f2(-wHip*0.8)} ${f2(hipY+1.2*u)} ${f2(-wHip*0.25)} ${f2(hipY+1.6*u)} Q-0.6 ${f2(hipY+0.4*u)} -0.6 ${f2(hipY-1.5*u)}z`;
-      out.push([il,'skin',0.7,'line'],[mirror(il),'skin',0.7,'line'],[ell(f2(-wHip*0.55),f2(hipY-0.6*u),f2(wHip*0.18),f2(0.9*u)),'socket',0],[ell(f2(wHip*0.55),f2(hipY-0.6*u),f2(wHip*0.18),f2(0.9*u)),'socket',0]);       // the pelvis
+      const il=`M-0.6 ${f2(hipY-2.2*u)} Q${f2(-wHip*0.7)} ${f2(hipY-5.2*u)} ${f2(-wHip*0.82)} ${f2(hipY-2.4*u)} Q${f2(-wHip*0.62)} ${f2(hipY+0.2*u)} ${f2(-wHip*0.2)} ${f2(hipY+0.9*u)} Q-0.6 ${f2(hipY-0.2*u)} -0.6 ${f2(hipY-2.2*u)}z`;
+      out.push([il,'skin',0.7,'line'],[mirror(il),'skin',0.7,'line'],[ell(f2(-wHip*0.42),f2(hipY-1.2*u),f2(wHip*0.13),f2(0.7*u)),'socket',0],[ell(f2(wHip*0.42),f2(hipY-1.2*u),f2(wHip*0.13),f2(0.7*u)),'socket',0]);       // the pelvis
       return out; },
     // a leg of bones: the thigh bone with its ends, the kneecap, the two shin bones, the bones of the foot
-    boneLegReal(A){ const { hipY, u, legs:{ xc, lw, kneeY, ankY } }=A, b=lw*0.17, bone=(d,w)=>[[d,null,w+1,'line'],[d,null,w,'skin']];
-      return { thigh:[...bone(`M${f2(xc+lw*0.1)} ${f2(hipY+0.4*u)} L${f2(xc)} ${f2(kneeY-0.6*u)}`,b),[ell(f2(xc+lw*0.15),f2(hipY+0.2*u),f2(b*0.9),f2(b*0.8)),'skin',0.6,'line'],[ell(f2(xc),f2(kneeY-0.7*u),f2(b*1.1),f2(b*0.6)),'skin',0.6,'line']],
-        shin:[...bone(`M${f2(xc-lw*0.06)} ${f2(kneeY+0.6*u)} L${f2(xc-lw*0.04)} ${f2(ankY)}`,b*0.85),...bone(`M${f2(xc+lw*0.15)} ${f2(kneeY+0.8*u)} L${f2(xc+lw*0.1)} ${f2(ankY)}`,b*0.45),[ell(f2(xc),f2(kneeY),f2(b*0.8),f2(b*0.75)),'skin',0.6,'line']],
-        foot:[...bone([0,1,2,3].map(i=>`M${f2(xc+lw*0.05)} ${f2(ankY+0.3)} L${f2(xc-lw*(0.1+0.17*i))} 0`).join(' '),0.5)] }; }
+    boneLegReal(A){ const { hipY, u, legs:{ xh, xk, xa, lw, kneeY, ankY } }=A, xc=xk, b=lw*0.17, bone=(d,w)=>[[d,null,w+1,'line'],[d,null,w,'skin']];
+      return { thigh:[...bone(`M${f2(xh+lw*0.1)} ${f2(hipY+0.4*u)} L${f2(xc)} ${f2(kneeY-0.6*u)}`,b),[ell(f2(xh+lw*0.15),f2(hipY+0.2*u),f2(b*0.9),f2(b*0.8)),'skin',0.6,'line'],[ell(f2(xc),f2(kneeY-0.7*u),f2(b*1.1),f2(b*0.6)),'skin',0.6,'line']],
+        shin:[...bone(`M${f2(xc-lw*0.06)} ${f2(kneeY+0.6*u)} L${f2(xa-lw*0.04)} ${f2(ankY)}`,b*0.85),...bone(`M${f2(xc+lw*0.15)} ${f2(kneeY+0.8*u)} L${f2(xa+lw*0.1)} ${f2(ankY)}`,b*0.45),[ell(f2(xc),f2(kneeY),f2(b*0.8),f2(b*0.75)),'skin',0.6,'line']],
+        foot:[...bone([0,1,2,3].map(i=>`M${f2(xa+lw*0.05)} ${f2(ankY+0.3)} L${f2(xa-lw*(0.1+0.17*i))} 0`).join(' '),0.5)] }; }
   });
   // the human (user, November 2026: the baseline for all; grim realism) and the skeleton, a human without the flesh: the same measures, so the same armour fits
   const REAL_MATS={ leder:['#5e4430','#34261a'], bronze:['#7e6030','#44321a'], eisen:['#5a5a5e','#2c2c30'], stahl:['#727a84','#3a4048'], schwarz:['#2a2a30','#121216'] };
   const HUMAN_BASE={ shade:'rgba(20,10,5,0.32)', shadeFace:'rgba(30,15,5,0.12)', faceLine:'rgba(50,25,12,0.55)', lip:'#5a3026', sclera:'#cfc2b0', pupil:'#0c0806', line:'#120d0a', foot:'#3a2a1e', belt:'#4a3422', gold:'#9a8a6a', bone:'#d6ccb4', mouth:'#2a0e0a', tongue:'#6a2a22',
     iron:'#5a5a5e', ironDark:'#2c2c30', mail:'#4a4a4e', wood:'#4a3524', leather:'#5a4030', cloth:'#3e3026', rust:'#7a4024', scar:'#c48a78', socket:'#0a0706', tunic:'#b5ab96', tunicDark:'#7e7666', trim:'#7e7666', stubble:'rgba(40,30,25,0.35)', hair:'#3a2c22', hairDark:'#1e1610', glow:'rgba(0,0,0,0)', eye:'#5a6e7a' };
-  HUMANOIDS.human={ px:64, real:true, hipY:-36, bodyH:[22.5,2.5], hip:[6.4,1.6], sh:[10,1.6], legW:[6.4,1.4], legK:[0.97,0.06], line:1.2,
-    head:{ w:[4.3,0.5], h:[10.6,1] }, hand:[2.2,0.4], handOut:3.2, handGap:1.2, pad:4, weaponK:1.3, shieldK:1.7, pauldronK:1.3, emblem:true, clothW:1.6,
+  HUMANOIDS.human={ px:64, real:true, hipY:-36, bodyH:[25.5,2.5], hip:[8.2,1.2], sh:[10.2,1.2], legW:[8.6,1.2], legK:[0.97,0.06], line:1,
+    head:{ w:[3.55,0.35], h:[9.8,0.8] }, hand:[2.3,0.3], handOut:0.2, handGap:1.2, pad:4, weaponK:1.3, shieldK:1.7, pauldronK:1.3, emblem:true, clothW:1.6,
     face:'human', ears:'human', hair:'short', beard:true, coif:true, pouch:true, clothed:true, belt:'band', buckle:'plain', helm:'horns', armour:false, scar:false, cloth:false,
     weapons:['sword','axe','hammer','spear','dagger','bow','staff','club'], weapon:'none', presets:HUMAN_PRESETS, mats:REAL_MATS, base:HUMAN_BASE,
     skins:[{ skin:'#c9a28a', light:'#dcb8a0', dark:'#8a604c', leg:'#a39a86', brow:'#2a2018' },{ skin:'#a87a5e', light:'#c09274', dark:'#6e4a38', leg:'#a39a86', brow:'#2a2018' },{ skin:'#6e4a36', light:'#86604a', dark:'#45291c', leg:'#a39a86', brow:'#1a120c' }],
