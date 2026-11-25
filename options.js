@@ -28,4 +28,7 @@ function optionsClose(){ document.getElementById('optionsDlg').hidden=true; }
 document.getElementById('optionsBtn').addEventListener('click',optionsOpen);
 document.getElementById('menuOptions').addEventListener('click',optionsOpen);
 document.getElementById('optionsClose').addEventListener('click',optionsClose);
+// the figure workshop (svg-rig.js): every creature kind built from its parts, its genes, stats and gear; from the main menu and from here (in a level too)
+document.getElementById('optionsFigures').addEventListener('click',()=>{ optionsClose(); SvgOrkViewer.overlay(); });
+document.getElementById('menuFigures').addEventListener('click',()=>SvgOrkViewer.overlay());
 document.getElementById('optionsDlg').addEventListener('click',e=>{ if(e.target.id==='optionsDlg') optionsClose(); });

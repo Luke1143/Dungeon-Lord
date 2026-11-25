@@ -4,6 +4,11 @@ const { open, finish }=require('./lib');
 (async()=>{
   const { browser, page:p, errs }=await open({ viewport:{ width:1200, height:800 } });
   let problem=''; const shaderErr=[]; p.on('console',m=>{ if(/Shader Error|Program Info Log|THREE\.WebGLProgram/.test(m.text())) shaderErr.push(m.text().slice(0,200)); });
+  // the figure workshop from the main menu: it opens over everything, Escape closes it
+  await p.click('#menuFigures'); await p.waitForTimeout(500);
+  if(!await p.$('#figureWorkshop')) problem+='the figure workshop did not open; ';
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  if(await p.$('#figureWorkshop')) problem+='Escape did not close the figure workshop; ';
   await p.click('#menuNew'); await p.waitForTimeout(800);
   await p.evaluate(()=>{ const n=world.nodes.find(n=>n.col===0)||world.nodes[0]; startLevel(n.id); }); await p.waitForTimeout(2500);
   const lv=await p.evaluate(()=>{ setView3d(false); for(let i=0;i<400;i++) gameTick(); setView3d(true); return { screen, ticks:state.tickCount }; });
