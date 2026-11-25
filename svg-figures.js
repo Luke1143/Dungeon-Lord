@@ -11,7 +11,7 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:64, cells:1.6, rig:'orkB', tall:1.18, r3d:true }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon),
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:64, cells:1.6, rig:'orkB', tall:1.18, r3d:true, side3d:true }, goblin:{ px:32, cells:1.4 }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon),
   // tall: how much taller than others of its size it stands (user: an ork at least as tall as a man, rather taller)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
@@ -61,8 +61,8 @@ const SvgFigures=(()=>{
   // view ('front' | 'back'), turn (-1, 0, 1), pose (the action's pose of anim.js, or null), left (the action aims to the left; aiming right the figure is turned that way)
   // the 2.5D test (Rig3D in svg-rig.js): the figure seen from its eighth of a turn and the camera's height (the 3D view looks down 49 degrees; the flat map not at all)
   const plans=new Map();
-  function canvas3d(c,now,moving,extra,pose,KD){
-    const yaw8=c._yaw8||0, pitch=(typeof capture!=='undefined'&&capture)?0.85:0, gear=gearOf(c,extra), b=baseSpec(c), pk=c.kind+'|'+(c.id||0)+'|'+(c.level||1)+'|'+JSON.stringify(gear);
+  function canvas3d(c,now,moving,extra,pose,KD,side){       // (side: the profile, facing left or right, from the eye's height: the side view of a kind without a flat one)
+    const yaw8=side?(side>0?2:6):(c._yaw8||0), pitch=side?0:((typeof capture!=='undefined'&&capture)?0.85:0), gear=gearOf(c,extra), b=baseSpec(c), pk=c.kind+'|'+(c.id||0)+'|'+(c.level||1)+'|'+JSON.stringify(gear);
     let pl=plans.get(pk); if(!pl){ pl=SvgRig.plan(Object.assign({},b,{ level:c.level||1, traits:traitsOf(c,b), gear:Object.assign({},b.gear,gear) })); if(plans.size>300) plans.delete(plans.keys().next().value); plans.set(pk,pl); }
     const off=(c.id||0)*0.37, step=moving?Math.floor(now/140+off)%4:0, swing=pose?swingOf(pose):0, fkey='3d|'+pk+'|'+yaw8+'|'+pitch+'|'+step+'|'+swing;
     let cv=cache.get(fkey); if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
@@ -75,7 +75,8 @@ const SvgFigures=(()=>{
   }
   function canvasFor(c,now,moving,extra,view,turn,pose,left){
     if(KINDS[c.kind]&&KINDS[c.kind].r3d&&typeof OPTIONS!=='undefined'&&OPTIONS.fig3d&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KINDS[c.kind]);
-    const KD0=KINDS[c.kind]; if(KD0&&KD0.side&&moving&&(view||'front')==='front'&&turn){ view=turn>0?'right':'left'; turn=0; }       // a kind with a side view (a test: the skeleton) walking sideways shows its profile
+    const KD0=KINDS[c.kind]; if(KD0&&KD0.side3d&&moving&&(view||'front')==='front'&&turn&&typeof Rig3D!=='undefined') return canvas3d(c,now,moving,extra,pose,KD0,turn>0?1:-1);       // the ork's profile comes from the 2.5D rig
+    if(KD0&&KD0.side&&moving&&(view||'front')==='front'&&turn){ view=turn>0?'right':'left'; turn=0; }       // a kind with a side view (a test: the skeleton) walking sideways shows its profile
     const { r:rig, key }=rigOf(c,gearOf(c,extra),view||'front');
     const act=!!pose, work=!act&&!moving&&WORK.has(c.state), off=(c.id||0)*0.37;
     const step=moving?Math.floor(now/140+off)%4:0, swing=act?swingOf(pose):(work?SWING[Math.floor(now/150+off)%4]:0), breath=moving||work||act?0:Math.floor(now/700+off)%2;

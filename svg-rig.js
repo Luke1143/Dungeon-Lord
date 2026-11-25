@@ -808,7 +808,7 @@ const SvgRig=(()=>{
   HUMANOIDS.orkB=Object.assign({},HUMANOIDS.human,{ px:64, height:1.18, hipY:-46, bodyH:[28,3], hip:[7.4,1.2], sh:[12.8,1.6], legW:[6.3,1.2], legK:[0.97,0.06], line:1,
     head:{ w:[4.0,0.4], h:[12,0.8] }, hand:[2.7,0.35], handOut:-1.2, handGap:1.2, handDrop:2.2, armK:1.1, armWK:0.82, waistK:0.8, neckK:0.5, neckW:1.05, pad:5,
     weaponK:1.3, shieldK:1.6, pauldronK:1.2, emblem:true, clothW:1.4, clothL:0.62,
-    face:'orkFeral', feral:true, paint:true, rig3d:true, flesh3d:true, geneNames:{ bart:'Haartracht' }, ears:'feral', hair:'feral', beard:false, coif:true, pouch:true, clothed:false, wraps:true, belt:'band', buckle:'plain', helm:'horns', armour:false, scar:false, cloth:true,
+    face:'orkFeral', feral:true, paint:true, rig3d:true, flesh3d:true, coifFace:[0.66,0.34,0.86], geneNames:{ bart:'Haartracht' }, ears:'feral', hair:'feral', beard:false, coif:true, pouch:true, clothed:false, wraps:true, belt:'band', buckle:'plain', helm:'horns', armour:false, scar:false, cloth:true,
     weapons:['axe','spear','club','dagger','bow','sword','hammer','staff'], weapon:'axe', presets:ORKB_PRESETS,
     base:Object.assign({},HUMAN_BASE,{ shade:'rgba(8,12,6,0.34)', shadeFace:'rgba(8,10,4,0.2)', socketShade:'rgba(4,4,2,0.45)', faceLine:'rgba(10,14,6,0.6)', lip:'#2c2a22', pupil:'#1a0400', line:'#0b0a08',
       foot:'#2a2018', belt:'#33241a', leather:'#4a3424', cloth:'#3e1c14', bone:'#cfc19c', boneDark:'rgba(90,70,40,0.6)', mouth:'#160604', tongue:'#4a1a14', scar:'#9a988a', stubble:'rgba(8,10,6,0.42)', paint:'rgba(6,5,4,0.72)', browLight:'rgba(255,255,230,0.1)', socket:'#0a0806' }),
@@ -1404,7 +1404,7 @@ const Rig3D=(()=>{
         F.plate(q,'cloth',{ bias:0.1 }); F.plate(q.map(p=>[0.5*u,p[1],p[2]]),'cloth',{ bias:0.1 }); }
       if(K.coif){       // the mail hood: behind the skull's face, round the head and down onto the shoulders; the face open in front
         F.solid([[hc,[X(1.0)*1.1,0.47*h,Z(0.48)*1.1],[rimY-u,hc[1]+h]],[by([0,topY-0.6*u,-0.6*u]),[aw*1.0,1.6*u,Z(0.42)],[topY-3*u,topY+1*u]],[by([0,topY+0.7*u,-0.5*u]),[wSh*0.5,1.3*u,3.4*u],[topY-1*u,topY+1.8*u]]],'mail',{ bias:0.03, sw:0.9 });
-        F.patch([0,Yh(0.6),Z(0.5)],[0,0.05,1],X(0.78),0.27*h,'skin',{ bias:sk+0.04-F.P([0,Yh(0.6),Z(0.5)])[2], sw:0.6 });       // the face in the hood's opening
+        const fo=K.coifFace||[0.6,0.27,0.78]; F.patch([0,Yh(fo[0]),Z(0.5)],[0,0.05,1],X(fo[2]),fo[1]*h,'skin',{ bias:sk+0.04-F.P([0,Yh(fo[0]),Z(0.5)])[2], sw:0.6 });       // the face in the hood's opening (the ork's longer face: a bigger opening)
       }
     }
     // the trunk's shell, front and back as one, with the straight neckline; its point in front
@@ -1536,8 +1536,9 @@ const Rig3D=(()=>{
     });
     armour(F,{ A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs, hands, roar });
     // the weapon (flat at the right hand; its edge turns with the figure), the shield (a plate with its thickness on the left arm)
-    if(G.weapon&&G.weapon!=='none'&&pl.weapons[G.weapon]){ const hR=hands.R, q=F.P(hR.at), rot=(12-(Math.sin((st.t||0)*1.3)*3)-roar*48-sw*(sw>0?40:55))*Math.PI/180;
-      const face=F.P([0,0,1]), facesLeft=face[0]<-0.01; flatShapes(F,pl.weapons[G.weapon],q,pl.grip[G.weapon]||[24,-16],facesLeft?-rot:rot,(K.weaponK||1),facesLeft,q[2]+0.05); }       // facing left the weapon is drawn the other way round
+    if(G.weapon&&G.weapon!=='none'&&pl.weapons[G.weapon]){ const hR=hands.R, q=F.P(hR.at), rot=(-(Math.sin((st.t||0)*1.3)*3)-roar*48-sw*(sw>0?40:55))*Math.PI/180;
+      const out=Math.max(-1,Math.min(1,(q[0]-F.P([0,topY,0])[0])/(wSh*0.8))), lean=(sw||roar?0.4:1)*16*out*Math.PI/180;       // at rest the weapon leans out, away from the head (user: the axe hid the ork's face)
+      const face=F.P([0,0,1]), facesLeft=face[0]<-0.01; flatShapes(F,pl.weapons[G.weapon],q,pl.grip[G.weapon]||[24,-16],(facesLeft?-rot:rot)+lean,(K.weaponK||1),facesLeft,q[2]+0.05); }       // facing left the weapon is drawn the other way round
     if(G.shield){ const hL=hands.L, n=norm([0.75,0,0.66]), t1=norm(cross([0,1,0],n)), t2=[0,1,0], r=wSh*(G.shield==='tower'?0.62:(G.shield==='kite'?0.58:0.45))*(K.shieldK||1), c=add(hL.at,mulv(n,0.9*u));
       const unit=G.shield==='tower'?[[-0.8,-1.4],[0.8,-1.4],[0.8,1.3],[-0.8,1.3]]:(G.shield==='kite'?[[-1,-1.1],[1,-1.1],[0.9,0.3],[0,1.45],[-0.9,0.3]]:Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; return [Math.cos(a),Math.sin(a)]; }));
       const at=(off)=>unit.map(([x,y])=>add(add(c,mulv(n,off)),add(mulv(t1,x*r),mulv(t2,y*r))));
@@ -1668,9 +1669,10 @@ const SvgOrkViewer=(()=>{
     // one scale for every kind (a human as tall as a human, an ork taller, an imp small): the stage shows 1.7 human heights, a figure its height of them
     const WORLD=1.7; let SH=80; const stageFit=()=>{ SH=Math.round(rig.H*WORLD/rig.height); svgEl.setAttribute('viewBox',`${-SH*1.2} ${-(SH-0.1*rig.H)} ${SH*2.4} ${SH}`); };
     // the 2.5D test (Rig3D): the figure from its plan, any yaw and camera height
-    let pl=null; const r3=()=>opt.r3d&&pl&&pl.K.rig3d&&typeof Rig3D!=='undefined';
-    const yawNow=()=>(opt.walk&&s.walking?(s.dir>0?90:270):opt.yaw)*Math.PI/180;       // walking it faces the way it walks
-    const drawFig=(g,P,k,ox,oy)=>{ if(r3()) Rig3D.canvas(g,pl,s,yawNow(),opt.pitch*Math.PI/180,k,ox+(P.root&&P.root.x||0)*k,oy); else SvgRig.canvas(g,rig,P,k,ox,oy); };
+    let pl=null; const side3=()=>!opt.r3d&&pl&&pl.K.flesh3d&&!pl.K.side&&(spec.view==='left'||spec.view==='right')&&typeof Rig3D!=='undefined';       // a kind without a flat profile (the ork) is seen from the side through the 2.5D rig
+    const r3=()=>(opt.r3d&&pl&&pl.K.rig3d&&typeof Rig3D!=='undefined')||side3();
+    const yawNow=()=>(side3()?(spec.view==='right'?90:270):(opt.walk&&s.walking?(s.dir>0?90:270):opt.yaw))*Math.PI/180;       // walking it faces the way it walks
+    const drawFig=(g,P,k,ox,oy)=>{ if(r3()) Rig3D.canvas(g,pl,s,yawNow(),side3()?0:opt.pitch*Math.PI/180,k,ox+(P.root&&P.root.x||0)*k,oy); else SvgRig.canvas(g,rig,P,k,ox,oy); };
     const rebuild=()=>{ rig=SvgRig.build(spec); pl=SvgRig.plan(spec); out=SvgRig.svg($('orkvRig'),rig); stageFit(); show(); };
     rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px);
     $('orkvKind').addEventListener('change',e=>{ spec=SvgRig.defaults(e.target.value); rebuild(); opt.res=rig.px; $('orkvRes').value=String(rig.px); });       // each kind its own pixel size (the user: the imp at 24, the ork at 48)
