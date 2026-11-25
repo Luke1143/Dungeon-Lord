@@ -908,6 +908,61 @@ const SvgRig=(()=>{
   HUMANOIDS.golem=KIT_BASE({ px:64, height:1.6, hipY:-50, bodyH:[46,4], hip:[14,1.5], sh:[22,2], legW:[15,1.5], head:{ w:[5.4,0.4], h:[11,0.8] }, hand:[4.4,0.4], handOut:0, handGap:1.5, handDrop:4, armK:1.1, neckK:0.2, neckW:1.4, pad:9,
     weaponK:1.6, shieldK:2.2, pauldronK:1.6, clothW:2.0, face:'golem', ears:null, hair:null, kit3d:{ muscles:false }, feet3d:['bare'], clothed:false, cloth:false, coif:false, belt:'band', helm:'plain', presets:TROLL_PRESETS, weapons:['club','hammer'], weapon:'none',
     base:Object.assign({},HUMAN_BASE,{ faceLine:'rgba(20,20,20,0.6)', line:'#0c0c0c', socket:'#0a0806' }), skins:SK3(['#7a7a74','#92928a','#4a4a46','#6a6a64','#2a2a28'],['#8a7a68','#a2927e','#544a3e','#7a6a58','#2e2a24'],['#6a7478','#828c90','#40484a','#5a6468','#24282a']), hairs:null, eye:['#ffd060','#60e0ff'], glow:[[255,208,96],[96,224,255]], glowA:0.6 });
+  // ---- the beasts (Rig3D.beast): their bodies, legs, heads, tails and wings in a man's units (a man stands 80 high), Y up negative, facing +Z ----
+  const QUAD=(x,y,zf,zh,len,r,foot,o)=>[Object.assign({ at:[x,y,zf], len:len[0], r:r[0], foot, pole:[0,0,-1], ph:0 },o),Object.assign({ at:[x,y,zh], len:len[1], r:r[1], foot, pole:[0,0,-1], ph:Math.PI },o)];
+  const INSECT=(n,x,y,z0,z1,len,r,out,o)=>Array.from({ length:n },(_,i)=>Object.assign({ at:[x,y,z0+(z1-z0)*i/(n-1)], len, r, foot:'tip', pole:[0.7,-1,0], out, fz:((z1-z0)*i/(n-1)-(z1-z0)/2)*1.6+(z0+z1)*0.2, ph:n===4?i*Math.PI/2:(i%2)*Math.PI, lift:3, stride:3 },o));
+  const BEAST_BASE={ line:'#0c0806', shade:'rgba(0,0,0,0.3)', boneShade:'rgba(0,0,0,0.26)', bone:'#d8ccb0', horn:'#3a3028', hoof:'#2a2018', mouth:'#1a0806', pupil:'#100804', socket:'#0a0606', beak:'#c8a040', glowOuter:'rgba(255,200,120,0.25)' };
+  const BK=(a)=>a.map(([skin,light,dark])=>({ skin, light, dark }));
+  const BEASTS={
+    hound:{ body:[[[8,-26,8,7,9],[-6,-25,7,6.5,9]]], legs:QUAD(5,-22,9,-8,[[12,13],[12,14]],[[3.2,2.2,1.5],[3.6,2.3,1.5]],'paw',{ out:0.5 }),
+      neck:[[-27,13,5],[-31,17,4.5]], head:{ at:[-33,20], r:[5,4.8,5.5], snout:{ at:[-31,26], r:[2.8,2.6,5] }, eyes:{ kind:'glow', at:[2.8,-34.5,23.5], r:0.9, side:0.5 },
+        ears:[{ pts:[[2.5,-37,18],[4.5,-43,16],[4.5,-37,15.5]] }], fangs:[1.4,-29.5,29.5,1.8], mouth:[[2.6,-30.5,23],[2.2,-30,27],[1.4,-29.8,30]] },
+      tail:{ from:[-27,-14], len:16, lift:-6, curl:-4, r:1.6 }, spikes:[[7,-33,4],[2,-32,3.5],[-3,-31.5,3]], shadow:[9,17],
+      skins:BK([['#3a1a14','#542a20','#1a0a08'],['#2a2626','#3e3838','#141212'],['#5a2010','#78301a','#2a0a04']]), base:{ eye:'#ffd040', glow:'rgba(255,120,30,0.6)' } },
+    lizard:{ body:[[[8,-9,6,4.5,9],[-6,-8.5,6,4.2,10]]], legs:QUAD(5,-8,8,-8,[[7,7],[7,8]],[[2,1.6,1.1],[2.2,1.7,1.1]],'talon',{ pole:[1,-0.6,0], out:6, lift:2.5, stride:4 }),
+      neck:[[-9,15,3.5],[-9.5,18,3.2]], head:{ at:[-10,21], r:[3.6,2.8,4], snout:{ at:[-9.4,25], r:[2.6,1.8,3.6] }, eyes:{ kind:'beady', at:[2.6,-11.2,21.5], r:0.8, side:0.8 }, mouth:[[2.6,-9,21],[2.2,-8.8,25],[1.2,-8.6,28]] },
+      tail:{ from:[-8,-15], len:26, lift:7, curl:0, r:3.2 }, spikes:[[6,-13.5,2],[1,-13,2],[-4,-12.5,1.8],[-9,-12,1.6]], shadow:[9,20,-6],
+      skins:BK([['#4a6a2a','#5e8236','#26381a'],['#6a6a3a','#82824a','#38381e'],['#3a5a4a','#4a7060','#1e3026']]), base:{ eye:'#e0c040' } },
+    spider:{ body:[[[5,-12,7,5,7]],Object.assign([[-9,-15,10,9,12]],{ fill:'dark' })], marks:[[-9,-23.6,2.6,3.6,'mark']],
+      legs:INSECT(4,4.5,-13,9,0,[14,16],[1.4,1,0.5],14,{ lift:5, stride:4 }), head:{ at:[-12,11], r:[4,3.5,3], eyes:{ kind:'cluster', at:[1.6,-13.5,13.6], r:0.6, side:0.1 }, fangs:[1.2,-9.5,13.5,2.8] }, shadow:[16,18,-2],
+      skins:BK([['#2a2420','#3e3630','#141210'],['#4a3a2a','#62503a','#261c14'],['#1e1e26','#30303a','#0e0e12']]), base:{ eye:'#ff3020', glow:'rgba(255,40,20,0.5)', mark:'#a01c14', dark:'#1a1614' } },
+    beetle:{ body:[[[0,-10,9,7,13]]], marks:[[0,-17.2,0.5,12,'line']], legs:INSECT(3,6,-7,7,-7,[8,10],[1.3,1,0.5],9),
+      head:{ at:[-8,15], r:[4.5,3.6,3.6], eyes:{ kind:'beady', at:[3.4,-9,16.4], r:0.8, side:0.8 }, horns:[{ single:true, pts:[[0,-10,17.5],[0,-15,21],[0,-21,19.5]], r:[1.6,1.1,0.2] }] }, shadow:[11,15],
+      skins:BK([['#1e3a4a','#2e5a6e','#0e1e26'],['#2a3a1e','#3e5a2a','#141e0e'],['#3a1e3a','#5a2e5a','#1e0e1e']]), base:{ eye:'#d0c040', horn:'#1a1a1a' } },
+    fly:{ hover:18, body:[[[2,-6,3,3,3.5]],Object.assign([[-4,-5,3.2,2.8,5]],{ fill:'dark' })], legs:INSECT(3,2,-4,3,-1,[4,5],[0.4,0.3,0.2],3,{ hang:true }),
+      head:{ at:[-7,7], r:[2.6,2.4,2], eyes:{ kind:'compound', at:[1.8,-7.5,7.6], r:1.5, side:0.7 } }, wings:{ kind:'insect', at:[1.5,-8.5,1], span:9 }, shadow:[5,6],
+      skins:BK([['#2a2a22','#3e3e32','#141410'],['#2a3a2a','#3e523e','#141e14'],['#3a2a1e','#52402e','#1e140e']]), base:{ eye:'#b01e14', wing:'rgba(200,220,230,0.7)', dark:'#3a4a2e' } },
+    brood:{ body:[[[4,-12,5,5,6],[-4,-11,5,4.5,6]]], legs:QUAD(3.5,-9,4,-4,[[6,7],[6,7]],[[1.8,1.4,1],[2,1.5,1]],'talon',{ pole:[0.6,-0.5,-0.4], out:2 }),
+      neck:[[-14,8,3],[-16,10,3]], head:{ at:[-17,12], r:[4.4,3.8,4], eyes:{ kind:'glow', at:[2.2,-18,15], r:0.8, side:0.4 }, horns:[{ pts:[[2.4,-20,11],[3.6,-23,9],[3.8,-25,6.5]], r:[0.9,0.6,0.1] }], fangs:[1.5,-14.5,15.4,1.6], mouth:[[3,-15.5,13],[2.4,-15,15],[1.2,-14.8,16]] },
+      tail:{ from:[-11,-9], len:12, lift:-2, curl:-3, r:1, tip:'skin' }, shadow:[6,10],
+      skins:BK([['#8a2a1c','#a43a28','#4a120a'],['#6a1e2a','#84303c','#3a0e14'],['#9a4a1c','#b45e2a','#561e0a']]), base:{ eye:'#ffd040', glow:'rgba(255,140,40,0.55)' } },
+    dragon:{ body:[[[12,-34,14,13,16],[-8,-33,13,12,16]]], legs:QUAD(9,-28,14,-10,[[16,18],[17,19]],[[5,3.6,2.6],[6,4,2.8]],'talon',{ out:2, stride:7 }),
+      neck:[[-40,22,7],[-50,30,5.5],[-58,36,5]], head:{ at:[-60,42], r:[6,5,7], snout:{ at:[-58,50], r:[4.4,3.6,7] }, eyes:{ kind:'glow', at:[4,-62.5,45], r:1.2, side:0.7 },
+        horns:[{ pts:[[3,-64,38],[6,-70,33],[7,-74,26]], r:[1.6,1.1,0.2] }], fangs:[2.4,-55,55,2.4], mouth:[[4,-57,44],[3.6,-56.5,50],[2.4,-56,56]] },
+      tail:{ from:[-32,-24], len:50, lift:20, curl:4, r:6, n:9 }, spikes:[[20,-47,4],[12,-47.5,4.5],[4,-47,4.5],[-4,-46,4],[-12,-44,3.5]], wings:{ kind:'bat', at:[8,-44,6], span:48 }, shadow:[18,34,-6],
+      skins:BK([['#7a1e14','#963022','#3e0c08'],['#2e5a2a','#40763a','#162c14'],['#2a2a30','#3e3e46','#141418']]), base:{ eye:'#ffd040', glow:'rgba(255,160,40,0.6)', wing:'#4a1410', wingBone:'#2a0c08', horn:'#d8ccb0' } },
+    griffin:{ body:[[[8,-28,9,9,11],[-6,-27,8,8,11]]], legs:[Object.assign(QUAD(6,-23,9,-8,[[12,12],[12,13]],[[3,2.2,1.4],[3.6,2.4,1.6]],'talon',{ claw:'beak' })[0],{ fill:'feather' }),QUAD(6,-23,9,-8,[[12,12],[12,13]],[[3,2.2,1.4],[3.6,2.4,1.6]],'paw')[1]],
+      neck:[[-33,13,5.5],[-40,16,5]], neckFill:'feather', head:{ at:[-44,18], r:[4.5,4.8,5], fill:'feather', beak:{ at:[-43,22.5], len:5, r:2.2 }, eyes:{ kind:'beady', at:[3.4,-45,20.5], r:0.8, side:0.8 }, crest:[[-48,15,4,1.2],[-46.5,14,4.5,1.2]] },
+      wings:{ kind:'feather', at:[6,-36,8], span:34 }, tail:{ from:[-28,-16], len:18, lift:6, curl:6, r:1.5, tip:'hair' }, shadow:[12,18],
+      skins:BK([['#b0863e','#c89c52','#6a4e22'],['#8a6a40','#a28054','#4e3a20'],['#c0a060','#d6b676','#7a6232']]), base:{ eye:'#d08020', feather:'#e8e2d6', wing:'#d8d0c0', wingBone:'#a89a84', hair:'#6a4a22' } },
+    unicorn:{ body:[[[12,-38,9,10,14],[-8,-37,9,9.5,13]]], legs:QUAD(6,-32,14,-12,[[16,18],[17,18]],[[3,2,1.6],[3.6,2.2,1.6]],'hoof',{ stride:7 }),
+      neck:[[-42,22,6],[-52,28,5],[-58,30,4.5]], mane:[[-47,22,2.2],[-52,25,2.2],[-56,27.5,2],[-60,29,1.8]],
+      head:{ at:[-60,33], r:[4,4.5,5], snout:{ at:[-56,40], r:[3,3.4,5] }, eyes:{ kind:'beady', at:[3.4,-61,35], r:0.8, side:0.8 }, ears:[{ pts:[[2.5,-64,31],[3,-70,30],[3.5,-64,29.5]] }],
+        horns:[{ single:true, pts:[[0,-64,36],[0,-70,38.5],[0,-75,41]], r:[1.3,0.8,0.12], fill:'horn' }] },
+      tail:{ from:[-36,-21], len:22, lift:14, curl:2, r:2.6, kind:'bushy', fill:'hair' }, shadow:[11,22],
+      skins:BK([['#ece8e0','#f8f6f0','#a8a49a'],['#e0dcd8','#f0ece8','#9e9a96'],['#e8e0ec','#f6f0f8','#a49cac']]), base:{ eye:'#3a5a8a', hair:'#f0e8d8', horn:'#e8d890', hoof:'#c8b890' } },
+    phoenix:{ body:[[[0,-28,7,8,10]]], legs:[{ at:[3,-21,0], len:[9,10], r:[1.4,1,0.8], foot:'talon', claw:'beak', pole:[0,0,1], ph:0, lift:3, stride:4 }],
+      neck:[[-34,6,4],[-40,9,3.5]], head:{ at:[-43,10], r:[3.6,3.6,4], beak:{ at:[-42,13.5], len:4, r:1.6 }, eyes:{ kind:'glow', at:[2.8,-44,11.5], r:0.7, side:0.8 }, crest:[[-46,9,5,1],[-46.5,7,6,1],[-45.5,11,4,1]] },
+      wings:{ kind:'feather', at:[5,-32,2], span:30 }, tail:{ from:[-26,-9], len:26, lift:16, curl:2, r:1.6, count:3, fill:'crest' }, shadow:[9,12],
+      skins:BK([['#c8401c','#e0602a','#7a1e0a'],['#d8701c','#f08a2a','#8a3a0a'],['#b01e2a','#d0303a','#6a0a14']]), base:{ eye:'#fff0a0', glow:'rgba(255,200,60,0.6)', crest:'#ffb030', wing:'#e0501c', wingBone:'#ffb030', beak:'#e8c050' } },
+    kitsune:{ body:[[[6,-20,6,6,8],[-5,-19,5.5,5.5,8]]], legs:QUAD(4,-17,7,-6,[[9,10],[9,11]],[[2.2,1.5,1],[2.6,1.6,1]],'paw'),
+      neck:[[-21,10,3.6],[-24,12.5,3.4]], head:{ at:[-25,14], r:[4,3.6,4], snout:{ at:[-23.5,19], r:[1.8,1.6,4] }, eyes:{ kind:'glow', at:[2.2,-26,16.6], r:0.7, side:0.5 },
+        ears:[{ pts:[[2,-28,13],[4.5,-35,12],[4.5,-28,11]] }], mouth:[[2,-23.2,16],[1.6,-23,19],[0.9,-22.8,21.5]] },
+      tail:{ from:[-20,-12], len:18, lift:-6, curl:-8, r:2.6, kind:'bushy', tip:'light', count:3 }, shadow:[7,14],
+      skins:BK([['#d8762a','#ec9040','#8a4414'],['#e8e0d0','#f6f0e6','#a8a090'],['#c05a2a','#d8723a','#7a3214']]), base:{ eye:'#ffe080', glow:'rgba(255,200,100,0.5)' } },
+    wisp:{ hover:26, body:[], legs:[], head:null, glow:{ at:[0,-30,0], r:4 }, tail:{ from:[-30,-2], len:10, lift:4, curl:2, r:1.6, count:3, fill:'glowOuter' }, shadow:[3,3],
+      skins:BK([['#a0e0ff','#c8f0ff','#5aa0c8'],['#c0ffb0','#e0ffd8','#70c060'],['#ffe0a0','#fff0c8','#c8a050']]), base:{ eye:'#ffffff', glow:'rgba(180,240,255,0.65)', glowOuter:'rgba(160,220,255,0.3)' } }
+  };
   // ---- what a figure wears (user, November 2026: a class has no look of its own; the look follows diegetically from what a creature wears: a warlock takes a robe
   // and a pointed hat from the storage, a warrior the plate, a hunter leather; the class only sets what it prefers). An outfit is a set of worn things on a body of any
   // race: a robe, a hood or a hat, a stole, plate, a quiver, their colours; the hair under them only on a race with a man's hair (a monk's tonsure). A figure is its
@@ -1026,6 +1081,7 @@ const SvgRig=(()=>{
   // the genes of a spec: its style's preset (or the kind's first), its own genes over it
   const genesOf=spec=>{ const K=HUMANOIDS[kindOf(spec.kind)], ps=K.presets; return Object.assign({},ps[Object.keys(ps)[0]],ps[spec.style]||{},spec.genes||{}); };
   function roll(seed,kind){
+    if(BEASTS[kind]){ const r=rng(seed); return { kind, style:'eigen', genes:{ haut:r() }, traits:{ klug:0.5, stark:r(), flink:r(), wild:r() }, gear:{}, seed }; }       // a beast: only its colouring
     const r=rng(seed), pick=a=>a[Math.floor(r()*a.length)]; kind=kindOf(kind); const K=HUMANOIDS[kind]; pick(stylesOf(kind));       // (a style was drawn here once; kept so every seed keeps its look)
     const genes={ kopf:r(), kinn:r(), kopfForm:r(), koerperForm:r(), beinForm:r(), fuss:r(), tief:r(), koerper:r(), beine:r(), augen:0.3+0.7*r(), haut:r(), augenFarbe:r()<0.6?r()*0.3:0.6+0.4*r(), ohren:r()<0.6?'spitz':'lappen' };
     const out={ kind, style:'eigen', genes, traits:{ klug:r(), stark:r(), flink:r(), wild:r() }, hue:(r()*2-1)*12, scar:r()<0.4,
@@ -1035,6 +1091,7 @@ const SvgRig=(()=>{
     return out;
   }
   function defaults(kind){
+    if(BEASTS[kind]) return { kind, genes:{ haut:0 }, traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, gear:{} };
     kind=kindOf(kind); const K=HUMANOIDS[kind], first=Object.keys(K.presets)[0];
     return { kind, style:first, genes:Object.assign({},K.presets[first]), traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:!!K.scar,
       gear:{ helmet:!K.worker&&K.armour!==false, chest:false, pauldrons:!K.worker&&K.armour!==false, cloth:!!K.cloth, weapon:K.weapon, hands:true, arms:K.arms!==false, load:'gold' } };       // a worker (the imp) wears no armour, nor do those in clothes
@@ -1374,6 +1431,8 @@ const SvgRig=(()=>{
   const lookOf=kind=>({ ears:!!HUMANOIDS[kindOf(kind)].ears, horns:false });
   // the body plan of a spec without the 2D rig (for the 2.5D test, Rig3D): its measures, colours, gear
   function plan(spec){
+    if(spec&&BEASTS[spec.kind]){ const B=BEASTS[spec.kind], g=Object.assign({ haut:0 },spec.genes), sk=B.skins[Math.min(B.skins.length-1,Math.floor(g.haut*B.skins.length))];       // a beast (Rig3D.beast)
+      const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },BEAST_BASE,B.base,sk); return { B, K:{ rig3d:true, only3d:true, beast:true }, G:{}, genes:g, t:spec.traits||{}, pal, spec, H:82, weapons:WEAPONS, grip:GRIP }; }
     const kind=kindOf(spec&&spec.kind), K=kitOf(kind,spec&&spec.outfit), own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;       // (K: its race in what it wears)
     if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
     const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear,K.wear);       // (wear: plate a kind or an outfit always has on, the knight's)
@@ -1384,7 +1443,7 @@ const SvgRig=(()=>{
     pal.hand=G.pauldrons?pal.iron:pal.skin; pal.handLine=G.pauldrons?pal.ironDark:pal.dark;
     return { K, G, genes, t, S, A:S.A, pal, spec, H:S.H, weapons:WEAPONS, grip:GRIP };
   }
-  return { build, plan, roll, kindInfo:kind=>HUMANOIDS[kindOf(kind)], defaults, lookOf, genesOf, presetsOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:['human'].concat(Object.keys(HUMANOIDS).filter(k=>k!=='human')), stylesOf, weaponsOf:kind=>HUMANOIDS[kindOf(kind)].weapons };
+  return { BEASTS:Object.keys(BEASTS), build, plan, roll, kindInfo:kind=>HUMANOIDS[kindOf(kind)], defaults, lookOf, genesOf, presetsOf, IMP_PRESETS, create, step, pose, svg, canvas, MOODS, KINDS:['human'].concat(Object.keys(HUMANOIDS).filter(k=>k!=='human')), stylesOf, weaponsOf:kind=>HUMANOIDS[kindOf(kind)].weapons };
 })();
 
 // ---- 2.5D figures (user, November 2026: a test with the fantasy skeleton) ----
@@ -1865,9 +1924,70 @@ const Rig3D=(()=>{
     // the shadow on the floor
     const sh=F.P([0,0,0]); F.items.push({ d:path(Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2; const k=K.hover?0.6:1, p=F.P([Math.cos(a)*6*u*k,0,Math.sin(a)*5*u*k]); return [p[0],p[1]]; })), dep:-1e9, fill:'shadowC', sw:0 });       // (smaller under a floating one)
   }
+  // ---- the beasts in space (user, November 2026: go on with the beasts): a second body plan of the kit for animals on four, six or eight legs, with wings or none.
+  // A beast faces forward (+Z); its body is hulls of ellipsoids along its spine, its legs two bones each (solved like the arms) walking in a gait (the table's
+  // phases: four legs crosswise, an insect's three at a time, the spider's in a wave), its neck a chain of tubes to the head (a hull with the snout or the beak), the
+  // eyes, ears, horns, fangs, mane, tail, wings and glow its own. Every beast is an entry of SvgRig.BEASTS in a man's units (a man stands 80 high). ----
+  function beast(F,pl,st){
+    const B=pl.B, w=st.phase||0, walkK=st.walking?1:0, t=st.t||0, roar=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, sw=st.swing||0;
+    const Y0=-(B.hover?B.hover+Math.sin(t*1.6)*1.2:0)-(B.hover?0:0.8*Math.abs(Math.sin(w))*walkK);
+    const by=v=>[v[0],v[1]+Y0,v[2]], rq=(a,c)=>c===undefined?a:c;
+    // the body: each group one hull; the marks on its back
+    let bodyDep=0;
+    B.body.forEach((grp,gi)=>{ F.solid(grp.map(([z,y,rx,ry,rz])=>[by([0,y,z]),[rx,ry,rz]]),gi===0?'skin':(grp.fill||'skin'),{ sw:0.9 }); if(gi===0) bodyDep=F.items[F.items.length-1].dep; });
+    (B.marks||[]).forEach(([z,y,rx,rz,fill])=>{ const c=by([0,y,z]); F.patch(c,[0,-1,0],rx,rz,fill,{ bias:bodyDep+0.08-F.P(c)[2], sw:0 }); });
+    (B.spikes||[]).forEach(([z,y,h])=>{ const b=by([0,y,z]); F.tube(b,add(b,[0,-h,-h*0.3]),h*0.28,h*0.18,0.02*h,'bone',{ bias:0.1 }); });
+    // the legs: a hip on the body, the foot on the floor (stepping in the gait), the knee solved towards its pole
+    B.legs.forEach(L=>[-1,1].forEach(s=>{
+      const ph=w+(L.ph||0)+(s>0?Math.PI:0), H=by([s*L.at[0],L.at[1],L.at[2]]), lift=(L.lift||4)*Math.max(0,Math.sin(ph))*walkK, dz=-(L.stride||6)*Math.cos(ph)*walkK;
+      const [l1,l2]=L.len, Ft=L.hang?add(H,[s*(L.out||0),(l1+l2)*0.75,(L.fz||0)+Math.sin(ph)*0.8]):[s*(L.at[0]+(L.out||0)),-lift,L.at[2]+(L.fz||0)+dz];       // (a flying one's legs hang)
+      const dv=sub(Ft,H), d=Math.min(l1+l2-1e-3,Math.max(Math.abs(l1-l2)+1e-3,len(dv))), uu=norm(dv), pole=norm([s*L.pole[0],L.pole[1],L.pole[2]]), v=norm(sub(pole,mulv(uu,dot(pole,uu))));
+      const a=Math.acos(Math.max(-1,Math.min(1,(l1*l1+d*d-l2*l2)/(2*l1*d)))), Kn=add(H,add(mulv(uu,l1*Math.cos(a)),mulv(v,l1*Math.sin(a)))), Fe=add(Kn,mulv(norm(sub(Ft,Kn)),l2));
+      const [r0,r1,r2]=L.r, f=L.fill||'skin';
+      F.tube(H,Kn,r0,(r0+r1)/2,r1,f); F.ball(Kn,r1,f,{ bias:-1 }); F.tube(Kn,Fe,r1,(r1+r2)/2,r2,f);
+      if(L.foot==='paw') F.ball(add(Fe,[0,-r2*0.6,r2*0.6]),r2*1.35,f);
+      else if(L.foot==='hoof') F.tube(add(Fe,[0,-r2*0.4,0]),add(Fe,[0,r2*0.9,0.2*r2]),r2*1.1,r2*1.15,r2*1.25,'hoof');
+      else if(L.foot==='talon') [-1,0,1].forEach(k=>{ const b=add(Fe,[k*r2*0.7,0,0]); F.tube(b,add(b,[k*r2*0.5,r2*0.6,r2*2.2]),r2*0.5,r2*0.35,r2*0.08,L.claw||'bone',{ bias:0.1 }); });
+    }));
+    // the neck and the head (it nods as it walks, rises when it roars), the snout or the beak in one hull with the skull
+    const nod=Math.sin(w*2)*0.8*walkK-roar*3, hd=B.head||{ at:[0,0], r:[0,0,0] }, hy=hd.at[0]+nod, hz=hd.at[1], hp=y=>y+nod;
+    if(B.neck){ for(let i=0;i<B.neck.length-1;i++){ const a=by([0,B.neck[i][0]+(i?nod*i/(B.neck.length-1):0),B.neck[i][1]]), b=by([0,B.neck[i+1][0]+nod*(i+1)/(B.neck.length-1),B.neck[i+1][1]]); F.tube(a,b,B.neck[i][2],(B.neck[i][2]+B.neck[i+1][2])/2,B.neck[i+1][2],B.neckFill||'skin'); } }
+    (B.mane||[]).forEach(([y,z,r],i)=>F.ball(by([0,y+nod*Math.min(1,i/Math.max(1,B.mane.length-1)),z]),r,'hair',{ bias:-0.2 }));
+    const hc=by([0,hy,hz]), ells=[[hc,hd.r]]; if(hd.snout) ells.push([by([0,hp(hd.snout.at[0]),hd.snout.at[1]]),hd.snout.r]);
+    let sk=0; if(B.head){ F.solid(ells,hd.fill||'skin',{ sw:0.9 }); sk=F.items[F.items.length-1].dep; } const on=(q,b)=>sk+b-F.P(q)[2];
+    const E=hd.eyes;
+    if(E) (E.kind==='cluster'?[[0.35,0],[0.12,0.05],[0.55,0.06],[0.25,-0.12]]:[[1,0]]).forEach(([kx,ky])=>[-1,1].forEach(s=>{       // the eyes: a pair on the sides (or the spider's cluster in front)
+      const q=by([s*E.at[0]*kx*(E.kind==='cluster'?1:1),hp(E.at[1])+ky*E.r*4,E.at[2]]), n=norm([s*(E.side===undefined?0.6:E.side),0,1-(E.side===undefined?0.6:E.side)*0.5]);
+      if(E.kind==='glow'||E.kind==='cluster'){ F.patch(q,n,E.r*1.6,E.r*1.2,'glow',{ bias:on(q,0.05), sw:0 }); F.patch(q,n,E.r*0.8,E.r*0.7,'eye',{ bias:on(q,0.06), sw:0 }); }
+      else if(E.kind==='compound') F.patch(q,n,E.r,E.r*1.1,'eye',{ bias:on(q,0.05), sw:0.6 });
+      else { F.patch(q,n,E.r,E.r,'eye',{ bias:on(q,0.05), sw:0.4 }); F.patch(add(q,mulv(n,0.05)),n,E.r*0.45,E.r*0.55,'pupil',{ bias:on(q,0.06), sw:0 }); } }));
+    if(hd.beak){ const b0=by([0,hp(hd.beak.at[0]),hd.beak.at[1]]), b1=add(b0,[0,hd.beak.len*0.35,hd.beak.len]); F.tube(b0,b1,hd.beak.r,hd.beak.r*0.6,0.05*hd.beak.r,'beak',{ bias:0.1 }); }
+    if(hd.fangs) [-1,1].forEach(s=>{ const f=by([s*hd.fangs[0],hp(hd.fangs[1]),hd.fangs[2]]); F.tube(f,add(f,[0,hd.fangs[3],hd.fangs[3]*0.2]),hd.fangs[3]*0.25,hd.fangs[3]*0.18,0.02,'bone',{ bias:on(f,0.07) }); });
+    if(hd.mouth&&F.faces([0,0,1])>-0.3) [-1,1].forEach(s=>{ const P=hd.mouth.map(([x,y,z])=>by([s*x,hp(y)+roar*1.2,z])); F.thin(P,P.map(()=>norm([s*0.7,0.2,0.6])),0.6+roar*1.5,'mouth',on(P[1],0.06)); });
+    if(hd.ears) hd.ears.forEach(e=>[-1,1].forEach(s=>F.plate(e.pts.map(([x,y,z])=>by([s*x,hp(y),z])),e.fill||'skin',{ bias:e.bias||0 })));
+    if(hd.horns) hd.horns.forEach(hr=>[-1,1].forEach(s=>{ if(hr.single&&s>0) return; const P=hr.pts.map(([x,y,z])=>by([hr.single?0:s*x,hp(y),z])); for(let i=0;i<P.length-1;i++) F.tube(P[i],P[i+1],hr.r[i],(hr.r[i]+hr.r[i+1])/2,hr.r[i+1],hr.fill||'horn',{ bias:0.1 }); }));
+    if(hd.crest) hd.crest.forEach(([y,z,h,r])=>{ const b=by([0,hp(y),z]); F.tube(b,add(b,[0,-h,-h*0.6]),r,r*0.7,r*0.2,'crest',{ bias:0.05 }); });
+    // the tail: a chain back and down from the rump, swinging as it walks; bushy, thin, scaly, feathers or several (the kitsune's)
+    if(B.tail){ const T=B.tail, n=T.n||7, cnt=T.count||1;
+      for(let c=0;c<cnt;c++){ const fan=cnt>1?(c-(cnt-1)/2)*0.45:0, pts=[];
+        for(let i=0;i<=n;i++){ const q=i/n, sway=Math.sin(w-q*1.5)*walkK*0.6+Math.sin(t*1.1+c)*0.15; pts.push(by([Math.sin(fan+sway*q)*T.len*q*0.5,T.from[0]+T.lift*q+T.curl*q*q,T.from[1]-T.len*q*Math.cos(fan*0.5)])); }
+        for(let i=0;i<n;i++){ const q0=i/n, q1=(i+1)/n, rr=q=>T.kind==='bushy'?T.r*(0.6+1.2*Math.sin(Math.PI*Math.min(1,q*1.1))):T.r*(1-q*0.85); F.tube(pts[i],pts[i+1],rr(q0),rr((q0+q1)/2),rr(q1),T.fill||'skin',{ bias:-0.3 }); }
+        if(T.tip) F.ball(pts[n],T.r*(T.kind==='bushy'?0.9:1.1),T.tip,{ bias:-0.25 }); } }
+    // the wings: an arm out from the shoulders, its fingers (or feathers) back, the skin between them; flapping slowly (fast, a fly's)
+    if(B.wings){ const W=B.wings, fl=Math.sin(t*(W.kind==='insect'?18:1.8))*(W.kind==='insect'?0.5:0.18);
+      [-1,1].forEach(s=>{ const b=by([s*W.at[0],W.at[1],W.at[2]]), rot=v=>{ const c=Math.cos(fl), sn=Math.sin(fl); return [v[0]*c,v[0]*sn*(-1)+v[1],v[2]]; };
+        const P=(x,y,z)=>add(b,rot([s*x*W.span,y*W.span,z*W.span]));
+        if(W.kind==='insect'){ F.plate([P(0.05,-0.02,0.05),P(1,-0.3,-0.4),P(0.9,-0.05,-0.85),P(0.1,0.02,-0.5)],'wing',{ bias:-0.4, sw:0.5 }); return; }
+        const wr=P(0.55,-0.5,-0.15), tips=W.kind==='feather'?[P(1,-0.2,-0.4),P(0.9,0.1,-0.7),P(0.65,0.25,-0.9),P(0.35,0.3,-0.95)]:[P(1,-0.1,-0.35),P(0.85,0.25,-0.6),P(0.5,0.35,-0.75)];
+        F.plate([b,wr].concat(tips,[P(0.05,0.15,-0.5)]),'wing',{ bias:-0.5 });
+        if(W.kind==='bat'){ F.tube(b,wr,W.span*0.05,W.span*0.04,W.span*0.035,'wingBone',{ bias:-0.45 }); tips.forEach(q=>F.tube(wr,q,W.span*0.03,W.span*0.02,W.span*0.008,'wingBone',{ bias:-0.45 })); }
+        else tips.forEach((q,i)=>F.plate([add(q,[0,-W.span*0.06,0]),add(q,[s*W.span*0.06,W.span*0.04,0]),add(wr,mulv(sub(q,wr),0.5))],i%2?'wingBone':'wing',{ bias:-0.44, sw:0.4 })); }); }
+    if(B.glow){ const g=by(B.glow.at), r=B.glow.r*(1+Math.sin(t*3)*0.06); F.ball(g,r*1.5,'glowOuter',{ bias:0.5 }); F.ball(g,r,'glow',{ bias:0.55 }); F.ball(g,r*0.55,'eye',{ bias:0.6 }); }       // the wisp's light
+    const sh=F.P([0,0,0]); F.items.push({ d:path(Array.from({ length:20 },(_,i)=>{ const a=i/20*Math.PI*2, p=F.P([Math.cos(a)*B.shadow[0]*(B.hover?0.6:1),0,(B.shadow[2]||0)+Math.sin(a)*B.shadow[1]*(B.hover?0.6:1)]); return [p[0],p[1]]; })), dep:-1e9, fill:'shadowC', sw:0 });
+  }
   // the canvas: everything sorted by depth, k pixels to a unit, the feet at (ox, oy)
   function canvas(g,pl,st,yaw,pitch,k,ox,oy){
-    const F=frame(yaw,pitch); skeleton(F,pl,st);
+    const F=frame(yaw,pitch); if(pl.B) beast(F,pl,st); else skeleton(F,pl,st);
     const items=F.items.slice().sort((a,b)=>a.dep-b.dep), pal=pl.pal;
     g.save(); g.setTransform(k,0,0,k,ox,oy); g.lineJoin='round'; g.lineCap='round';
     items.forEach(it=>{ const p=new Path2D(it.d);
@@ -1877,7 +1997,7 @@ const Rig3D=(()=>{
       if(it.sw){ g.strokeStyle=pal[it.stroke]||pal.line; g.lineWidth=it.sw; g.stroke(p); } });
     g.restore();
   }
-  return { canvas, frame, skeleton };
+  return { canvas, frame, skeleton:(F,pl,st)=>pl.B?beast(F,pl,st):skeleton(F,pl,st) };       // (a beast or a body of the humanoid plan)
 })();
 
 // ---- the viewer: a stage (a strip of dungeon floor under a torch), the controls, and the ork as sprites from 16 to 128 pixels ----
