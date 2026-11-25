@@ -1929,9 +1929,9 @@ const Rig3D=(()=>{
   // phases: four legs crosswise, an insect's three at a time, the spider's in a wave), its neck a chain of tubes to the head (a hull with the snout or the beak), the
   // eyes, ears, horns, fangs, mane, tail, wings and glow its own. Every beast is an entry of SvgRig.BEASTS in a man's units (a man stands 80 high). ----
   function beast(F,pl,st){
-    const B=pl.B, w=st.phase||0, walkK=st.walking?1:0, t=st.t||0, roar=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, sw=st.swing||0;
+    const B=pl.B, w=st.phase||0, walkK=st.walking?1:0, t=st.t||0, sw=st.swing||0, lunge=Math.min(1,Math.abs(sw)), roar0=st.roar>0?Math.min(1,st.roar*3,(1.2-st.roar)*6):0, roar=Math.max(roar0,lunge*0.8);       // (a blow: the beast lunges, its maw open)
     const Y0=-(B.hover?B.hover+Math.sin(t*1.6)*1.2:0)-(B.hover?0:0.8*Math.abs(Math.sin(w))*walkK);
-    const by=v=>[v[0],v[1]+Y0,v[2]], rq=(a,c)=>c===undefined?a:c;
+    const LZ=lunge*5, by=v=>[v[0],v[1]+Y0,v[2]+LZ*(v[2]>0?1:0.4)];       // (the front lunges further than the back)
     // the body: each group one hull; the marks on its back
     let bodyDep=0;
     B.body.forEach((grp,gi)=>{ F.solid(grp.map(([z,y,rx,ry,rz])=>[by([0,y,z]),[rx,ry,rz]]),gi===0?'skin':(grp.fill||'skin'),{ sw:0.9 }); if(gi===0) bodyDep=F.items[F.items.length-1].dep; });
@@ -1950,7 +1950,7 @@ const Rig3D=(()=>{
       else if(L.foot==='talon') [-1,0,1].forEach(k=>{ const b=add(Fe,[k*r2*0.7,0,0]); F.tube(b,add(b,[k*r2*0.5,r2*0.6,r2*2.2]),r2*0.5,r2*0.35,r2*0.08,L.claw||'bone',{ bias:0.1 }); });
     }));
     // the neck and the head (it nods as it walks, rises when it roars), the snout or the beak in one hull with the skull
-    const nod=Math.sin(w*2)*0.8*walkK-roar*3, hd=B.head||{ at:[0,0], r:[0,0,0] }, hy=hd.at[0]+nod, hz=hd.at[1], hp=y=>y+nod;
+    const nod=Math.sin(w*2)*0.8*walkK-roar0*3+lunge*2.5, hd=B.head||{ at:[0,0], r:[0,0,0] }, hy=hd.at[0]+nod, hz=hd.at[1], hp=y=>y+nod;
     if(B.neck){ for(let i=0;i<B.neck.length-1;i++){ const a=by([0,B.neck[i][0]+(i?nod*i/(B.neck.length-1):0),B.neck[i][1]]), b=by([0,B.neck[i+1][0]+nod*(i+1)/(B.neck.length-1),B.neck[i+1][1]]); F.tube(a,b,B.neck[i][2],(B.neck[i][2]+B.neck[i+1][2])/2,B.neck[i+1][2],B.neckFill||'skin'); } }
     (B.mane||[]).forEach(([y,z,r],i)=>F.ball(by([0,y+nod*Math.min(1,i/Math.max(1,B.mane.length-1)),z]),r,'hair',{ bias:-0.2 }));
     const hc=by([0,hy,hz]), ells=[[hc,hd.r]]; if(hd.snout) ells.push([by([0,hp(hd.snout.at[0]),hd.snout.at[1]]),hd.snout.r]);
