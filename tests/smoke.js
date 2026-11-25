@@ -20,6 +20,7 @@ const { open, finish }=require('./lib');
     if(!a._svg||!b._svg||a===b) return 'imp pictures wrong';
     setView3d(false); draw(); setOption('figures','pixel'); draw(); setOption('figures','svg'); setView3d(true); await new Promise(r=>setTimeout(r,300));
     for(const kind of Object.keys(SvgFigures.KINDS)){ if(!SvgFigures.active(kind)) return kind+' is no SVG figure'; const f={ kind, id:7, level:3 }, cv=SvgFigures.canvasFor(f,Date.now(),true,null,'back',0); if(!cv._svg) return kind+' picture wrong'; }       // every kind with a rig
+    { const sk={ kind:'skeleton', id:9, level:2 }, cv=SvgFigures.canvasFor(sk,Date.now(),true,null,'front',1); if(!cv._svg) return 'the skeleton from the side drew nothing'; }       // the side view (a test: the skeleton walking sideways)
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
   // one body plan for every humanoid (svg-rig.js): the gear lands on the right parts at any size, strength widens the shoulders much more than the hips;
