@@ -424,6 +424,74 @@ const SvgRig=(()=>{
     out.push([sp([[cx-0.65*r,cy-0.62*r],[cx+0.2*r,cy-0.98*r],[cx+0.42*r,cy-0.86*r],[cx-0.5*r,cy-0.42*r]],2),'hand',BL,'line']);
     return out;
   }
+  // ---- the second skeleton (user, November 2026: black sockets instead of eyes; less detail, more fantasy: we draw it at 64 pixels anyway) ----
+  // Fewer, heavier parts: a bigger skull with a crack, angry slanting sockets and a few big teeth; six broad ribs a side straight to the breastbone;
+  // three chunky lumbar vertebrae; a simple pelvis; thick bones with knobby joints; bold outlines.
+  const BF=0.75;       // its outline
+  const fBone=(pts,n)=>[[sp(pts,n||2),'skin',BF,'line'],[formShade(spline(pts,n||2,true),pts.reduce((a,q)=>a+q[0],0)/pts.length),'boneShade',0]];
+  const fKnob=(x,y,rx,ry)=>[ell(f2(x),f2(y),f2(rx),f2(ry)),'skin',BF,'line'];
+  function craniumF(A,back){
+    const { aw, h, top }=A, X=x=>x*aw, Y=y=>top+y*h;
+    const pts=symForm([[0,0],[0.55,0.03],[0.86,0.13],[1,0.3],[1,0.44],[0.93,0.53],[1.03,0.6],[0.9,0.69],[0.64,0.745],[0.54,0.81],[0.26,0.83],[0,0.83]].map(([x,y])=>[X(x),Y(y)]),3);
+    const out=[[ptsPath(pts),'skin',BF*1.2,'line'],[formShade(pts,0),'boneShade',0],
+      [`M${f2(X(-0.42))} ${f2(Y(0.03))} L${f2(X(-0.3))} ${f2(Y(0.13))} L${f2(X(-0.38))} ${f2(Y(0.19))} L${f2(X(-0.24))} ${f2(Y(0.3))}`,null,0.6,'line']];       // the crack
+    if(back) return { pts, shapes:out.concat([[ell(0,f2(Y(0.76)),f2(X(0.24)),f2(X(0.18))),'socket',BF,'line']]) };
+    [-1,1].forEach(s=>out.push([sp([[s*0.9,0.42],[s*0.98,0.5],[s*0.88,0.57],[s*0.8,0.5]].map(([x,y])=>[X(x),Y(y)]),2),'boneShade',0]));
+    const teeth=[]; for(let i=0;i<6;i++){ const x0=-0.43+i*0.145, x1=x0+0.135; teeth.push(`M${f2(X(x0))} ${f2(Y(0.75))} L${f2(X(x1))} ${f2(Y(0.75))} L${f2(X(x1-0.01))} ${f2(Y(0.825))} L${f2(X(x0+0.01))} ${f2(Y(0.825))}z`); }
+    out.push([teeth.join(' '),'tooth',0.22,'line']);
+    return { pts, shapes:out };
+  }
+  FACES.skullFantasy=function({ aw, h, top },g){
+    const X=x=>x*aw, Y=y=>top+y*h, ex=-0.4, ey=0.47, r=0.29+0.04*g.augen;
+    const orbit=[[ex-r*1.05,ey-0.09],[ex+r*0.95,ey-0.02],[ex+r,ey+0.07],[ex+r*0.35,ey+0.12],[ex-r*0.65,ey+0.11],[ex-r*1.1,ey+0.01]].map(([x,y])=>[X(x),Y(y)]);       // the inner corner lower: a grim look
+    const R=s=>[[0,0.84],[0.48,0.835],[0.6,0.78],[0.72,0.74],[0.8,0.77],[0.79,0.88],[0.66,0.96],[0.4,1.01],[0,1.02]].map(([x,y])=>[X(s*x),Y(y)]), mand=R(1).concat(R(-1).reverse());
+    const teeth=[]; for(let i=0;i<6;i++){ const x0=-0.42+i*0.14, x1=x0+0.13; teeth.push(`M${f2(X(x0))} ${f2(Y(0.9))} L${f2(X(x1))} ${f2(Y(0.9))} L${f2(X(x1-0.01))} ${f2(Y(0.835))} L${f2(X(x0+0.01))} ${f2(Y(0.835))}z`); }
+    return { eye:[[sp(orbit,2),'socket',BF,'line']], pupil:[], eyeAt:[f2(X(ex)),f2(Y(ey))], pupilIn:0, lookK:0, lid:[], noBlink:true,
+      brow:[[sp([[ex-r*1.15,ey-0.13],[ex+r*1.05,ey-0.05],[ex+r*1.0,ey-0.015],[ex-r*1.1,ey-0.085]].map(([x,y])=>[X(x),Y(y)]),2),'boneDark',0]], browAt:[f2(X(ex)),f2(Y(ey-0.1))], browY:Y(ey-0.14),
+      nose:[[sp([[0,0.57],[0.12,0.66],[0.08,0.71],[0,0.68],[-0.08,0.71],[-0.12,0.66]].map(([x,y])=>[X(x),Y(y)]),2),'socket',BF*0.8,'line']],
+      mouth:[], mouthAt:[0,f2(Y(0.83))], jaw:[[ptsPath(mand),'skin',BF*1.2,'line'],[formShade(mand,0),'boneShade',0],[teeth.join(' '),'tooth',0.22,'line']], jawAt:[0,f2(Y(0.8))] };
+  };
+  function boneFistF(cx,cy,r){
+    const out=[[ell(f2(cx-0.15*r),f2(cy),f2(0.75*r),f2(0.92*r)),'hand',BF,'line']];
+    for(let j=0;j<3;j++){ const y=cy-0.6*r+j*0.6*r; out.push([sp([[cx+0.05*r,y-0.24*r],[cx+0.9*r,y-0.2*r],[cx+0.98*r,y+0.02*r],[cx+0.9*r,y+0.24*r],[cx+0.05*r,y+0.24*r]],2),'hand',BF,'line']); }
+    out.push([sp([[cx-0.7*r,cy-0.6*r],[cx+0.25*r,cy-1.02*r],[cx+0.45*r,cy-0.85*r],[cx-0.5*r,cy-0.36*r]],2),'hand',BF,'line']);
+    return out;
+  }
+  Object.assign(EXTRAS,{
+    bonesFantasy(A,back){
+      const { topY, hipY, wSh, wHip, bodyH, bPts, top, h, u }=A, wC=widthAt(bPts,topY+bodyH*0.42)*0.96, out=[[ptsPath(bPts),null,0]];
+      const block=(y,hw,hh)=>out.push([`M${f2(-hw)} ${f2(y)} L${f2(hw)} ${f2(y)} L${f2(hw*0.9)} ${f2(y+hh)} L${f2(-hw*0.9)} ${f2(y+hh)}z`,'skin',BF,'line']);
+      const n0=top+h*0.86, n1=topY+0.2*u, nh=(n1-n0)/3; for(let i=0;i<3;i++) block(n0+i*nh,0.75*u,nh*0.8);       // the neck: three
+      const sternBot=topY+bodyH*0.32, l0=topY+bodyH*0.5, l1=hipY-6.4*u;
+      if(back){ for(let y=topY+0.4*u;y<l0;y+=1.6*u) block(y,0.6*u,1.2*u); [-1,1].forEach(s=>out.push(...fBone([[s*wSh*0.92,topY+0.3*u],[s*wSh*0.45,topY+1.3*u],[s*wC*0.55,topY+bodyH*0.36],[s*wC*0.85,topY+bodyH*0.3]],2))); }
+      // six broad ribs a side, from the breastbone down and out round the side
+      const Wf=[0.62,0.8,0.92,0.97,0.95,0.85];
+      for(let i=0;i<6;i++){ const W=Wf[i]*wC, y=topY+1.3*u+i*1.2*u, d=(0.8+0.42*i)*u, cw=0.5*u, ys=Math.min(y,sternBot-0.6*u);
+        [-1,1].forEach(s=>{ const c=ptsPath(spline([[s*1.0*u,ys],[s*W*0.55,y+d*0.75],[s*W*0.88,y+d*0.95],[s*W,y+d*0.45],[s*W*0.94,y-0.1*u]],4)).replace(/z$/,'');
+          out.push([c,null,cw*2+BF*2,'line'],[c,null,cw*2,'skin']); }); }
+      if(back){ for(let y=topY+0.4*u;y<l0;y+=1.6*u) block(y,0.55*u,1.1*u); }
+      else out.push(...fBone([[-1.25*u,topY+0.3*u],[1.25*u,topY+0.3*u],[0.95*u,sternBot-0.8*u],[0,sternBot+0.4*u],[-0.95*u,sternBot-0.8*u]],1));       // the breastbone
+      // the collarbones and the shoulders' knobs
+      [-1,1].forEach(s=>{ const c=`M${f2(s*1.1*u)} ${f2(topY+0.6*u)} Q${f2(s*wSh*0.5)} ${f2(topY+0.9*u)} ${f2(s*wSh*0.86)} ${f2(topY-0.1*u)}`; out.push([c,null,1.5*u+BF*2,'line'],[c,null,1.5*u,'skin'],fKnob(s*wSh*0.92,topY+0.5*u,1.1*u,0.95*u)); });
+      // the lumbar spine: three chunky vertebrae with stubby wings
+      const lh=(l1-l0)/3; for(let i=0;i<3;i++){ const y=l0+i*lh; out.push([`M${f2(-2.4*u)} ${f2(y+lh*0.25)} L${f2(2.4*u)} ${f2(y+lh*0.25)} L${f2(2.4*u)} ${f2(y+lh*0.55)} L${f2(-2.4*u)} ${f2(y+lh*0.55)}z`,'skin',BF,'line']); block(y,1.3*u,lh*0.85); }
+      // the pelvis, simple: the two wings, the sacrum between, two black holes below
+      [-1,1].forEach(s=>{ out.push(...fBone([[s*0.8*u,hipY-5.6*u],[s*wHip*0.45,hipY-8*u],[s*wHip*0.95,hipY-7.2*u],[s*wHip*0.98,hipY-4.6*u],[s*wHip*0.72,hipY-2.4*u],[s*wHip*0.55,hipY-0.4*u],[s*0.4*u,hipY-0.9*u],[s*0.4*u,hipY-2.6*u],[s*1.6*u,hipY-4.4*u]],2),
+        [ell(f2(s*wHip*0.42),f2(hipY-1.7*u),f2(wHip*0.15),f2(0.8*u)),'socket',BF,'line']); });
+      out.push(...fBone([[-2.2*u,hipY-6.6*u],[2.2*u,hipY-6.6*u],[0.9*u,hipY-2.8*u],[0,hipY-2.1*u],[-0.9*u,hipY-2.8*u]],1));
+      return out;
+    },
+    boneLegFantasy(A){
+      const { hipY, wHip, u, legs:{ xk, xa, kneeY, ankY } }=A, hx=-wHip*0.62, hy=hipY-3*u;
+      const thigh=[...fBone(boneAlong([hx-0.9*u,hipY-1.8*u],[xk,kneeY-1*u],0.95*u,0.72*u,1.1*u),1),fKnob(hx-1.3*u,hipY-2.2*u,1.0*u,1.1*u),fKnob(hx+0.1*u,hy+0.2*u,1.0*u,1.0*u),
+        fKnob(xk-0.75*u,kneeY-0.9*u,0.9*u,0.75*u),fKnob(xk+0.75*u,kneeY-0.9*u,0.9*u,0.75*u)];
+      const shin=[...fBone(boneAlong([xk-1.15*u,kneeY+1.2*u],[xa-0.9*u,ankY+0.3*u],0.42*u,0.3*u,0.45*u),1),...fBone(boneAlong([xk+0.2*u,kneeY+0.6*u],[xa+0.3*u,ankY+0.2*u],1.15*u,0.68*u,0.85*u),1),
+        fKnob(xk,kneeY-0.15*u,1.0*u,1.1*u),fKnob(xa+0.75*u,ankY+0.2*u,0.6*u,0.6*u),fKnob(xa-0.95*u,ankY+0.4*u,0.5*u,0.6*u)];
+      const fx=xa-0.4*u, foot=[fKnob(fx,ankY+1.3*u,1.3*u,1.0*u)];
+      for(let i=0;i<3;i++){ const k=i-1; foot.push(...fBone(boneAlong([fx+k*0.6*u,ankY+1.9*u],[fx+k*1.1*u-0.8*u,-0.2],0.42*u,0.32*u,0.42*u),1)); }
+      return { thigh, shin, foot };
+    }
+  });
   // one realistic humanoid's parts (the same fields as humanoidShapes gives, plus a shin with its knee)
   function realShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, st=t.stark===undefined?0.5:t.stark, plump=g.koerper===undefined?0.4:g.koerper, gx=k=>g[k]===undefined?0.5:g[k];
@@ -435,7 +503,7 @@ const SvgRig=(()=>{
     const HD=K.head, h=lin(HD.h,gx('kopf')), aw=lin(HD.w,gx('kopf'))*(0.94+0.12*gx('kopfForm')), chinY=topY-(3.3-1.2*gx('tief'))*u, top=chinY-h, cy=top+h*0.45;
     const jaw=0.74+0.22*gx('kopfForm'), chinW=aw*(0.5-0.2*gx('kinn'));
     const hPts=symForm([[0,top],[aw*0.6,top+0.05*h],[aw*0.93,top+0.23*h],[aw,top+0.42*h],[aw*0.96,top+0.57*h],[aw*0.9,top+0.69*h],[aw*jaw,top+0.84*h],[chinW,top+0.97*h],[0,top+h]],5);
-    const skull=K.bones?cranium({ aw, h, top },back).shapes:[[ptsPath(hPts),'skin',sw*0.85],[formShade(hPts,0),'shade',0]];       // the skeleton: the skull itself (the head's outline still fits the gear)
+    const skull=K.bones?(K.boneStyle==='fantasy'?craniumF:cranium)({ aw, h, top },back).shapes:[[ptsPath(hPts),'skin',sw*0.85],[formShade(hPts,0),'shade',0]];       // the skeleton: the skull itself (the head's outline still fits the gear)
     if(!K.bones&&!back) skull.push([`M${f2(aw*0.62)} ${f2(top+0.6*h)} Q${f2(aw*0.8)} ${f2(top+0.75*h)} ${f2(aw*0.55)} ${f2(top+0.88*h)}`,null,0.5,'faceLine']);       // under the cheekbone
     // the torso: the neck's base, the trapezius sloping to the round shoulder (the deltoid, where the arm would hang), under it the chest's side, a box down to the hips
     const nw=aw*0.84, slope=(1-sq)*0.8*u;
@@ -446,7 +514,7 @@ const SvgRig=(()=>{
     const A={ topY, hipY, wSh, wHip, wWaist, bodyH, bPts, hPts, top, h, aw, cy, chinY, u, sw, legs:L, shieldK:K.shieldK, pauldronK:K.pauldronK, emblem:K.emblem, clothW:K.clothW, shoulderY:topY+1.8*u, beltY:hipY-5.2*u };
     const face=FACES[K.face]({ aw, h, top, cy, chinY },g,K); A.browY=face.browY;
     let body, belly=[], leg, shin, foot;
-    if(K.bones){ body=EXTRAS.bonesReal(A,back); const bl=EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
+    if(K.bones){ const F=K.boneStyle==='fantasy'; body=F?EXTRAS.bonesFantasy(A,back):EXTRAS.bonesReal(A,back); const bl=F?EXTRAS.boneLegFantasy(A):EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
     else {
       const skinP=K.clothed?above(bPts,hipY-1.4*u):bPts;       // in a shirt the skin ends under its hem (the trousers show below it)
       body=[[ptsPath(skinP),'skin',sw],[formShade(skinP,0),'shade',0],[`M${f2(-nw*0.9)} ${f2(chinY+1.6)} Q0 ${f2(chinY+2.8)} ${f2(nw*0.9)} ${f2(chinY+1.6)}`,null,1.4,'shadeFace']];       // the shadow under the chin
@@ -482,7 +550,7 @@ const SvgRig=(()=>{
     const pd=GEAR.pauldron(A), S=Object.assign({ shadow:[[ell(0,f2(0.6*u),f2(wHip+3*u),f2(1.6*u)),'shadowC',0]], leg, shin, foot, knee:[f2(xk),f2(kneeY)], ankle:[f2(xa),f2(ankY)], footClaws:false, hip:[f2(xh),hipY], body, belly,
       neck:[0,f2(topY-1*u)], skull, scar:K.scar?[[`M${f2(-aw*0.7)} ${f2(top+0.3*h)} L${f2(-aw*0.25)} ${f2(top+0.62*h)}`,null,0.7,'scar']]:null,
       helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]]):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
-      fist:K.bones&&!(G&&G.pauldrons)?boneFist(+handAt[0],+handAt[1],hr):fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true, armUp:bodyH*0.3, armIn:1.2*u, shoulderAt:[wSh*0.86,topY+1.9*u], armLen:[10.6*u,9.8*u], armW:[1.75*u,1.2*u,0.85*u],
+      fist:K.bones&&!(G&&G.pauldrons)?(K.boneStyle==='fantasy'?boneFistF:boneFist)(+handAt[0],+handAt[1],hr):fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true, armUp:bodyH*0.3, armIn:1.2*u, shoulderAt:[wSh*0.86,topY+1.9*u], armLen:[10.6*u,9.8*u], armW:[1.75*u,1.2*u,0.85*u],
       headBox:[-aw*0.6,top+h*0.2,aw*0.6,top+h*0.7], bodyBox:[-wChest*0.6,topY+5*u,wChest*0.6,hipY-3*u], H:Math.round(-hipY*(legK-1)-top+K.pad) },face,armed?GEAR.belt(A,K):{ belt:[], buckle:[] });
     if(K.ears==='human'&&!K.bones){ const ax=-aw*0.97, ay=top+0.52*h; Object.assign(S,{ ear:[[`M${f2(ax+0.4)} ${f2(ay-0.13*h)} Q${f2(ax-aw*0.2)} ${f2(ay-0.12*h)} ${f2(ax-aw*0.16)} ${f2(ay+0.03*h)} Q${f2(ax-aw*0.1)} ${f2(ay+0.13*h)} ${f2(ax+0.4)} ${f2(ay+0.12*h)}z`,'skin',sw*0.7],[`M${f2(ax-aw*0.02)} ${f2(ay-0.07*h)} Q${f2(ax-aw*0.1)} ${f2(ay)} ${f2(ax-aw*0.02)} ${f2(ay+0.06*h)}`,null,0.5,'faceLine']], earTip:null, earAt:[f2(ax),f2(ay)] }); }
     if(K.hair&&!K.bones) Object.assign(S,EXTRAS.hairReal(A,back));
@@ -585,6 +653,9 @@ const SvgRig=(()=>{
     base:Object.assign({},HUMAN_BASE,{ shade:'rgba(20,12,5,0.2)', socket:'#14100c', socketDeep:'#050403', faceLine:'rgba(40,30,20,0.6)', line:'#2a2016', boneShade:'rgba(70,50,25,0.28)', boneDark:'rgba(60,45,25,0.55)', boneDeep:'#9a8e72', cartilage:'#c4bfa8', tooth:'#e6dcc2' }), hairs:null,
     skins:[{ skin:'#e2d8c0', light:'#efe6d2', dark:'#a89e84', leg:'#e2d8c0', brow:'#3a3428' },{ skin:'#d2c8ac', light:'#e2d8c0', dark:'#968c72', leg:'#d2c8ac', brow:'#3a3428' },{ skin:'#bcb294', light:'#ccc2a6', dark:'#827a62', leg:'#bcb294', brow:'#3a3428' }],
     eye:['#fff4e0','#7af0ff'], glow:[[255,220,170],[120,230,255]], glowA:0.5 });
+  HUMANOIDS.skeleton2=Object.assign({},HUMANOIDS.skeleton,{ face:'skullFantasy', boneStyle:'fantasy', head:{ w:[4.1,0.4], h:[11.2,0.8] },
+    base:Object.assign({},HUMANOIDS.skeleton.base,{ socket:'#040303', line:'#1c140c', boneShade:'rgba(60,40,15,0.38)', boneDark:'rgba(40,28,12,0.6)', tooth:'#e2d4ae' }),
+    skins:[{ skin:'#e0d2ac', light:'#ece2c4', dark:'#a0906a', leg:'#e0d2ac', brow:'#3a3428' },{ skin:'#d4c49a', light:'#e2d6b4', dark:'#968660', leg:'#d4c49a', brow:'#3a3428' },{ skin:'#c2b088', light:'#d2c29c', dark:'#857552', leg:'#c2b088', brow:'#3a3428' }] });       // the second skeleton: the same body plan, its own bones (a bigger skull)
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
   function humanoidShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
@@ -759,7 +830,7 @@ const SvgRig=(()=>{
     // the arms (user, November 2026): an arm only links the hand to the shoulder, without a will of its own; the hand leads
     let arm=null;
     if(G.arms&&hands&&S.shoulderAt){ const sh=S.shoulderAt, d0=Math.hypot(ha[0]-sh[0],ha[1]-sh[1]), L=S.armLen||[0.56*d0*1.1,0.44*d0*1.1];
-      arm={ sh, ha, L, w:S.armW, bone:!!K.bones, fill:G.pauldrons?'iron':(K.clothed&&!K.real?'tunic':'skin') }; }
+      arm={ sh, ha, L, w:S.armW, bone:K.bones?(K.boneStyle==='fantasy'?'fantasy':true):false, fill:G.pauldrons?'iron':(K.clothed&&!K.real?'tunic':'skin') }; }
     if(S.earScale) ['earL','earR'].forEach(k=>{ base[k].sx=(base[k].sx||1)*S.earScale; base[k].sy=(base[k].sy||1)*S.earScale; });       // the imp's ears as big as its head
     return { tree, base, pal, spec, genes, hands, noBlink:!!S.noBlink, real, arm, earHeavy:S.earGrow==='kink'?sag:earK, H:S.H, px:S.px, has:{ helmet:true, chest:true, pauldrons:true, load:!!K.sack, ears:!!K.ears&&K.ears!=='human', horns:false, level:K.ears==='imp' }, lookK:S.lookK, browBase:(t.wild-0.5)*14 };
   }
@@ -867,7 +938,8 @@ const SvgRig=(()=>{
       const E=Math.abs(e1[0]-cx)>Math.abs(e2[0]-cx)?e1:e2;       // outward, away from the body
       const Wp=[E[0]+(W[0]-E[0])*L2/(Math.hypot(W[0]-E[0],W[1]-E[1])||1),E[1]+(W[1]-E[1])*L2/(Math.hypot(W[0]-E[0],W[1]-E[1])||1)];
       const w=A.w.map(v=>v*k), shapes=[];
-      if(A.bone){ shapes.push(...boneShape(boneAlong(S0,E,w[0]*0.55,w[1]*0.32,w[1]*0.6),1));
+      if(A.bone==='fantasy'){ shapes.push(...fBone(boneAlong(S0,E,w[0]*0.6,w[1]*0.42,w[1]*0.62),1),fKnob(E[0],E[1],w[1]*0.62,w[1]*0.55),...fBone(boneAlong(E,Wp,w[1]*0.5,w[1]*0.36,w[2]*0.55),1)); }       // one heavy bone a segment, a knob at the elbow
+      else if(A.bone){ shapes.push(...boneShape(boneAlong(S0,E,w[0]*0.55,w[1]*0.32,w[1]*0.6),1));
         const n=[-(Wp[1]-E[1]),Wp[0]-E[0]], nl=Math.hypot(n[0],n[1])||1, o=w[2]*0.45, off=(p,sg)=>[p[0]+n[0]/nl*o*sg,p[1]+n[1]/nl*o*sg];
         shapes.push(...boneShape(boneAlong(off(E,1),off(Wp,1),w[1]*0.32,w[1]*0.2,w[2]*0.35),1),...boneShape(boneAlong(off(E,-1),off(Wp,-1),w[1]*0.36,w[1]*0.22,w[2]*0.3),1)); }
       else { const up=boneAlong(S0,E,w[0],w[0]*0.88,w[1]), fo=boneAlong(E,Wp,w[1],w[1]*0.95,w[2]), joint=ellPts(E[0],E[1],w[1],w[1],12), cap=ellPts(S0[0],S0[1],w[0],w[0],14);
@@ -940,7 +1012,7 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ human:'Mensch', ork:'Ork', imp:'Imp', goblin:'Goblin', troll:'Troll', darkelf:'Dunkelelf', vampire:'Vampir', warlock:'Warlock', skeleton:'Skelett' }, STYLE_NAME={ veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
+  const KIND_NAME={ human:'Mensch', ork:'Ork', imp:'Imp', goblin:'Goblin', troll:'Troll', darkelf:'Dunkelelf', vampire:'Vampir', warlock:'Warlock', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett' }, STYLE_NAME={ veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
   // the genes (every humanoid: every look between the presets)
   const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Hautton'],['augenFarbe','Augenfarbe'],['haar','Haarfarbe'],['bart','Bart']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Schultern'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
