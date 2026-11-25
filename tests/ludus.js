@@ -146,7 +146,10 @@ const { open, finish }=require('./lib');
         if(!ludusMember('m'+n.id)) bad('poaching failed'); else if((t.gold||0)!==g0+fee) bad('the fee did not reach the team'); out.poach=fee; ludusPicked=null; }
       for(let k=0;k<3;k++) ludus.world.push(ludusNpcMake(ludusRng('tr'+k),id,1,0)); ludusTeamsTidy();
       const fresh=ludus.world.slice(-3); const buyer=ludusTeamOf(fresh[0]); fresh[1].team=fresh[2].team; ludusTeamsTidy(); const seller=ludusTeamOf(fresh[1]);
-      if(buyer&&seller&&buyer!==seller){ fresh.forEach(x=>{ x.rel={}; x.bond=0; }); fresh[1].level=fresh[0].level+3; Object.values(ludus.teams).forEach(x=>{ if(x!==buyer) x.gold=Math.min(x.gold||0,1); }); buyer.gold=9999;
+      if(buyer&&seller&&buyer!==seller){ fresh.forEach(x=>{ x.rel={}; x.bond=0; });
+        // worth depends on kind and gear as well as level (a warlock L4 is worth less than an elf L1): the same kind and gear, three levels more, is surely worth more
+        fresh[1].kind=fresh[0].kind; fresh[1].inventory=JSON.parse(JSON.stringify(fresh[0].inventory||[])); fresh[1].level=fresh[0].level+3; if(!(ludusGladWorth(fresh[1])>ludusGladWorth(fresh[0]))) bad('transfer setup: the stronger one is not worth more');
+        Object.values(ludus.teams).forEach(x=>{ if(x!==buyer) x.gold=Math.min(x.gold||0,1); }); buyer.gold=9999;
         const k0=ludusTeamMembers(buyer.id).length; ludusTeamsTransfer(); out.transferAi=buyer.name+' '+k0+'->'+ludusTeamMembers(buyer.id).length; if(ludusTeamMembers(buyer.id).length!==k0+1) bad('a rich team bought nobody'); } }
     // happiness: fighting spirit in the engine, the evening's drift, the bath, leaving, a stranger who asks to join
     { if(Math.abs(moodMul({ happiness:0 })-0.8)>1e-9||moodMul({ happiness:100 })!==1||moodMul({})!==1) bad('moodMul');
