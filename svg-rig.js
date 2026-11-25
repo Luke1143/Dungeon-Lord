@@ -375,16 +375,55 @@ const SvgRig=(()=>{
         [`M${f2(-aw*0.4)} ${f2(top+0.3*h)} Q0 ${f2(top+0.27*h)} ${f2(aw*0.4)} ${f2(top+0.3*h)} M${f2(-aw*0.3)} ${f2(top+0.35*h)} Q0 ${f2(top+0.33*h)} ${f2(aw*0.3)} ${f2(top+0.35*h)}`,null,0.35,F]],       // lines on the brow
       mouth:[], mouthAt:[0,f2(my)], jaw:[[`M${f2(-aw*0.22)} ${f2(my)} Q0 ${f2(my+0.4)} ${f2(aw*0.22)} ${f2(my)}`,null,0.75,'lip'],[`M${f2(-aw*0.13)} ${f2(my+0.035*h)} Q0 ${f2(my+0.06*h)} ${f2(aw*0.13)} ${f2(my+0.035*h)}`,null,0.5,F]], jawAt:[0,f2(my)] };
   };
-  // the skull of a human: deep square sockets with a glowing point, the nose a hole, cheekbones, a row of teeth in the jaw
-  FACES.skullReal=function({ aw, h, top, chinY },g){
-    const ey=top+0.5*h, ex=-aw*0.42, r=aw*(0.24+0.06*g.augen), ny=top+0.68*h, my=top+0.82*h, tw=aw*0.42;
-    const sock=`M${f2(ex-r)} ${f2(ey-r*0.7)} Q${f2(ex)} ${f2(ey-r*1.2)} ${f2(ex+r)} ${f2(ey-r*0.8)} Q${f2(ex+r*1.15)} ${f2(ey+r*0.6)} ${f2(ex+r*0.2)} ${f2(ey+r)} Q${f2(ex-r*1.1)} ${f2(ey+r*0.9)} ${f2(ex-r)} ${f2(ey-r*0.7)}z`;
-    return { eye:[[sock,'socket',0]], pupil:[[ell(f2(ex+0.1),f2(ey+0.1),f2(r*0.5),f2(r*0.5)),'glow',0],[ell(f2(ex+0.1),f2(ey+0.1),f2(r*0.2),f2(r*0.2)),'eye',0]], eyeAt:[f2(ex),f2(ey)], pupilIn:0.1, lookK:0.15,
-      lid:[], brow:[], browAt:[f2(ex),f2(ey-r)], browY:ey-r*1.3, noBlink:true,
-      nose:[[`M0 ${f2(ny-0.1*h)} L${f2(-aw*0.13)} ${f2(ny+0.02*h)} Q0 ${f2(ny+0.05*h)} ${f2(aw*0.13)} ${f2(ny+0.02*h)}z`,'socket',0],[`M${f2(-aw*0.95)} ${f2(ny-0.02*h)} Q${f2(-aw*0.6)} ${f2(ny+0.04*h)} ${f2(-aw*0.42)} ${f2(my-0.06*h)} M${f2(aw*0.95)} ${f2(ny-0.02*h)} Q${f2(aw*0.6)} ${f2(ny+0.04*h)} ${f2(aw*0.42)} ${f2(my-0.06*h)}`,null,0.6,'faceLine']],
-      mouth:[], mouthAt:[0,f2(my)], jaw:[[`M${f2(-tw)} ${f2(my-0.06*h)} L${f2(tw)} ${f2(my-0.06*h)} L${f2(tw*0.9)} ${f2(my+0.05*h)} L${f2(-tw*0.9)} ${f2(my+0.05*h)}z`,'skin',0.6,'line'],
-        [[-0.66,-0.33,0,0.33,0.66].map(k=>`M${f2(k*tw)} ${f2(my-0.06*h)} L${f2(k*tw)} ${f2(my+0.05*h)}`).join(' ')+` M${f2(-tw)} ${f2(my)} L${f2(tw)} ${f2(my)}`,null,0.4,'line']], jawAt:[0,f2(my-0.06*h)] };
+  // ---- the bones (user, November 2026: the parts must look right; anatomical references: a skull from the front, the pelvis and the thigh bones,
+  // the ribcage with the spine, the bones of the lower leg and the foot). Every bone is a filled shape with a thin outline, a shaded side where it turns away. ----
+  const BL=0.45;       // the outline of a bone
+  // a rib: a flat band along a smooth curve, its outline and its fill
+  const bandRib=(pts,w)=>{ const d=ptsPath(spline(pts,4)).replace(/z$/,''); return [[d,null,w*2+BL*2,'line'],[d,null,w*2,'skin']]; };
+  // a bone along a line from p to q: its half width at the start, the middle and the end (thicker ends: the joints)
+  function boneAlong(p,q,w0,wm,w1){
+    const dx=q[0]-p[0], dy=q[1]-p[1], L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L, at=(t,w,s)=>[p[0]+dx*t+nx*w*s,p[1]+dy*t+ny*w*s];
+    const ws=[[0,w0],[0.12,(w0+wm)/2],[0.5,wm],[0.88,(wm+w1)/2],[1,w1]], A=ws.map(([t,w])=>at(t,w,1)), B=ws.map(([t,w])=>at(t,w,-1)).reverse();
+    return A.concat(B);
+  }
+  const boneShape=(pts,n)=>[[sp(pts,n||2),'skin',BL,'line'],[formShade(spline(pts,n||2,true),pts.reduce((a,q)=>a+q[0],0)/pts.length),'boneShade',0]];
+  // the skull from the front: the vault, the temples narrowing, the cheekbones flaring out under the eyes, the upper jaw with its teeth (the lower jaw is a part of its own)
+  function cranium(A,back){
+    const { aw, h, top }=A, X=x=>x*aw, Y=y=>top+y*h;
+    const pts=symForm([[0,0],[0.52,0.025],[0.82,0.11],[0.97,0.25],[1,0.37],[0.95,0.48],[0.9,0.54],[0.99,0.6],[0.93,0.665],[0.74,0.69],[0.6,0.74],[0.5,0.8],[0.25,0.815],[0,0.815]].map(([x,y])=>[X(x),Y(y)]),4);
+    const out=[[ptsPath(pts),'skin',BL*1.2,'line'],[formShade(pts,0),'boneShade',0]];
+    if(back){ out.push([`M${f2(X(-0.75))} ${f2(Y(0.3))} Q0 ${f2(Y(0.18))} ${f2(X(0.75))} ${f2(Y(0.3))} M0 ${f2(Y(0.02))} L${f2(X(0.03))} ${f2(Y(0.22))}`,null,0.3,'boneDark'],[ell(0,f2(Y(0.74)),f2(X(0.22)),f2(X(0.16))),'socket',BL,'line']); return { pts, shapes:out }; }       // from behind: the sutures, the hole for the spine
+    // the temples (hollows over the cheekbones), the shadow under the cheekbones
+    [-1,1].forEach(s=>{ out.push([sp([[s*0.9,0.4],[s*0.97,0.47],[s*0.9,0.56],[s*0.8,0.5]].map(([x,y])=>[X(x),Y(y)]),2),'boneShade',0],[sp([[s*0.93,0.645],[s*0.74,0.7],[s*0.62,0.755],[s*0.66,0.7],[s*0.8,0.665]].map(([x,y])=>[X(x),Y(y)]),2),'boneShade',0]); });
+    // the sutures of the vault, faint
+    out.push([`M${f2(X(-0.6))} ${f2(Y(0.06))} Q${f2(X(-0.2))} ${f2(Y(0.14))} ${f2(X(0.05))} ${f2(Y(0.1))} Q${f2(X(0.35))} ${f2(Y(0.06))} ${f2(X(0.62))} ${f2(Y(0.08))}`,null,0.3,'boneDark']);
+    // the upper teeth: eight in a row under the gum's line, the outer ones smaller
+    const teeth=[]; for(let i=0;i<8;i++){ const x0=-0.42+i*0.105, x1=x0+0.095, k=1-Math.abs(i-3.5)/6, y0=0.745+0.015*(1-k), y1=0.81-0.012*(1-k); teeth.push(`M${f2(X(x0))} ${f2(Y(y0))} L${f2(X(x1))} ${f2(Y(y0))} L${f2(X(x1-0.005))} ${f2(Y(y1))} Q${f2(X((x0+x1)/2))} ${f2(Y(y1+0.012))} ${f2(X(x0+0.005))} ${f2(Y(y1))}z`); }
+    out.push([teeth.join(' '),'tooth',0.12,'line']);
+    return { pts, shapes:out };
+  }
+  // the face of the skull: square-round orbits slanting outward, the pear of the nose with its septum, the brow's ridge; the lower jaw with its teeth (drops when it roars)
+  FACES.skullReal=function({ aw, h, top },g){
+    const X=x=>x*aw, Y=y=>top+y*h, ex=-0.38, ey=0.475, ro=0.27+0.03*g.augen;
+    const orbit=spline([[ex-ro,ey-0.06],[ex-ro*0.3,ey-0.105],[ex+ro*0.85,ey-0.09],[ex+ro,ey+0.02],[ex+ro*0.55,ey+0.1],[ex-ro*0.5,ey+0.095],[ex-ro*1.08,ey+0.02]].map(([x,y])=>[X(x),Y(y)]),3,true);
+    const nose=spline([[0,0.555],[0.075,0.6],[0.13,0.665],[0.11,0.7],[0.03,0.69],[0,0.7],[-0.03,0.69],[-0.11,0.7],[-0.13,0.665],[-0.075,0.6]].map(([x,y])=>[X(x),Y(y)]),3,true);
+    const R=s=>[[0,0.83],[0.42,0.825],[0.56,0.805],[0.64,0.76],[0.7,0.72],[0.77,0.735],[0.79,0.84],[0.71,0.93],[0.45,0.985],[0.18,1.01],[0,1.0]].map(([x,y])=>[X(s*x),Y(y)]);
+    const mand=R(1).concat(R(-1).reverse());
+    const teeth=[]; for(let i=0;i<8;i++){ const x0=-0.4+i*0.1, x1=x0+0.09, k=1-Math.abs(i-3.5)/6, y0=0.815, y1=0.86-0.01*(1-k); teeth.push(`M${f2(X(x0))} ${f2(Y(y1))} L${f2(X(x1))} ${f2(Y(y1))} L${f2(X(x1-0.005))} ${f2(Y(y0+0.005))} Q${f2(X((x0+x1)/2))} ${f2(Y(y0-0.008))} ${f2(X(x0+0.005))} ${f2(Y(y0+0.005))}z`); }
+    return { eye:[[ptsPath(orbit),'socket',BL,'line'],[sp([[ex-ro*0.9,ey-0.04],[ex+ro*0.8,ey-0.07],[ex+ro*0.6,ey-0.01],[ex-ro*0.6,ey+0.02]].map(([x,y])=>[X(x),Y(y)]),2),'socketDeep',0]],
+      pupil:[[ell(f2(X(ex+0.02)),f2(Y(ey+0.01)),f2(X(0.1)),f2(X(0.1))),'glow',0],[ell(f2(X(ex+0.02)),f2(Y(ey+0.01)),f2(X(0.035)),f2(X(0.035))),'eye',0]], eyeAt:[f2(X(ex)),f2(Y(ey))], pupilIn:0.05, lookK:0.12,
+      lid:[], brow:[[`M${f2(X(ex-ro*1.1))} ${f2(Y(ey-0.105))} Q${f2(X(ex))} ${f2(Y(ey-0.145))} ${f2(X(ex+ro*1.05))} ${f2(Y(ey-0.11))}`,null,0.5,'boneDark']], browAt:[f2(X(ex)),f2(Y(ey-0.12))], browY:Y(ey-0.13), noBlink:true,
+      nose:[[ptsPath(nose),'socket',BL,'line'],[`M0 ${f2(Y(0.625))} L0 ${f2(Y(0.695))}`,null,0.35,'skin'],[`M${f2(X(-0.08))} ${f2(Y(0.53))} Q0 ${f2(Y(0.56))} ${f2(X(0.08))} ${f2(Y(0.53))}`,null,0.3,'boneDark']],
+      mouth:[], mouthAt:[0,f2(Y(0.82))], jaw:[[ptsPath(mand),'skin',BL*1.2,'line'],[formShade(mand,0),'boneShade',0],[teeth.join(' '),'tooth',0.12,'line'],
+        [ell(f2(X(-0.38)),f2(Y(0.93)),0.22,0.18)+' '+ell(f2(X(0.38)),f2(Y(0.93)),0.22,0.18),'boneDark',0]], jawAt:[0,f2(Y(0.8))] };
   };
+  // a hand of bones, curled to a fist: the back of the hand, four fingers of bones folded in front, the thumb across
+  function boneFist(cx,cy,r){
+    const out=[[ell(f2(cx-0.15*r),f2(cy),f2(0.72*r),f2(0.9*r)),'hand',BL,'line']];
+    for(let j=0;j<4;j++){ const y=cy-0.7*r+j*0.46*r; out.push([sp([[cx+0.05*r,y-0.17*r],[cx+0.85*r,y-0.15*r],[cx+0.92*r,y+0.02*r],[cx+0.85*r,y+0.18*r],[cx+0.05*r,y+0.18*r]],2),'hand',BL,'line'],[`M${f2(cx+0.48*r)} ${f2(y-0.16*r)} L${f2(cx+0.48*r)} ${f2(y+0.17*r)}`,null,0.3,'line']); }
+    out.push([sp([[cx-0.65*r,cy-0.62*r],[cx+0.2*r,cy-0.98*r],[cx+0.42*r,cy-0.86*r],[cx-0.5*r,cy-0.42*r]],2),'hand',BL,'line']);
+    return out;
+  }
   // one realistic humanoid's parts (the same fields as humanoidShapes gives, plus a shin with its knee)
   function realShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, st=t.stark===undefined?0.5:t.stark, plump=g.koerper===undefined?0.4:g.koerper, gx=k=>g[k]===undefined?0.5:g[k];
@@ -396,7 +435,7 @@ const SvgRig=(()=>{
     const HD=K.head, h=lin(HD.h,gx('kopf')), aw=lin(HD.w,gx('kopf'))*(0.94+0.12*gx('kopfForm')), chinY=topY-(3.3-1.2*gx('tief'))*u, top=chinY-h, cy=top+h*0.45;
     const jaw=0.74+0.22*gx('kopfForm'), chinW=aw*(0.5-0.2*gx('kinn'));
     const hPts=symForm([[0,top],[aw*0.6,top+0.05*h],[aw*0.93,top+0.23*h],[aw,top+0.42*h],[aw*0.96,top+0.57*h],[aw*0.9,top+0.69*h],[aw*jaw,top+0.84*h],[chinW,top+0.97*h],[0,top+h]],5);
-    const skull=[[ptsPath(hPts),'skin',sw*0.85],[formShade(hPts,0),'shade',0]];
+    const skull=K.bones?cranium({ aw, h, top },back).shapes:[[ptsPath(hPts),'skin',sw*0.85],[formShade(hPts,0),'shade',0]];       // the skeleton: the skull itself (the head's outline still fits the gear)
     if(!K.bones&&!back) skull.push([`M${f2(aw*0.62)} ${f2(top+0.6*h)} Q${f2(aw*0.8)} ${f2(top+0.75*h)} ${f2(aw*0.55)} ${f2(top+0.88*h)}`,null,0.5,'faceLine']);       // under the cheekbone
     // the torso: the neck's base, the trapezius sloping to the round shoulder (the deltoid, where the arm would hang), under it the chest's side, a box down to the hips
     const nw=aw*0.84, slope=(1-sq)*0.8*u;
@@ -407,7 +446,7 @@ const SvgRig=(()=>{
     const A={ topY, hipY, wSh, wHip, wWaist, bodyH, bPts, hPts, top, h, aw, cy, chinY, u, sw, legs:L, shieldK:K.shieldK, pauldronK:K.pauldronK, emblem:K.emblem, clothW:K.clothW, shoulderY:topY+1.8*u, beltY:hipY-5.2*u };
     const face=FACES[K.face]({ aw, h, top, cy, chinY },g,K); A.browY=face.browY;
     let body, belly=[], leg, shin, foot;
-    if(K.bones){ body=EXTRAS.bonesReal(A); const bl=EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
+    if(K.bones){ body=EXTRAS.bonesReal(A,back); const bl=EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
     else {
       const skinP=K.clothed?above(bPts,hipY-1.4*u):bPts;       // in a shirt the skin ends under its hem (the trousers show below it)
       body=[[ptsPath(skinP),'skin',sw],[formShade(skinP,0),'shade',0],[`M${f2(-nw*0.9)} ${f2(chinY+1.6)} Q0 ${f2(chinY+2.8)} ${f2(nw*0.9)} ${f2(chinY+1.6)}`,null,1.4,'shadeFace']];       // the shadow under the chin
@@ -443,7 +482,7 @@ const SvgRig=(()=>{
     const pd=GEAR.pauldron(A), S=Object.assign({ shadow:[[ell(0,f2(0.6*u),f2(wHip+3*u),f2(1.6*u)),'shadowC',0]], leg, shin, foot, knee:[f2(xk),f2(kneeY)], ankle:[f2(xa),f2(ankY)], footClaws:false, hip:[f2(xh),hipY], body, belly,
       neck:[0,f2(topY-1*u)], skull, scar:K.scar?[[`M${f2(-aw*0.7)} ${f2(top+0.3*h)} L${f2(-aw*0.25)} ${f2(top+0.62*h)}`,null,0.7,'scar']]:null,
       helmet:GEAR.helmet(A,K,back,(G&&G.helmStyle)||K.helm), shield:G&&G.shield?GEAR.shield(A,G.shield,[-handAt[0],handAt[1]]):null, chest:GEAR.chest(A), pauldron:pd.shapes, pauldronAt:pd.at, cloth:GEAR.cloth(A),
-      fist:fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true, armUp:bodyH*0.3, armIn:1.2*u,
+      fist:K.bones&&!(G&&G.pauldrons)?boneFist(+handAt[0],+handAt[1],hr):fist(handAt[0],handAt[1],f2(hr),f2(hr*0.92),sw*0.9), handAt, handGap:K.handGap, horn:null, look:{ ears:!!K.ears, horns:false }, headY:0, legK, px:K.px, real:true, armUp:bodyH*0.3, armIn:1.2*u,
       headBox:[-aw*0.6,top+h*0.2,aw*0.6,top+h*0.7], bodyBox:[-wChest*0.6,topY+5*u,wChest*0.6,hipY-3*u], H:Math.round(-hipY*(legK-1)-top+K.pad) },face,armed?GEAR.belt(A,K):{ belt:[], buckle:[] });
     if(K.ears==='human'&&!K.bones){ const ax=-aw*0.97, ay=top+0.52*h; Object.assign(S,{ ear:[[`M${f2(ax+0.4)} ${f2(ay-0.13*h)} Q${f2(ax-aw*0.2)} ${f2(ay-0.12*h)} ${f2(ax-aw*0.16)} ${f2(ay+0.03*h)} Q${f2(ax-aw*0.1)} ${f2(ay+0.13*h)} ${f2(ax+0.4)} ${f2(ay+0.12*h)}z`,'skin',sw*0.7],[`M${f2(ax-aw*0.02)} ${f2(ay-0.07*h)} Q${f2(ax-aw*0.1)} ${f2(ay)} ${f2(ax-aw*0.02)} ${f2(ay+0.06*h)}`,null,0.5,'faceLine']], earTip:null, earAt:[f2(ax),f2(ay)] }); }
     if(K.hair&&!K.bones) Object.assign(S,EXTRAS.hairReal(A,back));
@@ -469,23 +508,68 @@ const SvgRig=(()=>{
       const hole=back?null:ellPts(0,top+0.62*h,aw*0.78,h*0.4,24), d=hole?withHole(outer,hole):ptsPath(outer), rings=[];
       for(let y=top+0.1*h;y<topY+3*u;y+=0.9) for(let x=-wSh*0.6;x<=wSh*0.6;x+=1.1){ const xx=x+((Math.round((y-top)/0.9)%2)?0.55:0); if(inside(outer,xx,y)&&!(hole&&inside(hole,xx,y+0.3))&&!(hole&&inside(hole,xx,y-0.4))) rings.push(`M${f2(xx-0.45)} ${f2(y)} q0.45 0.5 0.9 0`); }
       return [[d,'mail',sw*0.8],[rings.join(' '),null,0.3,'ironDark'],[formShade(outer,0),'shade',0]]; },
-    // the bones of a human body: neck, collarbones, breastbone, the ribs, the spine, the pelvis (the outline stays, unseen: the gear fits as on the human)
-    bonesReal(A){ const { topY, hipY, wSh, wHip, wWaist, bodyH, bPts, chinY, u, sw }=A, bone=(d,w)=>[[d,null,w+1,'line'],[d,null,w,'skin']], out=[[ptsPath(bPts),null,0]];
-      for(let y=chinY+1;y<topY+0.5*u;y+=1.3*u) out.push([`M-0.9 ${f2(y)} L0.9 ${f2(y)} L0.8 ${f2(y+0.9*u)} L-0.8 ${f2(y+0.9*u)}z`,'skin',0.5,'line']);       // the neck
-      out.push(...bone(`M0 ${f2(topY+0.4*u)} L0 ${f2(hipY-1.5*u)}`,1.2));
-      for(let i=0;i<7;i++){ const y=topY+1.6*u+i*bodyH*0.055, w=wSh*(0.82-0.05*i)*(0.9+0.1*(i<3?1:0)); out.push(...bone(`M-0.6 ${f2(y)} C${f2(-w*0.6)} ${f2(y-0.8*u)} ${f2(-w*1.05)} ${f2(y+0.8*u)} ${f2(-w*0.8)} ${f2(y+2.4*u)} M0.6 ${f2(y)} C${f2(w*0.6)} ${f2(y-0.8*u)} ${f2(w*1.05)} ${f2(y+0.8*u)} ${f2(w*0.8)} ${f2(y+2.4*u)}`,0.8)); }
-      out.push([`M-0.9 ${f2(topY+0.6*u)} L0.9 ${f2(topY+0.6*u)} L0.7 ${f2(topY+bodyH*0.36)} L0 ${f2(topY+bodyH*0.4)} L-0.7 ${f2(topY+bodyH*0.36)}z`,'skin',0.6,'line']);       // the breastbone
-      out.push(...bone(`M-0.8 ${f2(topY+0.3*u)} Q${f2(-wSh*0.5)} ${f2(topY-0.6*u)} ${f2(-wSh*0.95)} ${f2(topY+0.6*u)} M0.8 ${f2(topY+0.3*u)} Q${f2(wSh*0.5)} ${f2(topY-0.6*u)} ${f2(wSh*0.95)} ${f2(topY+0.6*u)}`,1.1));       // the collarbones
-      out.push([ell(f2(-wSh*0.95),f2(topY+1.4*u),f2(1.4*u),f2(1.6*u)),'skin',0.6,'line'],[ell(f2(wSh*0.95),f2(topY+1.4*u),f2(1.4*u),f2(1.6*u)),'skin',0.6,'line']);       // the shoulder joints
-      for(let y=topY+bodyH*0.5;y<hipY-2*u;y+=1.5*u) out.push([`M-1.2 ${f2(y)} L1.2 ${f2(y)} L1 ${f2(y+1.1*u)} L-1 ${f2(y+1.1*u)}z`,'skin',0.6,'line']);       // the lower spine
-      const il=`M-0.6 ${f2(hipY-2.2*u)} Q${f2(-wHip*0.7)} ${f2(hipY-5.2*u)} ${f2(-wHip*0.82)} ${f2(hipY-2.4*u)} Q${f2(-wHip*0.62)} ${f2(hipY+0.2*u)} ${f2(-wHip*0.2)} ${f2(hipY+0.9*u)} Q-0.6 ${f2(hipY-0.2*u)} -0.6 ${f2(hipY-2.2*u)}z`;
-      out.push([il,'skin',0.7,'line'],[mirror(il),'skin',0.7,'line'],[ell(f2(-wHip*0.42),f2(hipY-1.2*u),f2(wHip*0.13),f2(0.7*u)),'socket',0],[ell(f2(wHip*0.42),f2(hipY-1.2*u),f2(wHip*0.13),f2(0.7*u)),'socket',0]);       // the pelvis
-      return out; },
-    // a leg of bones: the thigh bone with its ends, the kneecap, the two shin bones, the bones of the foot
-    boneLegReal(A){ const { hipY, u, legs:{ xh, xk, xa, lw, kneeY, ankY } }=A, xc=xk, b=lw*0.17, bone=(d,w)=>[[d,null,w+1,'line'],[d,null,w,'skin']];
-      return { thigh:[...bone(`M${f2(xh+lw*0.1)} ${f2(hipY+0.4*u)} L${f2(xc)} ${f2(kneeY-0.6*u)}`,b),[ell(f2(xh+lw*0.15),f2(hipY+0.2*u),f2(b*0.9),f2(b*0.8)),'skin',0.6,'line'],[ell(f2(xc),f2(kneeY-0.7*u),f2(b*1.1),f2(b*0.6)),'skin',0.6,'line']],
-        shin:[...bone(`M${f2(xc-lw*0.06)} ${f2(kneeY+0.6*u)} L${f2(xa-lw*0.04)} ${f2(ankY)}`,b*0.85),...bone(`M${f2(xc+lw*0.15)} ${f2(kneeY+0.8*u)} L${f2(xa+lw*0.1)} ${f2(ankY)}`,b*0.45),[ell(f2(xc),f2(kneeY),f2(b*0.8),f2(b*0.75)),'skin',0.6,'line']],
-        foot:[...bone([0,1,2,3].map(i=>`M${f2(xa+lw*0.05)} ${f2(ankY+0.3)} L${f2(xa-lw*(0.1+0.17*i))} 0`).join(' '),0.5)] }; }
+    // the skeleton of the trunk: the neck's vertebrae, the spine behind, the shoulder blades behind the ribs, the collarbones, the breastbone, twelve pairs of ribs
+    // (seven to the breastbone through their cartilage, three joining the cartilage above in the arch, two floating), the lumbar spine, the pelvis
+    bonesReal(A,back){
+      const { topY, hipY, wSh, wHip, bodyH, bPts, chinY, top, h, u }=A, wC=widthAt(bPts,topY+bodyH*0.42)*0.96, out=[[ptsPath(bPts),null,0]];
+      const vert=(y,hw,hh,wing)=>{ const d=`M${f2(-hw)} ${f2(y)} L${f2(hw)} ${f2(y)} L${f2(hw*0.92)} ${f2(y+hh)} L${f2(-hw*0.92)} ${f2(y+hh)}z`;
+        out.push([d,'skin',BL*0.6,'line']); if(wing) out.push([`M${f2(-hw)} ${f2(y+hh*0.35)} L${f2(-hw-wing)} ${f2(y+hh*0.2)} L${f2(-hw-wing)} ${f2(y+hh*0.6)} L${f2(-hw)} ${f2(y+hh*0.7)}z M${f2(hw)} ${f2(y+hh*0.35)} L${f2(hw+wing)} ${f2(y+hh*0.2)} L${f2(hw+wing)} ${f2(y+hh*0.6)} L${f2(hw)} ${f2(y+hh*0.7)}z`,'skin',BL*0.6,'line']); };
+      // the neck: seven vertebrae from under the skull down to the shoulders (the upper ones hidden by the jaw)
+      const n0=top+h*0.82, n1=topY+0.2*u, nh=(n1-n0)/7; for(let i=0;i<7;i++) vert(n0+i*nh,0.62*u,nh*0.78,0.5*u);
+      // the spine behind the ribs (the thoracic vertebrae show between them)
+      const t0=topY+0.3*u, t1=topY+bodyH*0.62, th=(t1-t0)/12; for(let i=0;i<12;i++) vert(t0+i*th,(0.55+0.03*i)*u,th*0.8,0);
+      // the shoulder blades behind the ribcage (from behind: over it, below)
+      const blades=()=>[-1,1].forEach(s=>{ out.push([sp([[s*wSh*0.92,topY+0.2*u],[s*wSh*0.55,topY+1.2*u],[s*wC*0.62,topY+bodyH*0.38],[s*wC*0.8,topY+bodyH*0.36],[s*wSh*0.9,topY+2.6*u]],2),back?'skin':'boneDeep',BL,'line']); if(back) out.push([`M${f2(s*wC*0.65)} ${f2(topY+bodyH*0.12)} L${f2(s*wSh*0.9)} ${f2(topY+0.4*u)}`,null,0.9*u,'line'],[`M${f2(s*wC*0.65)} ${f2(topY+bodyH*0.12)} L${f2(s*wSh*0.9)} ${f2(topY+0.4*u)}`,null,0.9*u-0.8,'skin']); });
+      if(!back) blades();
+      // the ribs, from the top down: where they meet the breastbone (or the arch), how far down they sag, how far out they reach
+      const sY=i=>topY+0.9*u+i*0.95*u, xiph=topY+bodyH*0.4, Wf=[0.5,0.66,0.78,0.86,0.92,0.96,0.98,0.98,0.95,0.9,0.82,0.72];
+      for(let i=0;i<12;i++){ const W=Wf[i]*wC, y=sY(i), d=(0.6+0.35*(i+1))*u, cw=0.38*u;
+        [-1,1].forEach(s=>{ const X=x=>s*x;
+          // behind: the rib's way back to the spine, seen between the others (darker)
+          out.push([`M${f2(X(W*0.98))} ${f2(y+d*0.25)} Q${f2(X(W*0.72))} ${f2(y-0.9*u)} ${f2(X(1.0*u))} ${f2(y-1.1*u)}`,null,cw*1.6,'boneDeep']);
+          if(i>=10){ out.push(...bandRib([[X(W),y+d*0.2],[X(W*0.97),y+d*0.75],[X(W*0.8),y+d*1.05]],cw)); return; }       // the floating ribs: short, at the side
+          out.push(...bandRib([[X(W*0.5),y+d*0.85],[X(W*0.8),y+d*1.02],[X(W*1.0),y+d*0.65],[X(W*0.98),y+d*0.2]],cw));       // the rib: down and out from its cartilage, round the side and up
+          const c=i<7?`M${f2(X(1.25*u))} ${f2(y)} Q${f2(X(W*0.3))} ${f2(y+d*0.45)} ${f2(X(W*0.5))} ${f2(y+d*0.85)}`:`M${f2(X(W*0.5))} ${f2(y+d*0.85)} Q${f2(X(W*0.36))} ${f2(y+d*0.45)} ${f2(X(1.6*u+(9-i)*0.4*u))} ${f2(xiph+(i-7)*0.3*u)}`;
+          if(!back) out.push([c,null,cw*1.5,'line'],[c,null,cw*1.05,'cartilage']); });       // the cartilage: to the breastbone, or (8 to 10) up to the arch (not seen from behind)
+      }
+      if(back){ blades(); for(let i=0;i<12;i++) vert(t0+i*th,(0.4+0.02*i)*u,th*0.8,0.7*u); }       // from behind: the blades and the row of the spine over the ribs
+      // the breastbone: the handle, the body, the sword-tip
+      if(!back) out.push(...boneShape([[-1.3*u,topY+0.4*u],[1.3*u,topY+0.4*u],[1.0*u,topY+2.6*u],[0.85*u,topY+3*u],[0.95*u,xiph-1.6*u],[0.5*u,xiph-0.4*u],[0,xiph+0.9*u],[-0.5*u,xiph-0.4*u],[-0.95*u,xiph-1.6*u],[-0.85*u,topY+3*u],[-1.0*u,topY+2.6*u]],1));
+      if(!back) out.push([`M${f2(-0.85*u)} ${f2(topY+2.9*u)} L${f2(0.85*u)} ${f2(topY+2.9*u)}`,null,0.3,'line']);
+      // the collarbones: an S from the breastbone's handle to the shoulder's tip, the joint knob at the end
+      [-1,1].forEach(s=>{ const c=`M${f2(s*1.1*u)} ${f2(topY+0.7*u)} C${f2(s*wSh*0.35)} ${f2(topY+1.6*u)} ${f2(s*wSh*0.55)} ${f2(topY-0.7*u)} ${f2(s*wSh*0.88)} ${f2(topY-0.1*u)}`; out.push([c,null,1.3*u,'line'],[c,null,1.3*u-0.9,'skin']);
+        out.push([ell(f2(s*wSh*0.93),f2(topY+0.4*u),f2(0.9*u),f2(0.7*u)),'skin',BL,'line']); });
+      // the lumbar spine: five big vertebrae with their side wings
+      const l0=t1+0.2*u, l1=hipY-6.2*u, lh=(l1-l0)/5; for(let i=0;i<5;i++) vert(l0+i*lh,(1.05+0.05*i)*u,lh*0.82,(0.9+0.1*i)*u);
+      // the pelvis: the two wings of the hip bones, the sacrum between them, the sockets of the hips, the round holes below, the joint of the pubic bones
+      const half=s=>[[0.6*u,hipY-5.4*u],[wHip*0.42,hipY-7.8*u],[wHip*0.82,hipY-7.6*u],[wHip*1.0,hipY-6*u],[wHip*0.93,hipY-4.7*u],[wHip*0.74,hipY-3.8*u],[wHip*0.74,hipY-2.2*u],[wHip*0.6,hipY-0.6*u],[wHip*0.36,hipY-0.3*u],[0.3*u,hipY-0.9*u],[0.3*u,hipY-2.3*u],[wHip*0.3,hipY-2.7*u],[wHip*0.4,hipY-3.5*u],[1.6*u,hipY-4.6*u]].map(([x,y])=>[s*x,y]);
+      [-1,1].forEach(s=>{ const p=half(s); out.push([sp(p,2),'skin',BL,'line'],[sp([[s*1.4*u,hipY-5.6*u],[s*wHip*0.5,hipY-7.2*u],[s*wHip*0.82,hipY-6.8*u],[s*wHip*0.66,hipY-4.8*u],[s*wHip*0.4,hipY-4.2*u]],2),'boneShade',0],
+        [ell(f2(s*wHip*0.4),f2(hipY-1.55*u),f2(wHip*0.14),f2(0.72*u)),'socket',BL,'line']); });
+      out.push(...boneShape([[-2.3*u,hipY-6.4*u],[2.3*u,hipY-6.4*u],[1.5*u,hipY-4*u],[0.6*u,hipY-2.6*u],[0,hipY-2*u],[-0.6*u,hipY-2.6*u],[-1.5*u,hipY-4*u]],2));       // the sacrum
+      out.push([[0,1,2,3].map(i=>{ const y=hipY-(5.7-0.9*i)*u, x=(1.25-0.22*i)*u; return ell(f2(-x),f2(y),0.3,0.25)+' '+ell(f2(x),f2(y),0.3,0.25); }).join(' '),'socket',0]);
+      return out;
+    },
+    // a leg of bones: the thigh bone (its head in the hip's socket, the neck, the big knob outside, the shaft leaning in, the two knobs at the knee),
+    // the kneecap, the shin bone (wide at the top, the inner ankle at the bottom) and the thin calf bone outside it (the outer ankle), the foot
+    boneLegReal(A){
+      const { hipY, wHip, u, legs:{ xk, xa, kneeY, ankY } }=A, s=-1, hx=-wHip*0.62, hy=hipY-3*u;
+      const shaft=boneAlong([hx-0.95*u,hipY-1.9*u],[xk,kneeY-0.9*u],0.78*u,0.58*u,1.25*u);
+      const thigh=[...boneShape(shaft,1),
+        [sp([[hx+0.2*u,hy-0.4*u],[hx-1.25*u,hipY-2.9*u],[hx-1.5*u,hipY-1.7*u],[hx-0.5*u,hipY-1.4*u],[hx+0.3*u,hy+0.5*u]],2),'skin',BL,'line'],       // the neck
+        [ell(f2(hx+0.15*u),f2(hy-0.05*u),f2(0.85*u),f2(0.85*u)),'skin',BL,'line'],       // the head
+        [sp([[hx-1.15*u,hipY-3.5*u],[hx-1.85*u,hipY-3.1*u],[hx-1.95*u,hipY-1.9*u],[hx-1.3*u,hipY-1.5*u]],2),'skin',BL,'line'],       // the great knob outside
+        [sp([[xk-1.3*u,kneeY-1.6*u],[xk+1.25*u,kneeY-1.6*u],[xk+1.35*u,kneeY-0.4*u],[xk+0.5*u,kneeY+0.1*u],[xk,kneeY-0.3*u],[xk-0.55*u,kneeY+0.1*u],[xk-1.4*u,kneeY-0.4*u]],2),'skin',BL,'line']];       // the knobs at the knee
+      const tib=boneAlong([xk+0.2*u,kneeY+0.6*u],[xa+0.35*u,ankY+0.2*u],1.3*u,0.55*u,0.75*u), fib=boneAlong([xk-1.15*u,kneeY+1.3*u],[xa-0.95*u,ankY+0.4*u],0.4*u,0.24*u,0.42*u);
+      const shin=[...boneShape(fib,1),...boneShape(tib,1),
+        [sp([[xk-1.35*u,kneeY+0.25*u],[xk+1.4*u,kneeY+0.25*u],[xk+1.2*u,kneeY+1.3*u],[xk-1.1*u,kneeY+1.3*u]],2),'skin',BL,'line'],       // the shin bone's plateau
+        [ell(f2(xa+0.85*u),f2(ankY+0.1*u),f2(0.42*u),f2(0.5*u)),'skin',BL,'line'],[ell(f2(xa-0.95*u),f2(ankY+0.4*u),f2(0.38*u),f2(0.55*u)),'skin',BL,'line'],       // the ankles
+        [ell(f2(xk),f2(kneeY-0.2*u),f2(0.85*u),f2(1.05*u)),'skin',BL,'line']];       // the kneecap
+      // the foot from the front: the ankle's bone and the root of the foot, five long bones fanning forward and out, the toes
+      const fx=xa-0.4*u, foot=[[sp([[fx-1.1*u,ankY+0.6*u],[fx+1.0*u,ankY+0.6*u],[fx+1.2*u,ankY+2*u],[fx-1.3*u,ankY+2.1*u]],2),'skin',BL,'line']];
+      for(let i=0;i<5;i++){ const k=i-2, x0=fx+k*0.42*u, x1=fx+k*0.62*u-0.5*u, x2=fx+k*0.72*u-0.8*u, w=i===4?0.34*u:0.24*u;
+        foot.push(...boneShape(boneAlong([x0,ankY+1.9*u],[x1,-1.1*u],w,w*0.7,w),1),...boneShape(boneAlong([x1,-1.0*u],[x2,0],w*0.9,w*0.7,w*0.8),1)); }
+      return { thigh, shin, foot };
+    }
   });
   // the human (user, November 2026: the baseline for all; grim realism) and the skeleton, a human without the flesh: the same measures, so the same armour fits
   const REAL_MATS={ leder:['#5e4430','#34261a'], bronze:['#7e6030','#44321a'], eisen:['#5a5a5e','#2c2c30'], stahl:['#727a84','#3a4048'], schwarz:['#2a2a30','#121216'] };
@@ -498,7 +582,7 @@ const SvgRig=(()=>{
     skins:[{ skin:'#c9a28a', light:'#dcb8a0', dark:'#8a604c', leg:'#a39a86', brow:'#2a2018' },{ skin:'#a87a5e', light:'#c09274', dark:'#6e4a38', leg:'#a39a86', brow:'#2a2018' },{ skin:'#6e4a36', light:'#86604a', dark:'#45291c', leg:'#a39a86', brow:'#1a120c' }],
     hairs:['#2e2219','#5e4e3e','#8e8a84'], eye:['#5a6e7a','#4a3222'], glow:[[0,0,0],[0,0,0]], glowA:0 };
   HUMANOIDS.skeleton=Object.assign({},HUMANOIDS.human,{ face:'skullReal', bones:true, belt:null, ears:null, hair:null, beard:false, clothed:false, pouch:false, scar:false, weapon:'sword', presets:SKELETON_PRESETS,
-    base:Object.assign({},HUMAN_BASE,{ shade:'rgba(20,12,5,0.2)', socket:'#080605', faceLine:'rgba(40,30,20,0.6)' }), hairs:null,
+    base:Object.assign({},HUMAN_BASE,{ shade:'rgba(20,12,5,0.2)', socket:'#14100c', socketDeep:'#050403', faceLine:'rgba(40,30,20,0.6)', line:'#2a2016', boneShade:'rgba(70,50,25,0.28)', boneDark:'rgba(60,45,25,0.55)', boneDeep:'#9a8e72', cartilage:'#c4bfa8', tooth:'#e6dcc2' }), hairs:null,
     skins:[{ skin:'#e2d8c0', light:'#efe6d2', dark:'#a89e84', leg:'#e2d8c0', brow:'#3a3428' },{ skin:'#d2c8ac', light:'#e2d8c0', dark:'#968c72', leg:'#d2c8ac', brow:'#3a3428' },{ skin:'#bcb294', light:'#ccc2a6', dark:'#827a62', leg:'#bcb294', brow:'#3a3428' }],
     eye:['#fff4e0','#7af0ff'], glow:[[255,220,170],[120,230,255]], glowA:0.5 });
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
