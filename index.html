@@ -850,6 +850,19 @@ const SPECIES={
              needsFood:false, avoidsWater:true,  intellectual:false, canFight:true,  usesEquipment:false, inventoryBase:0, loyalty:100,
              style:'fighter', passive:'Plattenpanzer — hohe Verteidigung, meidet Wasser' }
 };
+// Species and class apart (user, November 2026): a creature is of a race (its body: human, ork, goblin, elf, ...) and chooses a class (what it has become: a man
+// working in the library a warlock, an ork a shaman, an ork who trains much an ork warrior). For now both come from its kind (RACE_CLASS); the kinds' stats stay
+// as they are. Later a creature changes its class by what it does (the rooms are the foremen); c.race and c.cls then hold its own.
+const RACES={ human:'Mensch', ork:'Ork', goblin:'Goblin', troll:'Troll', elf:'Elf', darkelf:'Dunkelelf', dwarf:'Zwerg', giant:'Riese', vampire:'Vampir', skeleton:'Skelett',
+  lich:'Lich', ghoul:'Ghul', zombie:'Zombie', demon:'Dämon', succubus:'Succubus', werewolf:'Werwolf' };
+const CLASSES={ warrior:'Krieger', barbarian:'Barbar', warlock:'Warlock', wizard:'Zauberer', priest:'Priester', shaman:'Schamane', knight:'Ritter', darkknight:'Dunkler Ritter',
+  paladin:'Paladin', thief:'Dieb', archer:'Bogenschütze', ranger:'Waldläufer', monk:'Mönch', worker:'Handwerker' };
+const RACE_CLASS={ warlock:['human','warlock'], wizard:['human','wizard'], priest:['human','priest'], darkknight:['human','darkknight'], knight:['human','knight'],
+  paladin:['human','paladin'], thief:['human','thief'], archer:['human','archer'], monk:['human','monk'], worker:['human','worker'], barbarian:['human','barbarian'],
+  elf:['elf','ranger'], dwarf:['dwarf','warrior'], giant:['giant','warrior'], ork:['ork','warrior'], goblin:['goblin','warrior'], troll:['troll','warrior'], darkelf:['darkelf','warrior'],
+  skeleton:['skeleton','warrior'], vampire:['vampire',null], lich:['lich',null], ghoul:['ghoul',null], zombie:['zombie',null], demon:['demon',null], succubus:['succubus',null], werewolf:['werewolf',null] };
+const raceOf=c=>c.race||(RACE_CLASS[c.kind]||[])[0]||null;       // null: a creature without a race of its own (a beast, the imp)
+const classOf=c=>c.cls!==undefined?c.cls:((RACE_CLASS[c.kind]||[])[1]||null);
 const HERO_KINDS=['barbarian','thief','wizard','knight'];
 const HERO_NAMES=['Sir Aldric','Brenna','Torvald','Mira','Gunnar','Elowen','Dorian','Hilda','Cedric','Astrid'];
 const HERO_AGGRO_RADIUS=8;     // Helden jagen nur, was sich in der Naehe befindet - sonst marschieren sie zum Thron
@@ -7778,6 +7791,7 @@ function itemDescription(inst){
 }
 function statBlock(c){
   const lines=[];
+  if(raceOf(c)) lines.push(`Spezies ${RACES[raceOf(c)]||raceOf(c)} · Klasse ${CLASSES[classOf(c)]||'keine'}`);       // species and class apart
   lines.push(`Leben ${c.hp}/${statMaxHp(c)} · ${levelLine(c)}`);
   lines.push(`Stärke ${statStrength(c)} · Verteidigung ${statDefense(c)} (${Math.round(100*defenseReduction(c))}% weniger Schaden) · Geschick ${statDex(c)}%`);
   lines.push(`Tempo ${statSpeed(c).toFixed(1)}`);
