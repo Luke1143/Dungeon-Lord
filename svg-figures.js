@@ -17,7 +17,7 @@ const SvgFigures=(()=>{
   function baseSpec(c){
     let b=bases.get(c); if(b) return b;
     b=SvgRig.roll(hash(c.kind+':'+(c.id||0))||1,c.kind);
-    b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, ears:true, cloth:b.gear.cloth }:{ hands:true, cloth:SvgRig.defaults(c.kind).gear.cloth }; b.shadow=false;       // the imps work: no armour; the others wear what they wear
+    b.gear=c.kind==='imp'?{ weapon:'pick', hands:true, arms:true, ears:true, cloth:b.gear.cloth }:{ hands:true, arms:true, cloth:SvgRig.defaults(c.kind).gear.cloth };       // arms link the hands to the shoulders b.shadow=false;       // the imps work: no armour; the others wear what they wear
     bases.set(c,b); return b;
   }
   // what it wears and carries: the imp its load; the others the game's look of their gear (equipLook in index.html: weapon, shield, armour weight, material, helmet form)

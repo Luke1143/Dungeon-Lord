@@ -517,13 +517,13 @@ const SvgRig=(()=>{
       // the neck: seven vertebrae from under the skull down to the shoulders (the upper ones hidden by the jaw)
       const n0=top+h*0.82, n1=topY+0.2*u, nh=(n1-n0)/7; for(let i=0;i<7;i++) vert(n0+i*nh,0.62*u,nh*0.78,0.5*u);
       // the spine behind the ribs (the thoracic vertebrae show between them)
-      const t0=topY+0.3*u, t1=topY+bodyH*0.62, th=(t1-t0)/12; for(let i=0;i<12;i++) vert(t0+i*th,(0.55+0.03*i)*u,th*0.8,0);
+      const t0=topY+0.3*u, t1=topY+bodyH*0.47, th=(t1-t0)/12;       // (the ribcage ends at the waist: below it only the lumbar spine, then the pelvis) for(let i=0;i<12;i++) vert(t0+i*th,(0.55+0.03*i)*u,th*0.8,0);
       // the shoulder blades behind the ribcage (from behind: over it, below)
       const blades=()=>[-1,1].forEach(s=>{ out.push([sp([[s*wSh*0.92,topY+0.2*u],[s*wSh*0.55,topY+1.2*u],[s*wC*0.62,topY+bodyH*0.38],[s*wC*0.8,topY+bodyH*0.36],[s*wSh*0.9,topY+2.6*u]],2),back?'skin':'boneDeep',BL,'line']); if(back) out.push([`M${f2(s*wC*0.65)} ${f2(topY+bodyH*0.12)} L${f2(s*wSh*0.9)} ${f2(topY+0.4*u)}`,null,0.9*u,'line'],[`M${f2(s*wC*0.65)} ${f2(topY+bodyH*0.12)} L${f2(s*wSh*0.9)} ${f2(topY+0.4*u)}`,null,0.9*u-0.8,'skin']); });
       if(!back) blades();
       // the ribs, from the top down: where they meet the breastbone (or the arch), how far down they sag, how far out they reach
-      const sY=i=>topY+0.9*u+i*0.95*u, xiph=topY+bodyH*0.4, Wf=[0.5,0.66,0.78,0.86,0.92,0.96,0.98,0.98,0.95,0.9,0.82,0.72];
-      for(let i=0;i<12;i++){ const W=Wf[i]*wC, y=sY(i), d=(0.6+0.35*(i+1))*u, cw=0.38*u;
+      const sY=i=>topY+0.9*u+i*0.62*u, xiph=topY+bodyH*0.3, Wf=[0.5,0.66,0.78,0.86,0.92,0.96,0.98,0.98,0.95,0.9,0.82,0.72];
+      for(let i=0;i<12;i++){ const W=Wf[i]*wC, y=sY(i), d=(0.45+0.2*(i+1))*u, cw=0.3*u;
         [-1,1].forEach(s=>{ const X=x=>s*x;
           // behind: the rib's way back to the spine, seen between the others (darker)
           out.push([`M${f2(X(W*0.98))} ${f2(y+d*0.25)} Q${f2(X(W*0.72))} ${f2(y-0.9*u)} ${f2(X(1.0*u))} ${f2(y-1.1*u)}`,null,cw*1.6,'boneDeep']);
@@ -672,7 +672,7 @@ const SvgRig=(()=>{
   function defaults(kind){
     kind=kindOf(kind); const K=HUMANOIDS[kind], first=Object.keys(K.presets)[0];
     return { kind, style:first, genes:Object.assign({},K.presets[first]), traits:{ klug:0.5, stark:0.5, flink:0.5, wild:0.5 }, hue:0, scar:!!K.scar,
-      gear:{ helmet:!K.worker&&K.armour!==false, chest:false, pauldrons:!K.worker&&K.armour!==false, cloth:!!K.cloth, weapon:K.weapon, hands:true, load:'gold' } };       // a worker (the imp) wears no armour, nor do those in clothes
+      gear:{ helmet:!K.worker&&K.armour!==false, chest:false, pauldrons:!K.worker&&K.armour!==false, cloth:!!K.cloth, weapon:K.weapon, hands:true, arms:K.arms!==false, load:'gold' } };       // a worker (the imp) wears no armour, nor do those in clothes
   }
   // colours: the kind's and style's, the skin turned by the hue shift
   function hueShift(hex,deg){
@@ -756,7 +756,7 @@ const SvgRig=(()=>{
     };
     // a realistic figure lets its empty hands hang at the hips; a hand that holds something is held bent at the elbow: up to the waist, a little in front of the body
     if(S.real&&hands){ if(wName){ base.handR.y-=S.armUp; base.handR.x-=S.armIn; } if(G.shield){ base.handL.y-=S.armUp; base.handL.x+=S.armIn; } }
-    // arms (a test, user November 2026: the floating hands stay the rule; an arm only links the hand to the shoulder, without a will of its own)
+    // the arms (user, November 2026): an arm only links the hand to the shoulder, without a will of its own; the hand leads
     let arm=null;
     if(G.arms&&hands&&S.shoulderAt){ const sh=S.shoulderAt, d0=Math.hypot(ha[0]-sh[0],ha[1]-sh[1]), L=S.armLen||[0.56*d0*1.1,0.44*d0*1.1];
       arm={ sh, ha, L, w:S.armW, bone:!!K.bones, fill:G.pauldrons?'iron':(K.clothed&&!K.real?'tunic':'skin') }; }
@@ -850,7 +850,7 @@ const SvgRig=(()=>{
     if(rig.arm) armParts(rig,out,order.indexOf('arm')).forEach(e=>{ e.n=n++; out.push(e); });
     return out.sort((p,q)=>p.L-q.L||p.n-q.n);
   }
-  // ---- the arms (a test): two bones each, the shoulder fixed on the body, the wrist at the floating hand, the elbow solved (two-bone inverse kinematics:
+  // ---- the arms: two bones each, the shoulder fixed on the body, the wrist at the floating hand, the elbow solved (two-bone inverse kinematics:
   // the law of cosines; it bends outward, away from the body; a hand out of reach stretches the arm straight). Their shapes are made anew for every pose. ----
   const tp=(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]];
   function armParts(rig,out,L){
@@ -972,7 +972,7 @@ const SvgOrkViewer=(()=>{
 <div class="orkv-row"><span class="orkv-group">Ausrüstung</span>
   <label for="orkvWeapon">Waffe</label><select id="orkvWeapon"></select>
   <label for="orkvLoad" data-for="load">Last</label><select id="orkvLoad" data-for="load"><option value="none">keine</option><option value="gold">Gold</option><option value="ore">Erz</option></select>
-  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvG_greaves" aria-pressed="false">Beinschienen</button><button id="orkvG_arms" aria-pressed="false">Arme (Test)</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
+  <button id="orkvG_hands" aria-pressed="false">Hände</button><button id="orkvG_helmet" aria-pressed="false">Helm</button><button id="orkvG_chest" aria-pressed="false">Brustpanzer</button><button id="orkvG_pauldrons" aria-pressed="false">Schulterplatten</button><button id="orkvG_cloth" aria-pressed="false">Lendenschurz</button><button id="orkvG_greaves" aria-pressed="false">Beinschienen</button><button id="orkvG_arms" aria-pressed="false">Arme</button><button id="orkvScar" aria-pressed="false">Narbe</button><button id="orkvKo">K.o.</button><button id="orkvHeal">Narben weg</button><span id="orkvScarN" class="orkv-group"></span><button id="orkvG_ears" aria-pressed="false">Ohren</button><button id="orkvG_horns" aria-pressed="false">Hörner</button>
   <label for="orkvShield">Schild</label><select id="orkvShield"><option value="">keiner</option><option value="buckler">Buckler</option><option value="kite">Dreiecksschild</option><option value="tower">Turmschild</option></select>
   <label for="orkvMat">Material</label><select id="orkvMat"><option value="">Grundfarbe</option><option value="leder">Leder</option><option value="bronze">Bronze</option><option value="eisen">Eisen</option><option value="stahl">Stahl</option></select>
   <label for="orkvHelm">Helmform</label><select id="orkvHelm"><option value="">wie die Art</option><option value="plain">schlicht</option><option value="crest">Kamm</option><option value="horns">Hörner</option></select>
