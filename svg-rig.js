@@ -890,6 +890,35 @@ const SvgRig=(()=>{
     weaponK:1.3, shieldK:1.8, pauldronK:1.3, face:'wolf', ears:'wolf', hair:null, ruff:true, tail:'fur', claws:true, kit3d:{ muscles:true }, feet3d:['claws'], clothed:false, cloth:true, coif:false, belt:'rope', helm:'plain',
     weapons:['club','axe'], weapon:'none', presets:P2W.werewolf, base:Object.assign({},HUMAN_BASE,{ cloth:'#3a3026', void:'#0a0806', mouth:'#1a0a08', faceLine:'rgba(20,16,12,0.55)' }),
     skins:SK3(['#6a6058','#827870','#3a342e','#4a4038','#1a1612'],['#4a4440','#605a54','#2a2624','#3a3430','#121010'],['#7a5a40','#927052','#46321e','#4a3a2a','#1e140c']), hairs:['#4a423a','#2a2622','#5a4030'], eye:['#ffd040','#ff8a30'], glow:[[255,208,64],[255,138,48]], glowA:0.45 });
+  // the heroes from the kit (user, November 2026: go on with the creatures): men of the human body plan in their clothes and gear, the elf, the dwarf, the giant
+  const HERO=(o,base)=>KIT_BASE(Object.assign({ px:64, height:1.0, hipY:-36, bodyH:[25.5,2], hip:[8.2,1], sh:[10.4,1.2], legW:[8.6,1], head:{ w:[3.6,0.3], h:[10,0.6] }, hand:[2.3,0.3], handOut:0.2, handGap:1.2, pad:5,
+    face:'human', ears:'human', hair:'short', beard:true, clothed:true, feet3d:['boots'], cloth:false, coif:true, belt:'band', helm:'plain', presets:HUMAN_PRESETS, hairs:['#2e2219','#6a4a2a','#8e8a84'] },o,
+    { base:Object.assign({},HUMAN_BASE,base), skins:(o.skins||HUMANOIDS.human.skins).map(k=>base.leg?Object.assign({},k,{ leg:base.leg }):k) }));       // (the trousers' colour is the clothes', not the skin's)
+  HUMANOIDS.knight=HERO({ sh:[11,1], cape:true, cloth:true, beard:false, wear:{ helmet:true, helmStyle:'visor', chest:true, pauldrons:true, greaves:true, mat:'stahl' }, weapons:['sword','spear','hammer'], weapon:'sword', eye:['#5a6e7a','#4a3222'], glow:[[90,110,122],[74,50,34]], glowA:0.3 },
+    { tunic:'#2a3e6a', tunicDark:'#18243e', cloth:'#2a4a8a', cape:'#1e3060', capeIn:'#c8c0a8', void:'#05060a' });
+  HUMANOIDS.paladin=HERO({ sh:[11,1], cape:true, cloth:true, wear:{ chest:true, pauldrons:true, greaves:true, mat:'stahl' }, weapons:['hammer','sword'], weapon:'hammer' },
+    { tunic:'#c8c0a8', tunicDark:'#8a8470', cloth:'#e0d8c0', cape:'#d8d0b8', capeIn:'#b8a060', trim:'#b8962e' });
+  HUMANOIDS.barbarian=HERO({ sh:[12.2,1.2], hip:[8.6,1], legW:[9.4,1], hair:'long', clothed:false, kit3d:{ strap:true, wrap:true }, feet3d:['boots'], cloth:true, weapons:['axe','sword','hammer','club'], weapon:'axe', hairs:['#5a3a1e','#8a5a2a','#2a1e14'] },
+    { leather:'#6a4a2c', foot:'#5a4028', cloth:'#5a4a38', belt:'#3a2a1a' });
+  HUMANOIDS.thief=HERO({ sh:[9.8,1], hood:'cowl', mask:true, beard:false, feet3d:['boots'], weapons:['dagger','sword','bow'], weapon:'dagger' },
+    { tunic:'#2e2a26', tunicDark:'#1a1816', hood:'#24201c', leg:'#26221e', foot:'#18140f', belt:'#3a2a1a', trim:'#3e3a34' });
+  HUMANOIDS.wizard=HERO({ sleeves:true, lower:'robe', hat:'pointy', hair:'long', beardLong:7, feet3d:['bare'], weapons:['staff','dagger'], weapon:'staff', hairs:['#c8c4bc','#e0dcd4','#8e8a84'], eye:['#7a9ab0','#5a6e7a'] },
+    { tunic:'#2a3a7a', tunicDark:'#18224a', hat:'#24326a', trim:'#c8a048' });
+  HUMANOIDS.archer=HERO({ sh:[10,1], hood:'cowl', quiver:true, beard:false, weapons:['bow','dagger'], weapon:'bow' },
+    { tunic:'#3a5a2a', tunicDark:'#22361a', hood:'#2e4a22', leg:'#4a3a2a', foot:'#3a2a1a', fletch:'#d8d0b8', trim:'#5a4a2e' });
+  HUMANOIDS.monk=HERO({ sleeves:true, lower:'robe', hair:'tonsure', beard:false, feet3d:['bare'], belt:'rope', weapons:['staff'], weapon:'staff' },
+    { tunic:'#6a4a2a', tunicDark:'#3e2a16', trim:'#c8b080', belt:'#c8b080' });
+  HUMANOIDS.worker=HERO({ beard:true, feet3d:['boots'], weapons:['hammer','pick'], weapon:'hammer' }, { tunic:'#a89a7a', tunicDark:'#6e6450', leg:'#5a4e3e' });
+  HUMANOIDS.elf=HERO({ height:1.03, hipY:-38, bodyH:[25,2], hip:[7.6,1], sh:[9.6,1], legW:[7.6,1], head:{ w:[3.5,0.3], h:[10,0.6] }, hand:[2.2,0.3], face:'fine', ears:'elf', hair:'long', beard:false, sleeves:true, quiver:true,
+    weapons:['bow','sword','spear'], weapon:'bow', presets:ELF_PRESETS, hairs:['#e8d8a0','#c8a860','#e8e4dc'], eye:['#6ab04a','#4a8ac0'], glow:[[106,176,74],[74,138,192]], glowA:0.25,
+    skins:SK3(['#e0c8b0','#ecd8c4','#a88c74','#3a4a2a','#8a7a5a'],['#d8bca0','#e6ccb4','#9e8064','#3a4a2a','#8a7a5a'],['#ecdccc','#f4e8dc','#b0a090','#3a4a2a','#8a7a5a']) },
+    { tunic:'#4a6a3a', tunicDark:'#2a4020', leg:'#3a4a2a', foot:'#3a2a1a', trim:'#c8b070', fletch:'#e0e0d0' });
+  HUMANOIDS.dwarf=HERO({ height:0.72, hipY:-24, bodyH:[26,2], hip:[10,1], sh:[13,1.2], legW:[10.5,1], head:{ w:[4.3,0.3], h:[11,0.6] }, hand:[2.9,0.3], neckK:0.4, neckW:1.2, beardLong:9, helm:'plain', pad:5,
+    weapons:['axe','hammer','pick'], weapon:'axe', weaponK:1.1, shieldK:1.6, hairs:['#8a4a1e','#5a3a1e','#a8a098'] },
+    { tunic:'#6a3a2a', tunicDark:'#3e2218', leg:'#4a3a2a', foot:'#2a1e14', belt:'#3a2a1a', trim:'#b8902e' });
+  HUMANOIDS.giant=HERO({ height:2.2, hipY:-78, bodyH:[56,4], hip:[19,1.5], sh:[25,2], legW:[19,1.5], head:{ w:[7.6,0.5], h:[21,1] }, hand:[5.2,0.4], handGap:2, handDrop:6, neckK:0.6, hair:'long', pad:10,
+    weaponK:2.2, shieldK:3, pauldronK:2.2, clothW:2.2, feet3d:['bare'], weapons:['club','hammer'], weapon:'club', hairs:['#4a3a2a','#6a5a40','#3a2a1e'] },
+    { tunic:'#6a5a40', tunicDark:'#40362a', leg:'#4e4232' });
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
   function humanoidShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
@@ -1554,6 +1583,9 @@ const Rig3D=(()=>{
         const p=[0,Yh(0.3),Z(0.54)]; F.patch(p,norm([0,-0.3,1]),X(0.25),0.07*h,'hair',{ bias:on(p,0.06), sw:0, shape:[[-1,-1],[1,-1],[0,1]] }); },
       // a mane of coarse hair along the top of the head down the neck (the troll's)
       mane(F,c){ const { X, Yh, Z, h, hc }=c; F.ring([0,0,hc[2]],0.001,Z(0.5)-hc[2],0,0.2*h,'hair',0.04,-1.1,2.6,a=>Yh(0.42)-Math.cos(a)*0.4*h); },
+      // a tonsure: a ring of hair round the head, the crown bare (the monk's)
+      tonsure(F,c){ const { G, X, Yh, Z, h, hc, sk }=c; if(G.helmet) return; F.ring([hc[0],0,hc[2]],X(1.04),(Z(0.56)-hc[2])*1.04,Yh(0.34),0.12*h,'hair',0.08);
+        F.patch([0,Yh(0.52),Z(-0.54)],[0,0,-1],X(0.85),0.16*h,'hair',{ bias:sk+0.03-F.P([0,Yh(0.52),Z(-0.54)])[2], sw:0.5 }); },
       // short hair: a cap over the vault down to the brow in front, the nape behind (a patch only seen from behind)
       short(F,c){ const { G, X, Yh, Z, h, hc, sk }=c; if(G.helmet) return;
         const ctr=[hc[0],hc[1]-0.02*h,hc[2]-0.03*h]; F.solid([[ctr,[X(1.06),0.46*h,Z(0.6)-hc[2]],[Yh(-0.1),Yh(0.3)]]],'hair',{ bias:sk+0.03-F.P(ctr)[2], sw:0.8 });       // (sorted just over the head, under the face's parts)
@@ -1568,8 +1600,17 @@ const Rig3D=(()=>{
           for(let i=0;i<b.length-1;i++) for(let j=0;j<2;j++){ const t=j/2, p=add(b[i],mulv(sub(b[i+1],b[i]),t)); F.ball(p,(0.75-0.05*i)*u,'hair',{ bias:0.05 }); }
           F.tube(b[b.length-1],add(b[b.length-1],[0,1.6*u,0.2*u]),0.4*u,0.3*u,0.15*u,'hair'); } } },
     // the beard on the jaw and the chin, fuller with the gene; over the face, under the nose and the mouth (from behind it is not drawn)
-    beard(F,c){ const { X, Yh, Z, h, gn, jr, sk }=c, k=gn.bart===undefined?0.5:gn.bart; if(k<0.2||F.faces([0,0,1])<-0.35) return;
-      const bc=jr([0,Yh(0.9)+0.03*h*k,Z(0.32)]); F.solid([[bc,[X(0.8),(0.07+0.1*k)*h,Z(0.32)-c.hc[2]],[Yh(0.74),Yh(1.3)]]],'hair',{ bias:sk+0.055-F.P(bc)[2], sw:0.75 }); }
+    beard(F,c){ const { K, A, u, Y0, X, Yh, Z, h, gn, jr, sk }=c, k=K.beardLong?1:(gn.bart===undefined?0.5:gn.bart); if(k<0.2||F.faces([0,0,1])<-0.35) return;
+      const bc=jr([0,Yh(0.9)+0.03*h*k,Z(0.32)]), long=K.beardLong?[[[0,A.topY+K.beardLong*u+Y0,4.0*u],[X(0.62),2.2*u,1.4*u]]]:[];       // a long beard down onto the chest (the wizard's, the dwarf's)
+      F.solid([[bc,[X(0.8),(0.07+0.1*k)*h,Z(0.32)-c.hc[2]],[Yh(0.74),Yh(1.3)]]].concat(long),'hair',{ bias:sk+0.055-F.P(bc)[2], sw:0.75 }); },
+    // an open hood: round the head and onto the shoulders, the face showing in front (the thief's, the archer's)
+    cowl(F,c){ const { A, u, Y0, by, X, Yh, Z, h, hc, sk }=c, ctr=[hc[0],hc[1]-0.03*h,hc[2]-0.03*h];
+      F.solid([[ctr,[X(1.25),0.54*h,Z(0.6)-hc[2]]],[by([0,A.topY+0.4*u,-0.6*u]),[A.wSh*0.55,1.8*u,3.1*u],[A.topY-4*u,A.topY+2.2*u]]],'hood',{ bias:sk+0.03-F.P(ctr)[2], sw:0.9 });
+      const f=[0,Yh(0.62),Z(0.52)]; F.patch(f,[0,0.05,1],X(0.84),0.33*h,'skin',{ bias:sk+0.04-F.P(f)[2], sw:0.6 }); },
+    // a tall pointed hat with a wide brim (the wizard's), its tip bent back
+    hat(F,c){ const { X, Yh, Z, h, hc, sk }=c, b=[hc[0],Yh(0.22),hc[2]-0.02*h];
+      F.solid([[b,[X(1.75),0.05*h,(Z(0.5)-hc[2])*1.7]],[[hc[0],Yh(0.0),hc[2]-0.05*h],[X(1.0),0.15*h,(Z(0.5)-hc[2])*1.0]],[[hc[0],Yh(-0.75),hc[2]-0.35*h],[0.06*h,0.06*h,0.06*h]]],'hat',{ bias:sk+0.14-F.P(b)[2], sw:0.9 });
+      F.ring([hc[0],0,hc[2]-0.02*h],X(1.02),(Z(0.5)-hc[2])*1.02,Yh(0.13),0.07*h,'trim',0.15); },       // (its band)
   };
   function fleshHead(F,c){
     const { A, K, G, u, h, Y0, by, X, Yh, Z, hc, cv }=c, { topY, aw }=A, fc=FACE3D[K.face]||FACE3D.human, nk=K.neckW||1;
@@ -1577,15 +1618,20 @@ const Rig3D=(()=>{
     F.solid(HEAD3D[fc.head](X,Yh,Z,h,hc),'skin',{ sw:0.9 });
     const sk=F.items[F.items.length-1].dep, jd=c.roar*0.3;
     const p=Object.assign({},c,{ sk, on:(q,b)=>sk+b-F.P(q)[2], tb:(a,b,v)=>sk+v-(F.P(a)[2]+F.P(b)[2])/2, jr:v=>{ const o=[0,Yh(0.62),Z(-0.05)]; return add(o,rotX(sub(v,o),-jd)); } });       // (on, tb: the bias that sorts a patch or a tube just over the head)
-    if(K.hood&&!G.helmet){ PART3D.hood(F,p); return sk; }       // under the hood only the eyes
-    ['eyes','brow','nose','mouth'].forEach(k=>{ const f=fc[k]&&PART3D[k][fc[k]]; if(f) f(F,p); });
+    if(K.hood&&!G.helmet&&K.hood!=='cowl'){ PART3D.hood(F,p); return sk; }       // under the hood only the eyes
+    if(K.hood==='cowl'&&!G.helmet) PART3D.cowl(F,p);       // an open hood: the face shows
+    const facing=F.faces(norm([0,0,1]))>-0.12;       // the face's parts only while the face is turned to us (else they would show through the back of the head)
+    if(facing) ['eyes','brow','nose','mouth'].forEach(k=>{ const f=fc[k]&&PART3D[k][fc[k]]; if(f) f(F,p); });
     if(K.fangs) PART3D.fangs(F,p);
     if(K.wounds&&F.faces([0,0,1])>0){ const q=[X(0.45),Yh(0.66),Z(0.45)]; F.patch(q,norm([0.5,0,0.85]),X(0.2),0.06*h,'wound',{ bias:p.on(q,0.06), sw:0.4 }); }       // the zombie's torn cheek
     if(K.ruff){ const q=by([0,topY-0.2*u,-0.6*u]); F.solid([[q,[A.wSh*0.62,2.6*u,3.6*u]],[[0,Yh(0.95),Z(-0.1)],[X(1.1),0.16*h,Z(0.4)-hc[2]]]],'hair',{ bias:-0.6, sw:0.85 }); }       // the werewolf's ruff of fur round the neck
-    if(fc.paint) PART3D.paint(F,p); if(fc.tusks) PART3D.tusks(F,p);
+    if(fc.paint&&facing) PART3D.paint(F,p); if(fc.tusks) PART3D.tusks(F,p);
     if(K.beard) PART3D.beard(F,p);
-    if(K.ears&&PART3D.ears[K.ears]&&!cv.coif) PART3D.ears[K.ears](F,p);       // under the mail hood the ears are hidden
-    if(K.hair&&PART3D.hair[K.hair]) PART3D.hair[K.hair](F,p);
+    const hooded=K.hood==='cowl'&&!G.helmet;
+    if(K.ears&&PART3D.ears[K.ears]&&!cv.coif&&!hooded) PART3D.ears[K.ears](F,p);       // under the mail hood or a hood the ears are hidden
+    if(K.hair&&PART3D.hair[K.hair]&&!hooded) PART3D.hair[K.hair](F,p);
+    if(K.mask&&F.faces([0,0,1])>-0.2){ const q=[0,Yh(0.78),Z(0.5)]; F.patch(q,[0,0.1,1],X(0.98),0.2*h,'tunicDark',{ bias:p.on(q,0.1), sw:0.6, shape:[[-1,-1],[1,-1],[0.9,0.6],[0,1],[-0.9,0.6]] }); }       // the thief's scarf over the lower face
+    if(K.hat&&!G.helmet) PART3D.hat(F,p);
     return sk;
   }
   // the legs: bare or in trousers (wider), the knee's ball behind the tubes; the feet bare, in boots, wrapped in leather or with claws
@@ -1741,6 +1787,8 @@ const Rig3D=(()=>{
     if(K.lower==='robe') fleshRobe(F,{ A, K, u, Y0, wAt, wC, legs });
     if(flesh&&(K.cape||K.collar)) fleshCape(F,{ A, K, G, u, Y0, by, aw, legs, walkK, w });
     if(K.wings) wings3d(F,{ A, K, u, Y0, by, t:st.t||0 });
+    if(K.quiver){ const q0=by([wSh*0.35,topY+0.2*u,-3.2*u]), q1=by([-wSh*0.15,topY+12*u,-3.6*u]); F.tube(q0,q1,1.3*u,1.2*u,1.1*u,'leather',{ bias:-0.5*u });       // the quiver on the back, the arrows' feathers out of it
+      [-0.5,0,0.5].forEach(k=>{ const a=add(q0,[k*0.8*u,0,0]); F.tube(a,add(a,[0.6*u,-2.6*u,-0.2*u]),0.45*u,0.4*u,0.2*u,'fletch',{ bias:-0.45*u }); }); }
     if(K.tail) tail3d(F,{ A, K, u, Y0, by, w, walkK });
     // the arms: the shoulder fixed, the hand where it would be (hanging, or bent forward when it holds something), the elbow solved back and out
     const hands={};
@@ -1836,7 +1884,7 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
+  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', knight:'Ritter', paladin:'Paladin', barbarian:'Barbar', thief:'Dieb', wizard:'Zauberer', archer:'Bogenschütze', monk:'Mönch', worker:'Handwerker', elf:'Elfenkrieger', dwarf:'Zwerg', giant:'Riese', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
   // the genes (every humanoid: every look between the presets)
   const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Hautton'],['augenFarbe','Augenfarbe'],['haar','Haarfarbe'],['bart','Bart'],['bemalung','Bemalung']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Schultern'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
