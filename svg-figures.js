@@ -57,12 +57,12 @@ const SvgFigures=(()=>{
     const v=a<0.3?Math.min(1,(0.3-a)/1.0):-Math.min(1,(a-0.3)/1.5); return Math.round(v*4)/4;
   }
   // the picture of creature c now: moving (it moved in the last moments), extra (the imp: 'gold' | 'ore' | null; the others: the game's look of their gear),
-  // view ('front' | 'back'), turn (-1, 0, 1), pose (the action's pose of anim.js, or null), left (the action aims to the left: the figure turned that way)
+  // view ('front' | 'back'), turn (-1, 0, 1), pose (the action's pose of anim.js, or null), left (the action aims to the left; aiming right the figure is turned that way)
   function canvasFor(c,now,moving,extra,view,turn,pose,left){
     const { r:rig, key }=rigOf(c,gearOf(c,extra),view||'front');
     const act=!!pose, work=!act&&!moving&&WORK.has(c.state), off=(c.id||0)*0.37;
     const step=moving?Math.floor(now/140+off)%4:0, swing=act?swingOf(pose):(work?SWING[Math.floor(now/150+off)%4]:0), breath=moving||work||act?0:Math.floor(now/700+off)%2;
-    const blink=!work&&!act&&((now/1000+off*4.3)%4.2)<0.14?1:0, tq=moving?(turn||0):0, flip=act&&left?1:0;
+    const blink=!work&&!act&&((now/1000+off*4.3)%4.2)<0.14?1:0, tq=moving?(turn||0):0, flip=act&&!left?1:0;       // (the weapon is on the left of the picture: a blow to the right turns the figure)
     const fkey=key+'|'+step+'|'+swing+'|'+breath+'|'+blink+'|'+tq+'|'+flip;
     let cv=cache.get(fkey);
     if(cv){ cache.delete(fkey); cache.set(fkey,cv); return cv; }
