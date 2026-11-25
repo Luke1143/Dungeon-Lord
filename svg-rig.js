@@ -570,7 +570,7 @@ const SvgRig=(()=>{
     // the legs in a slight A: the thigh from the hip, the knee and the ankle a little further out; a foot of its own
     const lw=lin(K.legW,plump)*(0.95+0.1*st), xh=-wHip*0.52, xk=xh-0.9*u, xa=xh-2*u, xc=xh, kneeY=hipY*0.52, ankY=-4.2*u*0.85, L={ xc, xh, xk, xa, lw, kneeY, ankY };
     const A={ topY, hipY, wSh, wHip, wWaist, bodyH, bPts, hPts, top, h, aw, cy, chinY, u, sw, legs:L, shieldK:K.shieldK, pauldronK:K.pauldronK, emblem:K.emblem, clothW:K.clothW, clothL:K.clothL, shoulderY:topY+1.8*u, beltY:hipY-5.2*u };
-    const face=FACES[K.face]({ aw, h, top, cy, chinY },g,K); A.browY=face.browY;
+    const face=(FACES[K.face]||FACES.human)({ aw, h, top, cy, chinY },g,K); A.browY=face.browY;
     let body, belly=[], leg, shin, foot;
     if(K.bones){ const F=K.boneStyle==='fantasy'; body=F?EXTRAS.bonesFantasy(A,back):EXTRAS.bonesReal(A,back); const bl=F?EXTRAS.boneLegFantasy(A):EXTRAS.boneLegReal(A); leg=bl.thigh; shin=bl.shin; foot=bl.foot; }
     else {
@@ -850,6 +850,46 @@ const SvgRig=(()=>{
     weapons:['staff','dagger'], weapon:'staff', presets:WARLOCK_PRESETS, base:Object.assign({},HUMAN_BASE,{ tunic:'#3a2e52', tunicDark:'#221a32', trim:'#c08a30', belt:'#c08a30', void:'#050308', socket:'#050308' }),
     skins:[{ skin:'#a89a8a', light:'#c0b2a2', dark:'#6a5e50', leg:'#3a2e52', brow:'#2a2030' },{ skin:'#8a9a7a', light:'#a2b292', dark:'#566248', leg:'#3a2e52', brow:'#2a2030' },{ skin:'#9a8aa8', light:'#b2a2c0', dark:'#5e5068', leg:'#3a2e52', brow:'#2a2030' }],
     hairs:null, eye:['#ffffff','#80f0ff'], glow:[[255,240,220],[120,240,255]], glowA:0.5 });
+  // the second wave of the horde from the kit (user, November 2026): ghoul, zombie, dark priest, dark knight, succubus, demon, lich, werewolf; each only in 2.5D
+  const P2W={ ghoul:{ aasfresser:GN({ kopf:0.6, kinn:0.7, kopfForm:0.4, koerper:0.05, beine:0.6, augen:0.5, haut:0.3, augenFarbe:0.2, fuss:0.2 }), graeber:GN({ kopf:0.5, kinn:0.4, kopfForm:0.7, koerper:0.2, beine:0.4, haut:0.8, augenFarbe:0.8, fuss:0.6 }) },
+    zombie:{ frisch:GN({ kopf:0.5, koerper:0.4, haut:0.2, augenFarbe:0.2, haar:0.4, fuss:0.8 }), verwest:GN({ kopf:0.45, koerper:0.15, haut:0.85, augenFarbe:0.8, haar:0.6, fuss:0.1 }) },
+    priest:{ kantor:GN({ kopf:0.5, koerper:0.6, haut:0.3, augenFarbe:0.3, bart:0.7 }), eiferer:GN({ kopf:0.45, kinn:0.7, koerper:0.15, haut:0.7, augenFarbe:0.7, bart:0.1 }) },
+    darkknight:{ eisern:GN({ koerper:0.5, haut:0.3 }), gefallen:GN({ koerper:0.3, haut:0.7, augenFarbe:1 }) },
+    succubus:{ verfuehrerin:GN({ kopf:0.45, kinn:0.8, koerper:0.2, beine:0.8, haut:0.2, haar:0.1, augenFarbe:0.2 }), dornen:GN({ kopf:0.5, kinn:0.6, koerper:0.3, beine:0.6, haut:0.8, haar:0.9, augenFarbe:0.9 }) },
+    demon:{ brut:GN({ kopf:0.4, koerper:0.7, beine:0.3, haut:0.2, augenFarbe:0.2 }), fuerst:GN({ kopf:0.5, koerper:0.4, beine:0.6, haut:0.8, augenFarbe:0.8 }) },
+    lich:{ gelehrter:GN({ kopf:0.4, augenFarbe:0.2 }), koenig:GN({ kopf:0.5, augenFarbe:0.9 }) },
+    werewolf:{ grau:GN({ kopf:0.5, koerper:0.4, beine:0.6, haut:0.2, haar:0.1, augenFarbe:0.2 }), schwarzpelz:GN({ kopf:0.55, koerper:0.6, beine:0.4, haut:0.6, haar:0.6, augenFarbe:0.8 }) } };
+  const SK3=(a,b,c)=>[a,b,c].map(([skin,light,dark,leg,brow])=>({ skin, light, dark, leg, brow }));
+  HUMANOIDS.ghoul=KIT_BASE({ px:64, hipY:-35, bodyH:[25,2], hip:[7,1], sh:[9.6,1], legW:[6.8,1], head:{ w:[3.8,0.3], h:[10.5,0.6] }, hand:[2.6,0.3], handOut:0, handGap:1.2, handDrop:3, armK:1.15, headFwd:2.2, neckK:0.6, pad:5,
+    face:'ghoul', ears:'human', hair:null, claws:true, kit3d:{ ribs:true, wrap:true, muscles:false }, feet3d:['claws'], clothed:false, cloth:true, coif:true, coifFace:[0.64,0.32,0.84], belt:'rope', helm:'plain',
+    weapons:['club','dagger'], weapon:'none', presets:P2W.ghoul, base:Object.assign({},HUMAN_BASE,{ cloth:'#3a3428', leather:'#4a4030', faceLine:'rgba(20,26,22,0.6)', mouth:'#140808', socket:'#0a0c0a' }),
+    skins:SK3(['#8a9484','#a0aa98','#4a5248','#5a5040','#2a2e28'],['#9a9488','#b0aa9c','#56524a','#5a5040','#2e2c28'],['#7a8a8a','#90a0a0','#424c4c','#5a5040','#262c2c']), hairs:null, eye:['#e0f0c0','#ff6040'], glow:[[220,240,190],[255,96,64]], glowA:0.4 });
+  HUMANOIDS.zombie=KIT_BASE({ px:64, hipY:-36, bodyH:[25.5,2], hip:[8,1], sh:[10.2,1], legW:[8.2,1], head:{ w:[3.6,0.3], h:[10,0.6] }, hand:[2.4,0.3], handOut:0.2, handGap:1.2, headFwd:1.2, pad:5,
+    face:'zombie', ears:'human', hair:'short', reach:true, wounds:true, clothed:true, feet3d:['bare','boots'], cloth:false, coif:true, belt:'rope', helm:'plain',
+    weapons:['club'], weapon:'none', presets:P2W.zombie, base:Object.assign({},HUMAN_BASE,{ tunic:'#6a6048', tunicDark:'#3e3828', trim:'#4a4232', wound:'#5a1a14', mouth:'#1a0806', faceLine:'rgba(30,30,20,0.6)' }),
+    skins:SK3(['#9aa088','#b0b69c','#5a604a','#4e4a3c','#2a2a20'],['#8a9a80','#a0b096','#4e5a46','#4e4a3c','#262a20'],['#a09a8a','#b6b0a0','#5e5a4c','#4e4a3c','#2c2a22']), hairs:['#2a241c','#4a4034','#6a665c'], eye:['#d8d890','#e0a040'], glow:[[216,216,144],[224,160,64]], glowA:0.2 });
+  HUMANOIDS.priest=KIT_BASE({ px:64, hipY:-35, bodyH:[25,2], hip:[8.6,1], sh:[10,1], legW:[8.6,1], head:{ w:[3.6,0.3], h:[10,0.6] }, hand:[2.3,0.3], handOut:0.4, handGap:1.2, pad:6,
+    face:'human', ears:'human', hair:null, beard:true, sleeves:true, lower:'robe', stole:true, pendant:true, clothed:true, feet3d:['bare'], cloth:false, coif:true, belt:'rope', helm:'plain',
+    weapons:['staff','dagger'], weapon:'staff', presets:P2W.priest, base:Object.assign({},HUMAN_BASE,{ tunic:'#4a1820', tunicDark:'#2a0c12', trim:'#b08a3a', gold:'#c8a048' }),
+    skins:SK3(['#c9a28a','#dcb8a0','#8a604c','#4a1820','#2a2018'],['#a87a5e','#c09274','#6e4a38','#4a1820','#2a2018'],['#d0c0b0','#e0d4c6','#8a7c70','#4a1820','#3a3028']), hairs:['#3a2c22','#8e8a84','#c8c4bc'], eye:['#5a6e7a','#4a3222'], glow:[[0,0,0],[0,0,0]], glowA:0 });
+  HUMANOIDS.darkknight=KIT_BASE({ px:64, hipY:-36, bodyH:[26,2], hip:[8.4,1], sh:[11.2,1], legW:[8.8,1], head:{ w:[3.6,0.3], h:[10,0.6] }, hand:[2.4,0.3], handOut:0.2, handGap:1.2, pad:5,
+    face:'human', ears:'human', hair:'short', beard:false, cape:true, clothed:true, feet3d:['boots'], cloth:true, coif:true, belt:'band', helm:'visor', wear:{ helmet:true, helmStyle:'visor', chest:true, pauldrons:true, greaves:true, mat:'schwarz' },
+    weapons:['sword','axe','hammer','spear'], weapon:'sword', presets:P2W.darkknight, base:Object.assign({},HUMAN_BASE,{ tunic:'#1e1a22', tunicDark:'#0e0c10', cloth:'#4a0e14', cape:'#1a1216', capeIn:'#5a0e16', void:'#030203' }),
+    skins:SK3(['#b09080','#c4a492','#6e5244','#1e1a22','#2a2018'],['#8a6a58','#a0806c','#54402e','#1e1a22','#2a2018'],['#c0b8b0','#d4ccc4','#7a7068','#1e1a22','#2a2018']), hairs:['#1a1410','#3a2c22','#6a6660'], eye:['#ff4030','#ff9a30'], glow:[[255,64,48],[255,154,48]], glowA:0.5 });
+  HUMANOIDS.succubus=KIT_BASE({ px:64, hipY:-37, bodyH:[24,2], hip:[9,1], sh:[8.8,1], legW:[7.6,1], waistK:0.7, head:{ w:[3.4,0.3], h:[9.6,0.6] }, hand:[2.1,0.3], handOut:0.2, handGap:1.2, pad:6,
+    face:'fine', ears:'elf', hair:'long', horns3d:'curl', wings:0.8, tail:'spade', clothed:true, feet3d:['boots'], cloth:false, coif:true, belt:'band', helm:'plain',
+    weapons:['dagger','staff'], weapon:'none', presets:P2W.succubus, base:Object.assign({},HUMAN_BASE,{ tunic:'#3a0c1c', tunicDark:'#1e0610', trim:'#8a2a40', foot:'#14060a', wing:'#3a1420', wingBone:'#6a2a34', lip:'#5a1424' }),
+    skins:SK3(['#b0566a','#c86e80','#6a2a38','#2a0a14','#2a0a10'],['#9a4a7a','#b2628e','#5a2446','#2a0a14','#2a0a14'],['#c87a70','#dc9286','#7e4640','#2a0a14','#2a0e0a']), hairs:['#1a0a10','#4a1020','#e0d0c0'], eye:['#ffd040','#ff3070'], glow:[[255,208,64],[255,48,112]], glowA:0.45 });
+  HUMANOIDS.demon=KIT_BASE({ px:64, height:1.6, hipY:-50, bodyH:[46,4], hip:[13,1.5], sh:[21,2], legW:[13,1.5], head:{ w:[5.6,0.4], h:[13,0.8] }, hand:[3.8,0.4], handOut:0, handGap:1.5, handDrop:4, armK:1.15, neckK:0.4, neckW:1.2, pad:9,
+    weaponK:1.6, shieldK:2.2, pauldronK:1.6, clothW:2.0, clothL:0.6, face:'demon', fangs:true, ears:'elf', hair:null, horns3d:'big', wings:1.0, tail:'spade', claws:true, kit3d:{ wrap:true }, feet3d:['claws'], clothed:false, cloth:true, coif:false, belt:'band', helm:'plain',
+    weapons:['axe','hammer','club'], weapon:'axe', presets:P2W.demon, base:Object.assign({},HUMAN_BASE,{ cloth:'#2a0c08', leather:'#3a2014', wing:'#2a0c0a', wingBone:'#4a1a12', faceLine:'rgba(30,6,4,0.6)', line:'#0c0404' }),
+    skins:SK3(['#8a2a1c','#a43a28','#4a120a','#5a1a10','#1a0604'],['#6a2a2a','#843a38','#3a1212','#4a1a18','#1a0606'],['#9a4a1c','#b45e2a','#561e0a','#5a2a10','#1e0a04']), hairs:null, eye:['#ffd040','#ff8020'], glow:[[255,208,64],[255,128,32]], glowA:0.5 });
+  HUMANOIDS.lich=Object.assign({},HUMANOIDS.skeleton2,{ only3d:true, rig3d:true, flesh3d:false, side:false, robeTop:true, lower:'robe', sleeves:true, crown:true, eyeGlow:true, clothed:true, weapons:['staff','dagger'], weapon:'staff', presets:P2W.lich,
+    base:Object.assign({},HUMANOIDS.skeleton2.base,{ tunic:'#2a1e3a', tunicDark:'#160e20', trim:'#b08a3a', gold:'#c8a048' }), eye:['#80f0ff','#a0ff80'], glow:[[120,240,255],[160,255,128]], glowA:0.55 });
+  HUMANOIDS.werewolf=KIT_BASE({ px:64, height:1.2, hipY:-42, bodyH:[30,3], hip:[9,1], sh:[14,1.4], legW:[9.5,1], head:{ w:[4.2,0.4], h:[11,0.8] }, hand:[3.2,0.4], handOut:0, handGap:1.4, handDrop:4, armK:1.2, headFwd:3, neckK:0.5, neckW:1.2, pad:6,
+    weaponK:1.3, shieldK:1.8, pauldronK:1.3, face:'wolf', ears:'wolf', hair:null, ruff:true, tail:'fur', claws:true, kit3d:{ muscles:true }, feet3d:['claws'], clothed:false, cloth:true, coif:false, belt:'rope', helm:'plain',
+    weapons:['club','axe'], weapon:'none', presets:P2W.werewolf, base:Object.assign({},HUMAN_BASE,{ cloth:'#3a3026', void:'#0a0806', mouth:'#1a0a08', faceLine:'rgba(20,16,12,0.55)' }),
+    skins:SK3(['#6a6058','#827870','#3a342e','#4a4038','#1a1612'],['#4a4440','#605a54','#2a2624','#3a3430','#121010'],['#7a5a40','#927052','#46321e','#4a3a2a','#1e140c']), hairs:['#4a423a','#2a2622','#5a4030'], eye:['#ffd040','#ff8a30'], glow:[[255,208,64],[255,138,48]], glowA:0.45 });
   // one humanoid's parts from its kind, genes and stats (back: seen from behind)
   function humanoidShapes(kind,g,t,back,G){
     const K=HUMANOIDS[kind], lin=(r,v)=>r[0]+r[1]*v, sw=K.line, mvS=(sh,dx,dy)=>sh.map(([d,c,w,st])=>[movePath(d,dx,dy),c,w,st]);
@@ -871,7 +911,7 @@ const SvgRig=(()=>{
     // the head: oval, round or angular, the chin to a point, on top of the shoulders; the face of the kind on it
     const HD=K.head, hf=g.kopfForm===undefined?0.5:g.kopfForm, w=lin(HD.w,g.kopf), p=g.kinn, h=lin(HD.h,g.kopf)*(1+HD.chinH*p), chinY=topY+HD.over*u, top=chinY-h, cy=top+h*0.45;
     const hPts=formPts(0,top+h/2,w,h/2,hf,p*HD.chinK), aw=w*(hf<0.5?0.8+0.4*hf:1), skull=[[ptsPath(hPts),'skin',sw],[formShade(hPts,0),'shade',0]];
-    const face=FACES[K.face]({ aw, h, top, cy, chinY },g,K);
+    const face=(FACES[K.face]||FACES.human)({ aw, h, top, cy, chinY },g,K);
     // the body plan the gear is fitted to
     const A={ topY, hipY, wSh, wHip, bodyH, bPts, hPts, top, h, aw, cy, chinY, browY:face.browY, u, sw }, pd=GEAR.pauldron(A);
     const hr=lin(K.hand,plump)*(0.9+0.25*t.stark), handAt=[f2(wSh+K.handOut*u),f2(hipY-bodyH*0.42)], headY=(g.tief||0)*HD.sink, legK=lin(K.legK,g.beine===undefined?0.5:g.beine);
@@ -1047,7 +1087,7 @@ const SvgRig=(()=>{
   function build(spec){
     const kind=kindOf(spec&&spec.kind), K=HUMANOIDS[kind], own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
     if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
-    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear), back=spec.view==='back';
+    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear,K.wear), back=spec.view==='back';
     const sideV=(spec.view==='left'||spec.view==='right')&&!!K.side;       // the side view (a test: the fantasy skeleton); without it a kind is seen from the front
     let S=(K.real?realShapes:humanoidShapes)(kind,genes,t,back,G);
     if(sideV) S=sideSkeleton(S,K,G);
@@ -1277,7 +1317,7 @@ const SvgRig=(()=>{
   function plan(spec){
     const kind=kindOf(spec&&spec.kind), K=HUMANOIDS[kind], own=spec&&spec.genes; spec=Object.assign({},defaults(kind),spec||{}); spec.kind=kind;
     if(!stylesOf(kind).includes(spec.style)) spec.style=stylesOf(kind)[0];
-    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear);
+    const genes=genesOf({ kind, style:spec.style, genes:own }), t=Object.assign({},defaults(kind).traits,spec.traits), G=Object.assign({},defaults(kind).gear,spec.gear,K.wear);       // (wear: what a kind always wears, the dark knight his plate)
     const S=(K.real?realShapes:humanoidShapes)(kind,genes,t,false,G);
     const pal=Object.assign({ shadowC:'rgba(0,0,0,0.35)' },palOf(K,genes)); SKIN_KEYS.forEach(k=>{ pal[k]=hueShift(pal[k],spec.hue); });
     const M=(K.mats||MATERIALS)[G.mat]; if(M){ pal.iron=M[0]; pal.ironDark=M[1]; }
@@ -1370,6 +1410,8 @@ const Rig3D=(()=>{
       F.solid(up.slice(0,1).concat(up.slice(2).map(([c0,r])=>[c0,[r[0]*1.03,r[1],r[2]*1.04]]),[[by([0,hipY-1.8*u,0.3*u]),[wHip*0.86,1.6*u,3.2*u]]]),'tunic',{ bias:-1.2*u, sw:0.9 });
       F.ring(by([0,0,-0.4*u]),aw*1.05,2.4*u,topY-0.4*u+Y0,0.6*u,'trim',-1.2*u+0.1,-1.4,1.4,a=>Math.cos(a)*1.5*u);       // the neckline
       const [cc,cr]=ch, on=(x,y)=>{ const q=1-Math.pow(x/cr[0],2)-Math.pow((y-cc[1])/cr[1],2), z=cc[2]+cr[2]*1.04*Math.sqrt(Math.max(0.02,q)); return [[x,y,z],norm([x/cr[0]/cr[0],(y-cc[1])/cr[1]/cr[1],(z-cc[2])/cr[2]/cr[2]])]; };
+      if(K.stole&&F.faces([0,0,1])>-0.1) [-1,1].forEach(s=>{ const P=[], N=[]; for(let i=0;i<=8;i++){ const y=topY-0.2*u+i/8*(hipY+4*u-topY), [q,m]=y<topY+bodyH*0.5?on(s*aw*0.75,y):[[s*aw*0.75,y+Y0,3.4*u],[0,0,1]]; P.push(q); N.push(m); } F.seen(P,N,1.0*u,'trim',-1.2*u+0.15); });       // the stole: two bands down the front
+      if(K.pendant&&F.faces([0,0,1])>0.1){ const [q]=on(0,topY+bodyH*0.26); F.patch(add(q,[0,0,0.2*u]),[0,0,1],1.0*u,1.2*u,'gold',{ bias:-1.2*u+0.2, sw:0.6, shape:[[0,-1],[1,0],[0,1],[-1,0]] }); }       // the holy sign on the chest
       [[-0.45,-0.6],[0.2,0.3]].forEach(([x0,x1])=>{ const P=[], N=[]; for(let i=0;i<=4;i++){ const t=i/4, [p,m]=on(wC*(x0+(x1-x0)*t*0.3),topY+bodyH*(0.2+0.4*t)); P.push(p); N.push(m); } F.thin(P,N,0.5,'tunicDark',-1.2*u+0.05); });       // two folds
       return;
     }
@@ -1404,10 +1446,39 @@ const Rig3D=(()=>{
       F.plate(q,F.faces([0,0,1])>0?'capeIn':'cape',{ bias:-0.5*u }); }
     if(K.collar&&!G.helmet) [-1,1].forEach(s=>F.plate([by([s*aw*0.4,topY-0.6*u,-1.8*u]),by([s*aw*1.5,topY-0.2*u,-1.2*u]),by([s*aw*1.7,topY-4.6*u,-1.6*u]),by([s*aw*0.5,topY-3.8*u,-2.4*u])],F.faces([0,0,1])>0?'capeIn':'cape',{ bias:-0.2*u }));
   }
+  // wings on the back (the succubus', the demon's): from the shoulder blade an arm up and out to the wrist, three long fingers down, the skin between them
+  function wings3d(F,c){
+    const { A, K, u, Y0, by, t }=c, { topY, wSh }=A, k=K.wings, fl=Math.sin(t*1.6)*0.06;
+    [-1,1].forEach(s=>{ const B=by([s*wSh*0.3,topY+2*u,-2.8*u]), W=by([s*wSh*(0.9+1.0*k),topY-(4+5*k)*u,-(4+2*k)*u-fl*20]);
+      const T=[by([s*wSh*(1.3+1.4*k),topY+(2+4*k)*u,-(5+2*k)*u]),by([s*wSh*(1.0+1.0*k),topY+(6+6*k)*u,-(4.6+1.6*k)*u]),by([s*wSh*(0.6+0.5*k),topY+(8+6*k)*u,-(3.8+1*k)*u])], L=by([s*wSh*0.3,topY+(7+3*k)*u,-3*u]);
+      F.plate([B,W,T[0],T[1],T[2],L],'wing',{ bias:-1.5*u });
+      F.tube(B,W,0.7*u,0.55*u,0.45*u,'wingBone',{ bias:-1.4*u }); T.forEach(q=>F.tube(W,q,0.4*u,0.3*u,0.1*u,'wingBone',{ bias:-1.4*u })); });
+  }
+  // a tail from the base of the spine, down and back, swinging as it walks: a spade at its end, or a brush of fur
+  function tail3d(F,c){
+    const { A, K, u, Y0, by, w, walkK }=c, { hipY }=A, n=7, sway=Math.sin(w)*walkK, fur=K.tail==='fur', pts=[];
+    for(let i=0;i<=n;i++){ const t=i/n; pts.push(by([Math.sin(t*2.2+sway)*3*u*t,hipY-3*u+t*t*(-hipY*0.85),-2.5*u-t*(10+4*t)*u])); }
+    for(let i=0;i<n;i++){ const r0=(fur?1.4:0.7)*u*(1-i/n*0.6), r1=(fur?1.4:0.7)*u*(1-(i+1)/n*0.6); F.tube(pts[i],pts[i+1],r0,(r0+r1)/2,r1,fur?'hair':'skin',{ bias:-0.5*u }); }
+    if(!fur){ const e=pts[n], d=norm(sub(pts[n],pts[n-1])), sd=norm(cross(d,[0,1,0])); F.plate([add(e,mulv(d,-0.3*u)),add(e,add(mulv(sd,1.4*u),mulv(d,0.8*u))),add(e,mulv(d,2.4*u)),add(e,add(mulv(sd,-1.4*u),mulv(d,0.8*u)))],'skin',{ bias:-0.4*u }); }
+  }
+  // a crown of gold round the head, its spikes up (the lich's)
+  function crown3d(F,c){
+    const { X, Yh, Z, h, hc }=c, y=Yh(0.16), rx=X(1.02), rz=(Z(0.5)-hc[2])*1.02;
+    F.ring([hc[0],0,hc[2]],rx,rz,y,0.09*h,'gold',0.2);
+    for(let i=0;i<7;i++){ const a=-Math.PI+i/7*Math.PI*2+0.2, b=[Math.sin(a)*rx,y,hc[2]+Math.cos(a)*rz]; F.tube(b,add(b,[Math.sin(a)*0.02*h,-0.16*h,Math.cos(a)*0.02*h]),0.04*h,0.03*h,0.005*h,'gold',{ bias:0.15 }); }
+  }
+  // horns from the brow: thin and curling back (the succubus'), or thick, out and up (the demon's)
+  function horns3d(F,c){
+    const { K, X, Yh, Z, h, hc }=c, big=K.horns3d==='big';
+    [-1,1].forEach(s=>{ const p0=[s*X(0.5),Yh(0.16),Z(0.3)];
+      const pts=big?[p0,[s*X(1.1),Yh(-0.05),Z(0.35)],[s*X(1.45),Yh(-0.35),Z(0.3)],[s*X(1.4),Yh(-0.6),Z(0.15)]]:[p0,[s*X(0.62),Yh(-0.12),Z(0.05)],[s*X(0.7),Yh(-0.2),Z(-0.45)],[s*X(0.72),Yh(0.1),Z(-0.8)]];
+      const r=big?[0.13,0.1,0.06,0.01]:[0.06,0.05,0.035,0.008]; for(let i=0;i<3;i++) F.tube(pts[i],pts[i+1],r[i]*h,(r[i]+r[i+1])/2*h,r[i+1]*h,'bone',{ bias:0.1 }); });
+  }
   // the head: its hull by the kind's head form, then the face's parts from the table (each a small function of the head's frame)
   const HEAD3D={
     human:(X,Yh,Z,h,hc)=>[[hc,[X(1.0),0.44*h,Z(0.56)-hc[2]]],[[0,Yh(0.74),Z(0.2)],[X(0.8),0.22*h,Z(0.44)-hc[2]]]],       // the vault and the face, the jaw narrower
     goblin:(X,Yh,Z,h,hc)=>[[hc,[X(1.0),0.42*h,Z(0.5)-hc[2]]],[[0,Yh(0.62),Z(0.22)],[X(0.92),0.14*h,Z(0.38)-hc[2]]],[[0,Yh(0.84),Z(0.26)],[X(0.5),0.16*h,Z(0.34)-hc[2]]]],       // the goblin's: a broad vault, wide cheeks, a pointed chin
+    wolf:(X,Yh,Z,h,hc)=>[[hc,[X(1.0),0.4*h,Z(0.5)-hc[2]]],[[0,Yh(0.66),Z(0.78)],[X(0.48),0.15*h,Z(0.48)-hc[2]]],[[0,Yh(0.8),Z(0.62)],[X(0.42),0.1*h,Z(0.4)-hc[2]]]],       // the werewolf's: a wolf's skull, a long snout
     brute:(X,Yh,Z,h,hc)=>[[[hc[0],hc[1]+0.04*h,hc[2]],[X(1.0),0.36*h,Z(0.5)-hc[2]]],[[0,Yh(0.76),Z(0.26)],[X(1.02),0.24*h,Z(0.5)-hc[2]]]],       // the troll's: a low vault, a massive jaw pushed forward
     fine:(X,Yh,Z,h,hc)=>[[hc,[X(0.96),0.45*h,Z(0.55)-hc[2]]],[[0,Yh(0.76),Z(0.2)],[X(0.7),0.2*h,Z(0.42)-hc[2]]]],       // the elf's and the vampire's: narrow, high cheekbones, a pointed chin
     long:(X,Yh,Z,h,hc)=>[[hc,[X(0.98),0.42*h,Z(0.5)-hc[2]]],[[0,Yh(0.78),Z(0.14)],[X(0.9),0.2*h,Z(0.44)-hc[2]]],[[0,Yh(0.52),Z(0.2)],[X(1.0),0.1*h,Z(0.32)-hc[2]]]]       // the ork's: long, the cheekbones high, the jaw broad
@@ -1415,6 +1486,10 @@ const Rig3D=(()=>{
   const FACE3D={ human:{ head:'human', eyes:'human', brow:'thin', nose:'human', mouth:'lips' }, orkFeral:{ head:'long', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide', tusks:true, paint:true },
     goblin:{ head:'goblin', eyes:'slit', brow:'heavy', nose:'hook', mouth:'grin' },
     brute:{ head:'brute', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide', tusks:true },
+    demon:{ head:'brute', eyes:'glow', brow:'heavy', nose:'flat', mouth:'wide' },
+    ghoul:{ head:'long', eyes:'glow', brow:'heavy', nose:'flat', mouth:'grin' },
+    zombie:{ head:'human', eyes:'glow', brow:'thin', nose:'human', mouth:'wide' },
+    wolf:{ head:'wolf', eyes:'glow', brow:'heavy', nose:'snout', mouth:'snout' },
     fine:{ head:'fine', eyes:'almond', brow:'thin', nose:'human', mouth:'lips' },
     hood:{ head:'human', eyes:'glow', brow:'thin', nose:'human', mouth:'lips' } };
   const PART3D={
@@ -1432,10 +1507,15 @@ const Rig3D=(()=>{
       heavy(F,c){ const { X, Yh, Z, h, tb }=c; [-1,1].forEach(s=>{ const b0=[s*X(0.78),Yh(0.4),Z(0.3)], b1=[s*X(0.08),Yh(0.44),Z(0.5)]; F.tube(b0,b1,0.06*h,0.07*h,0.05*h,'skin',{ bias:tb(b0,b1,0.09) }); }); } },
     nose:{ human(F,c){ const { X, Yh, Z, h, tb, on }=c, a=[0,Yh(0.46),Z(0.57)], b=[0,Yh(0.64),Z(0.66)]; F.tube(a,b,0.035*h,0.05*h,0.065*h,'skin',{ bias:tb(a,b,0.08) }); F.patch([0,Yh(0.66),Z(0.6)],norm([0,0.6,0.8]),X(0.14),0.025*h,'dark',{ bias:on([0,Yh(0.66),Z(0.6)],0.085), sw:0 }); },
       flat(F,c){ const { X, Yh, Z, h, on }=c; F.patch([0,Yh(0.62),Z(0.52)],norm([0,0.25,1]),X(0.2),0.05*h,'dark',{ bias:on([0,Yh(0.62),Z(0.52)],0.05), sw:0.4 }); },
+      // the wolf's: a black nose at the snout's tip
+      snout(F,c){ const { X, Yh, Z, h, on }=c, q=[0,Yh(0.62),Z(1.24)]; F.patch(q,norm([0,-0.1,1]),X(0.2),0.05*h,'void',{ bias:on(q,0.06), sw:0.4 }); },
       // a long hooked nose: out from the brow, down at the tip
       hook(F,c){ const { X, Yh, Z, h, tb }=c, a=[0,Yh(0.46),Z(0.5)], b=[0,Yh(0.62),Z(0.82)], d=[0,Yh(0.72),Z(0.74)]; F.tube(a,b,0.04*h,0.06*h,0.06*h,'skin',{ bias:tb(a,b,0.09) }); F.tube(b,d,0.06*h,0.045*h,0.02*h,'skin',{ bias:tb(a,b,0.095) }); } },
     mouth:{ lips(F,c){ const { X, Yh, Z, h, on, jr, roar }=c, A=[-0.4,-0.2,0,0.2,0.4], P=A.map(a=>jr([Math.sin(a)*X(0.6),Yh(0.79),Math.cos(a)*Z(0.52)])); F.thin(P,A.map(a=>norm([Math.sin(a),0,Math.cos(a)])),roar?0.07*h*roar+0.5:0.6,roar?'mouth':'lip',on(P[2],0.06)); },
       wide(F,c){ const { X, Yh, Z, h, on, jr, roar }=c, A=[-0.5,-0.25,0,0.25,0.5], P=A.map(a=>jr([Math.sin(a)*X(0.62),Yh(0.77),Math.cos(a)*Z(0.5)])); F.thin(P,A.map(a=>norm([Math.sin(a),0,Math.cos(a)])),roar?0.09*h*roar+0.5:0.55,roar?'mouth':'faceLine',on(P[2],0.06)); },
+      // the wolf's: the lips along the snout, the fangs at its front
+      snout(F,c){ const { X, Yh, Z, h, on, jr, roar }=c; [-1,1].forEach(s=>{ const P=[0.3,0.55,0.8,1.0,1.16].map(z=>jr([s*X(0.42-0.2*(z-0.3)),Yh(0.79),Z(z)])); F.thin(P,P.map(()=>norm([s*0.8,0,0.6])),0.05*h*(0.5+roar),'mouth',on(P[2],0.06));
+        const f=jr([s*X(0.2),Yh(0.76),Z(1.06)]); F.tube(f,add(f,[0,0.07*h,0.01*h]),0.025*h,0.018*h,0.004*h,'bone',{ bias:on(f,0.07) }); }); },
       // a grin from cheek to cheek, curved up at the corners, full of small pointed teeth
       grin(F,c){ const { X, Yh, Z, h, on, jr, roar }=c, A=[-0.75,-0.5,-0.25,0,0.25,0.5,0.75], y=a=>Yh(0.76)-Math.pow(a/0.75,2)*0.05*h, P=A.map(a=>jr([Math.sin(a)*X(0.72),y(a),Math.cos(a)*Z(0.44)]));
         if(F.faces([0,0,1])<-0.2) return; F.thin(P,A.map(a=>norm([Math.sin(a),0,Math.cos(a)])),0.05*h*(0.6+roar),'mouth',on(P[3],0.06));
@@ -1454,7 +1534,10 @@ const Rig3D=(()=>{
       if((gn.bemalung===undefined?0.5:gn.bemalung)>=0.5){ F.patch([0,Yh(0.48),Z(0.47)],[0,0,1],X(0.92),0.075*h,'paint',{ bias:on([0,Yh(0.48),Z(0.47)],0.045), sw:0, shape:[[-1,-0.6],[1,-0.6],[1,1],[-1,1]] });
         [-1,1].forEach(s=>F.patch([s*X(0.22),Yh(0.88),Z(0.5)],[0,0.3,1],X(0.06),0.08*h,'paint',{ bias:on([0,Yh(0.88),Z(0.5)],0.07), sw:0 })); }
       else { const P=[[X(0.25),Yh(0.36),Z(0.47)],[X(0.45),Yh(0.55),Z(0.43)],[X(0.55),Yh(0.68),Z(0.4)]]; F.thin(P,P.map(()=>norm([0.3,0,0.95])),0.6,'scar',on(P[1],0.08)); } },
-    ears:{ // the elf's: long, narrow, up and back
+    ears:{ // the wolf's: pointed, upright on the top of the head
+      wolf(F,c){ const { X, Yh, Z, h }=c; [-1,1].forEach(s=>{ F.plate([[s*X(0.35),Yh(0.12),Z(0.0)],[s*X(0.85),Yh(-0.38),Z(-0.15)],[s*X(0.95),Yh(0.22),Z(-0.2)]],'skin',{ bias:0 });
+        F.plate([[s*X(0.48),Yh(0.1),Z(0.02)],[s*X(0.82),Yh(-0.26),Z(-0.12)],[s*X(0.86),Yh(0.16),Z(-0.15)]],'dark',{ bias:0.01, sw:0 }); }); },
+      // the elf's: long, narrow, up and back
       elf(F,c){ const { X, Yh, Z, h }=c; [-1,1].forEach(s=>F.plate([[s*X(0.9),Yh(0.36),Z(0.0)],[s*X(1.25),Yh(0.22),Z(-0.2)],[s*X(1.65),Yh(-0.08),Z(-0.45)],[s*X(1.2),Yh(0.4),Z(-0.25)],[s*X(0.92),Yh(0.6),Z(-0.08)]],'skin',{ bias:0 })); },
       // the goblin's: big, out to the side and a little up, the inside dark
       goblin(F,c){ const { X, Yh, Z, h }=c; [-1,1].forEach(s=>{ F.plate([[s*X(0.9),Yh(0.36),Z(0.0)],[s*X(1.6),Yh(0.26),Z(-0.12)],[s*X(2.35),Yh(0.18),Z(-0.3)],[s*X(1.6),Yh(0.52),Z(-0.2)],[s*X(0.92),Yh(0.62),Z(-0.1)]],'skin',{ bias:0 });
@@ -1497,6 +1580,8 @@ const Rig3D=(()=>{
     if(K.hood&&!G.helmet){ PART3D.hood(F,p); return sk; }       // under the hood only the eyes
     ['eyes','brow','nose','mouth'].forEach(k=>{ const f=fc[k]&&PART3D[k][fc[k]]; if(f) f(F,p); });
     if(K.fangs) PART3D.fangs(F,p);
+    if(K.wounds&&F.faces([0,0,1])>0){ const q=[X(0.45),Yh(0.66),Z(0.45)]; F.patch(q,norm([0.5,0,0.85]),X(0.2),0.06*h,'wound',{ bias:p.on(q,0.06), sw:0.4 }); }       // the zombie's torn cheek
+    if(K.ruff){ const q=by([0,topY-0.2*u,-0.6*u]); F.solid([[q,[A.wSh*0.62,2.6*u,3.6*u]],[[0,Yh(0.95),Z(-0.1)],[X(1.1),0.16*h,Z(0.4)-hc[2]]]],'hair',{ bias:-0.6, sw:0.85 }); }       // the werewolf's ruff of fur round the neck
     if(fc.paint) PART3D.paint(F,p); if(fc.tusks) PART3D.tusks(F,p);
     if(K.beard) PART3D.beard(F,p);
     if(K.ears&&PART3D.ears[K.ears]&&!cv.coif) PART3D.ears[K.ears](F,p);       // under the mail hood the ears are hidden
@@ -1522,18 +1607,22 @@ const Rig3D=(()=>{
   function armour(F,c){
     const { A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs }=c, { topY, hipY, bodyH, wSh, wHip, aw }=A, L=A.legs;
     if(G.helmet){
-      const style=G.helmStyle||K.helm, rimY=Yh(0.36), cr=[X(1.0)*1.12,0.43*h*1.1,(Z(0.48)-hc[2])*1.12], cc=add(hc,[0,-0.02*h,-0.03*h]);
-      F.solid([[cc,cr,[cc[1]-cr[1]-1,rimY]]],'iron',{ bias:0.12, sw:0.9 });
+      const style=G.helmStyle||K.helm, visor=style==='visor', rimY=visor?Yh(0.96):Yh(0.36), cr=[X(1.0)*1.12,0.43*h*1.1,(Z(0.48)-hc[2])*1.12], cc=add(hc,[0,-0.02*h,-0.03*h]);
+      F.solid([[cc,cr,[cc[1]-cr[1]-1,rimY]]].concat(visor?[[[0,Yh(0.74),Z(0.2)],[X(0.86),0.24*h,Z(0.47)-hc[2]],[Yh(0.5),rimY]]]:[]),'iron',{ bias:sk+0.12-F.P(cc)[2], sw:0.9 });       // (sorted over the head: its centre lies a little behind the head's)       // (the closed helm: down over the face to the chin)
       const rr=t=>Math.sqrt(Math.max(0,1-Math.pow((t-cc[1])/cr[1],2)));       // the cap's width at a height
-      F.ring(cc,cr[0]*rr(rimY)*1.04,cr[2]*rr(rimY)*1.04,rimY-0.5*u,1.3*u,'ironDark',0.14);       // the rim
+      if(!visor) F.ring(cc,cr[0]*rr(rimY)*1.04,cr[2]*rr(rimY)*1.04,rimY-0.5*u,1.3*u,'ironDark',0.14);       // the rim
+      else if(F.faces([0,0,1])>0.05){ const fz=y=>cc[2]+cr[2]*rr(y)*0.99, e=[0,Yh(0.47),fz(Yh(0.47))], b=v=>sk+v-F.P(e)[2];       // the visor's slit, the eyes glowing in it, the breaths' holes
+        F.patch(e,[0,0,1],cr[0]*0.72,0.032*h,'void',{ bias:b(0.13), sw:0, shape:[[-1,-1],[1,-1],[1,1],[-1,1]] });
+        [-1,1].forEach(s=>{ const q=[s*X(0.36),Yh(0.47),fz(Yh(0.47))]; F.patch(q,[0,0,1],X(0.11),0.022*h,'glow',{ bias:b(0.135), sw:0 }); });
+        [-0.3,-0.1,0.1].forEach(x=>{ const q=[X(0.35)+x*X(1),Yh(0.68),fz(Yh(0.6))+0.04*h]; F.patch(q,[0,0,1],0.012*h,0.012*h,'void',{ bias:b(0.13), sw:0 }); }); }
       const ridge=[], rn=[]; for(let i=1;i<12;i++){ const a=-Math.PI/2+i/12*Math.PI, y=cc[1]-cr[1]*Math.sin(a+Math.PI/2)*1.0; const zz=Math.cos(a+Math.PI/2); ridge.push([0,cc[1]-cr[1]*1.01*Math.cos(a)*1,cc[2]+cr[2]*1.01*Math.sin(a)]); rn.push(norm([0,-Math.cos(a)/cr[1],Math.sin(a)/cr[2]])); }
       F.seen(ridge.filter(p=>p[1]<rimY-u),rn.filter((n,i)=>ridge[i][1]<rimY-u),0.6*u,'ironDark',0.15);       // the ridge over the top
-      if(F.faces([0,0,1])>0.05) F.tube([0,rimY-0.4*u,Z(0.5)*1.06],[0,Yh(0.62),Z(0.52)*1.04],0.55*u,0.5*u,0.4*u,'ironDark',{ bias:sk-F.P([0,rimY,Z(0.5)])[2]+0.16 });       // the nose guard
+      if(!visor&&F.faces([0,0,1])>0.05) F.tube([0,rimY-0.4*u,Z(0.5)*1.06],[0,Yh(0.62),Z(0.52)*1.04],0.55*u,0.5*u,0.4*u,'ironDark',{ bias:sk-F.P([0,rimY,Z(0.5)])[2]+0.16 });       // the nose guard
       if(style==='horns') [-1,1].forEach(s=>{ const b0=[s*cr[0]*0.92,Yh(0.2),cc[2]+0.05*h], b1=[s*cr[0]*1.55,Yh(0.08),cc[2]+0.12*h], b2=[s*cr[0]*1.85,Yh(-0.38),cc[2]+0.22*h];
         F.tube(b0,b1,1.0*u,0.85*u,0.7*u,'bone'); F.tube(b1,b2,0.7*u,0.45*u,0.08*u,'bone'); });
       if(style==='crest'){ const q=[[0,cc[1]-cr[1]*0.85,cc[2]+cr[2]*0.5],[0,cc[1]-cr[1]*1.55,cc[2]+cr[2]*0.2],[0,cc[1]-cr[1]*1.45,cc[2]-cr[2]*0.9],[0,cc[1]-cr[1]*0.6,cc[2]-cr[2]*0.95]];
         F.plate(q,'cloth',{ bias:0.1 }); F.plate(q.map(p=>[0.5*u,p[1],p[2]]),'cloth',{ bias:0.1 }); }
-      if(K.coif){       // the mail hood: behind the skull's face, round the head and down onto the shoulders; the face open in front
+      if(K.coif&&!visor){       // the mail hood: behind the skull's face, round the head and down onto the shoulders; the face open in front
         F.solid([[hc,[X(1.0)*1.1,0.47*h,(Z(0.48)-hc[2])*1.1],[rimY-u,hc[1]+h]],[by([0,topY-0.6*u,-0.6*u]),[aw*1.0,1.6*u,Z(0.42)-hc[2]],[topY-3*u,topY+1*u]],[by([0,topY+0.7*u,-0.5*u]),[wSh*0.5,1.3*u,3.4*u],[topY-1*u,topY+1.8*u]]],'mail',{ bias:0.03, sw:0.9 });
         const fo=K.coifFace||[0.6,0.27,0.78]; F.patch([0,Yh(fo[0]),Z(0.5)],[0,0.05,1],X(fo[2]),fo[1]*h,'skin',{ bias:sk+0.04-F.P([0,Yh(fo[0]),Z(0.5)])[2], sw:0.6 });       // the face in the hood's opening (the ork's longer face: a bigger opening)
       }
@@ -1593,24 +1682,25 @@ const Rig3D=(()=>{
     const zS=y=>{ for(let i=0;i<sp0.length-1;i++){ const a=sp0[i], b=sp0[i+1]; if((a[1]-y)*(b[1]-y)<=0&&a[1]!==b[1]) return a[0]+(b[0]-a[0])*(y-a[1])/(b[1]-a[1]); } return y<sp0[0][1]?sp0[0][0]:sp0[sp0.length-1][0]; };
     const sB=topY+bodyH*0.32, zF=y=>4.2*u+(y-topY)/(sB-topY)*0.9*u;       // the front of the chest
     const by=v=>[v[0],v[1]+Y0,v[2]];       // a point of the trunk, bobbing
-    if(flesh) fleshTrunk(F,{ A, K, G, u, Y0, by, wC, wAt, aw, cv });
+    const robed=!flesh&&!!K.robeTop;       // a skeleton in a robe (the lich): its trunk's bones hidden
+    if(flesh||robed) fleshTrunk(F,{ A, K, G, u, Y0, by, wC, wAt, aw, cv });
     // the spine: vertebrae from under the skull to the sacrum, each a short tube with its spike to the back
-    if(!flesh) for(let i=0;i<sp0.length-1;i++){ if((cv.chest&&i>=1&&i<=5)||(cv.coif&&i===0)) continue; const a=sp0[i], b=sp0[i+1], n=i===0?3:2; for(let j=0;j<n;j++){ const t0=j/n, t1=(j+0.75)/n, p0=by([0,a[1]+(b[1]-a[1])*t0,a[0]+(b[0]-a[0])*t0]), p1=by([0,a[1]+(b[1]-a[1])*t1,a[0]+(b[0]-a[0])*t1]);
+    if(!flesh&&!robed) for(let i=0;i<sp0.length-1;i++){ if((cv.chest&&i>=1&&i<=5)||(cv.coif&&i===0)) continue; const a=sp0[i], b=sp0[i+1], n=i===0?3:2; for(let j=0;j<n;j++){ const t0=j/n, t1=(j+0.75)/n, p0=by([0,a[1]+(b[1]-a[1])*t0,a[0]+(b[0]-a[0])*t0]), p1=by([0,a[1]+(b[1]-a[1])*t1,a[0]+(b[0]-a[0])*t1]);
       const r=(i>=5?1.0:0.65)*u; F.tube(p0,p1,r,r,r,'skin',{ bias:-0.3 }); F.tube(mulv(add(p0,p1),0.5),add(mulv(add(p0,p1),0.5),[0,0.5*u,-1.4*u]),0.35*u,0.3*u,0.25*u,'skin',{ bias:-0.4 });
       if(i===5||i===6) F.tube(add(mulv(add(p0,p1),0.5),[-2.4*u,0,0]),add(mulv(add(p0,p1),0.5),[2.4*u,0,0]),0.35*u,0.35*u,0.35*u,'skin',{ bias:-0.35 }); } }
     // the ribs: arcs round an ellipse from the spine (behind) by the side to the breastbone (in front); the near half and the far half sorted apart
     const Wf=[0.62,0.8,0.92,0.97,0.95,0.85];
-    if(!cv.chest&&!flesh) for(let i=0;i<6;i++){ const W=Wf[i]*wC, yb=topY+1.0*u+i*1.25*u, yf=Math.min(sB-0.3*u,topY+1.4*u+i*1.5*u), zb=zS(yb)+0.4*u, zf=zF(yf), zc=(zb+zf)/2, D=(zf-zb)/2, sag=(1.4+0.25*i)*u;
+    if(!cv.chest&&!flesh&&!robed) for(let i=0;i<6;i++){ const W=Wf[i]*wC, yb=topY+1.0*u+i*1.25*u, yf=Math.min(sB-0.3*u,topY+1.4*u+i*1.5*u), zb=zS(yb)+0.4*u, zf=zF(yf), zc=(zb+zf)/2, D=(zf-zb)/2, sag=(1.4+0.25*i)*u;
       [-1,1].forEach(s=>{ const pts=[]; for(let k=0;k<=12;k++){ const a=Math.PI-k/12*(Math.PI-0.12); pts.push(by([s*Math.max(0.7*u,W*Math.sin(a)),yb+(yf-yb)*(1-a/Math.PI)+sag*Math.pow(Math.sin(a),2)*(0.7+0.3*(1-a/Math.PI)),zc+D*Math.cos(a)])); }
         F.line(pts.slice(0,7),0.75*u*2,'skin'); F.line(pts.slice(6),0.75*u*2,'skin'); }); }
-    if(!cv.chest&&!flesh) F.tube(by([0,topY+0.4*u,zF(topY)]),by([0,sB,zF(sB)]),0.65*u,0.55*u,0.4*u,'skin',{ bias:0.2 });       // the breastbone
+    if(!cv.chest&&!flesh&&!robed) F.tube(by([0,topY+0.4*u,zF(topY)]),by([0,sB,zF(sB)]),0.65*u,0.55*u,0.4*u,'skin',{ bias:0.2 });       // the breastbone
     // the collarbones, the shoulders' knobs, the shoulder blades on the back
-    if(!flesh) [-1,1].forEach(s=>{ if(!cv.chest) F.tube(by([s*1.1*u,topY+0.5*u,zF(topY)-0.3*u]),by([s*wSh*0.86,topY-0.1*u,-0.3*u]),0.75*u,0.6*u,0.7*u,'skin'); if(!G.pauldrons) F.ball(by([s*wSh*0.92,topY+0.5*u,-0.3*u]),1.05*u,'skin');
+    if(!flesh&&!robed) [-1,1].forEach(s=>{ if(!cv.chest) F.tube(by([s*1.1*u,topY+0.5*u,zF(topY)-0.3*u]),by([s*wSh*0.86,topY-0.1*u,-0.3*u]),0.75*u,0.6*u,0.7*u,'skin'); if(!G.pauldrons) F.ball(by([s*wSh*0.92,topY+0.5*u,-0.3*u]),1.05*u,'skin');
       if(!cv.chest) F.plate([[s*wSh*0.9,topY+0.2*u,-1.2*u],[s*wSh*0.4,topY+1.0*u,-2.8*u],[s*wC*0.45,topY+bodyH*0.36,-2.6*u],[s*wC*0.85,topY+bodyH*0.3,-1.8*u]].map(by),'skin',{ bias:-0.2 }); });
     // the pelvis: the two wings, the sacrum behind, the holes below
-    if(!cv.chest&&!flesh) [-1,1].forEach(s=>{ F.plate([[s*1.0*u,hipY-6.0*u,-1.9*u],[s*wHip*0.45,hipY-8.0*u,-1.2*u],[s*wHip*0.9,hipY-7.4*u,0.8*u],[s*wHip*0.98,hipY-5.4*u,2.2*u],[s*wHip*0.8,hipY-4.0*u,1.6*u],[s*wHip*0.66,hipY-2.4*u,0.6*u],[s*wHip*0.55,hipY-0.5*u,-0.6*u],[s*0.45*u,hipY-0.9*u,1.6*u],[s*0.45*u,hipY-2.5*u,1.9*u],[s*1.6*u,hipY-4.4*u,-1.2*u]].map(by),'skin');
+    if(!cv.chest&&!flesh&&!robed) [-1,1].forEach(s=>{ F.plate([[s*1.0*u,hipY-6.0*u,-1.9*u],[s*wHip*0.45,hipY-8.0*u,-1.2*u],[s*wHip*0.9,hipY-7.4*u,0.8*u],[s*wHip*0.98,hipY-5.4*u,2.2*u],[s*wHip*0.8,hipY-4.0*u,1.6*u],[s*wHip*0.66,hipY-2.4*u,0.6*u],[s*wHip*0.55,hipY-0.5*u,-0.6*u],[s*0.45*u,hipY-0.9*u,1.6*u],[s*0.45*u,hipY-2.5*u,1.9*u],[s*1.6*u,hipY-4.4*u,-1.2*u]].map(by),'skin');
       F.patch(by([s*wHip*0.42,hipY-1.6*u,1.1*u]),norm([s*0.5,0,0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); F.patch(by([s*wHip*0.42,hipY-1.6*u,0.9*u]),norm([-s*0.5,0,-0.85]),wHip*0.15,0.8*u,'socket',{ bias:0.05 }); });
-    if(!cv.chest&&!flesh) F.plate([[-2.2*u,hipY-6.6*u,-2.0*u],[2.2*u,hipY-6.6*u,-2.0*u],[0.9*u,hipY-2.8*u,-2.2*u],[0,hipY-2.1*u,-2.0*u],[-0.9*u,hipY-2.8*u,-2.2*u]].map(by),'skin',{ bias:-0.1 });
+    if(!cv.chest&&!flesh&&!robed) F.plate([[-2.2*u,hipY-6.6*u,-2.0*u],[2.2*u,hipY-6.6*u,-2.0*u],[0.9*u,hipY-2.8*u,-2.2*u],[0,hipY-2.1*u,-2.0*u],[-0.9*u,hipY-2.8*u,-2.2*u]].map(by),'skin',{ bias:-0.1 });
     // the skull: a hull of the vault and the face, the sockets, the nose's hole, the cheekbones, the teeth, the crack; the jaw a band below (it drops when it roars)
     const zH=(K.headFwd||0)*u, hc=[0,top+0.45*h+Y0,zH], X=x=>x*aw, Yh=y=>top+y*h+Y0, Z=z=>z*hd+zH, hy=Math.sin(w+0.6)*0.8*walkK;
     let sk;
@@ -1618,6 +1708,7 @@ const Rig3D=(()=>{
     else {
     F.solid([[hc,[X(1.0),0.43*h,Z(0.48)]],[[0,Yh(0.7),Z(0.22)],[X(0.82),0.13*h,Z(0.26)]]],'skin',{ sw:0.9 });
     sk=F.items[F.items.length-1].dep;
+    if(K.eyeGlow) [-1,1].forEach(s=>{ const e=[s*X(0.4),Yh(0.49),Z(0.42)]; F.patch(e,norm([s*0.35,0,0.94]),X(0.16),0.05*h,'glow',{ bias:sk+0.06-F.P(e)[2], sw:0 }); F.patch(e,norm([s*0.35,0,0.94]),X(0.07),0.025*h,'eye',{ bias:sk+0.065-F.P(e)[2], sw:0 }); });       // the lich's eyes, glowing in the sockets
     [-1,1].forEach(s=>{ F.patch([s*X(0.4),Yh(0.48),Z(0.4)],norm([s*0.35,0,0.94]),X(0.31),0.115*h,'socket',{ bias:sk+0.05-F.P([s*X(0.4),Yh(0.48),Z(0.4)])[2], sw:0.75 });
       F.tube([s*X(0.72),Yh(0.6),Z(0.32)],[s*X(0.97),Yh(0.6),Z(-0.05)],0.55*u,0.5*u,0.45*u,'skin',{ bias:0.1 }); });
     F.patch([0,Yh(0.64),Z(0.48)],norm([0,0.15,1]),X(0.12),0.055*h,'socket',{ bias:sk+0.06-F.P([0,Yh(0.64),Z(0.48)])[2] });
@@ -1639,7 +1730,7 @@ const Rig3D=(()=>{
       if(!flesh){ F.ball(H,1.0*u,'skin'); F.ball(add(H,[s*1.3*u,0.8*u,-0.4*u]),0.9*u,'skin'); }
       const fl=v=>add(Ak,v);       // the foot level, hanging at the ankle
       legs[side]={ H, Kn, Ak, shinR, fl, s };
-      if(cv.greaves&&!flesh) return;       // under the greaves (drawn with the armour)
+      if((cv.greaves||K.lower==='robe')&&!flesh) return;       // under the greaves (drawn with the armour) or the robe
       if(flesh){ fleshLeg(F,{ K, L, u, gn, cv },legs[side]); return; }
       F.tube(H,Kn,0.95*u,0.72*u,1.1*u,'skin'); F.ball(add(Kn,[s*0.7*u,0,0]),0.8*u,'skin'); F.ball(add(Kn,[-s*0.7*u,0,0]),0.8*u,'skin');
       F.tube(add(Kn,shinR([0,0.6*u,0.2*u])),Ak,1.1*u,0.68*u,0.85*u,'skin'); F.tube(add(Kn,shinR([s*1.0*u,1.2*u,-0.6*u])),add(Ak,[s*0.9*u,0.3*u,-0.3*u]),0.4*u,0.3*u,0.42*u,'skin',{ bias:-0.1 });
@@ -1647,13 +1738,16 @@ const Rig3D=(()=>{
       F.ball(fl([0,0.6*u,0]),0.8*u,'skin'); F.ball(fl([0,-0.9*u-L.ankY,-1.1*u]),0.85*u,'skin');       // the ankle's bone, the heel
       [-1,0,1].forEach(k=>{ const m0=fl([k*0.5*u,1.2*u,0.3*u]), m1=fl([s*0.6*u+k*0.55*u,-L.ankY-0.5*u+0,3.1*u]); F.tube(m0,m1,0.42*u,0.32*u,0.38*u,'skin'); F.tube(m1,add(m1,[s*0.3*u,0.3*u,1.2*u]),0.36*u,0.28*u,0.3*u,'skin'); });
     });
-    if(flesh&&K.lower==='robe') fleshRobe(F,{ A, K, u, Y0, wAt, wC, legs });
+    if(K.lower==='robe') fleshRobe(F,{ A, K, u, Y0, wAt, wC, legs });
     if(flesh&&(K.cape||K.collar)) fleshCape(F,{ A, K, G, u, Y0, by, aw, legs, walkK, w });
+    if(K.wings) wings3d(F,{ A, K, u, Y0, by, t:st.t||0 });
+    if(K.tail) tail3d(F,{ A, K, u, Y0, by, w, walkK });
     // the arms: the shoulder fixed, the hand where it would be (hanging, or bent forward when it holds something), the elbow solved back and out
     const hands={};
     [-1,1].forEach(s=>{ const side=s<0?'R':'L', Sh=by([s*wSh*0.86,topY+0.9*u,-0.3*u]), holds=side==='R'?(G.weapon&&G.weapon!=='none'):!!G.shield;
       let Hd=by([s*(wSh*0.98+1.2),hipY+0.3*u+(K.handDrop||0),0.6*u]); if(holds) Hd=add(Hd,[-s*1.0*u,-bodyH*0.3,3.2*u]);
       Hd=add(Hd,[0,Math.sin((st.t||0)*2+(s<0?0:1))*0.6,(s<0?-1:1)*3*u*Math.sin(w)*walkK]);
+      if(K.reach&&!holds) Hd=by([s*wSh*0.55,topY+bodyH*0.28+Math.sin((st.t||0)*1.7+s)*0.8*u,11*u]);       // the arms stretched out in front (the zombie)
       if(side==='R'&&sw){ Hd=add(Hd,sw>0?[0,-6*u*sw,-2*u*sw]:[0,3*u*-sw,4*u*-sw]); }
       if(roar) Hd=add(Hd,[0,-6*roar,0]);
       const aK=flesh?(K.armK||1):1, L1=10.6*u*aK, L2=9.8*u*aK, dv=sub(Hd,Sh), d=Math.min(L1+L2-1e-3,Math.max(Math.abs(L1-L2)+1e-3,len(dv))), uu=norm(dv), pole=norm([s*0.4,0,-1]), v=norm(sub(pole,mulv(uu,dot(pole,uu))));
@@ -1663,11 +1757,15 @@ const Rig3D=(()=>{
         const sl=K.sleeves?'tunic':'skin', sk2=K.sleeves?(K.lower==='robe'?1.3:1.1):1;       // in sleeves (the robe's wider at the wrist)
         F.tube(add(Sh,mulv(norm(sub(E,Sh)),0.8*u)),E,r0*sk2,r0*0.86*sk2,r1*0.81*sk2,sl); F.ball(E,r1*0.81*sk2,sl,{ bias:-1 }); F.tube(E,Wr,r1*0.9*sk2,r1*0.96*sk2,r2*sk2*(K.lower==='robe'?1.4:1),sl);       // (the joints' balls behind the tubes: a round elbow, no puppet's knob)
         if(K.wraps) [0.45,0.62,0.79].forEach(t=>{ const a=add(E,mulv(sub(Wr,E),t)), b=add(E,mulv(sub(Wr,E),t+0.1)), r=(r1*0.96-(r1*0.96-r2)*Math.max(0,t-0.5)*2)*1.08; F.tube(a,b,r,r,r,'leather',{ bias:0.05 }); }); }
+      else if(K.sleeves){ F.tube(Sh,E,1.9*u,1.7*u,1.6*u,'tunic'); F.ball(E,1.6*u,'tunic',{ bias:-1 }); F.tube(E,Wr,1.6*u,1.9*u,2.3*u,'tunic'); }       // bones in a robe's wide sleeves
       else { F.tube(Sh,E,0.75*u,0.55*u,0.75*u,'skin'); F.ball(E,0.7*u,'skin'); F.tube(E,Wr,0.6*u,0.45*u,0.55*u,'skin'); }
       // the fist: a knuckled ball, three folded fingers towards the body
       const fr=(pl.S.hr||2.3)*0.9, fc=Wr; F.ball(fc,fr*0.75,'hand',{ bias:0.1 }); [-0.6,0,0.6].forEach(k=>F.tube(add(fc,[0,k*fr*0.55,0.5*fr]),add(fc,[-s*0.8*fr,k*fr*0.55,0.7*fr]),0.25*fr,0.25*fr,0.25*fr,'hand',{ bias:0.15 }));
+      if(K.claws&&!G.pauldrons) [-0.6,0,0.6].forEach(k=>{ const b=add(fc,[-s*0.8*fr,k*fr*0.55,0.75*fr]); F.tube(b,add(b,[-s*0.3*fr,0.9*fr,0.5*fr]),0.18*fr,0.12*fr,0.02*fr,'bone',{ bias:0.2 }); });       // claws
       hands[side]={ at:fc, Sh, E };
     });
+    if(K.crown&&!G.helmet) crown3d(F,{ X, Yh, Z, h, hc, sk });
+    if(K.horns3d&&!G.helmet) horns3d(F,{ K, X, Yh, Z, h, hc });
     armour(F,{ A, K, G, u, h, Y0, by, sk, X, Yh, Z, hc, wC, zS, zF, legs, hands, roar });
     // the weapon (flat at the right hand; its edge turns with the figure), the shield (a plate with its thickness on the left arm)
     if(G.weapon&&G.weapon!=='none'&&pl.weapons[G.weapon]){ const hR=hands.R, q=F.P(hR.at), rot=(-(Math.sin((st.t||0)*1.3)*3)-roar*48-sw*(sw>0?40:55))*Math.PI/180;
@@ -1738,7 +1836,7 @@ const SvgOrkViewer=(()=>{
     const c=document.createElement('canvas'); c.width=Math.round(size*1.25); c.height=Math.round(size*1.08); const g=c.getContext('2d'), k=size/rig.H;       // every kind fills its sprite (an imp is as many pixels high as an ork)
     SvgRig.canvas(g,rig,P,k,c.width*0.42,c.height-2*k); snap(g,c.width,c.height); return c;
   }
-  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
+  const KIND_NAME={ human:'Mensch', ork:'Ork (alt)', imp:'Imp', goblin:'Goblin (alt)', goblinB:'Goblin', troll:'Troll (alt)', trollB:'Troll', darkelf:'Dunkelelf (alt)', darkelfB:'Dunkelelf', vampire:'Vampir (alt)', vampireB:'Vampir', warlock:'Warlock (alt)', warlockB:'Warlock', ghoul:'Ghul', zombie:'Zombie', priest:'Dunkler Priester', darkknight:'Dunkler Ritter', succubus:'Succubus', demon:'Dämon', lich:'Lich', werewolf:'Werwolf', skeleton2:'Skelett (Fantasy)', skeleton:'Skelett', orkB:'Ork' }, STYLE_NAME={ aasfresser:'Aasfresser', graeber:'Gräber', frisch:'Frisch', verwest:'Verwest', kantor:'Kantor', eiferer:'Eiferer', eisern:'Eisern', gefallen:'Gefallen', verfuehrerin:'Verführerin', dornen:'Dornen', brut:'Brut', fuerst:'Fürst', gelehrter:'Gelehrter', koenig:'König', grau:'Grau', schwarzpelz:'Schwarzpelz', pirscher:'Pirscher', schinder:'Schinder', veteran:'Veteran', soeldner:'Söldner', bauer:'Bauer', bestie:'Bestie', wicht:'Wicht', knolle:'Knolle', krieger:'Krieger', brocken:'Koloss', spaeher:'Späher', flitzer:'Flitzer', grinser:'Grinser', fels:'Fels', moor:'Moor', klinge:'Klinge', hexe:'Hexe', graf:'Graf', bleich:'Bleich', seher:'Seher', irrer:'Irrer', alt:'Uralt', eigen:'Eigen' }, WEAPON_NAME={ none:'keine', axe:'Axt', club:'Keule', sword:'Schwert', pick:'Spitzhacke', hammer:'Hammer', dagger:'Dolch', spear:'Speer', bow:'Bogen', staff:'Stab' };
   // the genes (every humanoid: every look between the presets)
   const GENES=[['kopf','Kopfgröße'],['kopfForm','Kopf: oval, rund, eckig'],['kinn','Kinn spitz'],['koerperForm','Körper: oval, rund, eckig'],['beinForm','Beine: oval, rund, eckig'],['fuss','Füße'],['tief','Kopf tief'],['koerper','Körper rund'],['beine','Beine lang'],['augen','Augen groß'],['haut','Hautton'],['augenFarbe','Augenfarbe'],['haar','Haarfarbe'],['bart','Bart'],['bemalung','Bemalung']];
   const TRAITS=[['klug','Klugheit','Kopf'],['stark','Stärke','Schultern'],['flink','Gewandtheit','Beine'],['wild','Wildheit','Hauer']];
