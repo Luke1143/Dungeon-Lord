@@ -25,8 +25,8 @@ const { open, finish }=require('./lib');
     { const pl=SvgRig.plan({ kind:'skeleton2', gear:{ helmet:true, helmStyle:'horns', chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'sword' } }), g=document.createElement('canvas').getContext('2d');       // the armour in 2.5D, every direction
       for(let y=0;y<8;y++){ const F=Rig3D.frame(y*Math.PI/4,0.85); Rig3D.skeleton(F,pl,{ t:1, phase:y, walking:y%2===1 }); if(F.items.length<40||F.items.some(it=>/NaN/.test(it.d))) return 'the armoured 2.5D skeleton is broken at yaw '+y*45; }
       Rig3D.canvas(g,pl,{ t:1 },1,0.4,2,50,120);
-      for(const spec of [{ kind:'orkB', style:'pirscher', gear:{ weapon:'axe', cloth:true } },{ kind:'orkB', style:'schinder', gear:{ helmet:true, chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'spear' } }]){ const po=SvgRig.plan(spec);       // the ork of flesh in 2.5D
-        for(let y=0;y<8;y++){ const F=Rig3D.frame(y*Math.PI/4,0.85); Rig3D.skeleton(F,po,{ t:1, phase:y, walking:y%2===1, roar:y===4?0.3:0 }); if(F.items.length<30||F.items.some(it=>/NaN/.test(it.d))) return 'the 2.5D ork is broken at yaw '+y*45; } } }
+      for(const spec of [{ kind:'orkB', style:'pirscher', gear:{ weapon:'axe', cloth:true } },{ kind:'orkB', style:'schinder', gear:{ helmet:true, chest:true, pauldrons:true, greaves:true, cloth:true, shield:'kite', weapon:'spear' } },{ kind:'human', style:'veteran', gear:{ weapon:'sword' } },{ kind:'human', style:'bauer', gear:{ helmet:true, chest:true, shield:'round' } }]){ const po=SvgRig.plan(spec);       // the ork and the human of flesh in 2.5D (one kit of parts)
+        for(let y=0;y<8;y++){ const F=Rig3D.frame(y*Math.PI/4,0.85); Rig3D.skeleton(F,po,{ t:1, phase:y, walking:y%2===1, roar:y===4?0.3:0 }); if(F.items.length<30||F.items.some(it=>/NaN/.test(it.d))) return 'the 2.5D '+spec.kind+' is broken at yaw '+y*45; } } }
     return SvgFigures.size>1?'':'no imp pictures drawn'; });
   if(fig) problem+=fig+'; ';
   // one body plan for every humanoid (svg-rig.js): the gear lands on the right parts at any size, strength widens the shoulders much more than the hips;
