@@ -1,6 +1,8 @@
 // SVG figures in the game (user, November 2026: the game moves to figures built from moving parts, svg-rig.js; the pixel sprites stay as legacy).
 // This adapter turns a creature of the game into a picture of its rig, for the 2D board and the 3D view alike (drawCreatureSprite in index.html).
 // The kinds so far: the imp, the ork, the goblin, the troll, the dark elf, the vampire, the warlock and the skeleton (one body plan for every humanoid, svg-rig.js).
+// The ork stands on the realistic body plan (flat front and back, its profile from the 2.5D rig); the goblin, the troll, the dark elf, the vampire and the warlock
+// are drawn only from the kit of parts in space (only3d: every view a view of the 2.5D figure, svg-rig.js Rig3D).
 //   - its look: genes rolled from its kind and id (the same creature looks the same forever), its level (the imp's ears), its scars (one per knock-out),
 //     its stats (strength: the shoulders, from the strength it was born with and growing with every level; agility: the legs),
 //     what it carries (the imp: gold or ore in the sack, the pick in its hand; the ork: the weapon, shield and armour it wears, in their material);
@@ -11,7 +13,7 @@
 // smoothly (EPX), marked `_svg` (read smoothly) and `_cells` (one tile, whatever its pixels). Pictures are kept per creature and pose,
 // the oldest dropped first (and their textures with them, View3D.dropCanvas).
 const SvgFigures=(()=>{
-  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:64, cells:1.6, rig:'orkB', tall:1.18, r3d:true, side3d:true }, goblin:{ px:48, cells:1.4, rig:'goblinB', only3d:true, r3d:true }, troll:{ px:64, cells:1.5 }, darkelf:{ px:48, cells:1.5 }, vampire:{ px:48, cells:1.4 }, warlock:{ px:48, cells:1.4 }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon),
+  const KINDS={ imp:{ px:24, cells:1 }, ork:{ px:64, cells:1.6, rig:'orkB', tall:1.18, r3d:true, side3d:true }, goblin:{ px:48, cells:1.4, rig:'goblinB', only3d:true, r3d:true }, troll:{ px:64, cells:1.5, rig:'trollB', only3d:true, r3d:true }, darkelf:{ px:64, cells:1.5, rig:'darkelfB', only3d:true, r3d:true, tall:1.03 }, vampire:{ px:64, cells:1.5, rig:'vampireB', only3d:true, r3d:true }, warlock:{ px:64, cells:1.5, rig:'warlockB', only3d:true, r3d:true }, skeleton:{ px:64, cells:1.6, rig:'skeleton2', side:true, r3d:true } };       // (r3d: it can be drawn from the 2.5D rig, a test: Options, Creatures)       // (rig: the kind of rig when it is not the game's kind: the skeletons are the second, the fantasy skeleton; user)       // the kinds drawn from rigs so far: their pixel size (the figure's height), how many cells wide the picture is (room for the weapon),
   // tall: how much taller than others of its size it stands (user: an ork at least as tall as a man, rather taller)
   const MAX=1600, cache=new Map(), rigs=new Map(), bases=new WeakMap();
   const hash=s=>{ let h=2166136261; for(const ch of String(s)){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; };
